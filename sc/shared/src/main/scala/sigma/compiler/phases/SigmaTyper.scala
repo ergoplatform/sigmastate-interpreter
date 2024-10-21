@@ -134,8 +134,19 @@ class SigmaTyper(val builder: SigmaBuilder,
       res
 
     case Apply(ApplyTypes(sel @ Select(obj, n, _), Seq(rangeTpe)), args) =>
+      // downcast getVarFromInput arguments to short and byte
+      val nArgs = if (n == SContextMethods.getVarFromInputMethod.name &&
+          args.length == 2 &&
+          args(0).isInstanceOf[Constant[_]] &&
+          args(1).isInstanceOf[Constant[_]] &&
+          args(0).tpe.isNumType &&
+          args(1).tpe.isNumType) {
+        IndexedSeq(ShortConstant(SShort.downcast(args(0).asInstanceOf[Constant[SNumericType]].value.asInstanceOf[AnyVal])).withSrcCtx(args(0).sourceContext),
+          ByteConstant(SByte.downcast(args(1).asInstanceOf[Constant[SNumericType]].value.asInstanceOf[AnyVal])).withSrcCtx(args(1).sourceContext))
+      } else args
+
       val newObj = assignType(env, obj)
-      val newArgs = args.map(assignType(env, _))
+      val newArgs = nArgs.map(assignType(env, _))
       newObj.tpe match {
         case p: SProduct =>
           MethodsContainer.getMethod(p, n) match {
@@ -155,7 +166,7 @@ class SigmaTyper(val builder: SigmaBuilder,
                   .getOrElse(mkMethodCall(newObj, method, newArgs, subst))
               } else {
                 val newSelect = mkSelect(newObj, n, Some(concrFunTpe)).withSrcCtx(sel.sourceContext)
-                mkApply(newSelect, newArgs.toArray[SValue])
+                mkApply(newSelect, newArgs)
               }
             case Some(method) =>
               error(s"Don't know how to handle method $method in obj $p", sel.sourceContext)
@@ -221,6 +232,11 @@ class SigmaTyper(val builder: SigmaBuilder,
             case (Ident(GetVarFunc.name | ExecuteFromVarFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
               if id.tpe.isNumType =>
                 Seq(ByteConstant(SByte.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext))
+            case (Ident(SContextMethods.getVarFromInputMethod.name, _),
+                  Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked))
+                  if inputId.tpe.isNumType && varId.tpe.isNumType =>
+              Seq(ShortConstant(SShort.downcast(inputId.value.asInstanceOf[AnyVal])).withSrcCtx(inputId.sourceContext),
+                ByteConstant(SByte.downcast(varId.value.asInstanceOf[AnyVal])).withSrcCtx(varId.sourceContext))
             case _ => typedArgs
           }
           val actualTypes = adaptedTypedArgs.map(_.tpe)
@@ -408,11 +424,6 @@ class SigmaTyper(val builder: SigmaBuilder,
         case _ =>
           error(s"Invalid application of type arguments $app: function $input doesn't have type parameters", input.sourceContext)
       }
-
-//    case app @ ApplyTypes(in, targs) =>
-//      val newIn = assignType(env, in)
-//      ApplyTypes(newIn, targs)
-//      error(s"Invalid application of type arguments $app: expression doesn't have type parameters")
 
     case If(c, t, e) =>
       val c1 = assignType(env, c).asValue[SBoolean.type]

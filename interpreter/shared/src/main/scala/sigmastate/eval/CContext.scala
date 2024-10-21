@@ -1,8 +1,11 @@
 package sigmastate.eval
 
 import debox.cfor
+import org.ergoplatform.{ErgoLikeTransactionTemplate, UnsignedInput}
+import sigma.Evaluation.stypeToRType
 import sigma.Extensions.ArrayOps
 import sigma._
+import sigma.ast.SType
 import sigma.data._
 import sigma.exceptions.InvalidType
 
@@ -24,6 +27,7 @@ case class CContext(
     lastBlockUtxoRootHash: AvlTree,
     _minerPubKey: Coll[Byte],
     vars: Coll[AnyValue],
+    spendingTransaction: ErgoLikeTransactionTemplate[_ <: UnsignedInput],
     override val activatedScriptVersion: Byte,
     override val currentErgoTreeVersion: Byte
 ) extends Context {
@@ -67,6 +71,14 @@ case class CContext(
           throw new InvalidType(s"Cannot getVar[${tT.name}]($id): invalid type of value $value at id=$id")
       }
     } else None
+  }
+
+  override def getVarFromInput[T](inputId: Short, id: Byte)(implicit tT: RType[T]): Option[T] = {
+    spendingTransaction.inputs.lift(inputId).flatMap(_.extension.get(id)) match {
+      case Some(v) if stypeToRType[SType](v.tpe) == tT => Some(v.value.asInstanceOf[T])
+      case _ =>
+        None
+    }
   }
 
   /** Return a new context instance with variables collection updated.

@@ -92,6 +92,7 @@ import scalan._
       def preHeader: Ref[PreHeader];
       def minerPubKey: Ref[Coll[Byte]];
       def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
+      def getVarFromInput[T](inputId: Ref[Short], id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
     };
     trait SigmaDslBuilder extends Def[SigmaDslBuilder] {
       def Colls: Ref[CollBuilder];

@@ -1,6 +1,7 @@
 package sigma.compiler.ir
 
 import org.ergoplatform._
+import sigma.ast.SType.tT
 import sigma.Evaluation.stypeToRType
 import sigma.ast.SType.tT
 import sigma.ast.TypeCodes.LastConstantCode
@@ -1059,6 +1060,15 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ctx.LastBlockUtxoRootHash
             case SContextMethods.minerPubKeyMethod.name =>
               ctx.minerPubKey
+            case SContextMethods.getVarV6Method.name =>
+              val c2 = asRep[Byte](argsV(0))
+              val c3 = stypeToElem(typeSubst.apply(tT))
+              ctx.getVar(c2)(c3)
+            case SContextMethods.getVarFromInputMethod.name =>
+              val c1 = asRep[Short](argsV(0))
+              val c2 = asRep[Byte](argsV(1))
+              val c3 = stypeToElem(typeSubst.apply(tT))
+              ctx.getVarFromInput(c1, c2)(c3)
             case _ => throwError()
           }
           case (tree: Ref[AvlTree]@unchecked, SAvlTreeMethods) => method.name match {

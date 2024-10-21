@@ -1626,10 +1626,19 @@ object Context extends EntityObject("Context") {
     }
 
     override def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(self,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
-        true, false, element[WOption[T]]))
+        true, false, element[WOption[T]], Map(tT -> st)))
+    }
+
+    override def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
+      asRep[WOption[T]](mkMethodCall(self,
+        ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](inputId, varId, cT),
+        true, false, element[WOption[T]], Map(tT -> st)))
     }
 
   }
@@ -1723,10 +1732,19 @@ object Context extends EntityObject("Context") {
     }
 
     def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(source,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
-        true, true, element[WOption[T]]))
+        true, true, element[WOption[T]], Map(tT -> st)))
+    }
+
+    def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
+      asRep[WOption[T]](mkMethodCall(source,
+        ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](inputId, varId, cT),
+        true, true, element[WOption[T]], Map(tT -> st)))
     }
   }
 
@@ -1745,7 +1763,7 @@ object Context extends EntityObject("Context") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[Context]), RClass(classOf[SContext]), Set(
-        "OUTPUTS", "INPUTS", "dataInputs", "HEIGHT", "SELF", "selfBoxIndex", "LastBlockUtxoRootHash", "headers", "preHeader", "minerPubKey", "getVar", "vars"
+        "OUTPUTS", "INPUTS", "dataInputs", "HEIGHT", "SELF", "selfBoxIndex", "LastBlockUtxoRootHash", "headers", "preHeader", "minerPubKey", "getVar", "getVarFromInput", "vars"
         ))
     }
   }

@@ -16,8 +16,15 @@ import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
   * @param values internal container of the key-value pairs
   */
 case class ContextExtension(values: scala.collection.Map[Byte, EvaluatedValue[_ <: SType]]) {
-  def add(bindings: VarBinding*): ContextExtension =
+  def add(bindings: VarBinding*): ContextExtension = {
     ContextExtension(values ++ bindings)
+  }
+
+  /**
+    * @param varId - index of context variable
+    * @return context variable with provided index or None if it is not there
+    */
+  def get(varId: Byte): Option[EvaluatedValue[_ <: SType]] = values.get(varId)
 }
 
 object ContextExtension {

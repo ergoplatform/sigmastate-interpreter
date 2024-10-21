@@ -4,12 +4,10 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
 import scorex.util.encode.Base16
-import org.scalatest.Assertion
 import scorex.utils.Ints
 import sigma.Extensions.ArrayOps
 import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.V6SoftForkVersion
-import sigma.VersionContext
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
 import sigma.data.{AvlTreeData, CAnyValue, CSigmaDslBuilder}
@@ -27,10 +25,12 @@ import sigma.ast.Apply
 import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
+import sigma.interpreter.{ContextExtension, ProverResult}
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
 
 import java.math.BigInteger
+import scala.collection.compat.immutable.ArraySeq
 
 class BasicOpsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -110,7 +110,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
     val newBox1 = testBox(10, tree, creationHeight = 0, boxIndex = 0, additionalRegisters = Map(
       reg1 -> IntConstant(1),
       reg2 -> IntConstant(10)))
-    val tx = createTransaction(newBox1)
+    val ce = ContextExtension(prover.contextExtenders)
+    val tx = new ErgoLikeTransaction(IndexedSeq(Input(boxToSpend.id, ProverResult(Array.empty, ce))), ArraySeq.empty, IndexedSeq(newBox1))
 
     val ctx = ErgoLikeContextTesting(currentHeight = 0,
       lastBlockUtxoRoot = AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, boxesToSpend = IndexedSeq(boxToSpend),
@@ -144,6 +145,77 @@ class BasicOpsSpecification extends CompilerTestingCommons
     flexVerifier.verify(verifyEnv, tree, ctxExt, pr.proof, fakeMessage).get._1 shouldBe true
   }
 
+  property("Context.getVar") {
+    def varTest() = {
+      test("GetVar1", env, ext,
+        "{ CONTEXT.getVar[Int](intVar2.toByte).get == 2 }",
+        null
+      )
+    }
+
+    if(VersionContext.current.isV6SoftForkActivated) {
+      varTest()
+    } else {
+      an[Exception] should be thrownBy(varTest())
+    }
+  }
+
+  property("getVarFromInput") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(getVarFromInput[Int](0, 1).get == 5) }",
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      getVarTest()
+    } else {
+      an[Exception] should be thrownBy getVarTest()
+    }
+  }
+
+  property("getVarFromInput - self index") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        """{
+          | val idx = CONTEXT.selfBoxIndex
+          | sigmaProp(CONTEXT.getVarFromInput[Int](idx.toShort, 1.toByte).get == 5)
+          | }""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      getVarTest()
+    } else {
+      an[Exception] should be thrownBy getVarTest()
+    }
+  }
+
+  property("getVarFromInput - invalid input") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(CONTEXT.getVarFromInput[Int](1, 1).isDefined == false) }",
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      getVarTest()
+    } else {
+      an[Exception] should be thrownBy getVarTest()
+    }
+  }
   property("Byte.toBits") {
     def toBitsTest() = test("Byte.toBits", env, ext,
       """{
@@ -535,26 +607,22 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  property("Unit register") {
-    // TODO frontend: implement missing Unit support in compiler
-    //  https://github.com/ScorexFoundation/sigmastate-interpreter/issues/820
-    test("R1", env, ext,
-      script = "", /* means cannot be compiled
-                     the corresponding script is { SELF.R4[Unit].isDefined } */
-      ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).isDefined.toSigmaProp,
-      additionalRegistersOpt = Some(Map(
-        reg1 -> UnitConstant.instance
-      ))
-    )
+  property("getVarFromInput - invalid var") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(CONTEXT.getVarFromInput[Int](0, 2).isDefined == false) }",
+        null
+      )
+    }
 
-    test("R2", env, ext,
-      script = "", /* means cannot be compiled
-                   the corresponding script is "{ SELF.R4[Unit].get == () }" */
-      EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).get, UnitConstant.instance).toSigmaProp,
-      additionalRegistersOpt = Some(Map(
-        reg1 -> UnitConstant.instance
-      ))
-    )
+    if (VersionContext.current.isV6SoftForkActivated) {
+      getVarTest()
+    } else {
+      an[Exception] should be thrownBy getVarTest()
+    }
   }
 
   property("Coll.reverse"){
@@ -1769,6 +1837,28 @@ class BasicOpsSpecification extends CompilerTestingCommons
     } else {
       an[Exception] should be thrownBy getRegTest()
     }
+  }
+
+  property("Unit register") {
+    // TODO frontend: implement missing Unit support in compiler
+    //  https://github.com/ScorexFoundation/sigmastate-interpreter/issues/820
+    test("R1", env, ext,
+      script = "", /* means cannot be compiled
+                     the corresponding script is { SELF.R4[Unit].isDefined } */
+      ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).isDefined.toSigmaProp,
+      additionalRegistersOpt = Some(Map(
+        reg1 -> UnitConstant.instance
+      ))
+    )
+
+    test("R2", env, ext,
+      script = "", /* means cannot be compiled
+                   the corresponding script is "{ SELF.R4[Unit].get == () }" */
+      EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).get, UnitConstant.instance).toSigmaProp,
+      additionalRegistersOpt = Some(Map(
+        reg1 -> UnitConstant.instance
+      ))
+    )
   }
 
 }

@@ -349,6 +349,9 @@ object GraphIRReflection {
         mkMethod(clazz, "getVar", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].getVar(args(0).asInstanceOf[ctx.Ref[Byte]])(args(1).asInstanceOf[ctx.Elem[_]])
         },
+        mkMethod(clazz, "getVarFromInput", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Context].getVarFromInput(args(0).asInstanceOf[ctx.Ref[Short]], args(1).asInstanceOf[ctx.Ref[Byte]])(args(2).asInstanceOf[ctx.Elem[_]])
+        },
         mkMethod(clazz, "headers", Array[Class[_]]()) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].headers
         }
