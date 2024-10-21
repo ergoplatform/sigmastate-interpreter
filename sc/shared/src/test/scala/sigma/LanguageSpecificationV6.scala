@@ -14,7 +14,9 @@ import sigma.ast.{SInt, _}
 import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
-import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigma.data.{RType}
+import sigma.serialization.ValueCodes.OpCode
+import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
@@ -1519,6 +1521,98 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         Coll(Int.MinValue, Int.MaxValue - 1),
         Coll(0, 1, 2, 3, 100, 1000)
       ))
+    )
+  }
+
+
+
+  property("Option.getOrElse with lazy default") {
+
+    val trace = TracedCost(
+      Array(
+        FixedCostItem(Apply),
+        FixedCostItem(FuncValue),
+        FixedCostItem(GetVar),
+        FixedCostItem(OptionGet),
+        FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+        FixedCostItem(ValUse),
+        FixedCostItem(OptionGetOrElse)
+      )
+    )
+
+    verifyCases(
+      Seq(
+        Some(2L) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
+          newVersionedResults = {
+            expectedSuccessForAllTreeVersions(2L, 2015, trace)
+          } ),
+        None -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
+      ),
+      changedFeature(
+        changedInVersion = VersionContext.V6SoftForkVersion,
+        { (x: Option[Long]) => val default = 1 / 0L; x.getOrElse(default) },
+        { (x: Option[Long]) => if (VersionContext.current.isV6SoftForkActivated) {x.getOrElse(1 / 0L)} else {val default = 1 / 0L; x.getOrElse(default)} },
+        "{ (x: Option[Long]) => x.getOrElse(1 / 0L) }",
+        FuncValue(
+          Array((1, SOption(SLong))),
+          OptionGetOrElse(
+            ValUse(1, SOption(SLong)),
+            ArithOp(LongConstant(1L), LongConstant(0L), OpCode @@ (-99.toByte))
+          )
+        ),
+        allowNewToSucceed = true
+      )
+    )
+  }
+
+  property("Coll getOrElse with lazy default") {
+
+    val trace = TracedCost(
+      Array(
+        FixedCostItem(Apply),
+        FixedCostItem(FuncValue),
+        FixedCostItem(GetVar),
+        FixedCostItem(OptionGet),
+        FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+        FixedCostItem(ValUse),
+        FixedCostItem(Constant),
+        FixedCostItem(ByIndex)
+      )
+    )
+
+    def scalaFuncNew(x: Coll[Int]) = {
+      if (VersionContext.current.isV6SoftForkActivated) {
+        x.toArray.toIndexedSeq.headOption.getOrElse(1 / 0)
+      } else scalaFuncOld(x)
+    }
+
+    def scalaFuncOld(x: Coll[Int]) = {
+      x.getOrElse(0, 1 / 0)
+    }
+
+    verifyCases(
+      Seq(
+        Coll(1) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
+          newVersionedResults = {
+            expectedSuccessForAllTreeVersions(1, 2029, trace)
+          } ),
+        Coll[Int]() -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
+      ),
+      changedFeature(
+        changedInVersion = VersionContext.V6SoftForkVersion,
+        scalaFuncOld,
+        scalaFuncNew,
+        "{ (x: Coll[Int]) => x.getOrElse(0, 1 / 0) }",
+        FuncValue(
+          Array((1, SCollectionType(SInt))),
+          ByIndex(
+            ValUse(1, SCollectionType(SInt)),
+            IntConstant(0),
+            Some(ArithOp(IntConstant(1), IntConstant(0), OpCode @@ (-99.toByte)))
+          )
+        ),
+        allowNewToSucceed = true
+      )
     )
   }
 
