@@ -1530,104 +1530,104 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Context.getVar and getVarFromInput") {
-
-    def contextData() = {
-      val input = CBox(
-        new ErgoBox(
-          80946L,
-          new ErgoTree(
-            HeaderType @@ 16.toByte,
-            Vector(
-              SigmaPropConstant(
-                CSigmaProp(
-                  ProveDHTuple(
-                    Helpers.decodeECPoint("03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb"),
-                    Helpers.decodeECPoint("023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d03"),
-                    Helpers.decodeECPoint("03d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72"),
-                    Helpers.decodeECPoint("037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441")
-                  )
+  private def contextData() = {
+    val input = CBox(
+      new ErgoBox(
+        80946L,
+        new ErgoTree(
+          HeaderType @@ 16.toByte,
+          Vector(
+            SigmaPropConstant(
+              CSigmaProp(
+                ProveDHTuple(
+                  Helpers.decodeECPoint("03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb"),
+                  Helpers.decodeECPoint("023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d03"),
+                  Helpers.decodeECPoint("03d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72"),
+                  Helpers.decodeECPoint("037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441")
                 )
               )
-            ),
-            Right(ConstantPlaceholder(0, SSigmaProp))
+            )
           ),
-          Coll(),
-          Map(
-            ErgoBox.R4 -> ByteArrayConstant(Helpers.decodeBytes("34")),
-            ErgoBox.R5 -> TrueLeaf
-          ),
-          ModifierId @@ ("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
-          1.toShort,
-          5
+          Right(ConstantPlaceholder(0, SSigmaProp))
+        ),
+        Coll(),
+        Map(
+          ErgoBox.R4 -> ByteArrayConstant(Helpers.decodeBytes("34")),
+          ErgoBox.R5 -> TrueLeaf
+        ),
+        ModifierId @@ ("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
+        1.toShort,
+        5
+      )
+    )
+
+    val tx = ErgoLikeTransaction(
+      IndexedSeq(),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx2 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(true)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx3 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> IntConstant(0)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx4 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(false)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val ctx = CContext(
+      _dataInputs = Coll[Box](),
+      headers = Coll[Header](),
+      preHeader = CPreHeader(
+        0.toByte,
+        Colls.fromArray(Array.fill(32)(0.toByte)),
+        -755484979487531112L,
+        9223372036854775807L,
+        11,
+        Helpers.decodeGroupElement("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
+        Helpers.decodeBytes("007f00")
+      ),
+      inputs = Coll[Box](input),
+      outputs = Coll[Box](),
+      height = 11,
+      selfBox = input.copy(), // in 3.x, 4.x implementation selfBox is never the same instance as input (see toSigmaContext)
+      selfIndex = 0,
+      lastBlockUtxoRootHash = CAvlTree(
+        AvlTreeData(
+          ErgoAlgos.decodeUnsafe("54d23dd080006bdb56800100356080935a80ffb77e90b800057f00661601807f17").toColl,
+          AvlTreeFlags(true, true, true),
+          1211925457,
+          None
         )
-      )
+      ),
+      _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
+      vars = Colls
+        .replicate[AnyValue](10, null) // reserve 10 vars
+        .append(Coll[AnyValue](
+          CAnyValue(Helpers.decodeBytes("00")),
+          CAnyValue(true))),
+      spendingTransaction = tx,
+      activatedScriptVersion = activatedVersionInTests,
+      currentErgoTreeVersion = ergoTreeVersionInTests
+    )
+    val ctx2 = ctx.copy(spendingTransaction = tx2)
+    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))
+    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = ctx.vars.patch(11, Coll(CAnyValue(false)), 1))
 
-      val tx = ErgoLikeTransaction(
-        IndexedSeq(),
-        IndexedSeq(input.wrappedValue)
-      )
+    (ctx, ctx2, ctx3, ctx4)
+  }
 
-      val tx2 = ErgoLikeTransaction(
-        IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(true)))))),
-        IndexedSeq(input.wrappedValue)
-      )
-
-      val tx3 = ErgoLikeTransaction(
-        IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> IntConstant(0)))))),
-        IndexedSeq(input.wrappedValue)
-      )
-
-      val tx4 = ErgoLikeTransaction(
-        IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(false)))))),
-        IndexedSeq(input.wrappedValue)
-      )
-
-      val ctx = CContext(
-        _dataInputs = Coll[Box](),
-        headers = Coll[Header](),
-        preHeader = CPreHeader(
-          0.toByte,
-          Colls.fromArray(Array.fill(32)(0.toByte)),
-          -755484979487531112L,
-          9223372036854775807L,
-          11,
-          Helpers.decodeGroupElement("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-          Helpers.decodeBytes("007f00")
-        ),
-        inputs = Coll[Box](input),
-        outputs = Coll[Box](),
-        height = 11,
-        selfBox = input.copy(),  // in 3.x, 4.x implementation selfBox is never the same instance as input (see toSigmaContext)
-        selfIndex = 0,
-        lastBlockUtxoRootHash = CAvlTree(
-          AvlTreeData(
-            ErgoAlgos.decodeUnsafe("54d23dd080006bdb56800100356080935a80ffb77e90b800057f00661601807f17").toColl,
-            AvlTreeFlags(true, true, true),
-            1211925457,
-            None
-          )
-        ),
-        _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-        vars = Colls
-          .replicate[AnyValue](10, null) // reserve 10 vars
-          .append(Coll[AnyValue](
-            CAnyValue(Helpers.decodeBytes("00")),
-            CAnyValue(true))),
-        spendingTransaction = tx,
-        activatedScriptVersion = activatedVersionInTests,
-        currentErgoTreeVersion = ergoTreeVersionInTests
-      )
-      val ctx2 = ctx.copy(spendingTransaction = tx2)
-      val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))
-      val ctx4 = ctx.copy(spendingTransaction = tx4, vars = ctx.vars.patch(11, Coll(CAnyValue(false)), 1))
-
-      (ctx, ctx2, ctx3, ctx4)
-    }
+  property("getVarFromInput") {
 
     def getVarFromInput = {
       newFeature(
-        { (x: Context) => x.getVarFromInput[Boolean](0, 11)},
+        { (x: Context) => x.getVarFromInput[Boolean](0, 11) },
         "{ (x: Context) => x.getVarFromInput[Boolean](0, 11) }",
         FuncValue(
           Array((1, SContext)),
@@ -1653,6 +1653,9 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       ),
       getVarFromInput
     )
+  }
+
+  property("Context.getVar") {
 
     def getVar = {
       newFeature(
@@ -1661,6 +1664,8 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
+
+    val (_, ctx2, ctx3, ctx4) = contextData()
 
     verifyCases(
       Seq(
@@ -1671,8 +1676,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       getVar
     )
   }
-
-
 
   property("Option.getOrElse with lazy default") {
 
