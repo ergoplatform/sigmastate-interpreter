@@ -73,8 +73,8 @@ case class CContext(
     } else None
   }
 
-  override def getVarFromInput[T](inputId: Short, id: Byte)(implicit tT: RType[T]): Option[T] = {
-    spendingTransaction.inputs.lift(inputId).flatMap(_.extension.get(id)) match {
+  override def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit tT: RType[T]): Option[T] = {
+    spendingTransaction.inputs.lift(inputIndex).flatMap(_.extension.get(id)) match {
       case Some(v) if stypeToRType[SType](v.tpe) == tT => Some(v.value.asInstanceOf[T])
       case _ =>
         None
