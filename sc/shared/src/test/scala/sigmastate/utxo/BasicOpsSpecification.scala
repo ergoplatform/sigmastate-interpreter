@@ -4,12 +4,10 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
 import scorex.util.encode.Base16
-import org.scalatest.Assertion
 import scorex.utils.Ints
 import sigma.Extensions.ArrayOps
 import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.V6SoftForkVersion
-import sigma.VersionContext
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
 import sigma.data.{AvlTreeData, CAnyValue, CSigmaDslBuilder}
@@ -1128,6 +1126,43 @@ class BasicOpsSpecification extends CompilerTestingCommons
     } else {
       // we have wrapped CostLimitException here
       an[Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("Lazy evaluation of default in Option.getOrElse") {
+    val customExt = Map (
+      1.toByte -> IntConstant(5)
+    ).toSeq
+    def optTest() = test("getOrElse", env, customExt,
+      """{
+        |  getVar[Int](1).getOrElse(getVar[Int](44).get) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      optTest()
+    } else {
+      assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
+    }
+  }
+
+  property("Lazy evaluation of default in Coll.getOrElse") {
+    def optTest() = test("getOrElse", env, ext,
+      """{
+        |  val c = Coll[Int](1)
+        |  c.getOrElse(0, getVar[Int](44).get) > 0 &&
+        |   c.getOrElse(1, c.getOrElse(0, getVar[Int](44).get)) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV6SoftForkActivated) {
+      optTest()
+    } else {
+      an[Exception] shouldBe thrownBy(optTest())
     }
   }
 

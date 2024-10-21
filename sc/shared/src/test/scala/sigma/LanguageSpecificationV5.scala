@@ -8060,6 +8060,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           )
         )
     )
+    if(!VersionContext.current.isV6SoftForkActivated) {
     verifyCases(
       // (coll, (index, default))
       {
@@ -8130,7 +8131,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
               )
             )
           )
-      ))
+      ))}
   }
 
   property("Tuple size method equivalence") {
@@ -8697,13 +8698,15 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         "{ (x: Option[Long]) => x.isDefined }",
         FuncValue(Vector((1, SOption(SLong))), OptionIsDefined(ValUse(1, SOption(SLong))))))
 
-    verifyCases(
-      Seq(
-        (None -> Expected(Success(1L), 1766, costDetails3, 1766, Seq.fill(4)(2006))),
-        (Some(10L) -> Expected(Success(10L), 1766, costDetails3, 1766, Seq.fill(4)(2006)))),
-      existingFeature({ (x: Option[Long]) => x.getOrElse(1L) },
-        "{ (x: Option[Long]) => x.getOrElse(1L) }",
-        FuncValue(Vector((1, SOption(SLong))), OptionGetOrElse(ValUse(1, SOption(SLong)), LongConstant(1L)))))
+        if (!VersionContext.current.isV6SoftForkActivated) {
+      verifyCases(
+        Seq(
+          (None -> Expected(Success(1L), 1766, costDetails3, 1766, Seq.fill(4)(2006))),
+          (Some(10L) -> Expected(Success(10L), 1766, costDetails3, 1766, Seq.fill(4)(2006)))),
+        existingFeature({ (x: Option[Long]) => x.getOrElse(1L) },
+          "{ (x: Option[Long]) => x.getOrElse(1L) }",
+          FuncValue(Vector((1, SOption(SLong))), OptionGetOrElse(ValUse(1, SOption(SLong)), LongConstant(1L)))))
+    }
 
     verifyCases(
       Seq(
