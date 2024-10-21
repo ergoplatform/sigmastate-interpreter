@@ -1061,6 +1061,43 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("Lazy evaluation of default in Option.getOrElse") {
+    val customExt = Map (
+      1.toByte -> IntConstant(5)
+    ).toSeq
+    def optTest() = test("getOrElse", env, customExt,
+      """{
+        |  getVar[Int](1).getOrElse(getVar[Int](44).get) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      optTest()
+    } else {
+      assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
+    }
+  }
+
+  property("Lazy evaluation of default in Coll.getOrElse") {
+    def optTest() = test("getOrElse", env, ext,
+      """{
+        |  val c = Coll[Int](1)
+        |  c.getOrElse(0, getVar[Int](44).get) > 0 &&
+        |   c.getOrElse(1, c.getOrElse(0, getVar[Int](44).get)) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV6SoftForkActivated) {
+      optTest()
+    } else {
+      an[Exception] shouldBe thrownBy(optTest())
+    }
+  }
+
   property("Relation operations") {
     test("R1", env, ext,
       "{ allOf(Coll(getVar[Boolean](trueVar).get, true, true)) }",
