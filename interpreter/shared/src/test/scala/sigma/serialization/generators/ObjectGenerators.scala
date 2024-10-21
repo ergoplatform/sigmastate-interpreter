@@ -8,7 +8,6 @@ import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.{choose, frequency}
 import org.scalacheck.util.Buildable
 import org.scalacheck.{Arbitrary, Gen}
-import sigma.data._
 import scorex.crypto.authds.{ADDigest, ADKey}
 import scorex.util.encode.{Base58, Base64}
 import scorex.util.{ModifierId, bytesToId}
@@ -27,6 +26,7 @@ import sigma.util.Extensions.EcpOps
 import sigma.validation.{ChangedRule, DisabledRule, EnabledRule, ReplacedRule, RuleStatus}
 import sigma.validation.ValidationRules.FirstRuleId
 import ErgoTree.ZeroHeader
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CBox, CHeader, COR, CTHRESHOLD, Digest32Coll, ProveDHTuple, ProveDlog, RType, SigmaBoolean}
 import sigma.eval.Extensions.{EvalIterableOps, SigmaBooleanOps}
 import sigma.eval.SigmaDsl
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -311,6 +311,7 @@ trait ObjectGenerators extends TypeGenerators
     case SAvlTree => arbAvlTree
     case SAny => arbAnyVal
     case SUnit => arbUnit
+    case SHeader => arbHeader
     case opt: SOption[a] =>
       Arbitrary(frequency((5, None), (5, for (x <- wrappedTypeGen(opt.elemType)) yield Some(x))))
   }).asInstanceOf[Arbitrary[T#WrappedType]].arbitrary
@@ -694,7 +695,6 @@ trait ObjectGenerators extends TypeGenerators
   } yield ErgoTree.withSegregation(ZeroHeader, prop)
 
   def headerGen(stateRoot: AvlTree, parentId: Coll[Byte]): Gen[Header] = for {
-    id <- modifierIdBytesGen
     version <- arbByte.arbitrary
     adProofsRoot <- digest32Gen
     transactionRoot <- digest32Gen
@@ -707,8 +707,10 @@ trait ObjectGenerators extends TypeGenerators
     powNonce <- nonceBytesGen
     powDistance <- arbBigInt.arbitrary
     votes <- minerVotesGen
-  } yield CHeader(id, version, parentId, adProofsRoot, stateRoot, transactionRoot, timestamp, nBits,
-    height, extensionRoot, minerPk.toGroupElement, powOnetimePk.toGroupElement, powNonce, powDistance, votes)
+    unparsedBytes <- collOfRange(0, 32, arbByte.arbitrary)
+  } yield CHeader(version, parentId, adProofsRoot, stateRoot.digest, transactionRoot, timestamp, nBits,
+    height, extensionRoot, minerPk.toGroupElement, powOnetimePk.toGroupElement, powNonce, powDistance, votes,
+    if(version > HeaderVersion.Interpreter60Version){ unparsedBytes } else {Colls.emptyColl[Byte]})
 
   lazy val headerGen: Gen[Header] = for {
     stateRoot <- avlTreeGen

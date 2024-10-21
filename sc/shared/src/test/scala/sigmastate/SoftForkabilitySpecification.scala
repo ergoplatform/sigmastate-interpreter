@@ -29,7 +29,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
     with CompilerTestingCommons
     with BeforeAndAfterAll {
 
-  implicit lazy val IR: TestingIRContext = new TestingIRContext
+  val IR: TestingIRContext = new TestingIRContext
   lazy val prover = new ErgoLikeTestProvingInterpreter()
   lazy val verifier = new ErgoLikeTestInterpreter
   val deadline = 100
@@ -38,7 +38,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
   lazy val booleanPropV1 = compile(emptyEnv + ("deadline" -> deadline),
     """{
      |  HEIGHT > deadline && OUTPUTS.size == 1
-     |}""".stripMargin).asBoolValue
+     |}""".stripMargin)(IR).asBoolValue
 
   // cast Boolean typed prop to SigmaProp (which is invalid) // ErgoTree v0
   lazy val invalidPropV1: ErgoTree =

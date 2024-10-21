@@ -1,13 +1,12 @@
 package sigma
 
-import java.math.BigInteger
+import sigma.ast.SType
 
+import java.math.BigInteger
 import sigma.data._
 
 /**
-  * All `modQ` operations assume that Q is a global constant (an order of the only one cryptographically strong group
-  * which is used for all cryptographic operations).
-  * So it is globally and implicitly used in all methods.
+  * Functions defined for 256-bit signed integers
   * */
 trait BigInt {
   /** Convert this BigInt value to Byte.
@@ -154,6 +153,22 @@ trait BigInt {
     */
   def or(that: BigInt): BigInt
   def |(that: BigInt): BigInt = or(that)
+
+  /**
+    * @return a big integer whose value is `this xor that`.
+    *         This method returns a negative BigInteger if and only if exactly one of this and val are negative.
+    */
+  def xor(that: BigInt): BigInt
+
+  /**
+    * @return a 256-bit signed integer whose value is (this << n). `n` should be in 0..255 range (inclusive).
+    */
+  def shiftLeft(n: Int): BigInt
+
+  /**
+    * @return a 256-bit signed integer whose value is (this >> n). `n` should be in 0..255 range (inclusive).
+    */
+  def shiftRight(n: Int): BigInt
 }
 
 /** Base class for points on elliptic curves. */
@@ -459,6 +474,23 @@ trait Header {
 
   /** Miner votes for changing system parameters. */
   def votes: Coll[Byte] //3 bytes
+
+  /** Bytes which are coming from future versions of the protocol, so
+    * their meaning is not known to current version of Sigma, but they
+    * are stored to get the same id as future version users.
+    */
+  def unparsedBytes: Coll[Byte]
+
+  /**
+    * @return header bytes without proof of work, a PoW is generated over them
+    */
+  def serializeWithoutPoW: Coll[Byte]
+
+  /**
+    * @return result of header's proof-of-work validation
+    */
+  def checkPow: Boolean
+
 }
 
 /** Runtime representation of Context ErgoTree type.
@@ -727,7 +759,13 @@ trait SigmaDslBuilder {
   /** Construct a new authenticated dictionary with given parameters and tree root digest. */
   def avlTree(operationFlags: Byte, digest: Coll[Byte], keyLength: Int, valueLengthOpt: Option[Int]): AvlTree
 
+  /** Serializes the given `value` into bytes using the default serialization format. */
+  def serialize[T](value: T)(implicit cT: RType[T]): Coll[Byte]
+
   /** Returns a byte-wise XOR of the two collections of bytes. */
   def xor(l: Coll[Byte], r: Coll[Byte]): Coll[Byte]
+
+  /** Returns a number decoded from provided big-endian bytes array. */
+  def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
 }
 

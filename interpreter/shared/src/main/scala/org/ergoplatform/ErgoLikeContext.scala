@@ -6,7 +6,6 @@ import sigma.ast.SType.{AnyOps, TypeCode}
 import sigma.ast._
 import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
 import sigma.eval.Extensions.toAnyValue
-import sigma.exceptions.InterpreterException
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
 import sigma.{AnyValue, Coll, Header, PreHeader}

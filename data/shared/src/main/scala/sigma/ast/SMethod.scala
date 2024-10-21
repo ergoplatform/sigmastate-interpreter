@@ -50,17 +50,20 @@ case class MethodIRInfo(
 
 /** Represents method descriptor.
   *
-  * @param objType type or type constructor descriptor
-  * @param name    method name
-  * @param stype   method signature type,
-  *                where `stype.tDom`` - argument type and
-  *                `stype.tRange` - method result type.
-  * @param methodId method code, it should be unique among methods of the same objType.
-  * @param costKind cost descriptor for this method
-  * @param irInfo  meta information connecting SMethod with ErgoTree (see [[MethodIRInfo]])
-  * @param docInfo optional human readable method description data
-  * @param costFunc optional specification of how the cost should be computed for the
-  *                 given method call (See ErgoTreeEvaluator.calcCost method).
+  * @param objType         type or type constructor descriptor
+  * @param name            method name
+  * @param stype           method signature type,
+  *                        where `stype.tDom`` - argument type and
+  *                        `stype.tRange` - method result type.
+  * @param methodId        method code, it should be unique among methods of the same objType.
+  * @param costKind        cost descriptor for this method
+  * @param explicitTypeArgs list of type parameters which require explicit
+  *                        serialization in [[MethodCall]]s (i.e for deserialize[T], getVar[T], getReg[T])
+  * @param irInfo          meta information connecting SMethod with ErgoTree (see [[MethodIRInfo]])
+  * @param docInfo         optional human readable method description data
+  * @param costFunc        optional specification of how the cost should be computed for the
+  *                        given method call (See ErgoTreeEvaluator.calcCost method).
+  * @param userDefinedInvoke optional custom method evaluation function
   */
 case class SMethod(
     objType: MethodsContainer,
@@ -68,12 +71,20 @@ case class SMethod(
     stype: SFunc,
     methodId: Byte,
     costKind: CostKind,
+    explicitTypeArgs: Seq[STypeVar],
     irInfo: MethodIRInfo,
     docInfo: Option[OperationInfo],
-    costFunc: Option[MethodCostFunc]) {
+    costFunc: Option[MethodCostFunc],
+    userDefinedInvoke: Option[SMethod.InvokeHandler]
+) {
 
   /** Operation descriptor of this method. */
   lazy val opDesc = MethodDesc(this)
+
+  /** Return true if this method has explicit type parameters, which need to be serialized
+    * as part of [[MethodCall]].
+    */
+  def hasExplicitTypeArgs: Boolean = explicitTypeArgs.nonEmpty
 
   /** Finds and keeps the [[RMethod]] instance which corresponds to this method descriptor.
     * The lazy value is forced only if irInfo.javaMethod == None
@@ -105,8 +116,13 @@ case class SMethod(
 
   /** Invoke this method on the given object with the arguments.
     * This is used for methods with FixedCost costKind. */
-  def invokeFixed(obj: Any, args: Array[Any])(implicit E: ErgoTreeEvaluator): Any = {
-    javaMethod.invoke(obj, args.asInstanceOf[Array[AnyRef]]:_*)
+  def invokeFixed(obj: Any, args: Array[Any]): Any = {
+    userDefinedInvoke match {
+      case Some(h) =>
+        h(this, obj, args)
+      case None =>
+        javaMethod.invoke(obj, args.asInstanceOf[Array[AnyRef]]:_*)
+    }
   }
 
   // TODO optimize: avoid lookup when this SMethod is created via `specializeFor`
@@ -144,6 +160,11 @@ case class SMethod(
       throw new RuntimeException(s"Cannot find eval method def $methodName(${Seq(paramTypes:_*)})", e)
     }
     m
+  }
+
+  /** Create a new instance with the given user-defined invoke handler. */
+  def withUserDefinedInvoke(handler: SMethod.InvokeHandler): SMethod = {
+    copy(userDefinedInvoke = Some(handler))
   }
 
   /** Create a new instance with the given stype. */
@@ -255,6 +276,12 @@ object SMethod {
     */
   type InvokeDescBuilder = SFunc => Seq[SType]
 
+  /** Type of user-defined function which is called to handle method invocation.
+    * Instances of this type can be attached to [[SMethod]] instances.
+    * @see SNumericTypeMethods.ToBytesMethod
+    */
+  type InvokeHandler = (SMethod, Any, Array[Any]) => Any
+
   /** Return [[Method]] descriptor for the given `methodName` on the given `cT` type.
     * @param methodName the name of the method to lookup
     * @param cT the class where to search the methodName
@@ -284,10 +311,12 @@ object SMethod {
   /** Convenience factory method. */
   def apply(objType: MethodsContainer, name: String, stype: SFunc,
       methodId: Byte,
-      costKind: CostKind): SMethod = {
+      costKind: CostKind,
+      explicitTypeArgs: Seq[STypeVar] = Nil
+  ): SMethod = {
     SMethod(
-      objType, name, stype, methodId, costKind,
-      MethodIRInfo(None, None, None), None, None)
+      objType, name, stype, methodId, costKind, explicitTypeArgs,
+      MethodIRInfo(None, None, None), None, None, None)
   }
 
 

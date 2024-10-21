@@ -81,24 +81,6 @@ class EvaluationTest extends BaseCtxTests
        |  f(SELF) || g(SELF.R5[Coll[Int]].get)
        | }""".stripMargin, ctx, true)
   }
-
-  test("Measure IRContext creation speed") {
-    var ctx: RuntimeIRContext = new RuntimeIRContext
-    measure(100, okShowIterTime = printDebugInfo, okShowTotalTime = printDebugInfo) { i =>
-      ctx = new RuntimeIRContext
-    }
-    printDebug(s"Def count: ${ctx.defCount}")
-    /*
-    Iter 0: 4 ms
-        ...
-    Iter 96: 2 ms
-    Iter 97: 1 ms
-    Iter 98: 2 ms
-    Iter 99: 2 ms
-    Total time: 244 ms
-    Def count: 20
-    */
-  }
   
   test("SubstConst") {
     def script(pk: ProveDlog): SigmaPropValue =

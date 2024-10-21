@@ -12,12 +12,11 @@ trait CompilerCrossVersionProps extends CrossVersionProps with CompilerTestsBase
                                  (implicit pos: Position): Unit = {
     super.property(testName, testTags:_*)(testFun)
 
-    val testName2 = s"${testName}_MCLowering"
-    super.property2(testName2, testTags:_*) {
-      if (okRunTestsWithoutMCLowering) {
-        _lowerMethodCalls.withValue(false) {
-          testFun_Run(testName2, testFun)
-        }
+    if (okRunTestsWithoutMCLowering) {
+      val testName2 = s"${testName}_MCLowering"
+      _lowerMethodCalls.withValue(false) {
+        // run testFun for all versions again, but now with this flag
+        super.property(testName2, testTags:_*)(testFun)
       }
     }
   }

@@ -162,6 +162,9 @@ object ReflectionData {
         mkMethod(clazz, "apply", Array[Class[_]](classOf[Int])) { (obj, args) =>
           obj.asInstanceOf[Coll[_]].apply(args(0).asInstanceOf[Int])
         },
+        mkMethod(clazz, "get", Array[Class[_]](classOf[Int])) { (obj, args) =>
+          obj.asInstanceOf[Coll[_]].get(args(0).asInstanceOf[Int])
+        },
         mkMethod(clazz, "append", Array[Class[_]](classOf[Coll[_]])) { (obj, args) =>
           obj.asInstanceOf[Coll[Any]].append(args(0).asInstanceOf[Coll[Any]])
         },
@@ -170,6 +173,18 @@ object ReflectionData {
         },
         mkMethod(clazz, "map", Array[Class[_]](classOf[Function1[_, _]], classOf[RType[_]])) { (obj, args) =>
           obj.asInstanceOf[Coll[Any]].map(args(0).asInstanceOf[Any => Any])(args(1).asInstanceOf[RType[Any]])
+        },
+        mkMethod(clazz, "reverse", Array[Class[_]]()) { (obj, args) =>
+          obj.asInstanceOf[Coll[Any]].reverse
+        },
+        mkMethod(clazz, "distinct", Array[Class[_]]()) { (obj, args) =>
+          obj.asInstanceOf[Coll[Any]].distinct
+        },
+        mkMethod(clazz, "startsWith", Array[Class[_]](classOf[Coll[_]])) { (obj, args) =>
+          obj.asInstanceOf[Coll[Any]].startsWith(args(0).asInstanceOf[Coll[Any]])
+        },
+        mkMethod(clazz, "endsWith", Array[Class[_]](classOf[Coll[_]])) { (obj, args) =>
+          obj.asInstanceOf[Coll[Any]].endsWith(args(0).asInstanceOf[Coll[Any]])
         }
       )
     )
@@ -346,6 +361,9 @@ object ReflectionData {
         },
         mkMethod(clazz, "powDistance", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[Header].powDistance
+        },
+        mkMethod(clazz, "checkPow", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[Header].checkPow
         }
       )
     )
@@ -441,8 +459,15 @@ object ReflectionData {
         mkMethod(clazz, "sha256", Array[Class[_]](cColl)) { (obj, args) =>
           obj.asInstanceOf[SigmaDslBuilder].sha256(args(0).asInstanceOf[Coll[Byte]])
         },
+        mkMethod(clazz, "serialize", Array[Class[_]](classOf[Object], classOf[RType[_]])) { (obj, args) =>
+          obj.asInstanceOf[SigmaDslBuilder].serialize[Any](
+            args(0).asInstanceOf[Any])(args(1).asInstanceOf[RType[Any]])
+        },
         mkMethod(clazz, "decodePoint", Array[Class[_]](cColl)) { (obj, args) =>
           obj.asInstanceOf[SigmaDslBuilder].decodePoint(args(0).asInstanceOf[Coll[Byte]])
+        },
+        mkMethod(clazz, "fromBigEndianBytes", Array[Class[_]](cColl, classOf[RType[_]])) { (obj, args) =>
+          obj.asInstanceOf[SigmaDslBuilder].fromBigEndianBytes(args(0).asInstanceOf[Coll[Byte]])(args(1).asInstanceOf[RType[_]])
         }
       )
     )

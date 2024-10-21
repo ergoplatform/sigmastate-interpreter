@@ -5,7 +5,7 @@ import org.ergoplatform._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import sigma.Colls
+import sigma.{Colls, VersionContext}
 import sigma.ast.SCollection._
 import sigma.ast._
 import sigma.ast.syntax.{SValue, SigmaPropValue, SigmaPropValueOps}
@@ -19,7 +19,10 @@ import sigmastate.lang.parsers.ParserException
 import sigma.serialization.ErgoTreeSerializer
 import sigma.serialization.generators.ObjectGenerators
 import sigma.ast.Select
+import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
 import sigma.exceptions.TyperException
+import sigmastate.exceptions.MethodNotFound
+import sigmastate.helpers.SigmaPPrint
 
 class SigmaTyperTest extends AnyPropSpec
   with ScalaCheckPropertyChecks with Matchers with LangTests with ObjectGenerators {
@@ -27,6 +30,7 @@ class SigmaTyperTest extends AnyPropSpec
   private val predefFuncRegistry = new PredefinedFuncRegistry(StdSigmaBuilder)
   import predefFuncRegistry._
 
+  /** Checks that parsing, binding and typing of `x` results in the given expected value. */
   def typecheck(env: ScriptEnv, x: String, expected: SValue = null): SType = {
     try {
       val builder = TransformingSigmaBuilder
@@ -34,10 +38,16 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       val typed = typer.typecheck(bound)
       assertSrcCtxForAllNodes(typed)
-      if (expected != null) typed shouldBe expected
+      if (expected != null) {
+        if (expected != typed) {
+          SigmaPPrint.pprintln(typed, width = 100)
+        }
+        typed shouldBe expected
+      }
       typed.tpe
     } catch {
       case e: Exception => throw e
@@ -51,7 +61,8 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       typer.typecheck(bound)
     }, {
       case te: TyperException =>
@@ -113,6 +124,7 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "min(HEIGHT, INPUTS.size)") shouldBe SInt
     typecheck(env, "max(1, 2)") shouldBe SInt
     typecheck(env, "max(1L, 2)") shouldBe SLong
+    typecheck(env, """bigInt("1111")""") shouldBe SBigInt
     typecheck(env, """fromBase16("1111")""") shouldBe SByteArray
     typecheck(env, """fromBase58("111")""") shouldBe SByteArray
     typecheck(env, """fromBase64("111")""") shouldBe SByteArray
@@ -507,6 +519,48 @@ class SigmaTyperTest extends AnyPropSpec
     typefail(env, "1.toSuperBigInteger", 1, 1)
   }
 
+  property("toBytes method for numeric types") {
+    typecheck(env, "1.toByte.toBytes",
+      expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+        Select(IntConstant(1), "toByte", Some(SByte)),
+        SNumericTypeMethods.ToBytesMethod.withConcreteTypes(Map(STypeVar("TNum") -> SByte)),
+        Vector(),
+        Map()
+      )) shouldBe SByteArray
+
+    typecheck(env, "1.toShort.toBytes",
+      expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+        Select(IntConstant(1), "toShort", Some(SShort)),
+        SNumericTypeMethods.ToBytesMethod.withConcreteTypes(Map(STypeVar("TNum") -> SShort)),
+        Vector(),
+        Map()
+      )) shouldBe SByteArray
+
+    typecheck(env, "1.toBytes",
+      expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+        IntConstant(1),
+        SNumericTypeMethods.ToBytesMethod.withConcreteTypes(Map(STypeVar("TNum") -> SInt)),
+        Vector(),
+        Map()
+      )) shouldBe SByteArray
+
+    typecheck(env, "1.toLong.toBytes",
+      expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+        Select(IntConstant(1), "toLong", Some(SLong)),
+        SNumericTypeMethods.ToBytesMethod.withConcreteTypes(Map(STypeVar("TNum") -> SLong)),
+        Vector(),
+        Map()
+      )) shouldBe SByteArray
+
+    typecheck(env, "1.toBigInt.toBytes",
+      expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+        Select(IntConstant(1), "toBigInt", Some(SBigInt)),
+        SNumericTypeMethods.ToBytesMethod.withConcreteTypes(Map(STypeVar("TNum") -> SBigInt)),
+        Vector(),
+        Map()
+      )) shouldBe SByteArray
+  }
+
   property("string concat") {
     typecheck(env, """ "a" + "b" """) shouldBe SString
   }
@@ -659,4 +713,36 @@ class SigmaTyperTest extends AnyPropSpec
     )
     typecheck(customEnv, "substConstants(scriptBytes, positions, newVals)") shouldBe SByteArray
   }
+
+  property("Global.serialize") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "Global.serialize(1)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SInt)),
+          Array(IntConstant(1)),
+          Map()
+        )) shouldBe SByteArray
+    }
+
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "Global.serialize(1)"),
+        exceptionLike[MethodNotFound]("Cannot find method 'serialize' in in the object Global")
+      )
+    }
+  }
+
+  property("predefined serialize") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "serialize((1, 2L))",
+        expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SPair(SInt, SLong))),
+          Array(Tuple(Vector(IntConstant(1), LongConstant(2L)))),
+          Map()
+        )) shouldBe SByteArray
+    }
+  }
+
 }

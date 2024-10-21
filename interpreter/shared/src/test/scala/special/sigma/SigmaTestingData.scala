@@ -12,7 +12,7 @@ import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ModifierId
 import sigma.ast._
 import sigma.Extensions.ArrayOps
-import sigmastate.eval.{CHeader, CPreHeader}
+import sigmastate.eval.CPreHeader
 import sigmastate.helpers.TestingCommons
 import sigma.serialization.ErgoTreeSerializer
 import sigma.serialization.generators.ObjectGenerators
@@ -29,13 +29,6 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
   /** Creates a [[sigma.Coll]] with the given `items`. */
   def Coll[T](items: T*)(implicit cT: RType[T]): Coll[T] =
     CSigmaDslBuilder.Colls.fromItems(items: _*)
-
-  /** Generator of random collection with `n` elements. */
-  def collOfN[T: RType : Arbitrary](n: Int)
-      (implicit b: Buildable[T, Array[T]]): Gen[Coll[T]] = {
-    implicit val g: Gen[T] = Arbitrary.arbitrary[T]
-    containerOfN[Array, T](n, g).map(Colls.fromArray(_))
-  }
 
   val bytesGen: Gen[Array[Byte]] = for {
     len <- Gen.choose(0, 100)
@@ -54,63 +47,9 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
     res
   }
 
-  protected def sampleAvlProver = {
-    val keys = arrayOfN(100, keyCollGen).sample.get
-    val values = arrayOfN(100, bytesCollGen).sample.get
-    val (tree, prover) = createAvlTreeAndProver(keys.zip(values): _*)
-    (keys, values, tree, prover)
-  }
-
-  protected def sampleAvlTree: AvlTree = {
-    val (_, _, _, avlProver) = sampleAvlProver
-    val digest = avlProver.digest.toColl
-    val tree = SigmaDsl.avlTree(AvlTreeFlags.ReadOnly.serializeToByte, digest, 32, None)
-    tree
-  }
-
   val tokenId1: Digest32 = Blake2b256("id1")
   val tokenId2: Digest32 = Blake2b256("id2")
-  val header1: Header = CHeader(Blake2b256("Header.id").toColl,
-    0,
-    Blake2b256("Header.parentId").toColl,
-    Blake2b256("ADProofsRoot").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot").toColl,
-    timestamp = 0,
-    nBits = 0,
-    height = 0,
-    extensionRoot = Blake2b256("transactionsRoot").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7)),
-    powDistance = SigmaDsl.BigInt(BigInt("1405498250268750867257727119510201256371618473728619086008183115260323").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 2))
-  )
-  val header2: Header = CHeader(Blake2b256("Header2.id").toColl,
-    0,
-    header1.id,
-    Blake2b256("ADProofsRoot2").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot2").toColl,
-    timestamp = 2,
-    nBits = 0,
-    height = 1,
-    extensionRoot = Blake2b256("transactionsRoot2").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array.fill(0.toByte)(8)),
-    powDistance = SigmaDsl.BigInt(BigInt("19306206489815517413186395405558417825367537880571815686937307203793939").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 0))
-  )
-  val headers = Colls.fromItems(header2, header1)
-  val preHeader: PreHeader = CPreHeader(0,
-    header2.id,
-    timestamp = 3,
-    nBits = 0,
-    height = 2,
-    minerPk = SigmaDsl.groupGenerator,
-    votes = Colls.emptyColl[Byte]
-  )
+
 
   object TestData {
     val BigIntZero: BigInt = CBigInt(new BigInteger("0", 16))
@@ -301,17 +240,16 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
 
     def createAvlTreeData() = AvlTreeData(
       ErgoAlgos.decodeUnsafe("010180017f7f7b7f720c00007f7f7f0f01e857a626f37f1483d06af8077a008080").toColl,
-      AvlTreeFlags(false, true, false),
-      728138553,
-      Some(2147483647)
+      AvlTreeFlags(true, true, true),
+      32,
+      None
     )
 
     val h1_instances = new CloneSet(1000, CHeader(
-      Helpers.decodeBytes("957f008001808080ffe4ffffc8f3802401df40006aa05e017fa8d3f6004c804a"),
       0.toByte,
       Helpers.decodeBytes("0180dd805b0000ff5400b997fd7f0b9b00de00fb03c47e37806a8186b94f07ff"),
       Helpers.decodeBytes("01f07f60d100ffb970c3007f60ff7f24d4070bb8fffa7fca7f34c10001ffe39d"),
-      CAvlTree(createAvlTreeData()),
+      CAvlTree(createAvlTreeData()).digest,
       Helpers.decodeBytes("804101ff01000080a3ffbd006ac080098df132a7017f00649311ec0e00000100"),
       1L,
       -1L,
@@ -321,14 +259,15 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
       Helpers.decodeGroupElement("0361299207fa392231e23666f6945ae3e867b978e021d8d702872bde454e9abe9c"),
       Helpers.decodeBytes("7f4f09012a807f01"),
       CBigInt(new BigInteger("-e24990c47e15ed4d0178c44f1790cc72155d516c43c3e8684e75db3800a288", 16)),
-      Helpers.decodeBytes("7f0180")
+      Helpers.decodeBytes("7f0180"),
+      Colls.emptyColl[Byte]
     ))
 
     def create_h1(): Header = h1_instances.getNext
 
     val h1: Header = create_h1()
 
-    val h2: Header = create_h1().asInstanceOf[CHeader].copy(height = 2)
+    val h2: Header = new CHeader(h1.asInstanceOf[CHeader].wrappedValue.copy(height = 2))
 
     val dlog_instances = new CloneSet(1000, ProveDlog(
       SigmaDsl.toECPoint(create_ge1()).asInstanceOf[EcPointType]

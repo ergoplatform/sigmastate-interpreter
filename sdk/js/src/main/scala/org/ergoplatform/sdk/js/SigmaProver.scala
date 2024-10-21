@@ -51,8 +51,8 @@ class SigmaProver(_prover: sdk.SigmaProver) extends js.Object {
     val unreducedTx = sdk.UnreducedTransaction(
       unsignedTx = isoUnsignedTransaction.to(unsignedTx),
       boxesToSpend = sigma.js.Isos.isoArrayToIndexed(isoEIP12UnsignedInput).to(boxesToSpend),
-      dataInputs = sigma.js.Isos.isoArrayToIndexed(isoBox).to(dataInputs),
-      tokensToBurn = sigma.js.Isos.isoArrayToIndexed(isoToken.andThen(sdk.SdkIsos.isoErgoTokenToPair.inverse)).to(tokensToBurn)
+      dataInputs = sigma.js.Isos.isoArrayToIndexed(sigma.js.Box.isoBox).to(dataInputs),
+      tokensToBurn = sigma.js.Isos.isoArrayToIndexed(sigma.data.js.Isos.isoToken.andThen(sdk.SdkIsos.isoErgoTokenToPair.inverse)).to(tokensToBurn)
     )
     val ctx = isoBlockchainStateContext.to(stateCtx)
     val reducedTx = _prover.reduce(ctx, unreducedTx, baseCost)

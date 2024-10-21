@@ -1,14 +1,15 @@
 package scalan
 
+import sigma.compiler.ir.IRContext
 import sigma.util.BenchmarkUtil.{measure, measureTime}
 
-class Benchmark[T <: Scalan](createContext: => T) {
+class Benchmark[T <: IRContext](createContext: => T) {
   val printDebugInfo: Boolean = false
 
   def run() = {
     val (ctx, total) = measureTime {
       var ctx = createContext
-      measure(10000, okShowIterTime = printDebugInfo, okShowTotalTime = printDebugInfo) { i =>
+      measure(10000, okShowIterTime = printDebugInfo, okShowTotalTime = printDebugInfo) { _ =>
         ctx = createContext
       }
       ctx

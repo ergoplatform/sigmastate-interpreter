@@ -1,9 +1,9 @@
 package sigma.serialization
 
 import debox.cfor
+import sigma.VersionContext
 import sigma.ast.SCollectionType.{CollectionTypeCode, NestedCollectionTypeCode}
 import sigma.ast._
-import sigma.serialization.{CoreByteReader, CoreByteWriter, InvalidTypePrefix}
 import sigma.util.safeNewArray
 import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckTypeCode}
 
@@ -101,6 +101,17 @@ class TypeSerializer {
         // `Tuple` type with more than 4 items `(Int, Byte, Box, Boolean, Int)`
         serializeTuple(tup, w)
     }
+    case SFunc(tDom, tRange, tpeParams) =>
+      w.put(SFunc.FuncTypeCode)
+      w.putUByte(tDom.length)
+      tDom.foreach { st =>
+        serialize(st, w)
+      }
+      serialize(tRange, w)
+      w.putUByte(tpeParams.length)
+      tpeParams.foreach { tp =>
+        serialize(tp.ident, w)
+      }
     case typeIdent: STypeVar => {
       w.put(typeIdent.typeCode)
       val bytes = typeIdent.name.getBytes(StandardCharsets.UTF_8)
@@ -189,7 +200,23 @@ class TypeSerializer {
         case SHeader.typeCode => SHeader
         case SPreHeader.typeCode => SPreHeader
         case SGlobal.typeCode => SGlobal
+        case SFunc.FuncTypeCode if VersionContext.current.isV6SoftForkActivated =>
+          val tdLength = r.getUByte()
+
+          val tDom = (1 to tdLength).map { _ =>
+            deserialize(r)
+          }
+          val tRange = deserialize(r)
+          val tpeParamsLength = r.getUByte()
+          val tpeParams = (1 to tpeParamsLength).map { _ =>
+            val ident = deserialize(r)
+            require(ident.isInstanceOf[STypeVar])
+            STypeParam(ident.asInstanceOf[STypeVar])
+          }
+          SFunc(tDom, tRange, tpeParams)
         case _ =>
+          // todo: 6.0: replace 1008 check with identical behavior but other opcode, to activate
+          //  ReplacedRule(1008 -> new opcode) during 6.0 activation
           CheckTypeCode(c.toByte)
           NoType
       }
