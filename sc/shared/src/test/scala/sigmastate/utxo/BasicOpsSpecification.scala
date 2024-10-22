@@ -27,6 +27,7 @@ import sigma.ast.Apply
 import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
+import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
 
@@ -1787,7 +1788,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       someTest()
     } else {
-      an[Exception] should be thrownBy someTest()
+      an[sigmastate.exceptions.MethodNotFound] should be thrownBy someTest()
     }
   }
 
@@ -1809,7 +1810,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       someTest()
     } else {
-      an[Exception] should be thrownBy someTest()
+      an[sigmastate.exceptions.MethodNotFound] should be thrownBy someTest()
     }
   }
 
@@ -1831,7 +1832,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       someTest()
     } else {
-      an[Exception] should be thrownBy someTest()
+      an[sigmastate.exceptions.MethodNotFound] should be thrownBy someTest()
     }
   }
 

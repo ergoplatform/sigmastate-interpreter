@@ -1836,19 +1836,19 @@ case object SGlobalMethods extends MonoTypeMethods {
   }
 
   lazy val someMethod = SMethod(this, "some",
-    SFunc(Array(SGlobal, tT), SOption(tT), Array(paramT)), 8, FixedCost(JitCost(5)), Seq(tT)) // todo: cost
+    SFunc(Array(SGlobal, tT), SOption(tT), Array(paramT)), 8, FixedCost(JitCost(5)), Seq(tT))
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[SigmaDslBuilder, Any, RType[_]]("some"),
       { mtype => Array(mtype.tRange) })
-    .withInfo(MethodCall, "",
-      ArgInfo("value", "value to be serialized"))
+    .withInfo(MethodCall, "Wrap given input into optional value (Option()).",
+      ArgInfo("value", "Value to wrap into Option."))
 
   lazy val noneMethod = SMethod(this, "none",
-    SFunc(Array(SGlobal), SOption(tT), Array(paramT)), 9, FixedCost(JitCost(5)), Seq(tT)) // todo: cost
+    SFunc(Array(SGlobal), SOption(tT), Array(paramT)), 9, FixedCost(JitCost(5)), Seq(tT))
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[SigmaDslBuilder, RType[_]]("none"),
       { mtype => Array(mtype.tRange) })
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Returns empty Option[T] of given type T.")
 
   protected override def getMethods() = super.getMethods() ++ {
     if (VersionContext.current.isV6SoftForkActivated) {
