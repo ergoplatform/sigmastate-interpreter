@@ -252,8 +252,7 @@ class IcoExample extends CompilerTestingCommons
   private val feeBytes = feeProp.bytes
 
   val env = Map(
-    ScriptNameProp -> "withdrawalScriptEnv",
-    "feeBytes" -> feeBytes,
+    "feeBytes" -> Colls.fromArray(feeBytes),
     "projectPubKey" -> project.secrets.head.publicImage
   )
   lazy val withdrawalScript: SigmaPropValue = compile(env,
@@ -313,7 +312,7 @@ class IcoExample extends CompilerTestingCommons
     Blake2b256(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(withdrawalTree))
   }
 
-  def issuanceScript: SigmaPropValue = compile(env.updated("nextStageScriptHash", wsHash),
+  def issuanceScript: SigmaPropValue = compile(env.updated("nextStageScriptHash", Colls.fromArray(wsHash)),
     """{
       |  val openTree = SELF.R5[AvlTree].get
       |
@@ -349,7 +348,7 @@ class IcoExample extends CompilerTestingCommons
     Blake2b256(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(tree))
   }
 
-  def fundingScript: SigmaPropValue = compile(env.updated("nextStageScriptHash", issuanceHash),
+  def fundingScript: SigmaPropValue = compile(env.updated("nextStageScriptHash", Colls.fromArray(issuanceHash)),
     """{
       |
       |  val selfIndexIsZero = INPUTS(0).id == SELF.id

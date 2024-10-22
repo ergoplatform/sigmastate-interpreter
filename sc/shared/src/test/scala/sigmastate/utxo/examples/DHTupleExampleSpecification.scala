@@ -38,7 +38,6 @@ class DHTupleExampleSpecification extends CompilerTestingCommons
     val g_x = alicePubKey.value // g_x is Alice's public key (g_x = g^x)
 
     val env = Map(
-      ScriptNameProp -> "env",
       "g" -> g.toGroupElement,
       "g_x" -> g_x.toGroupElement
     )

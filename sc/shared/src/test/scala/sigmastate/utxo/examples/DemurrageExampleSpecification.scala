@@ -49,7 +49,6 @@ class DemurrageExampleSpecification extends CompilerTestingCommons
     val regScript = userProver.dlogSecrets.head.publicImage
 
     val env = Map(
-      ScriptNameProp -> "Demurrage",
       "demurragePeriod" -> demurragePeriod,
       "demurrageCoeff" -> demurrageCoeff,
       "regScript" -> regScript

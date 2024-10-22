@@ -5,11 +5,12 @@ import org.ergoplatform.ErgoBox.R4
 import org.ergoplatform._
 import org.scalatest.TryValues._
 import scorex.crypto.hash.Blake2b256
+import sigma.{Colls, VersionContext}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast._
 import sigmastate._
 import sigma.ast.syntax._
-import sigma.data.{AvlTreeData, ProveDHTuple, ProveDlog, TrivialProp}
+import sigma.data.{AvlTreeData, CBox, ProveDHTuple, ProveDlog, TrivialProp}
 import sigma.util.Extensions.EcpOps
 import sigma.validation.ValidationException
 import sigmastate.eval._
@@ -51,8 +52,8 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
         .withErgoTreeVersion(ergoTreeVersionInTests)
 
     val e = compile(Map(
-      "h1" -> ErgoTree.withSegregation(ergoTreeHeaderInTests, h1).bytes,
-      "h2" -> ErgoTree.withSegregation(ergoTreeHeaderInTests, h2).bytes),
+      "h1" -> Colls.fromArray(ErgoTree.withSegregation(ergoTreeHeaderInTests, h1).bytes),
+      "h2" -> Colls.fromArray(ErgoTree.withSegregation(ergoTreeHeaderInTests, h2).bytes)),
       "h1 == h1")
     val exp = TrueLeaf
     e shouldBe exp
@@ -192,7 +193,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
     val spendingTransaction = createTransaction(newBoxes)
 
     def mixingRequestProp(sender: ProveDlog, timeout: Int): ErgoTree = {
-      val env = Map("sender" -> sender, "timeout" -> timeout, "properHash" -> properHash)
+      val env = Map("sender" -> sender, "timeout" -> timeout, "properHash" -> Colls.fromArray(properHash))
       val compiledProp = compile(env,
         """{
           |  val notTimePassed = HEIGHT <= timeout
@@ -459,9 +460,14 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
     val pubkey1 = prover.dlogSecrets.head.publicImage
     val pubkey2 = prover.dlogSecrets(1).publicImage
+    val tb = testBox(value = 10, ergoTree = mkTestErgoTree(pubkey1), creationHeight = 0)
+    val brother = if(VersionContext.current.isJitActivated) {
+      CBox(tb)
+    } else {
+      tb
+    }
 
-    val brother = testBox(value = 10, ergoTree = mkTestErgoTree(pubkey1), creationHeight = 0)
-    val brotherWithWrongId = testBox(value = 10,
+    val tbWithWrongId = testBox(value = 10,
       ergoTree = mkTestErgoTree(pubkey1),
       creationHeight = 0,
       boxIndex = 120: Short)
@@ -482,7 +488,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
     val propExpected = BinAnd(
       EQ(SizeOf(Inputs), IntConstant(2)),
-      EQ(ExtractId(ByIndex(Inputs, 0)), ExtractId(BoxConstant(brother)))).toSigmaProp
+      EQ(ExtractId(ByIndex(Inputs, 0)), ExtractId(BoxConstant(tb)))).toSigmaProp
     prop shouldBe propExpected
 
     // try a version of the script that matches the white paper
@@ -496,18 +502,18 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
       currentHeight = 50,
       lastBlockUtxoRoot = AvlTreeData.dummy,
       minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(brother, s),
+      boxesToSpend = IndexedSeq(tb, s),
       spendingTransaction,
       self = s, activatedVersionInTests)
 
-    val pr = prover.prove(emptyEnv + (ScriptNameProp -> "prove_prop"), propTree, ctx, fakeMessage).getOrThrow
-    verifier.verify(emptyEnv + (ScriptNameProp -> "verify_prop"), propTree, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
+    val pr = prover.prove(emptyEnv, propTree, ctx, fakeMessage).getOrThrow
+    verifier.verify(emptyEnv, propTree, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
 
     val wrongCtx = ErgoLikeContextTesting(
       currentHeight = 50,
       lastBlockUtxoRoot = AvlTreeData.dummy,
       minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(brotherWithWrongId, s),
+      boxesToSpend = IndexedSeq(tbWithWrongId, s),
       spendingTransaction,
       self = s, activatedVersionInTests)
 
@@ -522,9 +528,9 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
          }""".stripMargin).asBoolValue.toSigmaProp
     val prop2Tree = mkTestErgoTree(prop2)
 
-    prover.prove(emptyEnv + (ScriptNameProp -> "prove_prop2"), prop2Tree, ctx, fakeMessage).isFailure shouldBe true
+    prover.prove(emptyEnv, prop2Tree, ctx, fakeMessage).isFailure shouldBe true
     verifier
-      .verify(emptyEnv + (ScriptNameProp -> "verify_prop2"), prop2Tree, ctx, pr, fakeMessage)
+      .verify(emptyEnv, prop2Tree, ctx, pr, fakeMessage)
       .getOrThrow._1 shouldBe false
   }
 
@@ -547,7 +553,12 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
     val newBoxes = IndexedSeq(newBox)
     val spendingTransaction = createTransaction(newBoxes)
 
-    val env = Map("friend" -> friend)
+    val friendVar = if(VersionContext.current.isJitActivated){
+      CBox(friend)
+    } else {
+      friend
+    }
+    val env = Map("friend" -> friendVar)
     val prop = compile(env,
       """{
         |
@@ -623,7 +634,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
     val helloHash = Blake2b256.hash(preimageHello)
 
-    val env = Map("helloHash" -> helloHash)
+    val env = Map("helloHash" -> Colls.fromArray(helloHash))
     val prop = compile(env,
       """{
         |  val cond = INPUTS(0).value > 10

@@ -3,13 +3,14 @@ package sigmastate.utxo.examples
 import org.ergoplatform.ErgoBox.{R4, R5}
 import org.ergoplatform._
 import scorex.crypto.hash.Blake2b256
+import sigma.Colls
 import sigma.data.AvlTreeData
 import sigma.ast.{ErgoTree, IntConstant, SigmaPropConstant}
 import sigmastate._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.interpreter.Interpreter.ScriptNameProp
 import sigma.ast.syntax._
+import sigmastate.interpreter.Interpreter
 
 
 class ReversibleTxExampleSpecification extends CompilerTestingCommons
@@ -79,7 +80,6 @@ class ReversibleTxExampleSpecification extends CompilerTestingCommons
     val carolPubKey = carol.dlogSecrets.head.publicImage
 
     val withdrawEnv = Map(
-      ScriptNameProp -> "withdrawEnv",
       "carol" -> carolPubKey // this pub key can reverse payments
     )
 
@@ -94,12 +94,11 @@ class ReversibleTxExampleSpecification extends CompilerTestingCommons
     val blocksIn24h = 500
     val feeProposition = ErgoTreePredef.feeProposition()
     val depositEnv = Map(
-      ScriptNameProp -> "depositEnv",
       "alice" -> alicePubKey,
       "blocksIn24h" -> blocksIn24h,
       "maxFee" -> 10L,
-      "feePropositionBytes" -> feeProposition.bytes,
-      "withdrawScriptHash" -> Blake2b256(withdrawScript.bytes)
+      "feePropositionBytes" -> Colls.fromArray(feeProposition.bytes),
+      "withdrawScriptHash" -> Colls.fromArray(Blake2b256(withdrawScript.bytes))
     )
 
     val depositScript = mkTestErgoTree(compile(depositEnv,
@@ -189,7 +188,7 @@ class ReversibleTxExampleSpecification extends CompilerTestingCommons
       self = reversibleWithdrawOutput, activatedVersionInTests
     )
 
-    val spendEnv = Map(ScriptNameProp -> "spendEnv")
+    val spendEnv = Interpreter.emptyEnv
 
     val proofBobSpend = bob.prove(spendEnv, withdrawScript, bobSpendContext, fakeMessage).get.proof
 

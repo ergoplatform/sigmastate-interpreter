@@ -12,7 +12,7 @@ import scorex.util.encode.{Base16, Base58}
 import sigma.Colls
 import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
-import sigma.data.{CAND, CAvlTree, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.data.{CAND, CAvlTree, CBox, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
@@ -143,12 +143,18 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     val env = Map(
       "dk1" -> dk1,
       "dk2" -> dk2,
-      "bytes1" -> Array[Byte](1, 2, 3),
-      "bytes2" -> Array[Byte](4, 5, 6),
-      "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
+      "bytes1" -> Colls.fromArray(Array[Byte](1, 2, 3)),
+      "bytes2" -> Colls.fromArray(Array[Byte](4, 5, 6)),
+      "box1" -> (if(VersionContext.current.isJitActivated) {
+        CBox(testBox(10, TrueTree, 0, Seq(), Map(
+        reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+        reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+      )))} else {
+        testBox(10, TrueTree, 0, Seq(), Map(
           reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
           reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
-      ))
+        ))
+      })
     )
     val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
     val challenge = Array.fill(32)(Random.nextInt(100).toByte)
