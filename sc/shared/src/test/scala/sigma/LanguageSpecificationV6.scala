@@ -1799,4 +1799,30 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
+  property("Global.some") {
+    lazy val some = newFeature(
+      { (x: Byte) => CSigmaDslBuilder.some[Byte](x) },
+      "{ (x: Byte) => Global.some[Byte](x) }",
+      sinceVersion = V6SoftForkVersion)
+    val cases = Seq(
+      (0.toByte, Success(Some(0.toByte))),
+      (1.toByte, Success(Some(1.toByte)))
+    )
+
+    testCases(cases, some)
+  }
+
+  property("Global.none") {
+    lazy val some = newFeature(
+      { (x: Byte) => CSigmaDslBuilder.none[Byte]() },
+      "{ (x: Byte) => Global.none[Byte]() }",
+      sinceVersion = V6SoftForkVersion)
+    val cases = Seq(
+      (0.toByte, Success(None)),
+      (1.toByte, Success(None))
+    )
+
+    testCases(cases, some)
+  }
+
 }
