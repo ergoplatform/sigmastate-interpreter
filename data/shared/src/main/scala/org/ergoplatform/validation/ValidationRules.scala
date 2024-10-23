@@ -102,7 +102,7 @@ object ValidationRules {
 //    }
   }
 
-  object CheckAndGetMethod extends ValidationRule(1011,
+  class CheckAndGetMethodTemplate(ruleId: Short) extends ValidationRule(ruleId,
     "Check the type has the declared method.") {
     override protected lazy val settings: SigmaValidationSettings = currentSettings
 
@@ -127,6 +127,9 @@ object ValidationRules {
       case _ => false
     }
   }
+
+  object CheckAndGetMethod extends CheckAndGetMethodTemplate(1011)
+  object CheckAndGetMethodV6 extends CheckAndGetMethodTemplate(1016)
 
   object CheckHeaderSizeBit extends ValidationRule(1012,
     "For version greater then 0, size bit should be set.") with SoftForkWhenReplaced {
@@ -171,7 +174,9 @@ object ValidationRules {
     CheckHeaderSizeBit,
     CheckCostFuncOperation,
     CheckPositionLimit,
-    CheckLoopLevelInCostFunction
+    CheckLoopLevelInCostFunction,
+    // v6 validation rules below
+    CheckAndGetMethodV6
   )
 
   /** Validation settings that correspond to the current version of the ErgoScript implementation.

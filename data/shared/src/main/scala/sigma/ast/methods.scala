@@ -83,7 +83,11 @@ sealed trait MethodsContainer {
     * @see getMethodById
     */
   def methodById(methodId: Byte): SMethod = {
-    ValidationRules.CheckAndGetMethod(this, methodId)
+    if (VersionContext.current.isV6SoftForkActivated) {
+      ValidationRules.CheckAndGetMethodV6(this, methodId)
+    } else {
+      ValidationRules.CheckAndGetMethod(this, methodId)
+    }
   }
 
   /** Finds a method descriptor [[SMethod]] for the given name. */
