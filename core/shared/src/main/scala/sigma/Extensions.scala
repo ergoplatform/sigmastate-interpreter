@@ -9,11 +9,6 @@ import sigma.data.RType
   * See `implicit class ...` wrappers below.
   */
 object Extensions {
-  /** Extension methods for `Array[Byte]` not available for generic `Array[T]`. */
-  implicit class CoreArrayByteOps(val arr: Array[Byte]) extends AnyVal {
-    /** Encodes array into hex string */
-    @inline def toHex: String = Base16.encode(arr)
-  }
 
   /** Extension methods for `Array[T]` where implicit descriptor `RType[T]` is also
     * required.

@@ -46,14 +46,15 @@ with `$` suffix, thus if X is the JS class, then X$ is the JS object, which corr
 ## The list of modules and their exported classes
 - [sigma-core module](../core/js) - contains core classes of Sigma.js library
   - [Type](../core/js/src/main/scala/sigma/js/Type.scala)
-  - [Value](../core/js/src/main/scala/sigma/js/Value.scala)
   - [GroupElement](../core/js/src/main/scala/sigma/js/GroupElement.scala)
   - [SigmaProp](../core/js/src/main/scala/sigma/js/SigmaProp.scala)
   - [AvlTree](../core/js/src/main/scala/sigma/js/AvlTree.scala)
   
 - [sigma-data module](../data/js) - contains classes for working with ErgoTree, addresses and all related serializers 
   - all classes from sigma-core module
+  - [Value](../data/js/src/main/scala/sigma/js/Value.scala)
   - [ErgoTree](../data/js/src/main/scala/sigma/ast/js/ErgoTree.scala)
+  - [Box](../data/js/src/main/scala/sigma/js/Box.scala)
   - [Address](../data/js/src/main/scala/org/ergoplatform/js/Address.scala)
   - [Expr](../data/js/src/main/scala/sigma/ast/js/Expr.scala)
   

@@ -3,7 +3,7 @@ package sigmastate.lang
 import fastparse._
 import fastparse.NoWhitespace._
 import SigmaParser._
-import sigma.ast.SType
+import sigma.ast.{Constant, SType}
 import sigma.ast.syntax.SValue
 import sigmastate.lang.parsers.Basic
 
@@ -187,9 +187,9 @@ object ContractParser {
 
     def annotation[_: P] = P("@contract")
 
-    def paramDefault[_: P] = P(WL.? ~ `=` ~ WL.? ~ ExprLiteral).map(s => s.asWrappedType)
+    def paramDefault[_: P] = P(WL.? ~ `=` ~ WL.? ~ ExprLiteral)
 
-    def param[_: P] = P(WL.? ~ Id.! ~ ":" ~ Type ~ paramDefault.?).map(s => ContractParam(s._1, s._2, s._3))
+    def param[_: P] = P(WL.? ~ Id.! ~ ":" ~ Type ~ paramDefault.?).map(s => ContractParam(s._1, s._2, s._3.map(_.value)))
 
     def params[_: P] = P("(" ~ param.rep(1, ",").? ~ ")")
   }

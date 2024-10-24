@@ -13,7 +13,7 @@ import sigma.serialization.SerializerException
 import sigma.util.Extensions.{BigIntegerOps, EcpOps, SigmaBooleanOps}
 import sigma.Extensions.ArrayOps
 import sigma.eval.SigmaDsl
-import sigma.{AvlTree, Box, Colls, Evaluation}
+import sigma.{AvlTree, Box, Colls, Evaluation, Header, VersionContext}
 import sigma.serialization.SerializationSpecification
 
 import scala.annotation.nowarn
@@ -22,29 +22,48 @@ import scala.reflect.ClassTag
 class DataJsonEncoderSpecification extends SerializationSpecification {
   object JsonCodecs extends JsonCodecs
 
-  def roundtrip[T <: SType](obj: T#WrappedType, tpe: T) = {
-    val json = DataJsonEncoder.encode(obj, tpe)
-    val res = DataJsonEncoder.decode(json)
-    res shouldBe obj
+  def roundtrip[T <: SType](obj: T#WrappedType, tpe: T, withVersion: Option[Byte] = None) = {
+    def test() = {
+      val json = DataJsonEncoder.encode(obj, tpe)
+      val res = DataJsonEncoder.decode(json)
+      res shouldBe obj
+    }
+
+    withVersion match {
+      case Some(ver) =>
+        VersionContext.withVersions(ver, 0) {
+          test()
+        }
+      case None =>
+        test()
+    }
   }
 
   def testCollection[T <: SType](tpe: T) = {
     implicit val wWrapped = wrappedTypeGen(tpe)
     implicit val tT = Evaluation.stypeToRType(tpe)
     implicit val tagT = tT.classTag
+
+    val withVersion = if (tpe == SHeader) {
+      Some(VersionContext.V6SoftForkVersion)
+    } else {
+      None
+    }
+
     forAll { xs: Array[T#WrappedType] =>
-      roundtrip[SCollection[T]](xs.toColl, SCollection(tpe))
-      roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)))
+      roundtrip[SCollection[T]](xs.toColl, SCollection(tpe), withVersion)
+      roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)), withVersion)
 
       val nested = xs.toColl.map(x => Colls.fromItems[T#WrappedType](x, x))
-      roundtrip[SCollection[SCollection[T]]](nested, SCollection(SCollection(tpe)))
+      roundtrip[SCollection[SCollection[T]]](nested, SCollection(SCollection(tpe)), withVersion)
 
       roundtrip[SType](
         xs.toColl.map { x =>
           val arr = Colls.fromItems[T#WrappedType](x, x)
           (arr, arr)
         }.asWrappedType,
-        SCollection(STuple(SCollection(tpe), SCollection(tpe)))
+        SCollection(STuple(SCollection(tpe), SCollection(tpe))),
+        withVersion
       )
     }
   }
@@ -54,11 +73,18 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     val tT = Evaluation.stypeToRType(tpe)
     @nowarn implicit val tag     : ClassTag[T#WrappedType] = tT.classTag
     @nowarn implicit val tAny    : RType[Any]              = sigma.AnyType
+
+    val withVersion = if (tpe == SHeader) {
+      Some(VersionContext.V6SoftForkVersion)
+    } else {
+      None
+    }
+
     forAll { in: (T#WrappedType, T#WrappedType) =>
       val (x,y) = (in._1, in._2)
-      roundtrip[SType]((x, y).asWrappedType, STuple(tpe, tpe))
-      roundtrip[SType](((x, y), (x, y)).asWrappedType, STuple(STuple(tpe, tpe), STuple(tpe, tpe)))
-      roundtrip[SType](((x, y), ((x, y), (x, y))).asWrappedType, STuple(STuple(tpe, tpe), STuple(STuple(tpe, tpe), STuple(tpe, tpe))))
+      roundtrip[SType]((x, y).asWrappedType, STuple(tpe, tpe), withVersion)
+      roundtrip[SType](((x, y), (x, y)).asWrappedType, STuple(STuple(tpe, tpe), STuple(tpe, tpe)), withVersion)
+      roundtrip[SType](((x, y), ((x, y), (x, y))).asWrappedType, STuple(STuple(tpe, tpe), STuple(STuple(tpe, tpe), STuple(tpe, tpe))), withVersion)
     }
   }
 
@@ -98,6 +124,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     forAll { x: AvlTree => roundtrip[SAvlTree.type](x, SAvlTree) }
     forAll { x: Array[Byte] => roundtrip[SByteArray](x.toColl, SByteArray) }
     forAll { x: Box => roundtrip[SBox.type](x, SBox) }
+    forAll { x: Header => roundtrip[SHeader.type](x, SHeader, Some(VersionContext.V6SoftForkVersion)) }
     forAll { x: Option[Byte] => roundtrip[SOption[SByte.type]](x, SOption[SByte.type]) }
     testCollection(SOption[SLong.type])
     testTuples(SOption[SLong.type])
@@ -187,25 +214,44 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     val tT = Evaluation.stypeToRType(tpe)
     @nowarn implicit val tag = tT.classTag
     @nowarn implicit val tAny = sigma.AnyType
-    forAll { x: T#WrappedType =>
-      an[SerializerException] should be thrownBy {
-        DataJsonEncoder.encode(TupleColl(x, x, x).asWrappedType, STuple(tpe, tpe, tpe))
-      }
 
-      // supported case
-      DataJsonEncoder.encode(SigmaDsl.Colls.fromItems(TupleColl(x, x)).asWrappedType, SCollection(STuple(tpe, tpe)))
 
-      // not supported case
-      an[SerializerException] should be thrownBy {
-        DataJsonEncoder.encode(SigmaDsl.Colls.fromItems(TupleColl(x, x, x)).asWrappedType, SCollection(STuple(tpe, tpe, tpe)))
+    def test() = {
+      forAll { x: T#WrappedType =>
+        an[SerializerException] should be thrownBy {
+          DataJsonEncoder.encode(TupleColl(x, x, x).asWrappedType, STuple(tpe, tpe, tpe))
+        }
+
+        // supported case
+        DataJsonEncoder.encode(SigmaDsl.Colls.fromItems(TupleColl(x, x)).asWrappedType, SCollection(STuple(tpe, tpe)))
+
+        // not supported case
+        an[SerializerException] should be thrownBy {
+          DataJsonEncoder.encode(SigmaDsl.Colls.fromItems(TupleColl(x, x, x)).asWrappedType, SCollection(STuple(tpe, tpe, tpe)))
+        }
       }
+    }
+
+    if (tpe == SHeader)  {
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, 0) {
+        test()
+      }
+    } else {
+      test()
     }
   }
 
   property("AnyValue") {
     forAll { t: SPredefType =>
-      testAnyValue(t)
-      testAnyValue(SOption(t))
+      if (t == SHeader) {
+        VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+          testAnyValue(t)
+          testAnyValue(SOption(t))
+        }
+      } else {
+        testAnyValue(t)
+        testAnyValue(SOption(t))
+      }
     }
   }
 

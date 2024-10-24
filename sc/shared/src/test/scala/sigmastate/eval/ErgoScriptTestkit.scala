@@ -14,14 +14,16 @@ import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeConte
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigmastate.interpreter.CErgoTreeEvaluator
 import sigma.ast.syntax.ValueOps
+import sigma.compiler.{CompilerResult, CompilerSettings, SigmaCompiler}
+import sigma.compiler.ir.IRContext
 import sigma.interpreter.ContextExtension
-import sigmastate.lang.{CompilerResult, CompilerSettings, LangTests, SigmaCompiler}
+import sigmastate.lang.LangTests
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.CompilerTestsBase
 import sigma.{ContractsTestkit, Context => DContext}
 
 import scala.annotation.unused
-import scala.util.Success
+import scala.util.{Success, Try}
 
 trait ErgoScriptTestkit extends ContractsTestkit with LangTests
     with ValidationSpecification with CompilerTestsBase { self: BaseCtxTests =>
@@ -54,9 +56,8 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
     ergoCtx
   }
 
-
-  lazy val boxA1 = newAliceBox(1, 100)
-  lazy val boxA2 = newAliceBox(2, 200)
+  lazy val boxA1 = newAliceBox(100)
+  lazy val boxA2 = newAliceBox(200)
 
   lazy val n1Sym = liftConst(n1)
 
@@ -147,6 +148,31 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       res
     }
 
+    private val SigmaM = SigmaProp.SigmaPropMethods
+
+    /** Finds SigmaProp.isProven method calls in the given Lambda `f` */
+    private def findIsProven[T](f: Ref[Context => T]): Option[Sym] = {
+      val Def(Lambda(lam,_,_,_)) = f
+      val s = lam.flatSchedule.find(sym => sym.node match {
+        case SigmaM.isValid(_) => true
+        case _ => false
+      })
+      s
+    }
+
+    /** Checks that if SigmaProp.isProven method calls exists in the given Lambda's schedule,
+      * then it is the last operation. */
+    private def verifyIsProven[T](f: Ref[Context => T]): Try[Unit] = {
+      val isProvenOpt = findIsProven(f)
+      Try {
+        isProvenOpt match {
+          case Some(s) =>
+            if (f.getLambda.y != s) !!!(s"Sigma.isProven found in none-root position", s)
+          case None =>
+        }
+      }
+    }
+
     def doReduce(): Unit = {
       val res = doCosting
       verifyIsProven(res.compiledGraph) shouldBe Success(())
@@ -182,13 +208,6 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       }
     }
   }
-
-  def Case(env: ScriptEnv, name: String, script: String, ctx: ErgoLikeContext,
-           calc: Ref[Context] => Ref[Any],
-           tree: SValue,
-           result: Result) =
-    EsTestCase(name, env, Code(script), Option(ctx), None,
-      Option(calc), Option(tree), result)
 
   def reduce(env: ScriptEnv, name: String, script: String, ergoCtx: ErgoLikeContext, expectedResult: Any): Unit = {
     val tcase = EsTestCase(name, env, Code(script), Some(ergoCtx), expectedResult = Result(expectedResult))

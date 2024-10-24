@@ -2,6 +2,7 @@ package sigma.data
 
 import sigma._
 import sigma.eval.Extensions.IntExt
+import sigma.util.Extensions.BigIntOps
 
 import scala.math.{Integral, Ordering}
 
@@ -89,6 +90,32 @@ object NumericOps {
       * NOTE: This method should not be used in v4.x
       */
     override def divisionRemainder(x: BigInt, y: BigInt): BigInt = x.mod(y)
+
+    override def toBigEndianBytes(x: BigInt): Coll[Byte] = Colls.fromArray(x.toBigInteger.toByteArray)
+
+    override def bitwiseInverse(x: BigInt): BigInt = CBigInt(x.toBigInteger.not())
+
+    override def bitwiseOr(x: BigInt, y: BigInt): BigInt = x.or(y)
+
+    override def bitwiseAnd(x: BigInt, y: BigInt): BigInt = x.and(y)
+
+    override def bitwiseXor(x: BigInt, y: BigInt): BigInt = x.xor(y)
+
+    override def shiftLeft(x: BigInt, bits: Int): BigInt = {
+      if (bits < 0 || bits >= 256) {
+        throw new IllegalArgumentException(s"Wrong argument in BigInt.shiftRight: bits < 0 || bits >= 256 ($bits)")
+      } else {
+        x.shiftLeft(bits)
+      }
+    }
+
+    override def shiftRight(x: BigInt, bits: Int): BigInt = {
+      if (bits < 0 || bits >= 256) {
+        throw new IllegalArgumentException(s"Wrong argument in BigInt.shiftRight: bits < 0 || bits >= 256 ($bits)")
+      } else {
+        x.shiftRight(bits)
+      }
+    }
   }
 
   /** The instance of [[scalan.ExactOrdering]] typeclass for [[BigInt]]. */

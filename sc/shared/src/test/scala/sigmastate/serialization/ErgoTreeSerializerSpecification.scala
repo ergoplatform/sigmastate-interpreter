@@ -10,9 +10,9 @@ import sigma.util.Extensions.SigmaPropOps
 import sigma.validation.ValidationException
 import ErgoTree.EmptyConstants
 import ErgoTree.HeaderType
+import sigma.compiler.ir.IRContext
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigmastate._
-import sigmastate.eval.IRContext
 import sigmastate.helpers.CompilerTestingCommons
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 

@@ -65,7 +65,6 @@ class SigmaPropProver(override val wrappedValue: org.ergoplatform.SigmaPropProve
     val realsToExtract = toSigmaBooleanSeq(realSecretsToExtract)
     val simsToExtract  = toSigmaBooleanSeq(simulatedSecretsToExtract)
     val hints        = wrappedValue.bagForMultisig(
-      context = null,
       sigmaTree = sigmaTree.sigmaBoolean, proof.toArray,
       realSecretsToExtract = realsToExtract,
       simulatedSecretsToExtract = simsToExtract)

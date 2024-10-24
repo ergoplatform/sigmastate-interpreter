@@ -7,8 +7,7 @@ import org.ergoplatform.settings.ErgoAlgos
 import scorex.util.encode.Base16
 import scorex.util.{ModifierId, Random}
 import sigma.Extensions._
-import sigma.SigmaDslTesting
-import sigma.ast.SCollection.SByteArray
+import sigma.{SigmaDslTesting, VersionContext}
 import sigma.ast.SType._
 import sigma.ast.syntax.{ErgoBoxCandidateRType, TrueSigmaProp}
 import sigma.ast._
@@ -20,9 +19,11 @@ import sigmastate.helpers.TestingHelpers.copyTransaction
 import sigmastate.utils.Helpers
 import sigma.SigmaDslTesting
 import sigma.Extensions._
+import sigma.ast.SCollection.SByteArray
+import sigmastate.CrossVersionProps
 import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
 
-class ErgoLikeTransactionSpec extends SigmaDslTesting with JsonCodecs {
+  class ErgoLikeTransactionSpec extends SigmaDslTesting with CrossVersionProps with JsonCodecs {
 
   property("ErgoBox test vectors") {
     val token1 = "6e789ab7b2fffff12280a6cd01557f6fb22b7f80ff7aff8e1f7f15973d7f0001"
@@ -99,14 +100,24 @@ class ErgoLikeTransactionSpec extends SigmaDslTesting with JsonCodecs {
 
     { // test case for R2
       val res = b1.get(ErgoBox.R2).get
-      val exp = Coll(
-        (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token1).toColl) -> 10000000L,
-        (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token2).toColl) -> 500L
-      ).map(identity).toConstant
-      // TODO v6.0 (16h): fix collections equality and remove map(identity)
-      //  (PairOfColl should be equal CollOverArray but now it is not)
+
+      // We have versioned check here due to fixed collections equality in 6.0.0
+      //  (PairOfColl equal CollOverArray now)
       // see (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/909)
-      res shouldBe exp
+      if(VersionContext.current.isV6SoftForkActivated) {
+        val exp = Coll(
+          (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token1).toColl) -> 10000000L,
+          (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token2).toColl) -> 500L
+        ).toConstant
+        res shouldBe exp
+        exp shouldBe res
+      } else {
+        val exp = Coll(
+          (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token1).toColl) -> 10000000L,
+          (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token2).toColl) -> 500L
+        ).map(identity).toConstant
+        res shouldBe exp
+      }
     }
 
     { // test case for R3
@@ -470,7 +481,6 @@ class ErgoLikeTransactionSpec extends SigmaDslTesting with JsonCodecs {
     // test equivalence of "from Json" and "from bytes" deserialization
     tx2.id shouldBe tx.id
     tx2.id shouldBe "d5c0a7908bbb8eefe72ad70a9f668dd47b748239fd34378d3588d5625dd75c82"
-    println(tx2.id)
   }
 
   property("Tuple in register test vector") {

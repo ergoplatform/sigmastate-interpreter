@@ -8,6 +8,9 @@ import scala.reflect.ClassTag
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichOption
 
+/** Definitions of isomorphisms for sigma-core module.
+  * @see sigma.data.Iso
+  */
 object Isos {
 
   implicit def isoUndefOr[A, B](implicit iso: Iso[A, B]): Iso[js.UndefOr[A], Option[B]] = new Iso[js.UndefOr[A], Option[B]] {

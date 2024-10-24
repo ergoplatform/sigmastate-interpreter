@@ -81,7 +81,7 @@ trait ProverUtils extends Interpreter {
                      realSecretsToExtract: Seq[SigmaBoolean],
                      simulatedSecretsToExtract: Seq[SigmaBoolean] = Seq.empty): HintsBag = {
     val reduced = fullReduction(ergoTree, context, Interpreter.emptyEnv)
-    bagForMultisig(context, reduced.value, proof, realSecretsToExtract, simulatedSecretsToExtract)
+    bagForMultisig(reduced.value, proof, realSecretsToExtract, simulatedSecretsToExtract)
   }
 
   /**
@@ -90,15 +90,13 @@ trait ProverUtils extends Interpreter {
     *
     * See DistributedSigSpecification for examples of usage.
     *
-    * @param context                   - context used to reduce the proposition
     * @param sigmaTree                 - public key (in form of a sigma-tree)
     * @param proof                     - signature for the key
     * @param realSecretsToExtract      - public keys of secrets with real proofs
     * @param simulatedSecretsToExtract - public keys of secrets with simulated proofs
     * @return - bag of OtherSecretProven and OtherCommitment hints
     */
-  def bagForMultisig(context: CTX,
-                     sigmaTree: SigmaBoolean,
+  def bagForMultisig(sigmaTree: SigmaBoolean,
                      proof: Array[Byte],
                      realSecretsToExtract: Seq[SigmaBoolean],
                      simulatedSecretsToExtract: Seq[SigmaBoolean]): HintsBag = {

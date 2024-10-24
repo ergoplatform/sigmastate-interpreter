@@ -6,7 +6,6 @@ import sigma.ast.SType.{AnyOps, TypeCode}
 import sigma.ast._
 import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
 import sigma.eval.Extensions.toAnyValue
-import sigma.exceptions.InterpreterException
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
 import sigma.{AnyValue, Coll, Header, PreHeader}
@@ -169,7 +168,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         syntax.error(s"Undefined context property: currentErgoTreeVersion"))
     CContext(
       dataInputs, headers, preHeader, inputs, outputs, preHeader.height, selfBox, selfIndex, avlTree,
-      preHeader.minerPk.getEncoded, vars, activatedScriptVersion, ergoTreeVersion)
+      preHeader.minerPk.getEncoded, vars, spendingTransaction, activatedScriptVersion, ergoTreeVersion)
   }
 
 

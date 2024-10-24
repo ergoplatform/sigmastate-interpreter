@@ -153,7 +153,7 @@ case class ContractTemplate(
         .map(p => p.name)
     requiredParameterNames.foreach(name => require(
       paramValues.contains(name),
-      s"value for parameter $name was not provided while it does not have a default value."))
+      s"value for parameter `$name` was not provided while it does not have a default value."))
 
     val parameterizedConstantIndices = this.parameters.map(p => p.constantIndex).toSet
     val constIndexToParamIndex = this.parameters.zipWithIndex.map(pi => pi._1.constantIndex -> pi._2).toMap

@@ -14,7 +14,7 @@ sealed abstract class Environment {
 
 object Environment {
   /** Current runtime environment. */
-  implicit val current: Environment = new Environment {
+  val current: Environment = new Environment {
     override def isJVM: Boolean = runtimePlatform == RuntimePlatform.JVM
     override def isJS: Boolean = runtimePlatform == RuntimePlatform.JS
     override def runtimePlatform: RuntimePlatform = sigma.reflection.Platform.runtimePlatform

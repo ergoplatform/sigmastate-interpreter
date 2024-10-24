@@ -1,10 +1,21 @@
 package sigmastate
 
-import scalan.{Base, TypeDescs}
+import sigma.compiler.ir.{Base, TypeDescs}
 import sigma.reflection._
 import scala.annotation.unused
 import scala.collection.mutable
 
+/** Generates code for registering classes in the ReflectionData.
+  * It is not used in the runtime.
+  *
+  * The generated invocations of  `registerClassEntry`, `mkMethod`, `mkConstructor` may
+  * require manual adjustments.
+  *
+  * It uses [[sigma.reflection.Platform.unknownClasses]] to collect classes which were
+  * accessed during runtime
+  *
+  * @see [[ReflectionData]]
+  */
 object ReflectionGenerator {
 
   def normalizeName(name: String): String = {
@@ -30,17 +41,17 @@ object ReflectionGenerator {
   }
 
   val knownPackages = Array(
-    "scalan.primitives.",
+    "sigma.compiler.ir.primitives.",
     "sigma.",
     "sigma.",
-    "special.wrappers.",
+    "sigma.compiler.ir.wrappers.",
     "sigma.ast.",
     "sigmastate.lang.Terms.",
     "sigmastate.interpreter.",
     "sigmastate.utxo.",
     "sigmastate.",
-    "wrappers.scala.",
-    "scalan.",
+    "sigma.compiler.ir.wrappers.scala.",
+    "sigma.compiler.ir.",
     "scala.collection.",
     "scala."
   )

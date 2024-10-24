@@ -295,7 +295,6 @@ object AND extends LogicalTransformerCompanion {
   def apply(children: Seq[Value[SBoolean.type]]): AND =
     AND(ConcreteCollection.fromSeq(children))
 
-//  def apply(head: Value[SBoolean.type], tail: Value[SBoolean.type]*): AND = apply(head +: tail)
   def apply(items: Value[SBoolean.type]*)(implicit o1: Overloaded1): AND = apply(items)
 }
 

@@ -14,10 +14,8 @@ object TypeCodes {
 
   val LastDataType : TypeCode = TypeCode @@ 111.toByte
 
-  /** SFunc types occupy remaining space of byte values [FirstFuncType .. 255] */
-  val FirstFuncType: TypeCode = TypeCode @@ (LastDataType + 1).toByte
-
-  val LastFuncType : TypeCode = TypeCode @@ 255.toByte
+  /** SFunc type */
+  val FuncType: TypeCode = TypeCode @@ (LastDataType + 1).toByte
 
   /** We use optimized encoding of constant values to save space in serialization.
     * Since Box registers are stored as Constant nodes we save 1 byte for each register.

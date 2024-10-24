@@ -68,7 +68,7 @@ The following sections describe ErgoScript and its operations.
 #### Operations and constructs overview
 
 - Binary operations: `>, <, >=, <=, +, -, &&, ||, ==, !=, |, &, *, /, %, ^, ++`
-- predefined primitives: `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
+- predefined primitives: `serialize`, `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
 - val declarations: `val h = blake2b256(pubkey)`
 - if-then-else clause: `if (x > 0) 1 else 0`
 - collection literals: `Coll(1, 2, 3, 4)`
@@ -249,6 +249,10 @@ class Context {
 
 /** Represents data of the block headers available in scripts. */
 class Header {  
+
+  /** Validate header's proof-of-work */  
+  def checkPow: Boolean
+  
   /** Bytes representation of ModifierId of this Header */
   def id: Coll[Byte]
 
@@ -915,7 +919,7 @@ def longToByteArray(input: Long): Coll[Byte]
 def decodePoint(bytes: Coll[Byte]): GroupElement 
 
 
-/** Extracts Context variable by id and type.
+/** Extracts Context variable from SELF input by id and type.
   * ErgoScript is typed, so accessing a the variables is an operation which involves
   * some expected type given in brackets. Thus `getVar[Int](id)` expression should
   * evaluate to a valid value of the `Option[Int]` type.
@@ -972,6 +976,18 @@ def decodePoint(bytes: Coll[Byte]): GroupElement
   */
 def getVar[T](tag: Int): Option[T]
 
+/** Extracts Context variable from any input by input index, variable id and variable type.
+  * Unlike getVar, it is not throwing exception when expected type does not match real type of the variable.
+  * Thus it can be used to get context variable from self without exception, using selfBoxIndex, e.g. 
+  * <pre class="stHighlight">
+  *   {
+  *       val idx = CONTEXT.selfBoxIndex
+  *       sigmaProp(CONTEXT.getVarFromInput[Int](idx.toShort, 1.toByte).get == 5)
+  *   }
+  * </pre>
+  */
+def getVarFromInput[T](inputId: Short, varId: Byte): Option[T]
+
 /** Construct a new SigmaProp value representing public key of Diffie Hellman
   * signature protocol. When executed as part of Sigma protocol allow to provide
   * for a verifier a zero-knowledge proof of secret knowledge.
@@ -984,6 +1000,12 @@ def proveDHTuple(g: GroupElement, h: GroupElement,
   * to provide for a verifier a zero-knowledge proof of secret knowledge.
   */
 def proveDlog(value: GroupElement): SigmaProp
+
+/** Transforms Base16 encoded string literal into constant of type BigInt.
+  * It is a compile-time operation and only string literal (constant) can be its
+  * argument.
+  */
+def bigInt(input: String): BigInt
 
 /** Transforms Base16 encoded string literal into constant of type Coll[Byte].
   * It is a compile-time operation and only string literal (constant) can be its

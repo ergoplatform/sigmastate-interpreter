@@ -1,7 +1,6 @@
 package special.wrappers
 
 import scala.language.reflectiveCalls
-import scalan.Library
 
 class WOptionTests extends WrappersTests {
 

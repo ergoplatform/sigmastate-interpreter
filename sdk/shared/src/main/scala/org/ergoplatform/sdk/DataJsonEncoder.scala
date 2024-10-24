@@ -122,6 +122,10 @@ object DataJsonEncoder {
       val w = SigmaSerializer.startWriter()
       DataSerializer.serialize(v, tpe, w)
       encodeBytes(w.toBytes)
+    case SHeader =>
+      val w = SigmaSerializer.startWriter()
+      DataSerializer.serialize(v, tpe, w)
+      encodeBytes(w.toBytes)
     case SAvlTree =>
       val w = SigmaSerializer.startWriter()
       DataSerializer.serialize(v, tpe, w)
@@ -203,6 +207,10 @@ object DataJsonEncoder {
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
         DataSerializer.deserialize(SSigmaProp, r)
+      case SHeader => // for Sigma < 6.0 , exception will be thrown by DataSerializer
+        val str = decodeBytes(json)
+        val r = SigmaSerializer.startReader(str)
+        DataSerializer.deserialize(SHeader, r)
       case SBox =>
         val value = decodeData(json.hcursor.downField(s"value").focus.get, SLong)
         val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(decodeBytes(json.hcursor.downField(s"ergoTree").focus.get))

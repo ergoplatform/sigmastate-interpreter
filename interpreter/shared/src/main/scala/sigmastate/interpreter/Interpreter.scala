@@ -23,7 +23,7 @@ import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
 import sigmastate.interpreter.Interpreter._
 import sigma.ast.syntax.ValueOps
 import sigma.eval.{EvalSettings, SigmaDsl}
-import sigma.exceptions.{CostLimitException, InterpreterException}
+import sigma.exceptions.InterpreterException
 import sigma.interpreter.ProverResult
 import sigma.util.CollectionUtil
 import sigmastate.utils.Helpers._
@@ -164,12 +164,11 @@ trait Interpreter {
     * else `exp` is computed in the given context and the resulting SigmaBoolean returned.
     *
     * @param context        the context in which `exp` should be executed
-    * @param env            environment of system variables used by the interpreter internally
     * @param exp            expression to be executed in the given `context`
     * @return result of script reduction
     * @see `ReductionResult`
     */
-  protected def reduceToCryptoJITC(context: CTX, env: ScriptEnv, exp: SigmaPropValue): Try[ReductionResult] = Try {
+  protected def reduceToCryptoJITC(context: CTX, exp: SigmaPropValue): Try[ReductionResult] = Try {
     implicit val vs = context.validationSettings
     trySoftForkable[ReductionResult](whenSoftFork = WhenSoftForkReductionResult(context.initCost)) {
 
@@ -248,12 +247,17 @@ trait Interpreter {
       val currCost = addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
       val (propTree, context2) = trySoftForkable[(SigmaPropValue, CTX)](whenSoftFork = (TrueSigmaProp, context1)) {
-        applyDeserializeContextJITC(context, prop)
+        // Before ErgoTree V3 the deserialization cost was not added to the total cost
+        applyDeserializeContextJITC(if (VersionContext.current.activatedVersion >= VersionContext.V6SoftForkVersion) {
+          context1
+        } else {
+          context
+        }, prop)
       }
 
       // here we assume that when `propTree` is TrueProp then `reduceToCrypto` always succeeds
       // and the rest of the verification is also trivial
-      reduceToCryptoJITC(context2, env, propTree).getOrThrow
+      reduceToCryptoJITC(context2, propTree).getOrThrow
     }
 
     res

@@ -14,6 +14,7 @@ import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
 import sigma.eval.EvalSettings.EvaluationMode
 import sigmastate.interpreter._
 import sigma.ast.syntax.ValueOps
+import sigma.compiler.ir.IRContext
 import sigma.data.CBox
 import sigma.eval.EvalSettings
 import sigma.exceptions.InterpreterException
@@ -272,17 +273,18 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
 
   /** Rule#| BlockVer | Block Type| Script Version | Release | Validation Action
     * -----|----------|-----------|----------------|---------|--------
-    * 19   | 4        | candidate | Script v3      | v5.0    | skip-accept (rely on majority)
-    * 20   | 4        | mined     | Script v3      | v5.0    | skip-accept (rely on majority)
+    * 19   | 5        | candidate | Script v4      | v6.0    | skip-accept (rely on majority)
+    * 20   | 5        | mined     | Script v4      | v6.0    | skip-accept (rely on majority)
     */
-  property("Rules 19,20 | Block v4 | candidate or mined block | Script v3") {
-    forEachActivatedScriptVersion(activatedVers = Array[Byte](3)) // version for Block v4
+  property("Rules 19,20 | Block v5 | candidate or mined block | Script v4") {
+    forEachActivatedScriptVersion(activatedVers = Array[Byte](4)) // activated version is greater than MaxSupported
     {
-      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](3, 4)) { // scripts >= v3
+      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](4, 5)) { // tree version >= activated
         val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 
-        // prover is rejecting, because such context parameters doesn't make sense
+        // prover is rejecting, because it cannot generate proofs for ErgoTrees with version
+        // higher than max supported by the interpreter
         assertExceptionThrown(
           testProve(ergoTree, activatedScriptVersion = activatedVersionInTests),
           exceptionLike[InterpreterException](s"Both ErgoTree version ${ergoTree.version} and activated version $activatedVersionInTests is greater than MaxSupportedScriptVersion $MaxSupportedScriptVersion")
@@ -296,20 +298,20 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     }
   }
 
-  /** Rule#| BlockVer | Block Type| Script Version | Release | Validation Action
-    * -----|----------|-----------|----------------|---------|--------
-    * 21   | 4        | candidate | Script v0/v1   | v5.0    | R5.0-JIT-verify
-    * 22   | 4        | candidate | Script v2      | v5.0    | R5.0-JIT-verify
-    * 23   | 4        | mined     | Script v0/v1   | v5.0    | R5.0-JIT-verify
-    * 24   | 4        | mined     | Script v2      | v5.0    | R5.0-JIT-verify
+  /** Rule#| BlockVer | Block Type| Script Version  | Release | Validation Action
+    * -----|----------|-----------|-----------------|---------|--------
+    * 21   | 5        | candidate | Script v0/v1/v2 | v6.0    | R6.0-JIT-verify
+    * 22   | 5        | candidate | Script v3       | v6.0    | R6.0-JIT-verify
+    * 23   | 5        | mined     | Script v0/v1/v2 | v6.0    | R6.0-JIT-verify
+    * 24   | 5        | mined     | Script v3       | v6.0    | R6.0-JIT-verify
     */
-  property("Rules 21,22,23,24 | Block v4 | candidate or mined block | Script v0/v1/v2") {
-    // this test verifies the normal validation action R5.0-JIT-verify of v5.x releases
-    // when Block v4 already activated, but the script is v0, v1 or v2.
+  property("Rules 21,22,23,24 | Block v5 | candidate or mined block | Script v0/v1/v2/v3") {
+    // this test verifies the normal validation action R6.0-JIT-verify of v6.x releases
+    // when Block v5 already activated, but the script is v0, v1, v2, or v3.
 
-    forEachActivatedScriptVersion(Array[Byte](3)) // version for Block v4
+    forEachActivatedScriptVersion(Array[Byte](4)) // version for Block v5
     {
-      forEachErgoTreeVersion(Array[Byte](0, 1, 2)) { // tree versions supported by v5.x
+      forEachErgoTreeVersion(Array[Byte](0, 1, 2, 3)) { // tree versions supported by v6.x
         // SF inactive: check cost vectors of v4.x interpreter
         val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)

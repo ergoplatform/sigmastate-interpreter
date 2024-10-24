@@ -1,6 +1,6 @@
 package sigma.eval
 
-import sigma.{AvlTree, Coll, Context}
+import sigma.{AvlTree, Coll, Context, Header}
 import sigma.ast.{Constant, FixedCost, MethodCall, OperationCostInfo, OperationDesc, PerItemCost, SType, TypeBasedCost}
 import sigma.data.KeyValueColl
 

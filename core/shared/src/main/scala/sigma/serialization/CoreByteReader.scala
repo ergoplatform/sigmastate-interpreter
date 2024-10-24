@@ -10,10 +10,6 @@ import sigma.validation.ValidationRules.CheckPositionLimit
   * methods.
   *
   * @param r                              the underlying reader this reader reads from
-  * @param constantStore                  the store of constants which is used to resolve
-  *                                       [[sigma.ast.ConstantPlaceholder]]
-  * @param resolvePlaceholdersToConstants if true then resolved constants will be
-  *                                       substituted in the tree instead of the placeholder.
   * @param maxTreeDepth                   limit on the tree depth (recursive invocations)
   *                                       of the deserializer
   */

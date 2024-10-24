@@ -13,8 +13,6 @@ class TypesSpecification extends SigmaTestingData {
       implicit val tWrapped = wrappedTypeGen(t)
       forAll { x: SPredefType#WrappedType =>
         isValueOfType(x, t) shouldBe true
-        // since forall t. SHeader != t
-        isValueOfType(x, SHeader) shouldBe false
       }
     }
   }
