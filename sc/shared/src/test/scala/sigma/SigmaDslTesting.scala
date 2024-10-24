@@ -771,7 +771,7 @@ class SigmaDslTesting extends AnyPropSpec
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       // check the new implementation with Scala semantic function
       val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
-        checkEq(scalaFuncNew)(newF)(input)
+          checkEq(scalaFuncNew)(newF)(input)
       }
 
       if (VersionContext.current.activatedVersion < changedInVersion) {

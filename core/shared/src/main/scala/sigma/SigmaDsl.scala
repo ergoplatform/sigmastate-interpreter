@@ -746,6 +746,17 @@ trait Context {
     */
   def getVar[T](id: Byte)(implicit cT: RType[T]): Option[T]
 
+  /**
+    * A variant of `getVar` to extract a context variable by id and type from any input
+    *
+    * @param inputIndex - input index
+    * @param id - context variable id
+    * @tparam T - expected type of the variable
+    * @return Some(value) if the variable is defined in the context AND has the given type.
+    *         None otherwise
+    */
+  def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit cT: RType[T]): Option[T]
+
   def vars: Coll[AnyValue]
 
   /** Maximum version of ErgoTree currently activated on the network.
