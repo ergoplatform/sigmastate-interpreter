@@ -919,7 +919,7 @@ def longToByteArray(input: Long): Coll[Byte]
 def decodePoint(bytes: Coll[Byte]): GroupElement 
 
 
-/** Extracts Context variable from self input by id and type.
+/** Extracts Context variable from SELF input by id and type.
   * ErgoScript is typed, so accessing a the variables is an operation which involves
   * some expected type given in brackets. Thus `getVar[Int](id)` expression should
   * evaluate to a valid value of the `Option[Int]` type.
