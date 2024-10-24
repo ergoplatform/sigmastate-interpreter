@@ -4533,6 +4533,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           .append(Coll[AnyValue](
             CAnyValue(Helpers.decodeBytes("00")),
             CAnyValue(true))),
+      spendingTransaction = null,
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
