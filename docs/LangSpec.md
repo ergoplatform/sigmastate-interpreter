@@ -976,7 +976,7 @@ def decodePoint(bytes: Coll[Byte]): GroupElement
   */
 def getVar[T](tag: Int): Option[T]
 
-/** Extracts Context variable from any input by input id, variable id and variable type.
+/** Extracts Context variable from any input by input index, variable id and variable type.
   * Unlike getVar, it is not throwing exception when expected type does not match real type of the variable.
   * Thus it can be used to get context variable from self without exception, using selfBoxIndex, e.g. 
   * <pre class="stHighlight">
