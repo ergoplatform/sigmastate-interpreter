@@ -771,7 +771,7 @@ class SigmaDslTesting extends AnyPropSpec
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       // check the new implementation with Scala semantic function
       val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
-        checkEq(scalaFuncNew)(newF)(input)
+          checkEq(scalaFuncNew)(newF)(input)
       }
 
       if (VersionContext.current.activatedVersion < changedInVersion) {
@@ -1013,6 +1013,20 @@ class SigmaDslTesting extends AnyPropSpec
       new Expected(ExpectedResult(value, Some(cost))) {
         override val newResults = defaultNewResults.map { case (r, _) =>
           (r, Some(expectedDetails))
+        }
+      }
+
+    /** Used when the old and new value are the same for all versions
+      * and the expected costs are not specified.
+      *
+      * @param value           expected result of tested function
+      * @param expectedDetails expected cost details for all versions
+      */
+    def apply[A](value: Try[A], expectedDetails: CostDetails): Expected[A] =
+      new Expected(ExpectedResult(value, None)) {
+        override val newResults = defaultNewResults.map {
+          case (ExpectedResult(v, _), _) =>
+            (ExpectedResult(v, None), Some(expectedDetails))
         }
       }
 

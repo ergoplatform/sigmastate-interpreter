@@ -3,7 +3,7 @@ package sigma.data
 import sigma.crypto.{CryptoFacade, Ecp}
 import sigma.serialization.GroupElementSerializer
 import sigma.util.Extensions.EcpOps
-import sigma.{BigInt, Coll, Colls, GroupElement}
+import sigma.{BigInt, Coll, Colls, GroupElement, UnsignedBigInt}
 
 /** A default implementation of [[GroupElement]] interface.
   *
@@ -20,6 +20,9 @@ case class CGroupElement(override val wrappedValue: Ecp) extends GroupElement wi
 
   override def exp(k: BigInt): GroupElement =
     CGroupElement(CryptoFacade.exponentiatePoint(wrappedValue, k.asInstanceOf[CBigInt].wrappedValue))
+
+  override def expUnsigned(k: UnsignedBigInt): GroupElement =
+    CGroupElement(CryptoFacade.exponentiatePoint(wrappedValue, k.asInstanceOf[CUnsignedBigInt].wrappedValue))
 
   override def multiply(that: GroupElement): GroupElement =
     CGroupElement(CryptoFacade.multiplyPoints(wrappedValue, that.asInstanceOf[CGroupElement].wrappedValue))

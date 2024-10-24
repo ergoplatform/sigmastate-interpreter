@@ -906,6 +906,17 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     )
   }
 
+  property("serialize") {
+    checkParsed("serialize(1)", Apply(Ident("serialize", NoType), Array(IntConstant(1))))
+    checkParsed("serialize((1, 2L))",
+      Apply(Ident("serialize", NoType), Array(Tuple(Vector(IntConstant(1), LongConstant(2L))))))
+    checkParsed("serialize(Coll(1, 2, 3))",
+      Apply(
+        Ident("serialize", NoType),
+        Array(Apply(Ident("Coll", NoType), Array(IntConstant(1), IntConstant(2), IntConstant(3))))
+      ))
+  }
+
   property("single name pattern fail") {
     fail("{val (a,b) = (1,2)}", 1, 6)
   }

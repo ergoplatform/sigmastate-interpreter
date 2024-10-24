@@ -204,7 +204,7 @@ object Extensions {
       * not exactly fit in a 256 bit range.
       * @see BigInteger#longValueExact
       */
-    @inline final def to256BitValueExact: BigInteger = {
+    @inline final def toSignedBigIntValueExact: BigInteger = {
       // Comparing with 255 is correct because bitLength() method excludes the sign bit.
       // For example, these are the boundary values:
       // (new BigInteger("80" + "00" * 31, 16)).bitLength() = 256
@@ -215,6 +215,14 @@ object Extensions {
       if (x.bitLength() <= 255) x
       else
         throw new ArithmeticException("BigInteger out of 256 bit range");
+    }
+
+    @inline final def toUnsignedBigIntValueExact: BigInteger = {
+      if (x.compareTo(BigInteger.ZERO) >= 0 && x.bitLength() <= 256) {
+        x
+      } else {
+        throw new ArithmeticException("Unsigned BigInteger out of 256 bit range or negative")
+      }
     }
 
     /** Converts `x` to [[sigma.BigInt]] */

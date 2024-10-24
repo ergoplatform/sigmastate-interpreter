@@ -25,6 +25,7 @@ object Evaluation {
     case SAny => AnyType
     case SUnit => UnitType
     case SBigInt => BigIntRType
+    case SUnsignedBigInt => UnsignedBigIntRType
     case SBox => BoxRType
     case SContext => ContextRType
     case SGlobal => SigmaDslBuilderRType
@@ -67,6 +68,7 @@ object Evaluation {
     case AnyType => SAny
     case UnitType => SUnit
     case BigIntRType => SBigInt
+    case UnsignedBigIntRType => SUnsignedBigInt
     case GroupElementRType => SGroupElement
     case AvlTreeRType => SAvlTree
     case ot: OptionType[_] => SOption(rtypeToSType(ot.tA))

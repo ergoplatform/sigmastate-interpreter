@@ -8,7 +8,6 @@
 *.fdb_latexmk
 *.gz
 
-
 yarn.lock
 *.log
 yarn.lock

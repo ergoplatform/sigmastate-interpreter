@@ -34,6 +34,7 @@ trait Types extends Core {
     "Int"     -> SInt,
     "Long"    -> SLong,
     "BigInt"  -> SBigInt,
+    "UnsignedBigInt"  -> SUnsignedBigInt,
     "AvlTree" -> SAvlTree,
     "Context" -> SContext,
     "GroupElement" -> SGroupElement,

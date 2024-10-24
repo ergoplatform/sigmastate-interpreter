@@ -63,6 +63,14 @@ class CollCls extends EntityObject("Coll") {
         true, false, element[A]))
     }
 
+    override def get(index: Ref[Int]): Ref[WOption[A]] = {
+      asRep[WOption[A]](mkMethodCall(self,
+        CollClass.getMethod("get", classOf[Sym]),
+        Array[AnyRef](index),
+        true, false, element[WOption[A]]))
+    }
+
+
     override def map[B](f: Ref[A => B]): Ref[Coll[B]] = {
       implicit val eB = f.elem.eRange
       asRep[Coll[B]](mkMethodCall(self,
@@ -164,6 +172,34 @@ class CollCls extends EntityObject("Coll") {
         Array[AnyRef](other),
         true, false, element[Coll[A]]))
     }
+
+    override def reverse: Ref[Coll[A]] = {
+      asRep[Coll[A]](mkMethodCall(self,
+        CollClass.getMethod("reverse"),
+        Array[AnyRef](),
+        true, false, element[Coll[A]]))
+    }
+
+    override def distinct: Ref[Coll[A]] = {
+      asRep[Coll[A]](mkMethodCall(self,
+        CollClass.getMethod("distinct"),
+        Array[AnyRef](),
+        true, false, element[Coll[A]]))
+    }
+
+    def startsWith(ys: Ref[Coll[A]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(self,
+        CollClass.getMethod("startsWith", classOf[Sym]),
+        Array[AnyRef](ys),
+        true, false, element[Boolean]))
+    }
+
+    def endsWith(ys: Ref[Coll[A]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(self,
+        CollClass.getMethod("endsWith", classOf[Sym]),
+        Array[AnyRef](ys),
+        true, false, element[Boolean]))
+    }
   }
 
   case class LiftableColl[SA, A](lA: Liftable[SA, A])
@@ -208,6 +244,13 @@ class CollCls extends EntityObject("Coll") {
         CollClass.getMethod("getOrElse", classOf[Sym], classOf[Sym]),
         Array[AnyRef](index, default),
         true, true, element[A]))
+    }
+
+    def get(index: Ref[Int]): Ref[WOption[A]] = {
+      asRep[WOption[A]](mkMethodCall(source,
+        CollClass.getMethod("get", classOf[Sym]),
+        Array[AnyRef](index),
+        true, true, element[WOption[A]]))
     }
 
     def map[B](f: Ref[A => B]): Ref[Coll[B]] = {
@@ -310,6 +353,34 @@ class CollCls extends EntityObject("Coll") {
         CollClass.getMethod("append", classOf[Sym]),
         Array[AnyRef](other),
         true, true, element[Coll[A]]))
+    }
+
+    def reverse: Ref[Coll[A]] = {
+      asRep[Coll[A]](mkMethodCall(source,
+        CollClass.getMethod("reverse"),
+        Array[AnyRef](),
+        true, true, element[Coll[A]]))
+    }
+
+    def distinct: Ref[Coll[A]] = {
+      asRep[Coll[A]](mkMethodCall(source,
+        CollClass.getMethod("distinct"),
+        Array[AnyRef](),
+        true, true, element[Coll[A]]))
+    }
+
+    def startsWith(ys: Ref[Coll[A]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(source,
+        CollClass.getMethod("startsWith", classOf[Sym]),
+        Array[AnyRef](ys),
+        true, true, element[Boolean]))
+    }
+
+    def endsWith(ys: Ref[Coll[A]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(source,
+        CollClass.getMethod("endsWith", classOf[Sym]),
+        Array[AnyRef](ys),
+        true, true, element[Boolean]))
     }
   }
 

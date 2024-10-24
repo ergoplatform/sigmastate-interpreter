@@ -13,9 +13,26 @@ import scalan._
       def mod(m: Ref[BigInt]): Ref[BigInt];
       def min(that: Ref[BigInt]): Ref[BigInt];
       def max(that: Ref[BigInt]): Ref[BigInt];
+      def toUnsigned(): Ref[UnsignedBigInt];
+      def toUnsignedMod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
+    };
+    trait UnsignedBigInt extends Def[UnsignedBigInt] {
+      def add(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def subtract(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def multiply(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def divide(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def mod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def min(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def max(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt];
+      def modInverse(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
+      def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
+      def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
+      def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
+      def toSigned: Ref[BigInt]
     };
     trait GroupElement extends Def[GroupElement] {
       def exp(k: Ref[BigInt]): Ref[GroupElement];
+      def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement];
       def multiply(that: Ref[GroupElement]): Ref[GroupElement];
       def negate: Ref[GroupElement];
       def getEncoded: Ref[Coll[Byte]]
@@ -92,6 +109,7 @@ import scalan._
       def preHeader: Ref[PreHeader];
       def minerPubKey: Ref[Coll[Byte]];
       def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
+      def getVarFromInput[T](inputId: Ref[Short], id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
     };
     trait SigmaDslBuilder extends Def[SigmaDslBuilder] {
       def Colls: Ref[CollBuilder];
@@ -115,6 +133,8 @@ import scalan._
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
       def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
+      def serialize[T](value: Ref[T]): Ref[Coll[Byte]]
+      def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
     };
     trait CostModelCompanion;
     trait BigIntCompanion;

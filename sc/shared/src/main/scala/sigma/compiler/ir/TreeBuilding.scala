@@ -1,6 +1,9 @@
 package sigma.compiler.ir
 
 import org.ergoplatform._
+import sigma.VersionContext
+import sigma.Evaluation.{rtypeToSType, stypeToRType}
+import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.ast.syntax.{ValueOps, _}
 import sigma.data.{ProveDHTuple, ProveDlog}

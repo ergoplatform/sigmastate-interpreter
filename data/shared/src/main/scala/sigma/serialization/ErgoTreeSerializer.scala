@@ -373,7 +373,7 @@ class ErgoTreeSerializer {
           val newVal = newVals(positions.indexOf(i))
           // we need to get newVal's serialized constant value (see ProveDlogSerializer for example)
           val constantStore = new ConstantStore()
-          val valW = SigmaSerializer.startWriter(constantStore)
+          val valW = SigmaSerializer.startWriter(Some(constantStore))
           valW.putValue(newVal)
           val newConsts = constantStore.getAll
           require(newConsts.length == 1)

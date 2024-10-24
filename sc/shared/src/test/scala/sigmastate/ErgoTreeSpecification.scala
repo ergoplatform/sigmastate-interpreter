@@ -457,7 +457,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(5, IdMethod),
         MInfo(6, creationInfoMethod),
         MInfo(8, tokensMethod)
-      ) ++ (if (VersionContext.current.isV6SoftForkActivated) {
+      ) ++ (if (isV6Activated) {
         Seq(MInfo(7, getRegMethodV6))
       } else {
         Seq(MInfo(7, getRegMethodV5))
@@ -491,8 +491,8 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(7, timestampMethod), MInfo(8, nBitsMethod), MInfo(9, heightMethod),
         MInfo(10, extensionRootMethod), MInfo(11, minerPkMethod), MInfo(12, powOnetimePkMethod),
         MInfo(13, powNonceMethod), MInfo(14, powDistanceMethod), MInfo(15, votesMethod)
-      ) ++ (if (VersionContext.current.isV6SoftForkActivated) {
-        Seq(MInfo(16, checkPowMethod))
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(16, checkPowMethod)) // methods added in v6.0
       } else {
         Seq.empty[MInfo]
       }), true)
@@ -509,13 +509,21 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(1, dataInputsMethod), MInfo(2, headersMethod), MInfo(3, preHeaderMethod),
         MInfo(4, inputsMethod), MInfo(5, outputsMethod), MInfo(6, heightMethod),
         MInfo(7, selfMethod), MInfo(8, selfBoxIndexMethod), MInfo(9, lastBlockUtxoRootHashMethod),
-        MInfo(10, minerPubKeyMethod), MInfo(11, getVarMethod)
-      ), true)
+        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV6SoftForkActivated){
+          Seq(MInfo(11, getVarV6Method), MInfo(12, getVarFromInputMethod))
+        } else {
+          Seq(MInfo(11, getVarV5Method))
+        }), true)
     },
     { import SGlobalMethods._
       (SGlobal.typeId, Seq(
         MInfo(1, groupGeneratorMethod), MInfo(2, xorMethod)
-        ), true)
+      ) ++ (if (isV6Activated) {
+        // id = 4 reserved for deserializeTo method
+        Seq(MInfo(3, serializeMethod), MInfo(5, fromBigEndianBytesMethod)) // methods added in v6.0
+      } else {
+        Seq.empty[MInfo]
+      }), true)
     },
     { import SCollectionMethods._
       (SCollection.typeId, Seq(
@@ -557,7 +565,9 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         EndsWithMethod,
         MapReduceMethod,
         */
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(30, ReverseMethod), MInfo(31, DistinctMethod), MInfo(32, StartsWithMethod), MInfo(33, EndsWithMethod), MInfo(34, GetMethod))
+      } else Seq.empty), true)
     },
     { import SOptionMethods._
       (SOption.typeId, Seq(

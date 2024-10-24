@@ -683,6 +683,16 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "CONTEXT.dataInputs") shouldBe SCollection(SBox)
   }
 
+  property("SContext.getVar") {
+    typecheck(env, "CONTEXT.getVar[Int](1.toByte).get") shouldBe SInt
+  }
+
+  property("SContext.getVarFromInput") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "CONTEXT.getVarFromInput[Int](1.toShort, 1.toByte).get") shouldBe SInt
+    }
+  }
+
   property("SAvlTree.digest") {
     typecheck(env, "getVar[AvlTree](1).get.digest") shouldBe SByteArray
   }
@@ -712,6 +722,37 @@ class SigmaTyperTest extends AnyPropSpec
       "expectedBytes" -> Colls.fromArray(expectedBytes)
     )
     typecheck(customEnv, "substConstants(scriptBytes, positions, newVals)") shouldBe SByteArray
+  }
+
+  property("Global.serialize") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "Global.serialize(1)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SInt)),
+          Array(IntConstant(1)),
+          Map()
+        )) shouldBe SByteArray
+    }
+
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "Global.serialize(1)"),
+        exceptionLike[MethodNotFound]("Cannot find method 'serialize' in in the object Global")
+      )
+    }
+  }
+
+  property("predefined serialize") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "serialize((1, 2L))",
+        expected = MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SPair(SInt, SLong))),
+          Array(Tuple(Vector(IntConstant(1), LongConstant(2L)))),
+          Map()
+        )) shouldBe SByteArray
+    }
   }
 
 }

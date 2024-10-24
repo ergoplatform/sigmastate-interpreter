@@ -15,6 +15,7 @@ import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.validation.SigmaValidationSettings
 import sigma.{Coll, Colls, GroupElement, SigmaProp, VersionContext}
 import NumericOps.{BigIntIsExactIntegral, BigIntIsExactOrdering}
+import sigma.data.UnsignedBigIntNumericOps.{UnsignedBigIntIsExactIntegral, UnsignedBigIntIsExactOrdering}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.Extensions.EvalCollOps
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
@@ -652,7 +653,7 @@ case class SubstConstants[T <: SType](scriptBytes: Value[SByteArray], positions:
       val (newBytes, nConstants) = SubstConstants.eval(
         scriptBytes = scriptBytesV.toArray,
         positions = positionsV.toArray,
-        newVals = typedNewVals)(SigmaDsl.validationSettings)
+        newVals = typedNewVals)
 
       res = Colls.fromArray(newBytes)
       nConstants
@@ -683,7 +684,7 @@ object SubstConstants extends ValueCompanion {
     */
   def eval(scriptBytes: Array[Byte],
            positions: Array[Int],
-           newVals: Array[Constant[SType]])(implicit vs: SigmaValidationSettings): (Array[Byte], Int) =
+           newVals: Array[Constant[SType]]): (Array[Byte], Int) =
     ErgoTreeSerializer.DefaultSerializer.substituteConstants(scriptBytes, positions, newVals)
 }
 
@@ -875,7 +876,8 @@ object ArithOp {
       SShort  -> new OperationImpl(ShortIsExactIntegral,  ShortIsExactOrdering,  SShort),
       SInt    -> new OperationImpl(IntIsExactIntegral,    IntIsExactOrdering,    SInt),
       SLong   -> new OperationImpl(LongIsExactIntegral,   LongIsExactOrdering,   SLong),
-      SBigInt -> new OperationImpl(BigIntIsExactIntegral, BigIntIsExactOrdering, SBigInt)
+      SBigInt -> new OperationImpl(BigIntIsExactIntegral, BigIntIsExactOrdering, SBigInt),
+      SUnsignedBigInt -> new OperationImpl(UnsignedBigIntIsExactIntegral, UnsignedBigIntIsExactOrdering, SUnsignedBigInt)
     ).map { case (t, n) => (t.typeCode, n) })
 
   /** Returns operation name for the given opCode. */

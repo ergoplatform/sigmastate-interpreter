@@ -1,12 +1,13 @@
 package sigma
 
-import java.math.BigInteger
+import sigma.ast.SType
 
+import java.math.BigInteger
 import sigma.data._
 
 /**
-  * Functions defined for 256-bit signed integers
-  * */
+  * Base class for signed 256-bits integers
+  */
 trait BigInt {
   /** Convert this BigInt value to Byte.
     * @throws ArithmeticException if overflow happens.
@@ -168,7 +169,162 @@ trait BigInt {
     * @return a 256-bit signed integer whose value is (this >> n). `n` should be in 0..255 range (inclusive).
     */
   def shiftRight(n: Int): BigInt
+
+  /**
+    * @return unsigned representation of this BigInt, or exception if its value is negative
+    */
+  def toUnsigned: UnsignedBigInt
+
+  /**
+    * @return unsigned representation of this BigInt modulo `m`. Cryptographic mod operation is done, ie result is
+    *         non-negative always
+    */
+  def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt
 }
+
+
+trait UnsignedBigInt {
+  /** Convert this BigInt value to Byte.
+    * @throws ArithmeticException if overflow happens.
+    */
+  def toByte: Byte
+
+  /** Convert this BigInt value to Short.
+    * @throws ArithmeticException if overflow happens.
+    */
+  def toShort: Short
+
+  /** Convert this BigInt value to Int.
+    * @throws ArithmeticException if overflow happens.
+    */
+  def toInt: Int
+
+  /** Convert this BigInt value to Int.
+    * @throws ArithmeticException if overflow happens.
+    */
+  def toLong: Long
+
+  /** Returns a big-endian representation of this BigInt in a collection of bytes.
+    * For example, the value {@code 0x1213141516171819} would yield the
+    * byte array {@code {0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19}}.
+    * @since 2.0
+    */
+  def toBytes: Coll[Byte]
+
+
+  /** Compares this numeric with that numeric for order.  Returns a negative integer, zero, or a positive integer as the
+    * `this` is less than, equal to, or greater than `that`.
+    */
+  def compareTo(that: UnsignedBigInt): Int
+
+  /** Returns a BigInt whose value is {@code (this + that)}.
+    *
+    * @param  that value to be added to this BigInt.
+    * @return { @code this + that}
+    */
+  def add(that: UnsignedBigInt): UnsignedBigInt
+  def +(that: UnsignedBigInt): UnsignedBigInt = add(that)
+
+  /** Returns a BigInt whose value is {@code (this - that)}.
+    *
+    * @param  that value to be subtracted from this BigInt.
+    * @return { @code this - that}
+    */
+  def subtract(that: UnsignedBigInt): UnsignedBigInt
+
+  def -(that: UnsignedBigInt): UnsignedBigInt = subtract(that)
+
+  /** Returns a BigInt whose value is {@code (this * that)}.
+    *
+    * @implNote An implementation may offer better algorithmic
+    *           performance when { @code that == this}.
+    * @param  that value to be multiplied by this BigInt.
+    * @return { @code this * that}
+    */
+  def multiply(that: UnsignedBigInt): UnsignedBigInt
+  def *(that: UnsignedBigInt): UnsignedBigInt = multiply(that)
+
+  /** Returns a BigInt whose value is {@code (this / that)}.
+    *
+    * @param  that value by which this BigInt is to be divided.
+    * @return { @code this / that}
+    * @throws ArithmeticException if { @code that} is zero.
+    */
+  def divide(that: UnsignedBigInt): UnsignedBigInt
+  def /(that: UnsignedBigInt): UnsignedBigInt = divide(that)
+
+  /**
+    * Returns a BigInt whose value is {@code (this mod m}).  This method
+    * differs from {@code remainder} in that it always returns a
+    * <i>non-negative</i> BigInteger.
+    *
+    * @param  m the modulus.
+    * @return { @code this mod m}
+    * @throws ArithmeticException { @code m} &le; 0
+    * @see #remainder
+    */
+  def mod(m: UnsignedBigInt): UnsignedBigInt
+  def %(m: UnsignedBigInt): UnsignedBigInt = mod(m)
+
+  /**
+    * Returns the minimum of this BigInteger and {@code val}.
+    *
+    * @param  that value with which the minimum is to be computed.
+    * @return the BigInteger whose value is the lesser of this BigInteger and
+    *         { @code val}.  If they are equal, either may be returned.
+    */
+  def min(that: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * Returns the maximum of this BigInteger and {@code val}.
+    *
+    * @param  that value with which the maximum is to be computed.
+    * @return the BigInteger whose value is the greater of this and
+    *         { @code val}.  If they are equal, either may be returned.
+    */
+  def max(that: UnsignedBigInt): UnsignedBigInt
+
+  /** Returns a BigInteger whose value is `(this & that)`.
+    * @param that value to be AND'ed with this BigInteger.
+    * @return `this & that`
+    */
+  def and(that: UnsignedBigInt): UnsignedBigInt
+  def &(that: UnsignedBigInt): UnsignedBigInt = and(that)
+
+  /** Returns a BigInteger whose value is `(this | that)`.
+    *
+    * @param that value to be OR'ed with this BigInteger.
+    * @return `this | that`
+    */
+  def or(that: UnsignedBigInt): UnsignedBigInt
+  def |(that: UnsignedBigInt): UnsignedBigInt = or(that)
+
+  def modInverse(m: UnsignedBigInt): UnsignedBigInt
+  def plusMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
+  def subtractMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
+  def multiplyMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * @return a big integer whose value is `this xor that`
+    */
+  def xor(that: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * @return a 256-bit signed integer whose value is (this << n). The shift distance, n, may be negative,
+    *         in which case this method performs a right shift. (Computes floor(this * 2n).)
+    */
+  def shiftLeft(n: Int): UnsignedBigInt
+
+  /**
+    * @return a 256-bit signed integer whose value is (this >> n). Sign extension is performed. The shift distance, n,
+    *         may be negative, in which case this method performs a left shift. (Computes floor(this / 2n).)
+    */
+  def shiftRight(n: Int): UnsignedBigInt
+
+  def toSigned(): BigInt
+}
+
+
 
 /** Base class for points on elliptic curves. */
 trait GroupElement {
@@ -181,6 +337,8 @@ trait GroupElement {
     * @since 2.0
     */
   def exp(k: BigInt): GroupElement
+
+  def expUnsigned(k: UnsignedBigInt): GroupElement
 
   /** Group operation. */
   def multiply(that: GroupElement): GroupElement
@@ -588,6 +746,17 @@ trait Context {
     */
   def getVar[T](id: Byte)(implicit cT: RType[T]): Option[T]
 
+  /**
+    * A variant of `getVar` to extract a context variable by id and type from any input
+    *
+    * @param inputIndex - input index
+    * @param id - context variable id
+    * @tparam T - expected type of the variable
+    * @return Some(value) if the variable is defined in the context AND has the given type.
+    *         None otherwise
+    */
+  def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit cT: RType[T]): Option[T]
+
   def vars: Coll[AnyValue]
 
   /** Maximum version of ErgoTree currently activated on the network.
@@ -752,13 +921,21 @@ trait SigmaDslBuilder {
   /** Create DSL big integer from existing `java.math.BigInteger`*/
   def BigInt(n: BigInteger): BigInt
 
+  def UnsignedBigInt(n: BigInteger): UnsignedBigInt
+
   /** Extract `java.math.BigInteger` from DSL's `BigInt` type*/
   def toBigInteger(n: BigInt): BigInteger
 
   /** Construct a new authenticated dictionary with given parameters and tree root digest. */
   def avlTree(operationFlags: Byte, digest: Coll[Byte], keyLength: Int, valueLengthOpt: Option[Int]): AvlTree
 
+  /** Serializes the given `value` into bytes using the default serialization format. */
+  def serialize[T](value: T)(implicit cT: RType[T]): Coll[Byte]
+
   /** Returns a byte-wise XOR of the two collections of bytes. */
   def xor(l: Coll[Byte], r: Coll[Byte]): Coll[Byte]
+
+  /** Returns a number decoded from provided big-endian bytes array. */
+  def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
 }
 
