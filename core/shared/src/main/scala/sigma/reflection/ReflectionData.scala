@@ -288,6 +288,9 @@ object ReflectionData {
         mkMethod(clazz, "getVar", Array[Class[_]](classOf[Byte], classOf[RType[_]])) { (obj, args) =>
           obj.asInstanceOf[Context].getVar(args(0).asInstanceOf[Byte])(args(1).asInstanceOf[RType[_]])
         },
+        mkMethod(clazz, "getVarFromInput", Array[Class[_]](classOf[Short], classOf[Byte], classOf[RType[_]])) { (obj, args) =>
+          obj.asInstanceOf[Context].getVarFromInput(args(0).asInstanceOf[Short], args(1).asInstanceOf[Byte])(args(2).asInstanceOf[RType[_]])
+        },
         mkMethod(clazz, "headers", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[Context].headers
         }

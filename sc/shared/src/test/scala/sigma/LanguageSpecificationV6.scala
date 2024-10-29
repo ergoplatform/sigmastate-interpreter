@@ -1,23 +1,31 @@
 package sigma
 
-import org.ergoplatform.ErgoHeader
+import org.ergoplatform.{ErgoBox, ErgoHeader, ErgoLikeTransaction, Input}
 import scorex.util.encode.Base16
 import sigma.VersionContext.V6SoftForkVersion
-import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.Token
+import org.ergoplatform.settings.ErgoAlgos
 import scorex.util.ModifierId
 import scorex.utils.{Ints, Longs, Shorts}
-import sigma.ast.ErgoTree.ZeroHeader
+import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigmastate.eval.{CContext, CPreHeader}
+import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigma.data.{RType}
+import sigma.serialization.ValueCodes.OpCode
+import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
+import sigma.Extensions.{ArrayOps, CollOps}
+import sigma.interpreter.{ContextExtension, ProverResult}
 
 import java.math.BigInteger
 import scala.util.{Failure, Success}
@@ -1519,6 +1527,243 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         Coll(Int.MinValue, Int.MaxValue - 1),
         Coll(0, 1, 2, 3, 100, 1000)
       ))
+    )
+  }
+
+  private def contextData() = {
+    val input = CBox(
+      new ErgoBox(
+        80946L,
+        new ErgoTree(
+          HeaderType @@ 16.toByte,
+          Vector(
+            SigmaPropConstant(
+              CSigmaProp(
+                ProveDHTuple(
+                  Helpers.decodeECPoint("03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb"),
+                  Helpers.decodeECPoint("023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d03"),
+                  Helpers.decodeECPoint("03d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72"),
+                  Helpers.decodeECPoint("037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441")
+                )
+              )
+            )
+          ),
+          Right(ConstantPlaceholder(0, SSigmaProp))
+        ),
+        Coll(),
+        Map(
+          ErgoBox.R4 -> ByteArrayConstant(Helpers.decodeBytes("34")),
+          ErgoBox.R5 -> TrueLeaf
+        ),
+        ModifierId @@ ("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
+        1.toShort,
+        5
+      )
+    )
+
+    val tx = ErgoLikeTransaction(
+      IndexedSeq(),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx2 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(true)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx3 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> IntConstant(0)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val tx4 = ErgoLikeTransaction(
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(false)))))),
+      IndexedSeq(input.wrappedValue)
+    )
+
+    val ctx = CContext(
+      _dataInputs = Coll[Box](),
+      headers = Coll[Header](),
+      preHeader = CPreHeader(
+        0.toByte,
+        Colls.fromArray(Array.fill(32)(0.toByte)),
+        -755484979487531112L,
+        9223372036854775807L,
+        11,
+        Helpers.decodeGroupElement("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
+        Helpers.decodeBytes("007f00")
+      ),
+      inputs = Coll[Box](input),
+      outputs = Coll[Box](),
+      height = 11,
+      selfBox = input.copy(), // in 3.x, 4.x implementation selfBox is never the same instance as input (see toSigmaContext)
+      selfIndex = 0,
+      lastBlockUtxoRootHash = CAvlTree(
+        AvlTreeData(
+          ErgoAlgos.decodeUnsafe("54d23dd080006bdb56800100356080935a80ffb77e90b800057f00661601807f17").toColl,
+          AvlTreeFlags(true, true, true),
+          1211925457,
+          None
+        )
+      ),
+      _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
+      vars = Colls
+        .replicate[AnyValue](10, null) // reserve 10 vars
+        .append(Coll[AnyValue](
+          CAnyValue(Helpers.decodeBytes("00")),
+          CAnyValue(true))),
+      spendingTransaction = tx,
+      activatedScriptVersion = activatedVersionInTests,
+      currentErgoTreeVersion = ergoTreeVersionInTests
+    )
+    val ctx2 = ctx.copy(spendingTransaction = tx2)
+    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))
+    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = ctx.vars.patch(11, Coll(CAnyValue(false)), 1))
+
+    (ctx, ctx2, ctx3, ctx4)
+  }
+
+  property("getVarFromInput") {
+
+    def getVarFromInput = {
+      newFeature(
+        { (x: Context) => x.getVarFromInput[Boolean](0, 11) },
+        "{ (x: Context) => x.getVarFromInput[Boolean](0, 11) }",
+        FuncValue(
+          Array((1, SContext)),
+          MethodCall.typed[Value[SOption[SBoolean.type]]](
+            ValUse(1, SContext),
+            SContextMethods.getVarFromInputMethod.withConcreteTypes(Map(STypeVar("T") -> SBoolean)),
+            Array(ShortConstant(0.toShort), ByteConstant(11.toByte)),
+            Map(STypeVar("T") -> SBoolean)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    val (ctx, ctx2, ctx3, ctx4) = contextData()
+
+    verifyCases(
+      Seq(
+        ctx -> new Expected(ExpectedResult(Success(None), None)), // input with # provided does not exist
+        ctx2 -> new Expected(ExpectedResult(Success(Some(true)), None)),
+        ctx3 -> new Expected(ExpectedResult(Success(None), None)), // not expected type in context var
+        ctx4 -> new Expected(ExpectedResult(Success(Some(false)), None))
+      ),
+      getVarFromInput
+    )
+  }
+
+  property("Context.getVar") {
+
+    def getVar = {
+      newFeature(
+        { (x: Context) => x.getVar[Boolean](11)},
+        "{ (x: Context) => CONTEXT.getVar[Boolean](11.toByte) }",
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    val (_, ctx2, ctx3, ctx4) = contextData()
+
+    verifyCases(
+      Seq(
+        ctx2 -> new Expected(ExpectedResult(Success(Some(true)), None)),
+        ctx3 -> new Expected(ExpectedResult(Failure(new sigma.exceptions.InvalidType("Cannot getVar[Boolean](11): invalid type of value TestValue(0) at id=11")), None)), // not expected type in context var
+        ctx4 -> new Expected(ExpectedResult(Success(Some(false)), None))
+      ),
+      getVar
+    )
+  }
+
+  property("Option.getOrElse with lazy default") {
+
+    val trace = TracedCost(
+      Array(
+        FixedCostItem(Apply),
+        FixedCostItem(FuncValue),
+        FixedCostItem(GetVar),
+        FixedCostItem(OptionGet),
+        FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+        FixedCostItem(ValUse),
+        FixedCostItem(OptionGetOrElse)
+      )
+    )
+
+    verifyCases(
+      Seq(
+        Some(2L) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
+          newVersionedResults = {
+            expectedSuccessForAllTreeVersions(2L, 2015, trace)
+          } ),
+        None -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
+      ),
+      changedFeature(
+        changedInVersion = VersionContext.V6SoftForkVersion,
+        { (x: Option[Long]) => val default = 1 / 0L; x.getOrElse(default) },
+        { (x: Option[Long]) => if (VersionContext.current.isV6SoftForkActivated) {x.getOrElse(1 / 0L)} else {val default = 1 / 0L; x.getOrElse(default)} },
+        "{ (x: Option[Long]) => x.getOrElse(1 / 0L) }",
+        FuncValue(
+          Array((1, SOption(SLong))),
+          OptionGetOrElse(
+            ValUse(1, SOption(SLong)),
+            ArithOp(LongConstant(1L), LongConstant(0L), OpCode @@ (-99.toByte))
+          )
+        ),
+        allowNewToSucceed = true
+      )
+    )
+  }
+
+  property("Coll getOrElse with lazy default") {
+
+    val trace = TracedCost(
+      Array(
+        FixedCostItem(Apply),
+        FixedCostItem(FuncValue),
+        FixedCostItem(GetVar),
+        FixedCostItem(OptionGet),
+        FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+        FixedCostItem(ValUse),
+        FixedCostItem(Constant),
+        FixedCostItem(ByIndex)
+      )
+    )
+
+    def scalaFuncNew(x: Coll[Int]) = {
+      if (VersionContext.current.isV6SoftForkActivated) {
+        x.toArray.toIndexedSeq.headOption.getOrElse(1 / 0)
+      } else scalaFuncOld(x)
+    }
+
+    def scalaFuncOld(x: Coll[Int]) = {
+      x.getOrElse(0, 1 / 0)
+    }
+
+    verifyCases(
+      Seq(
+        Coll(1) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
+          newVersionedResults = {
+            expectedSuccessForAllTreeVersions(1, 2029, trace)
+          } ),
+        Coll[Int]() -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
+      ),
+      changedFeature(
+        changedInVersion = VersionContext.V6SoftForkVersion,
+        scalaFuncOld,
+        scalaFuncNew,
+        "{ (x: Coll[Int]) => x.getOrElse(0, 1 / 0) }",
+        FuncValue(
+          Array((1, SCollectionType(SInt))),
+          ByIndex(
+            ValUse(1, SCollectionType(SInt)),
+            IntConstant(0),
+            Some(ArithOp(IntConstant(1), IntConstant(0), OpCode @@ (-99.toByte)))
+          )
+        ),
+        allowNewToSucceed = true
+      )
     )
   }
 

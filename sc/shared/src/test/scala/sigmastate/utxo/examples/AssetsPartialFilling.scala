@@ -68,11 +68,9 @@ case class AssetsPartialFilling[Spec <: ContractSpec]
       val out = OUTPUTS(outIdx)
 
       val tokenData = out.R2[Coll[(Coll[Byte], Long)]].get(0)
-      val tokenId = tokenData._1
       val tokenValue = tokenData._2
 
       val selfTokenData = SELF.R2[Coll[(Coll[Byte], Long)]].get(0)
-      val selfTokenId = selfTokenData._1
       val selfTokenValue = selfTokenData._2
 
       val selfValue = SELF.value
