@@ -77,7 +77,7 @@ sealed trait MethodsContainer {
 
   /** Lookup method in this type by method's id or throw ValidationException.
     * This method can be used in trySoftForkable section to either obtain valid method
-    * or catch ValidatioinException which can be checked for soft-fork condition.
+    * or catch ValidationException which can be checked for soft-fork condition.
     * It delegate to getMethodById to lookup method.
     *
     * @see getMethodById

@@ -77,7 +77,7 @@ object ValidationRules {
   /** The id of the first validation rule. Can be used as the beginning of the rules id range. */
   val FirstRuleId = 1000.toShort
 
-  object CheckPrimitiveTypeCode extends ValidationRule(1007,
+  class CheckPrimitiveTypeCodeTemplate(ruleId: Short) extends ValidationRule(ruleId,
     "Check the primitive type code is supported or is added via soft-fork")
       with SoftForkWhenCodeAdded {
     override protected lazy val settings: SigmaValidationSettings = coreSettings
@@ -93,7 +93,11 @@ object ValidationRules {
     }
   }
 
-  object CheckTypeCode extends ValidationRule(1008,
+  object CheckPrimitiveTypeCode extends CheckPrimitiveTypeCodeTemplate(1007)
+
+  object CheckPrimitiveTypeCodeV6 extends CheckPrimitiveTypeCodeTemplate(1017)
+
+  class CheckTypeCodeTemplate(ruleId: Short) extends ValidationRule(ruleId,
     "Check the non-primitive type code is supported or is added via soft-fork")
       with SoftForkWhenCodeAdded {
     override protected lazy val settings: SigmaValidationSettings = coreSettings
@@ -108,6 +112,10 @@ object ValidationRules {
       }
     }
   }
+
+  object CheckTypeCode extends CheckTypeCodeTemplate(1008)
+
+  object CheckTypeCodeV6 extends CheckTypeCodeTemplate(1018)
 
   object CheckSerializableTypeCode extends ValidationRule(1009,
     "Check the data values of the type (given by type code) can be serialized")
