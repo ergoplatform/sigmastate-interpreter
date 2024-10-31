@@ -44,7 +44,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     implicit val tT = Evaluation.stypeToRType(tpe)
     implicit val tagT = tT.classTag
 
-    val withVersion = if (tpe == SHeader) {
+    val withVersion = if (tpe == SHeader || tpe == SUnsignedBigInt) {
       Some(VersionContext.V6SoftForkVersion)
     } else {
       None
