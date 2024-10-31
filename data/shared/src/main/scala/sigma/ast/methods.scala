@@ -497,7 +497,7 @@ case object SBigIntMethods extends SNumericTypeMethods {
   private val ToUnsignedCostKind = FixedCost(JitCost(5))
 
   //id = 8 to make it after toBits
-  val ToUnsigned = SMethod(this, "toUnsigned", SFunc(this.ownerType, SUnsignedBigInt), 19, ToUnsignedCostKind)
+  val ToUnsigned = SMethod(this, "toUnsigned", SFunc(this.ownerType, SUnsignedBigInt), 14, ToUnsignedCostKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -508,7 +508,7 @@ case object SBigIntMethods extends SNumericTypeMethods {
   }
 
 
-  val ToUnsignedMod = SMethod(this, "toUnsignedMod", SFunc(Array(this.ownerType, SUnsignedBigInt), SUnsignedBigInt), 20, ToUnsignedCostKind)
+  val ToUnsignedMod = SMethod(this, "toUnsignedMod", SFunc(Array(this.ownerType, SUnsignedBigInt), SUnsignedBigInt), 15, ToUnsignedCostKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -541,7 +541,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   final val ModInverseCostInfo = ToNBitsCostInfo
 
   // todo: check ids before and after merging with other PRs introducing new methods for Numeric
-  val ModInverseMethod = SMethod(this, "modInverse", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 19, ModInverseCostInfo.costKind)
+  val ModInverseMethod = SMethod(this, "modInverse", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 14, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -552,7 +552,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   }
 
   // todo: costing
-  val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 20, ModInverseCostInfo.costKind)
+  val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 15, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -562,7 +562,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
     bi.plusMod(bi2, m)
   }
 
-  val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 21, ModInverseCostInfo.costKind)
+  val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 16, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -572,7 +572,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
     bi.subtractMod(bi2, m)
   }
 
-  val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 22, ModInverseCostInfo.costKind)
+  val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 17, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -582,7 +582,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
     bi.multiplyMod(bi2, m)
   }
 
-  val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 23, ModInverseCostInfo.costKind)
+  val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 18, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
@@ -592,7 +592,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
     bi.mod(m)
   }
 
-  val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 24, ModInverseCostInfo.costKind)
+  val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 19, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
