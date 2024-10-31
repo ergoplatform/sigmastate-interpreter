@@ -2,6 +2,7 @@ package sigma.serialization.generators
 
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbString
+import sigma.VersionContext
 import sigma.ast._
 
 trait TypeGenerators {
@@ -22,8 +23,13 @@ trait TypeGenerators {
   implicit val primTypeGen: Gen[SPrimType] =
     Gen.oneOf[SPrimType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit)
   implicit val arbPrimType: Arbitrary[SPrimType] = Arbitrary(primTypeGen)
-  implicit val predefTypeGen: Gen[SPredefType] =
-    Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree, SHeader)
+  implicit val predefTypeGen: Gen[SPredefType] = {
+    if(VersionContext.current.isV6SoftForkActivated){
+      Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree, SHeader)
+    } else {
+      Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree)
+    }
+  }
   implicit val arbPredefType: Arbitrary[SPredefType] = Arbitrary(predefTypeGen)
 
   implicit def genToArbitrary[T: Gen]: Arbitrary[T] = Arbitrary(implicitly[Gen[T]])

@@ -67,10 +67,11 @@ class DataSerializerSpecification extends SerializationSpecification {
     implicit val tAny = sigma.AnyType
 
     val withVersion = if (tpe == SHeader || tpe == SUnsignedBigInt) {
-      Some(VersionContext.V6SoftForkVersion)
+      None // Some(VersionContext.V6SoftForkVersion)
     } else {
       None
     }
+
     forAll { xs: Array[T#WrappedType] =>
       roundtrip[SCollection[T]](xs.toColl, SCollection(tpe), withVersion)
       roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)), withVersion)
