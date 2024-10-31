@@ -344,7 +344,6 @@ object DataValueComparer {
           okEqual = bi == r
         }
 
-      // todo: check costing
       case ubi: UnsignedBigInt => /** case 5 (see [[EQ_BigInt]]) */
         E.addFixedCost(EQ_BigInt) {
           okEqual = ubi == r

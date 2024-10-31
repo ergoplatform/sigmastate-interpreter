@@ -227,6 +227,14 @@ object Extensions {
 
     /** Converts `x` to [[sigma.BigInt]] */
     def toBigInt: sigma.BigInt = CBigInt(x)
+
+    /** Converts `x` to [[sigma.UnsignedBigInt]] */
+    def toUnsignedBigInt: sigma.UnsignedBigInt = {
+      if(x.compareTo(BigInteger.ZERO) < 0){
+        throw new IllegalArgumentException("toUnsignedBigInt arg < 0")
+      }
+      CUnsignedBigInt(x)
+    }
   }
 
   implicit class BigIntOps(val x: sigma.BigInt) extends AnyVal {

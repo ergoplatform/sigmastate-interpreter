@@ -264,7 +264,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
 
   val typeCodes = Table(
     ("constant", "expectedValue"),
-    (SPrimType.LastPrimTypeCode, 8),
+    (SPrimType.LastPrimTypeCode, 9),
     (SPrimType.MaxPrimTypeCode, 11)
   )
   
@@ -285,6 +285,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     (SBigInt,  6, true, true, true),
     (SGroupElement, 7, true, true, false),
     (SSigmaProp,    8, true, true, false),
+    (SUnsignedBigInt, 9, true, true, true),
     (SBox,       99,  false, false, false),
     (SAvlTree,   100, false, false, false),
     (SContext,   101, false, false, false),

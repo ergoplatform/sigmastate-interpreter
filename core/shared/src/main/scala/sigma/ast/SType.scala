@@ -322,7 +322,7 @@ object SPrimType {
   def unapply(t: SType): Option[SType] = SType.allPredefTypes.find(_ == t)
 
   /** Type code of the last valid prim type so that (1 to LastPrimTypeCode) is a range of valid codes. */
-  final val LastPrimTypeCode: Byte = 8: Byte
+  final val LastPrimTypeCode: Byte = 9: Byte
 
   /** Upper limit of the interval of valid type codes for primitive types */
   final val MaxPrimTypeCode: Byte = 11: Byte
