@@ -153,6 +153,21 @@ object ReflectionData {
         },
         mkMethod(clazz, "divide", paramTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].divide(args(0).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "plusMod", paramTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].plusMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "subtractMod", paramTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].subtractMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "multiplyMod", paramTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].multiplyMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "mod", paramTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].mod(args(0).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "modInverse", paramTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].modInverse(args(0).asInstanceOf[UnsignedBigInt])
         }
       )
     )

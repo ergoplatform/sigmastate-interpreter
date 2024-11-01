@@ -403,7 +403,6 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
     }
   }
 
-
   implicit object LiftableUnsignedBigInt extends Liftable[SUnsignedBigInt, UnsignedBigInt] {
     lazy val eW: Elem[UnsignedBigInt] = unsignedBigIntElement
     lazy val sourceType: RType[SUnsignedBigInt] = {
@@ -522,7 +521,7 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
-          "add", "subtract", "multiply", "divide", "mod", "min", "max"
+          "add", "subtract", "multiply", "divide", "mod", "min", "max", "plusMod", "subtractMod", "multiplyMod"
         ))
     }
   }

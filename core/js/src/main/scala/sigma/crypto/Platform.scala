@@ -253,6 +253,7 @@ object Platform {
     case _: Boolean => tpe == SBoolean
     case _: Byte | _: Short | _: Int | _: Long => tpe.isInstanceOf[SNumericType]
     case _: BigInt => tpe == SBigInt
+    case _: UnsignedBigInt => tpe == SUnsignedBigInt
     case _: String => tpe == SString
     case _: GroupElement => tpe.isGroupElement
     case _: SigmaProp => tpe.isSigmaProp

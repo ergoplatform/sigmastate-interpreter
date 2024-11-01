@@ -540,7 +540,6 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   // todo: costing
   final val ModInverseCostInfo = ToNBitsCostInfo
 
-  // todo: check ids before and after merging with other PRs introducing new methods for Numeric
   val ModInverseMethod = SMethod(this, "modInverse", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 14, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
