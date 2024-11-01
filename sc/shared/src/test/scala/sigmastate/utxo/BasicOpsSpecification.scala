@@ -154,7 +154,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     flexVerifier.verify(verifyEnv, tree, ctxExt, pr.proof, fakeMessage).get._1 shouldBe true
   }
 
-
   property("getVarFromInput") {
     def getVarTest(): Assertion = {
       val customExt = Map(

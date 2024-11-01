@@ -35,6 +35,9 @@ object Type extends js.Object {
   /** Descriptor of ErgoScript type BigInt. */
   val BigInt = new Type(sigma.BigIntRType)
 
+  /** Descriptor of ErgoScript type BigInt. */
+  val UnsignedBigInt = new Type(sigma.UnsignedBigIntRType)
+
   /** Descriptor of ErgoScript type GroupElement. */
   val GroupElement = new Type(sigma.GroupElementRType)
 

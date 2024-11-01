@@ -145,13 +145,13 @@ object GraphIRReflection {
         mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.UnsignedBigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
-        mkMethod(clazz, "plusMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+        mkMethod(clazz, "plusMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.UnsignedBigInt].plusMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
-        mkMethod(clazz, "subtractMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+        mkMethod(clazz, "subtractMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.UnsignedBigInt].subtractMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
-        mkMethod(clazz, "multiplyMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+        mkMethod(clazz, "multiplyMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.UnsignedBigInt].multiplyMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
         mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>

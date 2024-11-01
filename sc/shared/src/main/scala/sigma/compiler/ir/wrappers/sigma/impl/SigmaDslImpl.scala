@@ -521,7 +521,8 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
-          "add", "subtract", "multiply", "divide", "mod", "min", "max", "plusMod", "subtractMod", "multiplyMod"
+          "add", "subtract", "multiply", "divide", "mod", "modInverse",
+          "min", "max", "plusMod", "subtractMod", "multiplyMod"
         ))
     }
   }

@@ -130,44 +130,45 @@ object ReflectionData {
   }
   {
     val clazz      = classOf[sigma.UnsignedBigInt]
-    val paramTypes = Array[Class[_]](clazz)
+    val oneParamTypes = Array[Class[_]](clazz)
+    val twoParamTypes = Array[Class[_]](clazz, clazz)
     registerClassEntry(clazz,
       methods = Map(
-        mkMethod(clazz, "add", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "add", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].add(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "max", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "max", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].max(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "min", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "min", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].min(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "subtract", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "subtract", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].subtract(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "multiply", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "multiply", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].multiply(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "mod", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "mod", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].mod(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "divide", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "divide", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].divide(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "plusMod", paramTypes) { (obj, args) =>
-          obj.asInstanceOf[UnsignedBigInt].plusMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
-        },
-        mkMethod(clazz, "subtractMod", paramTypes) { (obj, args) =>
-          obj.asInstanceOf[UnsignedBigInt].subtractMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
-        },
-        mkMethod(clazz, "multiplyMod", paramTypes) { (obj, args) =>
-          obj.asInstanceOf[UnsignedBigInt].multiplyMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
-        },
-        mkMethod(clazz, "mod", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "mod", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].mod(args(0).asInstanceOf[UnsignedBigInt])
         },
-        mkMethod(clazz, "modInverse", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "modInverse", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].modInverse(args(0).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "plusMod", twoParamTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].plusMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "subtractMod", twoParamTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].subtractMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "multiplyMod", twoParamTypes) { (obj, args) =>
+          obj.asInstanceOf[UnsignedBigInt].multiplyMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
         }
       )
     )

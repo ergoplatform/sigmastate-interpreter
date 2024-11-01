@@ -69,9 +69,9 @@ case class CBigInt(override val wrappedValue: BigInteger) extends BigInt with Wr
   }
 }
 
-/** A default implementation of [[BigInt]] interface.
+/** A default implementation of [[UnsignedBigInt]] interface.
   *
-  * @see [[BigInt]] for detailed descriptions
+  * @see [[UnsignedBigInt]] for detailed descriptions
   */
 case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends UnsignedBigInt with WrapperOf[BigInteger] {
 
@@ -144,4 +144,5 @@ case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends Unsign
   override def toSigned(): BigInt = {
     CBigInt(wrappedValue.toSignedBigIntValueExact)
   }
+
 }

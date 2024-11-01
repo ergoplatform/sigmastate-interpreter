@@ -164,6 +164,8 @@ object Value extends js.Object {
       n
     case sigma.BigIntRType =>
       data.asInstanceOf[js.BigInt]
+    case sigma.UnsignedBigIntRType =>
+      data.asInstanceOf[js.BigInt]
     case sigma.GroupElementRType =>
       data.asInstanceOf[GroupElement]
     case sigma.SigmaPropRType =>

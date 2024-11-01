@@ -5,9 +5,8 @@ import org.ergoplatform.ErgoBox
 import org.ergoplatform.validation.ValidationRules
 import scorex.crypto.hash.{Blake2b256, Sha256}
 import scorex.utils.{Ints, Longs}
-import sigma.ast.{AtLeast, SBigInt, SubstConstants}
+import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
 import scorex.utils.Longs
-import sigma.ast.{AtLeast, SType, SubstConstants}
 import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
 import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
@@ -235,7 +234,11 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
           throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes in fromBigEndianBytes")
         }
         CBigInt(new BigInteger(bytes.toArray).toSignedBigIntValueExact).asInstanceOf[T]
-      // todo: UnsignedBitInt
+      case sigma.UnsignedBigIntRType =>
+        if (bytes.length > SUnsignedBigInt.MaxSizeInBytes) {
+          throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes in fromBigEndianBytes")
+        }
+        CUnsignedBigInt(new BigInteger(bytes.toArray).toSignedBigIntValueExact).asInstanceOf[T]
       case _ => throw new IllegalArgumentException("Unsupported type provided in fromBigEndianBytes")
     }
   }

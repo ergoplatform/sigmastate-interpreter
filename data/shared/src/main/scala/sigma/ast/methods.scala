@@ -3,7 +3,7 @@ package sigma.ast
 import org.ergoplatform._
 import org.ergoplatform.validation._
 import sigma.Evaluation.stypeToRType
-import sigma._
+import sigma.{UnsignedBigInt, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}
 import sigma.ast.SType.TypeCode
@@ -536,7 +536,6 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   final val ToNBitsCostInfo = OperationCostInfo(
     FixedCost(JitCost(5)), NamedDesc("NBitsMethodCall"))
 
-
   // todo: costing
   final val ModInverseCostInfo = ToNBitsCostInfo
 
@@ -1008,7 +1007,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
          | \lst{f} to each element of this collection and concatenating the results.
         """.stripMargin, ArgInfo("f", "the function to apply to each element."))
 
-  /** We assume all flatMap body patterns have similar executon cost. */
+  /** We assume all flatMap body patterns have similar execution cost. */
   final val CheckFlatmapBody_Info = OperationCostInfo(
     PerItemCost(baseCost = JitCost(20), perChunkCost = JitCost(20), chunkSize = 1),
     NamedDesc("CheckFlatmapBody"))
