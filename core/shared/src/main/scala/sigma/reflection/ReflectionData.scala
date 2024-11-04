@@ -101,35 +101,43 @@ object ReflectionData {
   }
   {
     val clazz      = classOf[sigma.BigInt]
-    val paramTypes = Array[Class[_]](clazz)
+    val noParamTypes = Array[Class[_]]()
+    val oneParamTypes = Array[Class[_]](clazz)
     registerClassEntry(clazz,
       methods = Map(
-        mkMethod(clazz, "add", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "add", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].add(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "max", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "max", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].max(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "min", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "min", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].min(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "subtract", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "subtract", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].subtract(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "multiply", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "multiply", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].multiply(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "mod", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "mod", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].mod(args(0).asInstanceOf[BigInt])
         },
-        mkMethod(clazz, "divide", paramTypes) { (obj, args) =>
+        mkMethod(clazz, "divide", oneParamTypes) { (obj, args) =>
           obj.asInstanceOf[BigInt].divide(args(0).asInstanceOf[BigInt])
+        },
+        mkMethod(clazz, "toUnsigned", noParamTypes) { (obj, _) =>
+          obj.asInstanceOf[BigInt].toUnsigned
+        },
+        mkMethod(clazz, "toUnsignedMod", Array[Class[_]](classOf[sigma.UnsignedBigInt])) { (obj, args) =>
+          obj.asInstanceOf[BigInt].toUnsignedMod(args(0).asInstanceOf[UnsignedBigInt])
         }
       )
     )
   }
   {
     val clazz      = classOf[sigma.UnsignedBigInt]
+    val noParamTypes = Array[Class[_]]()
     val oneParamTypes = Array[Class[_]](clazz)
     val twoParamTypes = Array[Class[_]](clazz, clazz)
     registerClassEntry(clazz,
@@ -169,6 +177,9 @@ object ReflectionData {
         },
         mkMethod(clazz, "multiplyMod", twoParamTypes) { (obj, args) =>
           obj.asInstanceOf[UnsignedBigInt].multiplyMod(args(0).asInstanceOf[UnsignedBigInt], args(1).asInstanceOf[UnsignedBigInt])
+        },
+        mkMethod(clazz, "toSigned", noParamTypes) { (obj, _) =>
+          obj.asInstanceOf[UnsignedBigInt].toSigned()
         }
       )
     )

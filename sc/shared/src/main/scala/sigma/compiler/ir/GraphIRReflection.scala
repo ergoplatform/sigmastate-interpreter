@@ -115,6 +115,12 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.BigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "toUnsigned", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.BigInt].toUnsigned()
+        },
+        mkMethod(clazz, "toUnsignedMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.BigInt].toUnsignedMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         }
       )
     )
@@ -159,6 +165,9 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "modInverse", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.UnsignedBigInt].modInverse(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "toSigned", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].toSigned
         }
       )
     )
@@ -409,6 +418,9 @@ object GraphIRReflection {
       methods = Map(
         mkMethod(clazz, "exp", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.GroupElement].exp(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "expUnsigned", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.GroupElement].expUnsigned(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
         mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.GroupElement].multiply(args(0).asInstanceOf[ctx.Ref[ctx.GroupElement]])

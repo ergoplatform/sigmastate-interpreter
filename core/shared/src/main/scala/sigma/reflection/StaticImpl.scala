@@ -72,7 +72,9 @@ class SRClass[T](val clazz: Class[T],
                          parameterTypes: Class[_]*): RMethod = {
     methods.get((name, parameterTypes)) match {
       case Some(m) => m
-      case _ => throw new NoSuchMethodException(s"${clazz.getName}.$name(${parameterTypes.map(_.getName).mkString(",")})")
+      case _ =>
+        println(methods)
+        throw new NoSuchMethodException(s"${clazz.getName}.$name(${parameterTypes.map(_.getName).mkString(",")})")
     }
   }
 

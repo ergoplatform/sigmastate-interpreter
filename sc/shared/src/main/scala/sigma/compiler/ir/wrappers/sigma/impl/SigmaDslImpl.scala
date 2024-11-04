@@ -395,7 +395,7 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
         true, false, element[UnsignedBigInt]))
     }
 
-    override def toSigned: Ref[BigInt] = {
+    override def toSigned(): Ref[BigInt] = {
       asRep[BigInt](mkMethodCall(self,
         UnsignedBigIntClass.getMethod("toSigned"),
         Array[AnyRef](),
@@ -499,7 +499,7 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
         true, true, element[UnsignedBigInt]))
     }
 
-    def toSigned: Ref[BigInt] = {
+    def toSigned(): Ref[BigInt] = {
       asRep[BigInt](mkMethodCall(source,
         UnsignedBigIntClass.getMethod("toSigned"),
         Array[AnyRef](),
@@ -522,7 +522,7 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
           "add", "subtract", "multiply", "divide", "mod", "modInverse",
-          "min", "max", "plusMod", "subtractMod", "multiplyMod"
+          "min", "max", "plusMod", "subtractMod", "multiplyMod", "toSigned"
         ))
     }
   }
