@@ -58,7 +58,7 @@ case class CBigInt(override val wrappedValue: BigInteger) extends BigInt with Wr
 
   def toUnsigned: UnsignedBigInt = {
     if(this.wrappedValue.compareTo(BigInteger.ZERO) < 0){
-      throw new ArithmeticException("BigInteger argument for .toUnsigned is negative in");
+      throw new ArithmeticException("BigInteger argument for .toUnsigned is negative");
     } else {
       CUnsignedBigInt(this.wrappedValue)
     }

@@ -11,14 +11,12 @@ import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
-import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
 import sigma.util.Extensions.{BooleanOps, IntOps}
-import sigma.data.{RType}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigmastate.exceptions.MethodNotFound
@@ -1950,6 +1948,24 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
+  property("BigInt.toUnsigned") {
+    import sigma.data.OrderingOps.BigIntOrdering
 
+    val f = newFeature[BigInt, UnsignedBigInt](
+      { (xs: BigInt) => xs.toUnsigned },
+      """{(xs: BigInt) => xs.toUnsigned }""".stripMargin,
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        CBigInt(new BigInteger("5")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("5"))), None)),
+        CBigInt(new BigInteger("-5")) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger argument for .toUnsigned is negative")), None)),
+        CBigInt(new BigInteger("0")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("0"))), None))
+        // , CBigInt(BigInteger.valueOf(Long.MinValue)) -> Expected(ExpectedResult(), None))
+      ),
+      f
+    )
+  }
 
 }
