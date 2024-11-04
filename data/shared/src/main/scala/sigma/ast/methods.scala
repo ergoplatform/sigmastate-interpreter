@@ -258,8 +258,6 @@ object SNumericTypeMethods extends MethodsContainer {
       .withCost(costOfNumericCast)
       .withInfo(PropertyCall, "Converts this numeric value to \\lst{BigInt}")
 
-  // todo: ToUnsignedBigInt
-
   /** Cost of: 1) creating Byte collection from a numeric value */
   val ToBytes_CostKind = FixedCost(JitCost(5))
 
@@ -273,6 +271,8 @@ object SNumericTypeMethods extends MethodsContainer {
           case SIntMethods => IntIsExactIntegral.toBigEndianBytes(obj.asInstanceOf[Int])
           case SLongMethods => LongIsExactIntegral.toBigEndianBytes(obj.asInstanceOf[Long])
           case SBigIntMethods => obj.asInstanceOf[BigInt].toBytes
+          case SUnsignedBigIntMethods => obj.asInstanceOf[UnsignedBigInt].toBytes
+          // todo: test
         }
       })
       .withInfo(PropertyCall,

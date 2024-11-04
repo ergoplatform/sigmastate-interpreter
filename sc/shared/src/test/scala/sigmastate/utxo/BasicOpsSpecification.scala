@@ -276,12 +276,50 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("unsigned bigint - attempt to create from negative value") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val m = unsignedBigInt("-5")
+         |  m >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy conversionTest()
+    } else {
+      an[sigma.exceptions.InvalidArguments] should be thrownBy conversionTest()
+    }
+  }
+
+
   property("signed -> unsigned bigint conversion - negative bigint - mod") {
     def conversionTest() = {test("conversion", env, ext,
       s"""{
          |  val b = bigInt("-1")
          |  val m = unsignedBigInt("5")
          |  val ub = b.toUnsignedMod(m)
+         |  ub >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("signed -> unsigned bigint conversion - negative bigint - mod - 2") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val t = (bigInt("-1"), bigInt("5"))
+         |  val b = t._1
+         |  val m = t._2
+         |  val ub = b.toUnsignedMod(m.toUnsigned)
          |  ub >= 0
          | } """.stripMargin,
       null,

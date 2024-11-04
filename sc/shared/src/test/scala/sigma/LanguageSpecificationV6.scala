@@ -1952,8 +1952,17 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     import sigma.data.OrderingOps.BigIntOrdering
 
     val f = newFeature[BigInt, UnsignedBigInt](
-      { (xs: BigInt) => xs.toUnsigned },
-      """{(xs: BigInt) => xs.toUnsigned }""".stripMargin,
+      { (x: BigInt) => x.toUnsigned },
+      """{(x: BigInt) => x.toUnsigned }""".stripMargin,
+      FuncValue(
+        Array((1, SBigInt)),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          ValUse(1, SBigInt),
+          SBigIntMethods.ToUnsigned,
+          IndexedSeq(),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -1962,7 +1971,41 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         CBigInt(new BigInteger("5")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("5"))), None)),
         CBigInt(new BigInteger("-5")) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger argument for .toUnsigned is negative")), None)),
         CBigInt(new BigInteger("0")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("0"))), None))
-        // , CBigInt(BigInteger.valueOf(Long.MinValue)) -> Expected(ExpectedResult(), None))
+      ),
+      f
+    )
+  }
+
+
+  property("BigInt.toUnsignedMod") {
+    import sigma.data.OrderingOps.BigIntOrdering
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    val f = newFeature[(BigInt, UnsignedBigInt), UnsignedBigInt](
+      { (xs: (BigInt, UnsignedBigInt)) => xs._1.toUnsignedMod(xs._2) },
+      """{ (xs: (BigInt, UnsignedBigInt)) => xs._1.toUnsignedMod(xs._2) }""".stripMargin,
+      FuncValue(
+        Array((1, SPair(SBigInt, SUnsignedBigInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SBigInt.type]](ValUse(1, SPair(SBigInt, SUnsignedBigInt)), 1.toByte),
+          SBigIntMethods.ToUnsignedMod,
+          Array(
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SBigInt, SUnsignedBigInt)),
+              2.toByte
+            )
+          ),
+          Map()
+        )
+      ),
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        (CBigInt(new BigInteger("50")), CUnsignedBigInt(new BigInteger("10"))) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("0"))), None)),
+        (CBigInt(new BigInteger("50")), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger: modulus not positive")), None)),
+        (CBigInt(new BigInteger("50")), CUnsignedBigInt(new BigInteger("-10"))) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger: modulus not positive")), None))
       ),
       f
     )

@@ -195,7 +195,7 @@ object BigInt extends EntityObject("BigInt") {
 
     def toUnsignedMod(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
       asRep[UnsignedBigInt](mkMethodCall(source,
-        BigIntClass.getMethod("UnsignedBigInt", classOf[Sym]),
+        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
         Array[AnyRef](that),
         true, true, element[UnsignedBigInt](unsignedBigIntElement)))
     }
