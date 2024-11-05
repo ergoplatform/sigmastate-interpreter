@@ -1,6 +1,7 @@
 package sigma.data
 
 import sigma._
+import sigma.crypto.BigIntegers
 import sigma.data.UnsignedBigIntOrderingOps.UnsignedBigIntOrdering
 import sigma.eval.Extensions.IntExt
 
@@ -98,9 +99,13 @@ object UnsignedBigIntNumericOps {
     override def toBigEndianBytes(x: UnsignedBigInt): Coll[Byte] = x.toBytes
 
     /**
-      * @return a numeric value which is inverse of `x` (every bit, including sign, is flipped)
+      * @return a numeric value which is inverse of `x` (every bit is flipped)
       */
-    override def bitwiseInverse(x: UnsignedBigInt): UnsignedBigInt = ???
+    override def bitwiseInverse(x: UnsignedBigInt): UnsignedBigInt = {
+      val bytes = BigIntegers.asUnsignedByteArray(x.asInstanceOf[CUnsignedBigInt].wrappedValue)
+      val res: Array[Byte] = bytes.map(b => (b ^ Byte.MinValue).toByte)
+      CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(res))
+    }
 
     /**
       * @return a numeric value which is `this | that`

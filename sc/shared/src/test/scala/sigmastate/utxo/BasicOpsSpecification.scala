@@ -829,6 +829,23 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("UnsignedBigInt.bitwiseInverse") {
+    def bitwiseInverseTest(): Assertion = test("UnsignedBigInt.bitwiseInverse", env, ext,
+      s"""{
+         | val b = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val bi = b.bitwiseInverse
+         | bi.bitwiseInverse == b
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseInverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
+    }
+  }
+
 
   property("Byte.bitwiseInverse") {
     def bitwiseInverseTest(): Assertion = test("Byte.bitwiseInverse", env, ext,
