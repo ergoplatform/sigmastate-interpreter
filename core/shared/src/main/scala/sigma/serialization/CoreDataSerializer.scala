@@ -2,8 +2,9 @@ package sigma.serialization
 
 import debox.cfor
 import sigma.ast._
+import sigma.crypto.BigIntegers
 import sigma.data._
-import sigma.util.Extensions.{CoreAvlTreeOps, BigIntOps, GroupElementOps, SigmaPropOps}
+import sigma.util.Extensions.{BigIntOps, CoreAvlTreeOps, GroupElementOps, SigmaPropOps}
 import sigma.validation.ValidationRules.CheckSerializableTypeCode
 import sigma.{Evaluation, _}
 
@@ -34,7 +35,7 @@ class CoreDataSerializer {
       w.putUShort(data.length)
       w.putBytes(data)
     case SUnsignedBigInt =>  // todo: versioning
-      val data = v.asInstanceOf[CUnsignedBigInt].wrappedValue.toByteArray
+      val data = BigIntegers.asUnsignedByteArray(v.asInstanceOf[CUnsignedBigInt].wrappedValue)
       w.putUShort(data.length)
       w.putBytes(data)
     case SGroupElement =>
@@ -114,11 +115,11 @@ class CoreDataSerializer {
         CBigInt(new BigInteger(valueBytes))
       case SUnsignedBigInt =>  // todo: versioning
         val size: Short = r.getUShort().toShort
-        if (size > SBigInt.MaxSizeInBytes + 1) { //todo: use encoding with no sign bit
+        if (size > SBigInt.MaxSizeInBytes) {
           throw new SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
         }
         val valueBytes = r.getBytes(size)
-        CUnsignedBigInt(new BigInteger(valueBytes))
+        CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(valueBytes))
       case SGroupElement =>
         CGroupElement(GroupElementSerializer.parse(r))
       case SSigmaProp =>

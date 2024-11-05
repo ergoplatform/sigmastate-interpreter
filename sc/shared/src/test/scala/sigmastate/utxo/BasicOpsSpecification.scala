@@ -30,6 +30,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.{ErgoTreeSerializer, SerializerException}
 import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
 
@@ -797,7 +798,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
   property("UnsignedBigInt.toBits") {
     def toBitsTest() = test("UnsignedBigInt.toBits", env, ext,
       s"""{
-         | val b = bigInt("${CryptoConstants.groupOrder}")
+         | val b = unsignedBigInt("${CryptoConstants.groupOrder}")
          | val ba = b.toBits
          | ba.size == 256
          |}""".stripMargin,
@@ -807,7 +808,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       toBitsTest()
     } else {
-      an[SerializerException] shouldBe thrownBy(toBitsTest())
+      an[ValidationException] shouldBe thrownBy(toBitsTest())
     }
   }
 
@@ -1516,18 +1517,17 @@ class BasicOpsSpecification extends CompilerTestingCommons
   }
 
   property("UnsignedBigInt.toBytes") {
-    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext,
-      s"""{
-         |   val l = bigInt("${CryptoConstants.groupOrder}")
-         |   l.toBytes.size == 32
-         | }""".stripMargin,
-      null
-    )
+    val script = s"""{
+                    |   val l = unsignedBigInt("${CryptoConstants.groupOrder}")
+                    |   l.toBytes.size == 32
+                    | }""".stripMargin
+
+    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
 
     if (VersionContext.current.isV6SoftForkActivated) {
       toBytesTest()
     } else {
-      an[SerializerException] shouldBe thrownBy(toBytesTest())
+      an[ValidationException] shouldBe thrownBy(toBytesTest())
     }
   }
 

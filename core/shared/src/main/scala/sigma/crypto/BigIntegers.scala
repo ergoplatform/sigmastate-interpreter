@@ -13,8 +13,9 @@ object BigIntegers {
   private val MAX_ITERATIONS = 1000
 
   /** Create the given number of random bits.
+    *
     * @param bitLength the number of random bits to create.
-    * @param random a source of randomness.
+    * @param random    a source of randomness.
     * @return a byte array containing random bits.
     */
   @throws[IllegalArgumentException]
@@ -38,8 +39,8 @@ object BigIntegers {
     * @return a positive BigInteger
     */
   def createRandomBigInteger(
-      bitLength: Int,
-      random: SecureRandom): BigInteger = {
+                              bitLength: Int,
+                              random: SecureRandom): BigInteger = {
     new BigInteger(1, createRandom(bitLength, random))
   }
 
@@ -52,9 +53,9 @@ object BigIntegers {
     * @return a random BigInteger value in the range [min,max]
     */
   def createRandomInRange(
-      min: BigInteger,
-      max: BigInteger,
-      random: SecureRandom): BigInteger = {
+                           min: BigInteger,
+                           max: BigInteger,
+                           random: SecureRandom): BigInteger = {
     val cmp = min.compareTo(max)
     if (cmp >= 0) {
       if (cmp > 0) throw new IllegalArgumentException("'min' may not be greater than 'max'")
@@ -64,7 +65,7 @@ object BigIntegers {
     if (min.bitLength > max.bitLength / 2)
       return createRandomInRange(ZERO, max.subtract(min), random).add(min)
 
-    for ( _ <- 0 until MAX_ITERATIONS ) {
+    for (_ <- 0 until MAX_ITERATIONS) {
       val x = createRandomBigInteger(max.bitLength, random)
       if (x.compareTo(min) >= 0 && x.compareTo(max) <= 0) return x
     }
@@ -96,6 +97,7 @@ object BigIntegers {
 
   /** Converts a byte array to a BigInteger, treating the array as bits of the unsigned
     * integer.
+    *
     * @param buf the byte array to convert
     * @return the resulting positive BigInteger
     */

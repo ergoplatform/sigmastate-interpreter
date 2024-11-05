@@ -1,5 +1,6 @@
 package sigma.data
 
+import sigma.crypto.BigIntegers
 import sigma.util.Extensions.BigIntegerOps
 import sigma.{BigInt, Coll, Colls, UnsignedBigInt}
 
@@ -83,7 +84,7 @@ case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends Unsign
 
   override def toLong: Long = wrappedValue.toLongExact
 
-  override def toBytes: Coll[Byte] = Colls.fromArray(wrappedValue.toByteArray)
+  override def toBytes: Coll[Byte] = Colls.fromArray(BigIntegers.asUnsignedByteArray(wrappedValue))
 
   override def compareTo(that: UnsignedBigInt): Int =
     wrappedValue.compareTo(that.asInstanceOf[CUnsignedBigInt].wrappedValue)

@@ -1032,28 +1032,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               opt.filter(asRep[t => Boolean](argsV(0)))
             case _ => throwError()
           }
-          case (ubi: Ref[UnsignedBigInt]@unchecked, SUnsignedBigIntMethods) => method.name match {
-            case SUnsignedBigIntMethods.ModMethod.name =>
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.mod(m)
-            case SUnsignedBigIntMethods.ModInverseMethod.name =>
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.modInverse(m)
-            case SUnsignedBigIntMethods.PlusModMethod.name =>
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.plusMod(that, m)
-            case SUnsignedBigIntMethods.SubtractModMethod.name =>
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.subtractMod(that, m)
-            case SUnsignedBigIntMethods.MultiplyModMethod.name =>
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.multiplyMod(that, m)
-            case SUnsignedBigIntMethods.ToSignedMethod.name =>
-              ubi.toSigned
-          }
           case (ge: Ref[GroupElement]@unchecked, SGroupElementMethods) => method.name match {
             case SGroupElementMethods.GetEncodedMethod.name =>
               ge.getEncoded
@@ -1226,7 +1204,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               g.fromBigEndianBytes(bytes)(cT)
             case _ => throwError()
           }
-          case (x: Ref[tNum], _: SNumericTypeMethods) => method.name match {
+          case (x: Ref[tNum], ms: SNumericTypeMethods) => method.name match {
             case SNumericTypeMethods.ToBytesMethod.name =>
               val op = NumericToBigEndianBytes(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
@@ -1263,6 +1241,33 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val bi = asRep[BigInt](x)
               val m = asRep[UnsignedBigInt](argsV(0))
               bi.toUnsignedMod(m)
+
+            case SUnsignedBigIntMethods.ModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val m = asRep[UnsignedBigInt](argsV(0))
+              ubi.mod(m)
+            case SUnsignedBigIntMethods.ModInverseMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val m = asRep[UnsignedBigInt](argsV(0))
+              ubi.modInverse(m)
+            case SUnsignedBigIntMethods.PlusModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.plusMod(that, m)
+            case SUnsignedBigIntMethods.SubtractModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.subtractMod(that, m)
+            case SUnsignedBigIntMethods.MultiplyModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.multiplyMod(that, m)
+            case SUnsignedBigIntMethods.ToSignedMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              ubi.toSigned()
             case _ => throwError()
           }
           case _ => throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")

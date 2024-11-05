@@ -95,7 +95,7 @@ object UnsignedBigIntNumericOps {
       * For example, the `Int` value `0x12131415` would yield the
       * collection of bytes [0x12, 0x13, 0x14, 0x15]
       */
-    override def toBigEndianBytes(x: UnsignedBigInt): Coll[Byte] = ???
+    override def toBigEndianBytes(x: UnsignedBigInt): Coll[Byte] = x.toBytes
 
     /**
       * @return a numeric value which is inverse of `x` (every bit, including sign, is flipped)

@@ -7,7 +7,7 @@ import scorex.crypto.hash.{Blake2b256, Sha256}
 import scorex.utils.{Ints, Longs}
 import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
 import scorex.utils.Longs
-import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
+import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
 import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
 import sigma.serialization.{GroupElementSerializer, SerializerException, SigmaSerializer}
@@ -238,7 +238,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
         if (bytes.length > SUnsignedBigInt.MaxSizeInBytes) {
           throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes in fromBigEndianBytes")
         }
-        CUnsignedBigInt(new BigInteger(bytes.toArray).toSignedBigIntValueExact).asInstanceOf[T]
+        CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(bytes.toArray)).asInstanceOf[T]
       case _ => throw new IllegalArgumentException("Unsupported type provided in fromBigEndianBytes")
     }
   }
