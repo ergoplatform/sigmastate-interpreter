@@ -28,7 +28,7 @@ import sigmastate.interpreter.Interpreter._
 import sigma.ast.Apply
 import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
-import sigma.serialization.ErgoTreeSerializer
+import sigma.serialization.{ErgoTreeSerializer, SerializerException}
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
@@ -793,6 +793,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+
+  property("UnsignedBigInt.toBits") {
+    def toBitsTest() = test("UnsignedBigInt.toBits", env, ext,
+      s"""{
+         | val b = bigInt("${CryptoConstants.groupOrder}")
+         | val ba = b.toBits
+         | ba.size == 256
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      toBitsTest()
+    } else {
+      an[SerializerException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
   property("BigInt.bitwiseInverse") {
     def bitwiseInverseTest(): Assertion = test("BigInt.bitwiseInverse", env, ext,
       s"""{
@@ -1494,6 +1512,22 @@ class BasicOpsSpecification extends CompilerTestingCommons
       toBytesTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("UnsignedBigInt.toBytes") {
+    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext,
+      s"""{
+         |   val l = bigInt("${CryptoConstants.groupOrder}")
+         |   l.toBytes.size == 32
+         | }""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      toBytesTest()
+    } else {
+      an[SerializerException] shouldBe thrownBy(toBytesTest())
     }
   }
 

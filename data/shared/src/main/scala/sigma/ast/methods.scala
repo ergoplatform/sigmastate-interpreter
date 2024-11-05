@@ -13,6 +13,7 @@ import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.NumericOps.BigIntIsExactIntegral
 import sigma.data.OverloadHack.Overloaded1
+import sigma.data.UnsignedBigIntNumericOps.UnsignedBigIntIsExactIntegral
 import sigma.data.{DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
 import sigma.eval.{CostDetails, ErgoTreeEvaluator, TracedCost}
 import sigma.reflection.RClass
@@ -295,6 +296,7 @@ object SNumericTypeMethods extends MethodsContainer {
           case SIntMethods => IntIsExactIntegral.toBits(obj.asInstanceOf[Int])
           case SLongMethods => LongIsExactIntegral.toBits(obj.asInstanceOf[Long])
           case SBigIntMethods => BigIntIsExactIntegral.toBits(obj.asInstanceOf[BigInt])
+          case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.toBits(obj.asInstanceOf[UnsignedBigInt])
         }
       })
       .withInfo(PropertyCall,
@@ -315,6 +317,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.bitwiseInverse(obj.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.bitwiseInverse(obj.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseInverse(obj.asInstanceOf[BigInt])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseInverse(obj.asInstanceOf[UnsignedBigInt])
       }
     })
     .withInfo(PropertyCall, desc = "Returns bitwise inverse of this numeric. ")
@@ -329,6 +332,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.bitwiseOr(obj.asInstanceOf[Int], other.head.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.bitwiseOr(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseOr(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseOr(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
       }
     })
     .withInfo(MethodCall,
@@ -345,6 +349,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.bitwiseAnd(obj.asInstanceOf[Int], other.head.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.bitwiseAnd(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseAnd(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseAnd(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
       }
     })
     .withInfo(MethodCall,
@@ -361,6 +366,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.bitwiseXor(obj.asInstanceOf[Int], other.head.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.bitwiseXor(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseXor(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseXor(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
       }
     })
     .withInfo(MethodCall,
@@ -377,6 +383,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.shiftLeft(obj.asInstanceOf[Int], other.head.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.shiftLeft(obj.asInstanceOf[Long], other.head.asInstanceOf[Int])
         case SBigIntMethods => BigIntIsExactIntegral.shiftLeft(obj.asInstanceOf[BigInt], other.head.asInstanceOf[Int])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.shiftLeft(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[Int])
       }
     })
     .withInfo(MethodCall,
@@ -396,6 +403,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SIntMethods => IntIsExactIntegral.shiftRight(obj.asInstanceOf[Int], other.head.asInstanceOf[Int])
         case SLongMethods => LongIsExactIntegral.shiftRight(obj.asInstanceOf[Long], other.head.asInstanceOf[Int])
         case SBigIntMethods => BigIntIsExactIntegral.shiftRight(obj.asInstanceOf[BigInt], other.head.asInstanceOf[Int])
+        case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.shiftRight(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[Int])
       }
     })
     .withInfo(MethodCall,
