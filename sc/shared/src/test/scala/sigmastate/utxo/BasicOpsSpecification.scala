@@ -1154,6 +1154,23 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("UnsignedBigInt.shiftLeft") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | val y = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | x.shiftLeft(2) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      shiftLeftTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
   property("BigInt.shiftLeft over limits") {
     def shiftLeftTest(): Assertion = test("BigInt.shiftLeft", env, ext,
       s"""{
@@ -1287,6 +1304,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     if (VersionContext.current.isV6SoftForkActivated) {
       an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftRight") {
+    def shiftRightTest(): Assertion = test("UnsignedBigInt.shiftRight", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = 3
+         | val z = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | x.shiftRight(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
     }

@@ -140,13 +140,25 @@ object UnsignedBigIntNumericOps {
       * @return a value which is (this << n). The shift distance, n, may be negative,
       *         in which case this method performs a right shift. (Computes floor(this * 2n).)
       */
-    override def shiftLeft(x: UnsignedBigInt, bits: Int): UnsignedBigInt = ???
+    override def shiftLeft(x: UnsignedBigInt, bits: Int): UnsignedBigInt = {
+      if (bits < 0 || bits >= 256) {
+        throw new IllegalArgumentException(s"Wrong argument in UnsignedBigInt.shiftLeft: bits < 0 || bits >= 256 ($bits)")
+      } else {
+        x.shiftLeft(bits)
+      }
+    }
 
     /**
       * @return a value which is (this >> n). Sign extension is performed. The shift distance, n,
       *         may be negative, in which case this method performs a left shift. (Computes floor(this / 2n).)
       */
-    override def shiftRight(x: UnsignedBigInt, bits: Int): UnsignedBigInt = ???
+    override def shiftRight(x: UnsignedBigInt, bits: Int): UnsignedBigInt = {
+      if (bits < 0 || bits >= 256) {
+        throw new IllegalArgumentException(s"Wrong argument in UnsignedBigInt.shiftLeft: bits < 0 || bits >= 256 ($bits)")
+      } else {
+        x.shiftRight(bits)
+      }
+    }
   }
 
   /** The instance of [[scalan.ExactOrdering]] typeclass for [[BigInt]]. */
