@@ -1171,6 +1171,39 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("UnsignedBigInt.shiftLeft over limits") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.shiftLeft(1) > x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      an[ArithmeticException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+
+  property("UnsignedBigInt.shiftLeft - neg shift") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.shiftLeft(-1) > x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
   property("BigInt.shiftLeft over limits") {
     def shiftLeftTest(): Assertion = test("BigInt.shiftLeft", env, ext,
       s"""{
@@ -1322,6 +1355,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     if (VersionContext.current.isV6SoftForkActivated) {
       shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftRight - neg shift") {
+    def shiftRightTest(): Assertion = test("UnsignedBigInt.shiftRight", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val y = -2
+         | val z = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | z.shiftRight(y) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
     }
