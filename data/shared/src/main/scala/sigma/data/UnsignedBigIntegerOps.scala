@@ -1,5 +1,7 @@
 package sigma.data
 
+import debox.cfor
+import scorex.util.encode.Base16
 import sigma._
 import sigma.crypto.BigIntegers
 import sigma.data.UnsignedBigIntOrderingOps.UnsignedBigIntOrdering
@@ -110,17 +112,29 @@ object UnsignedBigIntNumericOps {
     /**
       * @return a numeric value which is `this | that`
       */
-    override def bitwiseOr(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = ???
+    override def bitwiseOr(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = {
+      val vx = x.asInstanceOf[CUnsignedBigInt].wrappedValue
+      val vy = y.asInstanceOf[CUnsignedBigInt].wrappedValue
+      CUnsignedBigInt(vx.or(vy))
+    }
 
     /**
       * @return a numeric value which is `this && that`
       */
-    override def bitwiseAnd(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = ???
+    override def bitwiseAnd(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = {
+      val vx = x.asInstanceOf[CUnsignedBigInt].wrappedValue
+      val vy = y.asInstanceOf[CUnsignedBigInt].wrappedValue
+      CUnsignedBigInt(vx.and(vy))
+    }
 
     /**
       * @return a numeric value which is `this xor that`
       */
-    override def bitwiseXor(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = ???
+    override def bitwiseXor(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = {
+      val vx = x.asInstanceOf[CUnsignedBigInt].wrappedValue
+      val vy = y.asInstanceOf[CUnsignedBigInt].wrappedValue
+      CUnsignedBigInt(vx.xor(vy))
+    }
 
     /**
       * @return a value which is (this << n). The shift distance, n, may be negative,

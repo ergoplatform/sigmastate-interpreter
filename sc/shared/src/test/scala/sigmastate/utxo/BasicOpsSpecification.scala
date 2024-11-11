@@ -938,12 +938,83 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("UnsignedBigInt.bitwiseOr") {
+    def bitwiseOrTest(): Assertion = test("BigInt.bitwiseOr", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.bitwiseOr(x) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseOr - 2") {
+    def bitwiseOrTest(): Assertion = test("BigInt.bitwiseOr", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("121")
+         | val z = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494393")
+         | x.bitwiseOr(y) == z && y.bitwiseOr(x) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
   property("BigInt.bitwiseAnd") {
     def bitwiseAndTest(): Assertion = test("BigInt.bitwiseAnd", env, ext,
       s"""{
          | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
          | val y = 0.toBigInt
          | x.bitwiseAnd(y) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseAnd") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseAnd", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = 0.toBigInt.toUnsigned
+         | x.bitwiseAnd(y) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseAnd - 2") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseAnd", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = unsignedBigInt("1157920892373161954235709850086879078522970439492889181512311797126516834561")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseAnd(y) == z
          |}""".stripMargin,
       null
     )
@@ -992,6 +1063,26 @@ class BasicOpsSpecification extends CompilerTestingCommons
       bitwiseXorTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseXorTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseXor") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseXor", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = unsignedBigInt("114634168344943033469335275158601028774319999042879875063406591178680309439552")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseXor(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
     }
   }
 
