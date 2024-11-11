@@ -812,6 +812,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("UnsignedBigInt.toBits - 2") {
+    def toBitsTest() = test("UnsignedBigInt.toBits", env, ext,
+      s"""{
+         | val b = unsignedBigInt("5")
+         | val ba = b.toBits
+         | ba.size == 8 && ba == Coll(false, false, false, false, false, true, false, true)
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      toBitsTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+
   property("BigInt.bitwiseInverse") {
     def bitwiseInverseTest(): Assertion = test("BigInt.bitwiseInverse", env, ext,
       s"""{
@@ -1537,6 +1555,22 @@ class BasicOpsSpecification extends CompilerTestingCommons
     val script = s"""{
                     |   val l = unsignedBigInt("${CryptoConstants.groupOrder}")
                     |   l.toBytes.size == 32
+                    | }""".stripMargin
+
+    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      toBytesTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("UnsignedBigInt.toBytes - 2") {
+    val script = s"""{
+                    |   val l = unsignedBigInt("5")
+                    |   val bs = l.toBytes
+                    |   bs.size == 1 && bs == Coll(5.toByte)
                     | }""".stripMargin
 
     def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
