@@ -57,7 +57,7 @@ case class CBigInt(override val wrappedValue: BigInteger) extends BigInt with Wr
 
   override def shiftRight(n: Int): BigInt = CBigInt(wrappedValue.shiftRight(n).toSignedBigIntValueExact)
 
-  def toUnsigned: UnsignedBigInt = {
+  override def toUnsigned: UnsignedBigInt = {
     if(this.wrappedValue.compareTo(BigInteger.ZERO) < 0){
       throw new ArithmeticException("BigInteger argument for .toUnsigned is negative");
     } else {
@@ -65,9 +65,10 @@ case class CBigInt(override val wrappedValue: BigInteger) extends BigInt with Wr
     }
   }
 
-  def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt = {
+  override def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt = {
     CUnsignedBigInt(this.wrappedValue.mod(m.asInstanceOf[CUnsignedBigInt].wrappedValue))
   }
+
 }
 
 /** A default implementation of [[UnsignedBigInt]] interface.
@@ -148,12 +149,7 @@ case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends Unsign
   override def shiftRight(n: Int): UnsignedBigInt = CUnsignedBigInt(wrappedValue.shiftRight(n).toUnsignedBigIntValueExact)
 
   override def bitwiseInverse(): UnsignedBigInt = {
-    val bytes = if(wrappedValue.compareTo(BigInteger.ZERO) == 0) {
-      Array(0: Byte)
-    } else {
-      BigIntegers.asUnsignedByteArray(wrappedValue)
-    }
-
+    val bytes = BigIntegers.asUnsignedByteArray(32, wrappedValue)
     val res: Array[Byte] = bytes.map(b => (~b & 0xff).toByte)
     CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(res))
   }

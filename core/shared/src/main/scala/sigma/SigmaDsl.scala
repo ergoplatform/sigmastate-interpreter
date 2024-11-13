@@ -1,7 +1,5 @@
 package sigma
 
-import sigma.ast.SType
-
 import java.math.BigInteger
 import sigma.data._
 
@@ -176,8 +174,8 @@ trait BigInt {
   def toUnsigned: UnsignedBigInt
 
   /**
-    * @return unsigned representation of this BigInt modulo `m`. Cryptographic mod operation is done, ie result is
-    *         non-negative always
+    * @return unsigned representation of this BigInt modulo `m`. Cryptographic mod operation is done, so result is
+    *         always non-negative
     */
   def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt
 }

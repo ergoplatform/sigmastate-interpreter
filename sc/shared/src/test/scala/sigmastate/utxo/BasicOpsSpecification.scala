@@ -38,6 +38,7 @@ import java.math.BigInteger
 import scala.collection.compat.immutable.ArraySeq
 import java.security.SecureRandom
 import scala.annotation.tailrec
+import scala.util.Try
 
 class BasicOpsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -390,6 +391,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("unsigned -> signed overflow") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val ub = unsignedBigInt("${CryptoConstants.groupOrder}")
+         |  ub.toSigned > 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy conversionTest()
+    } else {
+      val t = Try(conversionTest())
+      t.failed.get.getCause.getMessage.startsWith("BigInteger out of 256 bit range")
+    }
+  }
+
   property("schnorr sig check") {
 
     val g = CGroupElement(SecP256K1Group.generator)
@@ -406,7 +425,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       val r = randBigInt
 
       val a: GroupElement = g.exp(CBigInt(r.bigInteger))
-      val z = (r + secretKey * BigInt(scorex.crypto.hash.Blake2b256(msg))) % CryptoConstants.groupOrder
+      val z = (r + secretKey * BigInt(scorex.crypto.hash.Blake2b256(msg))).mod(CryptoConstants.groupOrder)
 
       if(z.bitLength > 255) {
         (a, z)
@@ -420,7 +439,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val message = Array.fill(5)(1.toByte)
 
-    val (a,z) = sign(message, holderSecret)
+    val (a, z) = sign(message, holderSecret)
 
     val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Map(
       0.toByte -> GroupElementConstant(holderPk),

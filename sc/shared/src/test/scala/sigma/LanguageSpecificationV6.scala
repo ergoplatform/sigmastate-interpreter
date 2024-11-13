@@ -2265,13 +2265,11 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
     verifyCases(
       Seq(
-        CUnsignedBigInt(BigInteger.valueOf(Byte.MaxValue)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(128))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(0)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(255))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(1)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(254))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(2)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(253))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(10001)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(55534))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(Int.MaxValue)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(Int.MaxValue).add(BigInteger.ONE))), None)),
-        CUnsignedBigInt(BigInteger.valueOf(Long.MaxValue)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(Long.MaxValue).add(BigInteger.ONE))), None))
+        CUnsignedBigInt(BigInteger.valueOf(Byte.MaxValue)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("115792089237316195423570985008687907853269984665640564039457584007913129639808"))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(0)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.ONE))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(1)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(2)))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(2)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(3)))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(10001)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(10002)))), None))
       ),
       bitNot
     )

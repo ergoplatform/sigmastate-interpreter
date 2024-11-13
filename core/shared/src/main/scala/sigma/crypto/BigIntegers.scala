@@ -13,9 +13,8 @@ object BigIntegers {
   private val MAX_ITERATIONS = 1000
 
   /** Create the given number of random bits.
-    *
     * @param bitLength the number of random bits to create.
-    * @param random    a source of randomness.
+    * @param random a source of randomness.
     * @return a byte array containing random bits.
     */
   @throws[IllegalArgumentException]
