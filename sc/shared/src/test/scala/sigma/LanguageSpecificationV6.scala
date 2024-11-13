@@ -11,7 +11,7 @@ import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
@@ -23,6 +23,7 @@ import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
 import sigma.Extensions.{ArrayOps, CollOps}
+import sigma.crypto.CryptoConstants
 import sigma.interpreter.{ContextExtension, ProverResult}
 
 import java.math.BigInteger
@@ -2415,6 +2416,25 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       ),
       shiftRight,
       preGeneratedSamples = Some(Seq())
+    )
+  }
+  
+  property("GroupElement.expUnsigned") {
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    val f = newFeature[(GroupElement, UnsignedBigInt), GroupElement](
+      { (xs: (GroupElement, UnsignedBigInt)) => xs._1.expUnsigned(xs._2) },
+      """{ (xs: (GroupElement, UnsignedBigInt)) => xs._1.expUnsigned(xs._2) }""".stripMargin,
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.generator)), None)),
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(CryptoConstants.dlogGroup.order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None))
+      ),
+      f
     )
   }
 

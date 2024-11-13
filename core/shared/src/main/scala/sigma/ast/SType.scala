@@ -108,7 +108,7 @@ object SType {
       SGlobal, SHeader, SPreHeader, SAvlTree, SGroupElement, SSigmaProp, SString, SBox,
       SUnit, SAny)
 
-  // V6 types, see `allPredefTypes` scaladoc below
+  // V6 types, see `allPredefTypes` scaladoc below. Contains SUnsignedBigInt type in addition to v5 types.
   private val v6PredefTypes = v5PredefTypes ++ Array(SUnsignedBigInt)
 
   /** All pre-defined types should be listed here. Note, NoType is not listed.
