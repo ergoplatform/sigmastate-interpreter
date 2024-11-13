@@ -549,10 +549,15 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
+ //     case x: BigInt => x.asInstanceOf[CBigInt].wrappedValue
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot upcast value $v to the type $this")
     }
-    CUnsignedBigInt(bi)
+    if(bi.compareTo(BigInteger.ZERO) >= 0) {
+      CUnsignedBigInt(bi)
+    } else {
+      sys.error(s"Cannot upcast negative value $v to the type $this")
+    }
   }
   override def downcast(v: AnyVal): UnsignedBigInt = {
     val bi = v match {
@@ -560,10 +565,15 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
+  //    case x: BigInt => x.asInstanceOf[CBigInt].wrappedValue
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot downcast value $v to the type $this")
     }
-    CUnsignedBigInt(bi)
+    if(bi.compareTo(BigInteger.ZERO) >= 0) {
+      CUnsignedBigInt(bi)
+    } else {
+      sys.error(s"Cannot upcast negative value $v to the type $this")
+    }
   }
 }
 

@@ -1989,7 +1989,7 @@ case object SGlobalMethods extends MonoTypeMethods {
   private val BigEndianBytesCostKind = FixedCost(JitCost(10))
 
   // id = 4 is reserved for deserializeTo ()
-  lazy val fromBigEndianBytesMethod = SMethod(
+  lazy val FromBigEndianBytesMethod = SMethod(
     this, "fromBigEndianBytes", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 5, BigEndianBytesCostKind, Seq(tT))
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[SigmaDslBuilder, Coll[Byte], RType[_]]("fromBigEndianBytes"),
@@ -2033,7 +2033,7 @@ case object SGlobalMethods extends MonoTypeMethods {
         groupGeneratorMethod,
         xorMethod,
         serializeMethod,
-        fromBigEndianBytesMethod
+        FromBigEndianBytesMethod
       )
     } else {
       Seq(

@@ -76,6 +76,11 @@ case class CBigInt(override val wrappedValue: BigInteger) extends BigInt with Wr
   */
 case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends UnsignedBigInt with WrapperOf[BigInteger] {
 
+  if (wrappedValue.compareTo(BigInteger.ZERO) < 0) {
+    throw new IllegalArgumentException(s"Attempt to create unsigned value from negative big integer $wrappedValue")
+  }
+
+
   override def toByte: Byte = wrappedValue.toByteExact
 
   override def toShort: Short = wrappedValue.toShortExact
@@ -141,6 +146,17 @@ case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends Unsign
   override def shiftLeft(n: Int): UnsignedBigInt = CUnsignedBigInt(wrappedValue.shiftLeft(n).toUnsignedBigIntValueExact)
 
   override def shiftRight(n: Int): UnsignedBigInt = CUnsignedBigInt(wrappedValue.shiftRight(n).toUnsignedBigIntValueExact)
+
+  override def bitwiseInverse(): UnsignedBigInt = {
+    val bytes = if(wrappedValue.compareTo(BigInteger.ZERO) == 0) {
+      Array(0: Byte)
+    } else {
+      BigIntegers.asUnsignedByteArray(wrappedValue)
+    }
+
+    val res: Array[Byte] = bytes.map(b => (~b & 0xff).toByte)
+    CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(res))
+  }
 
   override def toSigned(): BigInt = {
     CBigInt(wrappedValue.toSignedBigIntValueExact)

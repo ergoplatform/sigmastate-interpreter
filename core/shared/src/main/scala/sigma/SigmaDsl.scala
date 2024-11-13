@@ -321,6 +321,8 @@ trait UnsignedBigInt {
     */
   def shiftRight(n: Int): UnsignedBigInt
 
+  def bitwiseInverse(): UnsignedBigInt
+
   def toSigned(): BigInt
 }
 

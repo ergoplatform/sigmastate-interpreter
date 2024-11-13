@@ -455,7 +455,7 @@ object SigmaPredef {
           val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
           MethodCall(
             Global,
-            SGlobalMethods.fromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
+            SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
             args.toIndexedSeq,
             Map(tT -> resType)
           )

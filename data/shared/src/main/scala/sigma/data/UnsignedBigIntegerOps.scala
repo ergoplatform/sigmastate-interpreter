@@ -50,8 +50,8 @@ object UnsignedBigIntNumericOps {
     def fromInt(x: Int): UnsignedBigInt = x.toUnsignedBigInt
     def toInt(x: UnsignedBigInt): Int = x.toInt
     def toLong(x: UnsignedBigInt): Long = x.toLong
-    def toFloat(x: UnsignedBigInt): Float = ???
-    def toDouble(x: UnsignedBigInt): Double = ???
+    def toFloat(x: UnsignedBigInt): Float = x.toFloat
+    def toDouble(x: UnsignedBigInt): Double = x.toDouble
   }
 
   /** The instance of Integral for BigInt.
@@ -103,11 +103,7 @@ object UnsignedBigIntNumericOps {
     /**
       * @return a numeric value which is inverse of `x` (every bit is flipped)
       */
-    override def bitwiseInverse(x: UnsignedBigInt): UnsignedBigInt = {
-      val bytes = BigIntegers.asUnsignedByteArray(x.asInstanceOf[CUnsignedBigInt].wrappedValue)
-      val res: Array[Byte] = bytes.map(b => (b ^ Byte.MinValue).toByte)
-      CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(res))
-    }
+    override def bitwiseInverse(x: UnsignedBigInt): UnsignedBigInt = x.bitwiseInverse()
 
     /**
       * @return a numeric value which is `this | that`
