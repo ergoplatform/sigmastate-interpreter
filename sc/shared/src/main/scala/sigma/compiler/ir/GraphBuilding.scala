@@ -20,9 +20,7 @@ import sigma.data.UnsignedBigIntNumericOps.{UnsignedBigIntIsExactIntegral, Unsig
 import sigma.exceptions.GraphBuildingException
 import sigma.serialization.OpCodes
 import sigma.{SigmaException, ast}
-import sigma.util.Extensions.ByteOps
-import sigma.{SigmaException, VersionContext, ast}
-import sigmastate.interpreter.Interpreter.ScriptEnv
+import sigma.VersionContext
 
 import scala.collection.mutable.ArrayBuffer
 

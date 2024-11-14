@@ -81,6 +81,9 @@ case class CUnsignedBigInt(override val wrappedValue: BigInteger) extends Unsign
     throw new IllegalArgumentException(s"Attempt to create unsigned value from negative big integer $wrappedValue")
   }
 
+  if (wrappedValue.bitLength() > 256) {
+    throw new IllegalArgumentException(s"Too big unsigned big int value $wrappedValue")
+  }
 
   override def toByte: Byte = wrappedValue.toByteExact
 

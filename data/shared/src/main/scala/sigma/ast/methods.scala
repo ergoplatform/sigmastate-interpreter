@@ -2,12 +2,9 @@ package sigma.ast
 
 import org.ergoplatform._
 import org.ergoplatform.validation._
-import sigma.Evaluation.stypeToRType
 import sigma.{UnsignedBigInt, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}
-import sigma.ast.SType.TypeCode
-import sigma.ast.SUnsignedBigIntMethods.ModInverseCostInfo
 import sigma.ast.SType.{TypeCode, paramT, tT}
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
@@ -273,7 +270,6 @@ object SNumericTypeMethods extends MethodsContainer {
           case SLongMethods => LongIsExactIntegral.toBigEndianBytes(obj.asInstanceOf[Long])
           case SBigIntMethods => obj.asInstanceOf[BigInt].toBytes
           case SUnsignedBigIntMethods => obj.asInstanceOf[UnsignedBigInt].toBytes
-          // todo: test
         }
       })
       .withInfo(PropertyCall,
@@ -507,24 +503,16 @@ case object SBigIntMethods extends SNumericTypeMethods {
   //id = 8 to make it after toBits
   val ToUnsigned = SMethod(this, "toUnsigned", SFunc(this.ownerType, SUnsignedBigInt), 14, ToUnsignedCostKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall,
+        "Converts non-negative big integer to unsigned type, throws exception on negative big integer.")
 
-  def toUnsigned_eval(mc: MethodCall, bi: BigInt)
-                     (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc)
-    bi.toUnsigned
-  }
+  private val ToUnsignedModCostKind = FixedCost(JitCost(15))
 
-
-  val ToUnsignedMod = SMethod(this, "toUnsignedMod", SFunc(Array(this.ownerType, SUnsignedBigInt), SUnsignedBigInt), 15, ToUnsignedCostKind)
+  val ToUnsignedMod = SMethod(this, "toUnsignedMod", SFunc(Array(this.ownerType, SUnsignedBigInt), SUnsignedBigInt), 15, ToUnsignedModCostKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
-
-  def toUnsignedMod_eval(mc: MethodCall, bi: BigInt, m: UnsignedBigInt)
-                        (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc)
-    bi.toUnsignedMod(m)
-  }
+    .withInfo(MethodCall,
+              "Converts non-negative big integer to unsigned type using cryptographic mod operation.",
+              ArgInfo("m", "modulo value"))
 
   protected override def getMethods(): Seq[SMethod]  = {
     if (VersionContext.current.isV6SoftForkActivated) {

@@ -34,7 +34,7 @@ class CoreDataSerializer {
       val data = v.asInstanceOf[BigInt].toBigInteger.toByteArray
       w.putUShort(data.length)
       w.putBytes(data)
-    case SUnsignedBigInt =>  // todo: versioning
+    case SUnsignedBigInt if VersionContext.current.isV6SoftForkActivated =>
       val data = BigIntegers.asUnsignedByteArray(v.asInstanceOf[CUnsignedBigInt].wrappedValue)
       w.putUShort(data.length)
       w.putBytes(data)
@@ -113,10 +113,10 @@ class CoreDataSerializer {
         }
         val valueBytes = r.getBytes(size)
         CBigInt(new BigInteger(valueBytes))
-      case SUnsignedBigInt =>  // todo: versioning
+      case SUnsignedBigInt if VersionContext.current.isV6SoftForkActivated =>
         val size: Short = r.getUShort().toShort
         if (size > SBigInt.MaxSizeInBytes) {
-          throw new SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
+          throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
         }
         val valueBytes = r.getBytes(size)
         CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(valueBytes))

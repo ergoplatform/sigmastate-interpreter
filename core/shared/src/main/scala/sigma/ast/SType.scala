@@ -505,6 +505,7 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
 
   override def numericTypeIndex: Int = 4
 
+  // no upcast to unsigned big int, use .toUnsigned / .toUnsignedMod instead
   override def upcast(v: AnyVal): BigInt = {
     v match {
       case x: Byte => CBigInt(BigInteger.valueOf(x.toLong))
@@ -515,6 +516,8 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
       case _ => sys.error(s"Cannot upcast value $v to the type $this")
     }
   }
+
+  // no downcast to unsigned big int, use .toUnsigned / .toUnsignedMod instead
   override def downcast(v: AnyVal): BigInt = {
     v match {
       case x: Byte => CBigInt(BigInteger.valueOf(x.toLong))
@@ -542,14 +545,13 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
 
   override def numericTypeIndex: Int = 5
 
-  // todo: consider upcast and downcast rules
+  // no upcast to signed big int, use .toSigned method
   override def upcast(v: AnyVal): UnsignedBigInt = {
     val bi = v match {
       case x: Byte => BigInteger.valueOf(x.toLong)
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
- //     case x: BigInt => x.asInstanceOf[CBigInt].wrappedValue
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot upcast value $v to the type $this")
     }
@@ -559,17 +561,18 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
       sys.error(s"Cannot upcast negative value $v to the type $this")
     }
   }
+
+  // no downcast to signed big int, use .toSigned method
   override def downcast(v: AnyVal): UnsignedBigInt = {
     val bi = v match {
       case x: Byte => BigInteger.valueOf(x.toLong)
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
-  //    case x: BigInt => x.asInstanceOf[CBigInt].wrappedValue
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot downcast value $v to the type $this")
     }
-    if(bi.compareTo(BigInteger.ZERO) >= 0) {
+    if (bi.compareTo(BigInteger.ZERO) >= 0) {
       CUnsignedBigInt(bi)
     } else {
       sys.error(s"Cannot upcast negative value $v to the type $this")

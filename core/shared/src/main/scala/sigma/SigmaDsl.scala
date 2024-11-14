@@ -180,7 +180,9 @@ trait BigInt {
   def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt
 }
 
-
+/**
+  * Base class for unsigned 256-bits integers
+  */
 trait UnsignedBigInt {
   /** Convert this BigInt value to Byte.
     * @throws ArithmeticException if overflow happens.
@@ -338,6 +340,10 @@ trait GroupElement {
     */
   def exp(k: BigInt): GroupElement
 
+  /** Exponentiate this <code>GroupElement</code> to the given unsigned 256 bit integer.
+    * @param k The power.
+    * @return <code>this to the power of k</code>.
+    */
   def expUnsigned(k: UnsignedBigInt): GroupElement
 
   /** Group operation. */
