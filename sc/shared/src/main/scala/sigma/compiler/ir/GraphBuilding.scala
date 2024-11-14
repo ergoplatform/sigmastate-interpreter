@@ -346,7 +346,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     (ByteElement,   ByteIsExactIntegral),
     (ShortElement,  ShortIsExactIntegral),
     (IntElement,    IntIsExactIntegral),
-    (LongElement,   LongIsExactIntegral)
+    (LongElement,   LongIsExactIntegral),
+    (bigIntElement, BigIntIsExactIntegral),
+    (unsignedBigIntElement, UnsignedBigIntIsExactIntegral)
   )
   protected lazy val elemToExactOrderingMap = Map[Elem[_], ExactOrdering[_]](
     (ByteElement,   ByteIsExactOrdering),

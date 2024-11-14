@@ -481,6 +481,27 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("unsigned bigint - arith") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = (bi1 * bi1 + bi2 * bi1) / bi1 - bi2
+           |   m > 0
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
   property("mod") {
     def miTest() = {
       test("mod", env, ext,
