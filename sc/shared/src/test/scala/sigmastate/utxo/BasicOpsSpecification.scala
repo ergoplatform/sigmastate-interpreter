@@ -405,6 +405,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an[Exception] should be thrownBy conversionTest()
     } else {
       val t = Try(conversionTest())
+      // on JS exception is ArithmeticException directly, on JVM, ArithmeticException wrapped into InvocationTargetException
       t.failed.get match {
         case e: java.lang.ArithmeticException => e.getMessage.startsWith("BigInteger out of 256 bit range") shouldBe true
         case e: Throwable => e.getCause.getMessage.startsWith("BigInteger out of 256 bit range") shouldBe true
