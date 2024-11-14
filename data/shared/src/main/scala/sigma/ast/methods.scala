@@ -541,9 +541,7 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   /** Type for which this container defines methods. */
   override def ownerType: SMonoType = SUnsignedBigInt
 
-  // todo: costing
-  final val ModInverseCostInfo = OperationCostInfo(
-    FixedCost(JitCost(5)), NamedDesc("NBitsMethodCall"))
+  final val ModInverseCostInfo = OperationCostInfo(FixedCost(JitCost(30)), NamedDesc("ModInverseMethodCall"))
 
   val ModInverseMethod = SMethod(this, "modInverse", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 14, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
@@ -552,23 +550,33 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
       ArgInfo("m", "modulo value")
     )
 
-  val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 15, ModInverseCostInfo.costKind)
+  final val PlusModCostInfo = OperationCostInfo(FixedCost(JitCost(30)), NamedDesc("ModInverseMethodCall"))
+
+  val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 15, PlusModCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Modular addition", ArgInfo("that", "Addend") , ArgInfo("m", "modulo value"))
 
-  val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 16, ModInverseCostInfo.costKind)
+  final val SubtractModCostInfo = OperationCostInfo(FixedCost(JitCost(30)), NamedDesc("SubtractModMethodCall"))
+
+  val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 16, SubtractModCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Modular subtraction", ArgInfo("that", "Subtrahend") , ArgInfo("m", "modulo value"))
 
-  val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 17, ModInverseCostInfo.costKind)
+  final val MultiplyModCostInfo = OperationCostInfo(FixedCost(JitCost(40)), NamedDesc("MultiplyModMethodCall"))
+
+  val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 17, MultiplyModCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Modular multiplication", ArgInfo("that", "Multiplier") , ArgInfo("m", "modulo value"))
 
-  val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 18, ModInverseCostInfo.costKind)
+  final val ModCostInfo = OperationCostInfo(FixedCost(JitCost(20)), NamedDesc("ModMethodCall"))
+
+  val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 18, ModCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Cryptographic modulo operation", ArgInfo("m", "Modulo value"))
 
-  val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 19, ModInverseCostInfo.costKind)
+  final val ToSignedCostInfo = OperationCostInfo(FixedCost(JitCost(10)), NamedDesc("ToSignedMethodCall"))
+
+  val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 19, ToSignedCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Convert this unsigned big int to signed (with possible exception if leftmost bit is set to 1).")
 
