@@ -551,62 +551,26 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
-  def modInverse_eval(mc: MethodCall, bi: UnsignedBigInt, m: UnsignedBigInt)
-              (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc)
-    bi.modInverse(m)
-  }
-
   // todo: costing
   val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 15, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
-  def plusMod_eval(mc: MethodCall, bi: UnsignedBigInt, bi2: UnsignedBigInt, m: UnsignedBigInt)
-                     (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc) // todo: costing
-    bi.plusMod(bi2, m)
-  }
-
   val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 16, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
-
-  def subtractMod_eval(mc: MethodCall, bi: UnsignedBigInt, bi2: UnsignedBigInt, m: UnsignedBigInt)
-                  (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc) // todo: costing
-    bi.subtractMod(bi2, m)
-  }
 
   val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 17, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
-  def multiplyMod_eval(mc: MethodCall, bi: UnsignedBigInt, bi2: UnsignedBigInt, m: UnsignedBigInt)
-                  (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc) // todo: costing
-    bi.multiplyMod(bi2, m)
-  }
-
   val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 18, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
 
-  def mod_eval(mc: MethodCall, bi: UnsignedBigInt, m: UnsignedBigInt)
-                      (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc) // todo: costing
-    bi.mod(m)
-  }
-
   val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 19, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "")
-
-  def toSigned_eval(mc: MethodCall, bi: UnsignedBigInt)
-              (implicit E: ErgoTreeEvaluator): BigInt = {
-    E.addCost(ModInverseCostInfo.costKind, mc.method.opDesc) // todo: costing
-    bi.toSigned()
-  }
 
   // no 6.0 versioning here as it is done in method containers
   protected override def getMethods(): Seq[SMethod]  = {
