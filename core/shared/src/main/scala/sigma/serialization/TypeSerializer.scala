@@ -5,7 +5,7 @@ import sigma.VersionContext
 import sigma.ast.SCollectionType.{CollectionTypeCode, NestedCollectionTypeCode}
 import sigma.ast._
 import sigma.util.safeNewArray
-import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckTypeCode, CheckTypeCodeV6}
+import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckPrimitiveTypeCodeV6, CheckTypeCode, CheckTypeCodeV6}
 
 import java.nio.charset.StandardCharsets
 
@@ -14,9 +14,12 @@ class TypeSerializer {
   import TypeSerializer._
 
   def getEmbeddableType(code: Int): SType = {
-    // todo : add versioning to the check like done for other rules
     // todo : add unsigned bit int to embeddable id to type
-    CheckPrimitiveTypeCode(code.toByte)
+    if (VersionContext.current.isV6SoftForkActivated) {
+      CheckPrimitiveTypeCodeV6(code.toByte)
+    } else {
+      CheckPrimitiveTypeCode(code.toByte)
+    }
     embeddableIdToType(code)
   }
 
