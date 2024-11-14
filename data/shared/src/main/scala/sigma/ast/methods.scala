@@ -541,36 +541,36 @@ case object SUnsignedBigIntMethods extends SNumericTypeMethods {
   /** Type for which this container defines methods. */
   override def ownerType: SMonoType = SUnsignedBigInt
 
-  final val ToNBitsCostInfo = OperationCostInfo(
-    FixedCost(JitCost(5)), NamedDesc("NBitsMethodCall"))
-
   // todo: costing
-  final val ModInverseCostInfo = ToNBitsCostInfo
+  final val ModInverseCostInfo = OperationCostInfo(
+    FixedCost(JitCost(5)), NamedDesc("NBitsMethodCall"))
 
   val ModInverseMethod = SMethod(this, "modInverse", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 14, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall,
+      "Computes modular inverse of a value. Modular inverse of A mod C is the B value that makes A * B mod C = 1.",
+      ArgInfo("m", "modulo value")
+    )
 
-  // todo: costing
   val PlusModMethod = SMethod(this, "plusMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 15, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Modular addition", ArgInfo("that", "Addend") , ArgInfo("m", "modulo value"))
 
   val SubtractModMethod = SMethod(this, "subtractMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 16, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Modular subtraction", ArgInfo("that", "Subtrahend") , ArgInfo("m", "modulo value"))
 
   val MultiplyModMethod = SMethod(this, "multiplyMod", SFunc(Array(this.ownerType, this.ownerType, this.ownerType), this.ownerType), 17, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Modular multiplication", ArgInfo("that", "Multiplier") , ArgInfo("m", "modulo value"))
 
   val ModMethod = SMethod(this, "mod", SFunc(Array(this.ownerType, this.ownerType), this.ownerType), 18, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Cryptographic modulo operation", ArgInfo("m", "Modulo value"))
 
   val ToSignedMethod = SMethod(this, "toSigned", SFunc(Array(this.ownerType), SBigInt), 19, ModInverseCostInfo.costKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Convert this unsigned big int to signed (with possible exception if leftmost bit is set to 1).")
 
   // no 6.0 versioning here as it is done in method containers
   protected override def getMethods(): Seq[SMethod]  = {
@@ -616,7 +616,7 @@ case object SGroupElementMethods extends MonoTypeMethods {
       ArgInfo("k", "The power"))
 
   lazy val ExponentiateUnsignedMethod: SMethod = SMethod(
-    this, "expUnsigned", SFunc(Array(this.ownerType, SUnsignedBigInt), this.ownerType), 6, Exponentiate.costKind) // todo: recheck costing
+    this, "expUnsigned", SFunc(Array(this.ownerType, SUnsignedBigInt), this.ownerType), 6, Exponentiate.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo("Exponentiate this \\lst{GroupElement} to the given number. Returns this to the power of k",
       ArgInfo("k", "The power"))
@@ -654,9 +654,6 @@ case object SGroupElementMethods extends MonoTypeMethods {
     })
   }
 
-  def expUnsigned_eval(mc: MethodCall, power: UnsignedBigInt)(implicit E: ErgoTreeEvaluator): GroupElement = {
-    ???
-  }
 }
 
 /** Methods of type `SigmaProp` which represent sigma-protocol propositions. */
