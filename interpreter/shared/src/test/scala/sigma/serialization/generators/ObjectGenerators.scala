@@ -143,6 +143,8 @@ trait ObjectGenerators extends TypeGenerators
     arbString.arbitrary.map { v => mkConstant[SString.type](v, SString) }
   lazy val bigIntConstGen: Gen[BigIntConstant] =
     arbBigInt.arbitrary.map { v => mkConstant[SBigInt.type](v, SBigInt) }
+  lazy val unsignedBigIntConstGen: Gen[UnsignedBigIntConstant] =
+    arbUnsignedBigInt.arbitrary.map { v => mkConstant[SUnsignedBigInt.type](v, SUnsignedBigInt) }
 
   lazy val byteArrayConstGen: Gen[CollectionConstant[SByte.type]] = for {
     bytes <- arrayOfRange(1, 100, arbByte.arbitrary)
@@ -327,6 +329,11 @@ trait ObjectGenerators extends TypeGenerators
       longConstGen,
       booleanConstGen,
       bigIntConstGen,
+      if(VersionContext.current.isV6SoftForkActivated) {
+        unsignedBigIntConstGen
+      } else {
+        bigIntConstGen
+      },
       groupElementConstGen,
       getVar[SInt.type],
       getVar[SLong.type],

@@ -42,7 +42,11 @@ trait TypeGenerators {
       intTypeGen,
       longTypeGen,
       bigIntTypeGen,
-      unsignedBigIntTypeGen
+      if(VersionContext.current.isV6SoftForkActivated) {
+        unsignedBigIntTypeGen
+      } else {
+        bigIntTypeGen
+      }
     ))
   } yield STuple(values.toIndexedSeq)
 
