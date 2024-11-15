@@ -6,7 +6,7 @@ import sigma.ast.{FalseLeaf, IntConstant, SelectField, Tuple}
 import sigma.serialization.OpCodes.{SelectFieldCode, TupleCode}
 import sigmastate.CrossVersionProps
 
-class SelectFieldSerializerSpecification extends CrossVersionProps with TableSerializationSpecification {
+class SelectFieldSerializerSpecification extends TableSerializationSpecification with CrossVersionProps {
 
   property("SelectField: Serializer round trip ") {
     forAll(tupleGen(2, 10)) { tuple: Tuple =>
