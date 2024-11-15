@@ -289,7 +289,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
       trySoftForkable(false) {
         action
         true
-      }
+      }(vs)
     }, {
       case ve: ValidationException if ve.rule == rule => true
       case _ => false

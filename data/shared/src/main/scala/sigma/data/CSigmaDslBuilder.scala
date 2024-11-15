@@ -23,7 +23,7 @@ import java.math.BigInteger
   * @see [[SigmaDslBuilder]] for detailed descriptions
   */
 class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
-  implicit val validationSettings: SigmaValidationSettings = ValidationRules.currentSettings
+  def validationSettings: SigmaValidationSettings = ValidationRules.currentSettings
 
   override val Colls: CollBuilder = sigma.Colls
 

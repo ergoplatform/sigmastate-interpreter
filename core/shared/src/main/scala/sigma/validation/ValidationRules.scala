@@ -1,6 +1,6 @@
 package sigma.validation
 
-import sigma.SigmaException
+import sigma.{SigmaException, VersionContext}
 import sigma.ast.{SGlobal, SOption, TypeCodes}
 import sigma.serialization.{ReaderPositionLimitExceeded, SerializerException}
 import sigma.util.Extensions.toUByte
@@ -100,7 +100,7 @@ object ValidationRules {
   class CheckTypeCodeTemplate(ruleId: Short) extends ValidationRule(ruleId,
     "Check the non-primitive type code is supported or is added via soft-fork")
       with SoftForkWhenCodeAdded {
-    override protected lazy val settings: SigmaValidationSettings = coreSettings
+    override protected def settings: SigmaValidationSettings = coreSettings
 
     final def apply[T](typeCode: Byte): Unit = {
       checkRule()
@@ -120,7 +120,7 @@ object ValidationRules {
   object CheckSerializableTypeCode extends ValidationRule(1009,
     "Check the data values of the type (given by type code) can be serialized")
       with SoftForkWhenReplaced {
-    override protected lazy val settings: SigmaValidationSettings = coreSettings
+    override protected def settings: SigmaValidationSettings = coreSettings
 
     /** Creates an exception which is used as a cause when throwing a ValidationException. */
     def throwValidationException(typeCode: Byte): Nothing = {
@@ -149,7 +149,7 @@ object ValidationRules {
   object CheckTypeWithMethods extends ValidationRule(1010,
     "Check the type (given by type code) supports methods")
       with SoftForkWhenCodeAdded {
-    override protected lazy val settings: SigmaValidationSettings = coreSettings
+    override protected def settings: SigmaValidationSettings = coreSettings
 
     final def apply[T](typeCode: Byte, cond: Boolean): Unit = {
       checkRule()
@@ -168,7 +168,7 @@ object ValidationRules {
     */
   object CheckPositionLimit extends ValidationRule(1014,
     "Check that the Reader has not exceeded the position limit.") with SoftForkWhenReplaced {
-    override protected lazy val settings: SigmaValidationSettings = coreSettings
+    override protected def settings: SigmaValidationSettings = coreSettings
 
     /** Wraps the given cause into [[ValidationException]] and throws it. */
     def throwValidationException(cause: ReaderPositionLimitExceeded): Nothing = {
@@ -191,7 +191,7 @@ object ValidationRules {
     }
   }
 
-  private val ruleSpecs: Seq[ValidationRule] = Seq(
+  private val ruleSpecsV5: Seq[ValidationRule] = Seq(
     CheckPrimitiveTypeCode,
     CheckTypeCode,
     CheckSerializableTypeCode,
@@ -199,13 +199,30 @@ object ValidationRules {
     CheckPositionLimit
   )
 
+  private val ruleSpecsV6: Seq[ValidationRule] = Seq(
+    CheckPrimitiveTypeCodeV6,
+    CheckTypeCodeV6,
+    CheckSerializableTypeCode,
+    CheckTypeWithMethods,
+    CheckPositionLimit
+  )
+
+  private def ruleSpecs: Seq[ValidationRule] = {
+    if(VersionContext.current.isV6SoftForkActivated) {
+      ruleSpecsV6
+    } else {
+      ruleSpecsV5
+    }
+  }
+
   /** Validation settings that correspond to the current version of the ErgoScript implementation.
     * Different version of the code will have a different set of rules here.
     * This variable is globally available and can be use wherever checking of the rules is necessary.
     * This is immutable data structure, it can be augmented with RuleStates from block extension
     * sections of the blockchain, but that augmentation is only available in stateful context.
     */
-  val coreSettings: SigmaValidationSettings = new MapSigmaValidationSettings({
+    // todo: versioned cache here for efficiency
+  def coreSettings: SigmaValidationSettings = new MapSigmaValidationSettings({
     val map = ruleSpecs.map(r => r.id -> (r, EnabledRule)).toMap
     assert(map.size == ruleSpecs.size, s"Duplicate ruleIds ${ruleSpecs.groupBy(_.id).filter(g => g._2.length > 1)}")
     map
