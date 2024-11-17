@@ -69,7 +69,7 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       code
     }
 
-    an[SerializerException] should be thrownBy (
+    an[ValidationException] should be thrownBy (
       VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
         code
       }
