@@ -1376,6 +1376,7 @@ class SigmaDslTesting extends AnyPropSpec
         case IntType => arbInt
         case LongType => arbLong
         case BigIntRType => arbBigInt
+        case UnsignedBigIntRType => arbUnsignedBigInt
         case GroupElementRType => arbGroupElement
         case SigmaPropRType => arbSigmaProp
         case BoxRType => arbBox
@@ -1404,7 +1405,7 @@ class SigmaDslTesting extends AnyPropSpec
     */
   def updateArbitrary[A](t: RType[A], sampled: Sampled[A]) = {
     t match {
-      case BigIntRType | GroupElementRType | SigmaPropRType |
+      case BigIntRType | UnsignedBigIntRType | GroupElementRType | SigmaPropRType |
            BoxRType | PreHeaderRType | HeaderRType | AvlTreeRType |
            _: CollType[_] | _: PairType[_,_] | _: OptionType[_] =>
         val newArb = Arbitrary(Gen.oneOf(sampled.samples))

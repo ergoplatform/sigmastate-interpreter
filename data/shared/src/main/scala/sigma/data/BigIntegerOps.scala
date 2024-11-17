@@ -13,6 +13,11 @@ object OrderingOps {
     def compare(x: BigInt, y: BigInt) = x.compareTo(y)
   }
   implicit object BigIntOrdering extends BigIntOrdering
+
+  trait UnsignedBigIntOrdering extends Ordering[UnsignedBigInt] {
+    def compare(x: UnsignedBigInt, y: UnsignedBigInt) = x.compareTo(y)
+  }
+  implicit object UnsignedBigIntOrdering extends UnsignedBigIntOrdering
 }
 
 object NumericOps {

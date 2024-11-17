@@ -28,6 +28,7 @@ object Platform {
       case v: Long => Nullable(mkConstant[SLong.type](v, SLong))
       case v: BigInteger if !VersionContext.current.isV6SoftForkActivated => Nullable(mkConstant[SBigInt.type](CBigInt(v), SBigInt))
       case n: sigma.BigInt => Nullable(mkConstant[SBigInt.type](n, SBigInt))
+      case n: sigma.UnsignedBigInt => Nullable(mkConstant[SUnsignedBigInt.type](n, SUnsignedBigInt))
       case ge: GroupElement => Nullable(mkConstant[SGroupElement.type](ge, SGroupElement))
       case b: Boolean => Nullable(if (b) TrueLeaf else FalseLeaf)
       case v: String if !VersionContext.current.isV6SoftForkActivated => Nullable(mkConstant[SString.type](v, SString))

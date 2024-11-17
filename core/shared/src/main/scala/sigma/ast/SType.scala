@@ -102,13 +102,14 @@ object SType {
   /** Immutable empty IndexedSeq, can be used to avoid repeated allocations. */
   val EmptySeq: IndexedSeq[SType] = EmptyArray
 
+  // <= V5 types, see `allPredefTypes` scaladoc below
   private val v5PredefTypes = Array[SType](
       SBoolean, SByte, SShort, SInt, SLong, SBigInt, SContext,
       SGlobal, SHeader, SPreHeader, SAvlTree, SGroupElement, SSigmaProp, SString, SBox,
       SUnit, SAny)
 
+  // V6 types, see `allPredefTypes` scaladoc below. Contains SUnsignedBigInt type in addition to v5 types.
   private val v6PredefTypes = v5PredefTypes ++ Array(SUnsignedBigInt)
-
 
   /** All pre-defined types should be listed here. Note, NoType is not listed.
     * Should be in sync with sigmastate.lang.Types.predefTypes. */
@@ -146,6 +147,8 @@ object SType {
     * 2) all methods from SNumericTypeMethods are copied to all the concrete numeric types
     * (SByte, SShort, SInt, SLong, SBigInt) and the generic tNum type parameter is
     * specialized accordingly.
+    *
+    * Also, SUnsignedBigInt type is added in v6.0.
     *
     * This difference in behaviour is tested by `property("MethodCall on numerics")`.
     *
@@ -319,7 +322,7 @@ object SPrimType {
   def unapply(t: SType): Option[SType] = SType.allPredefTypes.find(_ == t)
 
   /** Type code of the last valid prim type so that (1 to LastPrimTypeCode) is a range of valid codes. */
-  final val LastPrimTypeCode: Byte = 8: Byte
+  final val LastPrimTypeCode: Byte = 9: Byte
 
   /** Upper limit of the interval of valid type codes for primitive types */
   final val MaxPrimTypeCode: Byte = 11: Byte
@@ -487,7 +490,7 @@ case object SLong extends SPrimType with SEmbeddable with SNumericType with SMon
   }
 }
 
-/** Type of 256-bit  signed integer values. Implemented using [[java.math.BigInteger]]. */
+/** Type of 256-bit signed integer values. Implemented using [[java.math.BigInteger]]. */
 case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SMonoType {
   override type WrappedType = BigInt
   override val typeCode: TypeCode = 6: Byte
@@ -502,6 +505,7 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
 
   override def numericTypeIndex: Int = 4
 
+  // no upcast to unsigned big int, use .toUnsigned / .toUnsignedMod instead
   override def upcast(v: AnyVal): BigInt = {
     v match {
       case x: Byte => CBigInt(BigInteger.valueOf(x.toLong))
@@ -512,6 +516,8 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
       case _ => sys.error(s"Cannot upcast value $v to the type $this")
     }
   }
+
+  // no downcast to unsigned big int, use .toUnsigned / .toUnsignedMod instead
   override def downcast(v: AnyVal): BigInt = {
     v match {
       case x: Byte => CBigInt(BigInteger.valueOf(x.toLong))
@@ -539,7 +545,7 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
 
   override def numericTypeIndex: Int = 5
 
-  // todo: consider upcast and downcast rules
+  // no upcast to signed big int, use .toSigned method
   override def upcast(v: AnyVal): UnsignedBigInt = {
     val bi = v match {
       case x: Byte => BigInteger.valueOf(x.toLong)
@@ -549,8 +555,14 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot upcast value $v to the type $this")
     }
-    CUnsignedBigInt(bi)
+    if(bi.compareTo(BigInteger.ZERO) >= 0) {
+      CUnsignedBigInt(bi)
+    } else {
+      sys.error(s"Cannot upcast negative value $v to the type $this")
+    }
   }
+
+  // no downcast to signed big int, use .toSigned method
   override def downcast(v: AnyVal): UnsignedBigInt = {
     val bi = v match {
       case x: Byte => BigInteger.valueOf(x.toLong)
@@ -560,7 +572,11 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
       case x: UnsignedBigInt => x.asInstanceOf[CUnsignedBigInt].wrappedValue
       case _ => sys.error(s"Cannot downcast value $v to the type $this")
     }
-    CUnsignedBigInt(bi)
+    if (bi.compareTo(BigInteger.ZERO) >= 0) {
+      CUnsignedBigInt(bi)
+    } else {
+      sys.error(s"Cannot upcast negative value $v to the type $this")
+    }
   }
 }
 

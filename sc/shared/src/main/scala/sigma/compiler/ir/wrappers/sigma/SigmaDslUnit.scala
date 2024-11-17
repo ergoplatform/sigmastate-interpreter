@@ -28,7 +28,7 @@ import scalan._
       def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
       def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
       def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
-      def toSigned: Ref[BigInt]
+      def toSigned(): Ref[BigInt]
     };
     trait GroupElement extends Def[GroupElement] {
       def exp(k: Ref[BigInt]): Ref[GroupElement];

@@ -687,6 +687,12 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "CONTEXT.getVar[Int](1.toByte).get") shouldBe SInt
   }
 
+  property("SContext.getVarFromInput") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "CONTEXT.getVarFromInput[Int](1.toShort, 1.toByte).get") shouldBe SInt
+    }
+  }
+
   property("SAvlTree.digest") {
     typecheck(env, "getVar[AvlTree](1).get.digest") shouldBe SByteArray
   }

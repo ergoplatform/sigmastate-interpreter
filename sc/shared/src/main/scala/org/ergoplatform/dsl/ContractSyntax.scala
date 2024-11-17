@@ -55,6 +55,7 @@ trait ContractSyntax { contract: SigmaContract =>
       case _: String => StringType
       case _: Unit => UnitType
       case _: sigma.BigInt => BigIntRType
+      case _: sigma.BigInt => UnsignedBigIntRType
       case _: GroupElement => GroupElementRType
       case _: ErgoBox => syntax.ErgoBoxRType // TODO remove this RType
       case _: Box => BoxRType

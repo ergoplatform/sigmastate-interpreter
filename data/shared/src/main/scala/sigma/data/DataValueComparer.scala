@@ -139,6 +139,7 @@ object DataValueComparer {
   val descriptors: AVHashMap[RType[_], (OperationCostInfo[FixedCost], OperationCostInfo[PerItemCost])] =
     AVHashMap.fromSeq(Array[(RType[_], (OperationCostInfo[FixedCost], OperationCostInfo[PerItemCost]))](
       (BigIntRType, (EQ_BigInt, EQ_COA_BigInt)),
+      (UnsignedBigIntRType, (EQ_BigInt, EQ_COA_BigInt)),
       (GroupElementRType, (EQ_GroupElement, EQ_COA_GroupElement)),
       (AvlTreeRType, (EQ_AvlTree, EQ_COA_AvlTree)),
       (BoxRType, (EQ_Box, EQ_COA_Box)),
@@ -344,7 +345,6 @@ object DataValueComparer {
           okEqual = bi == r
         }
 
-      // todo: check costing
       case ubi: UnsignedBigInt => /** case 5 (see [[EQ_BigInt]]) */
         E.addFixedCost(EQ_BigInt) {
           okEqual = ubi == r

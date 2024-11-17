@@ -195,7 +195,7 @@ object BigInt extends EntityObject("BigInt") {
 
     def toUnsignedMod(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
       asRep[UnsignedBigInt](mkMethodCall(source,
-        BigIntClass.getMethod("UnsignedBigInt", classOf[Sym]),
+        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
         Array[AnyRef](that),
         true, true, element[UnsignedBigInt](unsignedBigIntElement)))
     }
@@ -395,14 +395,13 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
         true, false, element[UnsignedBigInt]))
     }
 
-    override def toSigned: Ref[BigInt] = {
+    override def toSigned(): Ref[BigInt] = {
       asRep[BigInt](mkMethodCall(self,
         UnsignedBigIntClass.getMethod("toSigned"),
         Array[AnyRef](),
         true, false, element[BigInt]))
     }
   }
-
 
   implicit object LiftableUnsignedBigInt extends Liftable[SUnsignedBigInt, UnsignedBigInt] {
     lazy val eW: Elem[UnsignedBigInt] = unsignedBigIntElement
@@ -500,7 +499,7 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
         true, true, element[UnsignedBigInt]))
     }
 
-    def toSigned: Ref[BigInt] = {
+    def toSigned(): Ref[BigInt] = {
       asRep[BigInt](mkMethodCall(source,
         UnsignedBigIntClass.getMethod("toSigned"),
         Array[AnyRef](),
@@ -522,7 +521,8 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
-          "add", "subtract", "multiply", "divide", "mod", "min", "max"
+          "add", "subtract", "multiply", "divide", "mod", "modInverse",
+          "min", "max", "plusMod", "subtractMod", "multiplyMod", "toSigned"
         ))
     }
   }

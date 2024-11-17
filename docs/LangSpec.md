@@ -923,7 +923,7 @@ def longToByteArray(input: Long): Coll[Byte]
 def decodePoint(bytes: Coll[Byte]): GroupElement 
 
 
-/** Extracts Context variable from self input by id and type.
+/** Extracts Context variable from SELF input by id and type.
   * ErgoScript is typed, so accessing a the variables is an operation which involves
   * some expected type given in brackets. Thus `getVar[Int](id)` expression should
   * evaluate to a valid value of the `Option[Int]` type.
@@ -980,7 +980,7 @@ def decodePoint(bytes: Coll[Byte]): GroupElement
   */
 def getVar[T](tag: Int): Option[T]
 
-/** Extracts Context variable from any input by input id, variable id and variable type.
+/** Extracts Context variable from any input by input index, variable id and variable type.
   * Unlike getVar, it is not throwing exception when expected type does not match real type of the variable.
   * Thus it can be used to get context variable from self without exception, using selfBoxIndex, e.g. 
   * <pre class="stHighlight">

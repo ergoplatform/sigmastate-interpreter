@@ -23,7 +23,7 @@ import sigma.ast.SCollection.SByteArray
 import sigmastate.CrossVersionProps
 import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
 
-class ErgoLikeTransactionSpec extends SigmaDslTesting with CrossVersionProps with JsonCodecs {
+  class ErgoLikeTransactionSpec extends SigmaDslTesting with CrossVersionProps with JsonCodecs {
 
   property("ErgoBox test vectors") {
     val token1 = "6e789ab7b2fffff12280a6cd01557f6fb22b7f80ff7aff8e1f7f15973d7f0001"

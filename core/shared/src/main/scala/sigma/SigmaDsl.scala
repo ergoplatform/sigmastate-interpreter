@@ -1,7 +1,5 @@
 package sigma
 
-import sigma.ast.SType
-
 import java.math.BigInteger
 import sigma.data._
 
@@ -176,13 +174,15 @@ trait BigInt {
   def toUnsigned: UnsignedBigInt
 
   /**
-    * @return unsigned representation of this BigInt modulo `m`. Cryptographic mod operation is done, ie result is
-    *         non-negative always
+    * @return unsigned representation of this BigInt modulo `m`. Cryptographic mod operation is done, so result is
+    *         always non-negative
     */
   def toUnsignedMod(m: UnsignedBigInt): UnsignedBigInt
 }
 
-
+/**
+  * Base class for unsigned 256-bits integers
+  */
 trait UnsignedBigInt {
   /** Convert this BigInt value to Byte.
     * @throws ArithmeticException if overflow happens.
@@ -321,6 +321,8 @@ trait UnsignedBigInt {
     */
   def shiftRight(n: Int): UnsignedBigInt
 
+  def bitwiseInverse(): UnsignedBigInt
+
   def toSigned(): BigInt
 }
 
@@ -338,6 +340,10 @@ trait GroupElement {
     */
   def exp(k: BigInt): GroupElement
 
+  /** Exponentiate this <code>GroupElement</code> to the given unsigned 256 bit integer.
+    * @param k The power.
+    * @return <code>this to the power of k</code>.
+    */
   def expUnsigned(k: UnsignedBigInt): GroupElement
 
   /** Group operation. */
@@ -748,13 +754,13 @@ trait Context {
   /**
     * A variant of `getVar` to extract a context variable by id and type from any input
     *
-    * @param inputId - input index
+    * @param inputIndex - input index
     * @param id - context variable id
     * @tparam T - expected type of the variable
     * @return Some(value) if the variable is defined in the context AND has the given type.
     *         None otherwise
     */
-  def getVarFromInput[T](inputId: Short, id: Byte)(implicit cT: RType[T]): Option[T]
+  def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit cT: RType[T]): Option[T]
 
   def vars: Coll[AnyValue]
 
