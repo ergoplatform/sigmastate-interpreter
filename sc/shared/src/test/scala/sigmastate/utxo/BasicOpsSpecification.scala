@@ -804,7 +804,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
         null
       )
     }
-
     varTest()
   }
 
