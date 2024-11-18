@@ -1845,15 +1845,17 @@ case object SGlobalMethods extends MonoTypeMethods {
       "Decode a number from big endian bytes.",
       ArgInfo("first", "Bytes which are big-endian encoded number."))
 
-  private lazy val EnDecodeNBitsCost = FixedCost(JitCost(5)) // the same cost for nbits encoding and decoding
+  private lazy val EncodeNBitsCost = FixedCost(JitCost(25)) // the same cost for nbits encoding and decoding
+
+  private lazy val DecodeNBitsCost = FixedCost(JitCost(50)) // the same cost for nbits encoding and decoding
 
   lazy val encodeNBitsMethod: SMethod = SMethod(
-    this, "encodeNbits", SFunc(Array(SGlobal, SBigInt), SLong), 6, EnDecodeNBitsCost)
+    this, "encodeNbits", SFunc(Array(SGlobal, SBigInt), SLong), 6, EncodeNBitsCost)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Encode big integer number as nbits", ArgInfo("bigInt", "Big integer"))
 
   lazy val decodeNBitsMethod: SMethod = SMethod(
-    this, "decodeNbits", SFunc(Array(SGlobal, SLong), SBigInt), 7, EnDecodeNBitsCost)
+    this, "decodeNbits", SFunc(Array(SGlobal, SLong), SBigInt), 7, DecodeNBitsCost)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Decode nbits-encoded big integer number", ArgInfo("nbits", "NBits-encoded argument"))
 

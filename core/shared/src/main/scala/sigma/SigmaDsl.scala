@@ -739,9 +739,9 @@ trait SigmaDslBuilder {
   def groupGenerator: GroupElement
 
   /**
-    * @return big integer provided as input approximately encoded using NBits,
+    * @return NBits-encoded approximate representation of given big integer,
     *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
-    *         for format details
+    *         for NBits format details
     */
   def encodeNbits(bi: BigInt): Long
 
