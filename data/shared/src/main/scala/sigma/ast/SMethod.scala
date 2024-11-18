@@ -302,6 +302,18 @@ object SMethod {
           (implicit cT: ClassTag[T], cA1: ClassTag[A1], cA2: ClassTag[A2]): RMethod =
     RClass(cT.runtimeClass).getMethod(methodName, cA1.runtimeClass, cA2.runtimeClass)
 
+  /** Return [[Method]] descriptor for the given `methodName` on the given `cT` type.
+    * @param methodName the name of the method to lookup
+    * @param cT the class where to search the methodName
+    * @param cA1 the class of the method's first argument
+    * @param cA2 the class of the method's second argument
+    * @param cA3 the class of the method's third argument
+    */
+  def javaMethodOf[T, A1, A2, A3]
+      (methodName: String)
+          (implicit cT: ClassTag[T], cA1: ClassTag[A1], cA2: ClassTag[A2], cA3: ClassTag[A3]): RMethod =
+    RClass(cT.runtimeClass).getMethod(methodName, cA1.runtimeClass, cA2.runtimeClass, cA3.runtimeClass)
+
   /** Default fallback method call recognizer which builds MethodCall ErgoTree nodes. */
   val MethodCallIrBuilder: PartialFunction[(SigmaBuilder, SValue, SMethod, Seq[SValue], STypeSubst), SValue] = {
     case (builder, obj, method, args, tparamSubst) =>
