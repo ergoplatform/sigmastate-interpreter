@@ -483,7 +483,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   property("checkPow") {
     val source = """ {
                    |     val h = CONTEXT.headers(0)
-                   |      h.checkPow
+                   |     h.checkPow
                    | }
                    | """.stripMargin
 

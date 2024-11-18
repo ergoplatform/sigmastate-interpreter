@@ -12,7 +12,7 @@ import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
-import sigma.data.{AvlTreeData, CAnyValue, CSigmaDslBuilder}
+import sigma.data.{AvlTreeData, CAnyValue, CHeader, CSigmaDslBuilder}
 import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
@@ -28,6 +28,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
 import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.util.NBitsUtils
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
 
@@ -1083,7 +1084,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  // todo: failing, needs for Header (de)serialization support from https://github.com/ScorexFoundation/sigmastate-interpreter/pull/972
   property("serialize - collection of collection of headers") {
     val td = new SigmaTestingData {}
     val h1 = td.TestData.h1
@@ -1109,7 +1109,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
   // todo: roundtrip tests with deserializeTo from https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979
 
-  // todo: move spam tests to dedicated test suite?
   property("serialize - not spam") {
     val customExt = Seq(21.toByte -> ShortArrayConstant((1 to Short.MaxValue).map(_.toShort).toArray),
       22.toByte -> ByteArrayConstant(Array.fill(1)(1.toByte)))
@@ -1232,6 +1231,38 @@ class BasicOpsSpecification extends CompilerTestingCommons
         testExceededCost = false
       )
     }
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy powTest()
+    } else {
+      powTest()
+    }
+  }
+
+  property("decoding nbits from an Ergo block header") {
+    // bytes of real mainnet block header at height 1,398,482
+    val headerBytes = "03720c6c532506a9bc4cceb6844efaa4096f66ba8a1d67ad7411ed1cb61dd5c008519fedd7d3b56984c43898f9e12aa866bc40e1ede2a6138940c9db2e20d633630024ee218d6a38392a8401c2b324b563e48d487c0f22dad940bd1c8a096084908ad71c77eec44ef083ba073deb8fa4a57b68d6296186c5d61e317849c760c16019b293cbfeb33288c9616f282288ee24c6d306577a76e7ac1cf87422ae0bdc6b44a449451a4e25070412d0d2ad55000000000295facb78290ac2b55f1453204d49df37be5bae9f185ed6704c1ba3ee372280c157221fa789df3f48"
+    val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
+
+    val customExt = Seq(21.toByte -> HeaderConstant(header1))
+
+    def powTest() = {
+      test("Prop1", env, customExt,
+        """
+          |{
+          |   val h = getVar[Header](21).get
+          |
+          |   val n = h.nBits
+          |
+          |   val target = Global.decodeNbits(n)
+          |
+          |   target == bigInt("1146584469340160")
+          |}
+          |""".stripMargin,
+        propExp = null,
+        testExceededCost = false
+      )
+    }
+
     if (activatedVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy powTest()
     } else {
