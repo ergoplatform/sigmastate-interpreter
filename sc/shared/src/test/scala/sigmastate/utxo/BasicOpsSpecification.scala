@@ -4,13 +4,15 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
 import scorex.util.encode.Base16
+import org.scalatest.Assertion
+import scorex.util.encode.Base16
 import scorex.utils.Ints
 import sigma.Extensions.ArrayOps
 import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
-import sigma.data.{AvlTreeData, CAnyValue, CSigmaDslBuilder}
+import sigma.data.{AvlTreeData, CAnyValue, CHeader, CSigmaDslBuilder}
 import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
@@ -26,6 +28,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
 import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.util.NBitsUtils
 import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
@@ -94,6 +97,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       // In such cases we use expected property as the property to test
       propExp.asSigmaProp
     } else {
+      // compile with the latest compiler version, to get validation exception during execution, not compilation error
       withVersions(VersionContext.MaxSupportedScriptVersion, ergoTreeVersionInTests) {
         compile(env, script).asBoolValue.toSigmaProp
       }
@@ -1106,7 +1110,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
   // todo: roundtrip tests with deserializeTo from https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979
 
-  // todo: move spam tests to dedicated test suite?
   property("serialize - not spam") {
     val customExt = Seq(21.toByte -> ShortArrayConstant((1 to Short.MaxValue).map(_.toShort).toArray),
       22.toByte -> ByteArrayConstant(Array.fill(1)(1.toByte)))
@@ -1186,6 +1189,85 @@ class BasicOpsSpecification extends CompilerTestingCommons
       optTest()
     } else {
       assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
+    }
+  }
+
+  property("checking Bitcoin PoW") {
+    val h = "00000020a82ff9c62e69a6cbed277b7f2a9ac9da3c7133a59a6305000000000000000000f6cd5708a6ba38d8501502b5b4e5b93627e8dcc9bd13991894c6e04ade262aa99582815c505b2e17479a751b"
+    val customExt = Map(
+      1.toByte -> ByteArrayConstant(Base16.decode(h).get)
+    ).toSeq
+
+    def powTest() = {
+      test("Prop1", env, customExt,
+        """{
+          |    def reverse4(bytes: Coll[Byte]): Coll[Byte] = {
+          |        Coll(bytes(3), bytes(2), bytes(1), bytes(0))
+          |    }
+          |
+          |    def reverse32(bytes: Coll[Byte]): Coll[Byte] = {
+          |        Coll(bytes(31), bytes(30), bytes(29), bytes(28), bytes(27), bytes(26), bytes(25), bytes(24),
+          |             bytes(23), bytes(22), bytes(21), bytes(20), bytes(19), bytes(18), bytes(17), bytes(16),
+          |             bytes(15), bytes(14), bytes(13), bytes(12), bytes(11), bytes(10), bytes(9), bytes(8),
+          |             bytes(7), bytes(6), bytes(5), bytes(4), bytes(3), bytes(2), bytes(1), bytes(0))
+          |    }
+          |
+          |   val bitcoinHeader = getVar[Coll[Byte]](1).get
+          |   val id = reverse32(sha256(sha256(bitcoinHeader)))
+          |   val hit = byteArrayToBigInt(id)
+          |
+          |   val nBitsBytes = reverse4(bitcoinHeader.slice(72, 76))
+          |
+          |   val pad = Coll[Byte](0.toByte, 0.toByte, 0.toByte, 0.toByte)
+          |
+          |   val nbits = byteArrayToLong(pad ++ nBitsBytes)
+          |
+          |   val difficulty = Global.decodeNbits(nbits)
+          |
+          |   // <= according to https://bitcoin.stackexchange.com/a/105224
+          |   hit <= difficulty
+          |}
+          |""".stripMargin,
+        propExp = null,
+        testExceededCost = false
+      )
+    }
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy powTest()
+    } else {
+      powTest()
+    }
+  }
+
+  property("decoding nbits from an Ergo block header") {
+    // bytes of real mainnet block header at height 1,398,482
+    val headerBytes = "03720c6c532506a9bc4cceb6844efaa4096f66ba8a1d67ad7411ed1cb61dd5c008519fedd7d3b56984c43898f9e12aa866bc40e1ede2a6138940c9db2e20d633630024ee218d6a38392a8401c2b324b563e48d487c0f22dad940bd1c8a096084908ad71c77eec44ef083ba073deb8fa4a57b68d6296186c5d61e317849c760c16019b293cbfeb33288c9616f282288ee24c6d306577a76e7ac1cf87422ae0bdc6b44a449451a4e25070412d0d2ad55000000000295facb78290ac2b55f1453204d49df37be5bae9f185ed6704c1ba3ee372280c157221fa789df3f48"
+    val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
+
+    val customExt = Seq(21.toByte -> HeaderConstant(header1))
+
+    def powTest() = {
+      test("Prop1", env, customExt,
+        """
+          |{
+          |   val h = getVar[Header](21).get
+          |
+          |   val n = h.nBits
+          |
+          |   val target = Global.decodeNbits(n)
+          |
+          |   target == bigInt("1146584469340160")
+          |}
+          |""".stripMargin,
+        propExp = null,
+        testExceededCost = false
+      )
+    }
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy powTest()
+    } else {
+      powTest()
     }
   }
 

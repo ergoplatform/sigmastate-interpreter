@@ -739,6 +739,20 @@ trait SigmaDslBuilder {
   def groupGenerator: GroupElement
 
   /**
+    * @return NBits-encoded approximate representation of given big integer,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for NBits format details
+    */
+  def encodeNbits(bi: BigInt): Long
+
+  /**
+    * @return big integer decoded from NBits value provided,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for format details
+    */
+  def decodeNbits(l: Long): BigInt
+
+  /**
     * Transforms serialized bytes of ErgoTree with segregated constants by replacing constants
     * at given positions with new values. This operation allow to use serialized scripts as
     * pre-defined templates.

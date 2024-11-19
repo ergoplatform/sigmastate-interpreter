@@ -116,6 +116,8 @@ import scalan._
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
       def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
+      def encodeNbits(bi: Ref[BigInt]): Ref[Long]
+      def decodeNbits(l: Ref[Long]): Ref[BigInt]
       def serialize[T](value: Ref[T]): Ref[Coll[Byte]]
       def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
       def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]]

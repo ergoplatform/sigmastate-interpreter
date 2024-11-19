@@ -1,5 +1,6 @@
 package sigma.compiler.ir
 
+import sigma.{BigInt, SigmaDslBuilder}
 import sigma.ast.SType
 import sigma.compiler.ir.primitives.Thunks
 import sigma.data.RType
@@ -530,6 +531,12 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "serialize", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].serialize(args(0).asInstanceOf[ctx.Ref[Any]])
+        },
+        mkMethod(clazz, "encodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "decodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].decodeNbits(args(0).asInstanceOf[ctx.Ref[Long]])
         },
         mkMethod(clazz, "fromBigEndianBytes", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].fromBigEndianBytes(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])

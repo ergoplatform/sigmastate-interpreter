@@ -14,6 +14,8 @@ import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
 import sigma.data.{CAND, CAvlTree, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
+import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.VersionContext.V6SoftForkVersion
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
@@ -224,6 +226,21 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         |  val arr = Coll(1, 2, 3)
         |  arr.filter {(i: Int) => i < 3} == Coll(1, 2)
         |}""".stripMargin)
+  }
+
+  property("Evaluate BigInt to nbits conversion") {
+    val source =
+      """
+        |{
+        | val b: BigInt = 11999.toBigInt
+        | Global.encodeNbits(b) == 36626176
+        |}
+        |""".stripMargin
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    } else {
+      testEval(source)
+    }
   }
 
   property("Evaluate numeric casting ops") {
@@ -466,7 +483,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   property("checkPow") {
     val source = """ {
                    |     val h = CONTEXT.headers(0)
-                   |      h.checkPow
+                   |     h.checkPow
                    | }
                    | """.stripMargin
 
