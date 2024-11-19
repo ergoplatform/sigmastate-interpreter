@@ -11,6 +11,8 @@ import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
+import sigma.data.CSigmaDslBuilder
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
@@ -22,6 +24,7 @@ import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
+import sigma.Extensions.ArrayOps
 import sigma.Extensions.{ArrayOps, CollOps}
 import sigma.crypto.CryptoConstants
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -2142,6 +2145,47 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         (Coll(1, 2), -1) -> Expected(ExpectedResult(Success(None), None)),
         (Coll(1, 2), 2) -> Expected(ExpectedResult(Success(None), None)),
         (Coll[Int](), 0) -> Expected(ExpectedResult(Success(None), None))
+      ),
+      f
+    )
+  }
+
+  property("Global.encodeNbits") {
+    import sigma.data.OrderingOps.BigIntOrdering
+
+    val f = newFeature[BigInt, Long](
+      { (bi: BigInt) => SigmaDsl.encodeNbits(bi) },
+      """{(bi: BigInt) => Global.encodeNbits(bi) }""".stripMargin,
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    //cases taken from Ergo blockchain and BitcoinJ / Ergo node tests
+    verifyCases(
+      Seq(
+        (CBigInt(new BigInteger("1146584469340160"))) -> Expected(ExpectedResult(Success(117707472L), None)),
+        (CBigInt(new BigInteger("130e0000000000000000000000000000000000000000000", 16))) -> Expected(ExpectedResult(Success(0x180130e0L), None)),
+        (CBigInt(new BigInteger("7fffff0000000000000000000000000000000000000000000000000000000000", 16))) -> Expected(ExpectedResult(Success(0x207fffffL), None))
+      ),
+      f
+    )
+  }
+
+  property("Global.decodeNbits") {
+    import sigma.data.OrderingOps.BigIntOrdering
+
+    val f = newFeature[Long, BigInt](
+      { (l: Long) => SigmaDsl.decodeNbits(l) },
+      """{(l: Long) => Global.decodeNbits(l) }""".stripMargin,
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    //cases taken from Ergo blockchain and BitcoinJ / Ergo node tests
+    verifyCases(
+      Seq(
+        (0x207fffffL) -> Expected(ExpectedResult(Success(CBigInt(new BigInteger("7fffff0000000000000000000000000000000000000000000000000000000000", 16))), None)),
+        (0x04923456L) -> Expected(ExpectedResult(Success(CBigInt(new BigInteger("-12345600", 16))), None)),
+        (0x04123456L) -> Expected(ExpectedResult(Success(CBigInt(new BigInteger("12345600", 16))), None)),
+        (0x01003456L) -> Expected(ExpectedResult(Success(CBigInt(new BigInteger("0", 16))), None))
       ),
       f
     )

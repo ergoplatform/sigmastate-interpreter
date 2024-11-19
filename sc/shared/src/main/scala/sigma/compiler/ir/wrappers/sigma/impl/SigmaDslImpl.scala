@@ -2272,6 +2272,19 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, cT))
     }
 
+    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+      asRep[Long](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
+        Array[AnyRef](bi),
+        true, false, element[Long]))
+    }
+
+    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
+        Array[AnyRef](l),
+        true, false, element[BigInt]))
+    }
   }
 
   implicit object LiftableSigmaDslBuilder
@@ -2445,6 +2458,20 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Array[AnyRef](bytes, cT),
         true, true, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
     }
+
+    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+      asRep[Long](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
+        Array[AnyRef](bi),
+        true, true, element[Long]))
+    }
+
+    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
+        Array[AnyRef](l),
+        true, true, element[BigInt]))
+    }
   }
 
   // entityUnref: single unref method for each type family
@@ -2462,9 +2489,9 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[SigmaDslBuilder]), RClass(classOf[SSigmaDslBuilder]), Set(
-        "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256", "sha256",
-          "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator", "substConstants",
-          "decodePoint", "avlTree", "xor", "serialize", "fromBigEndianBytes"
+        "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256",
+          "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator",
+          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes"
         ))
     }
   }
