@@ -40,7 +40,7 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       code
     }
 
-    an[Exception] should be thrownBy (
+    an[SerializerException] should be thrownBy (
       VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
         code
       }
@@ -68,4 +68,47 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       })
   }
 
+  property("MethodCall deserialization round trip for Global.encodeNBits") {
+    def code = {
+      val bi = BigIntConstant(5)
+      val expr = MethodCall(Global,
+        SGlobalMethods.encodeNBitsMethod,
+        Vector(bi),
+        Map()
+      )
+      roundTripTest(expr)
+    }
+
+    // should be ok
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+      code
+    }
+
+    an[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      })
+  }
+
+  property("MethodCall deserialization round trip for Global.decodeNBits") {
+    def code = {
+      val l = LongConstant(5)
+      val expr = MethodCall(Global,
+        SGlobalMethods.decodeNBitsMethod,
+        Vector(l),
+        Map()
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+      code
+    }
+
+    an[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+      )
+  }
 }

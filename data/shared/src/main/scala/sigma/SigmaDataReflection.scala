@@ -86,6 +86,14 @@ object SigmaDataReflection {
     )
   )
 
+  registerClassEntry(classOf[ByteArrayToLong],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ByteArrayToLong(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
   registerClassEntry(classOf[LongToByteArray],
     constructors = Array(
       mkConstructor(Array(classOf[Value[_]])) { args =>

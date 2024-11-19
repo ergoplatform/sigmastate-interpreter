@@ -59,9 +59,9 @@ abstract class ErgoTreeEvaluator {
     * @param opDesc   the operation descriptor to associate the cost with (when costTracingEnabled)
     * @param block    operation executed under the given cost
     */
-  def addFixedCost(costKind: FixedCost, opDesc: OperationDesc)(block: => Unit): Unit
+  def addFixedCost[R](costKind: FixedCost, opDesc: OperationDesc)(block: => R): R
 
-  def addFixedCost(costInfo: OperationCostInfo[FixedCost])(block: => Unit): Unit
+  def addFixedCost[R](costInfo: OperationCostInfo[FixedCost])(block: => R): R
 
   /** Adds the given cost to the `coster`. If tracing is enabled, creates a new cost item
     * with the given operation.

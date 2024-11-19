@@ -4,18 +4,21 @@ import org.ergoplatform._
 import org.ergoplatform.validation._
 import sigma.Evaluation.stypeToRType
 import sigma._
+import sigma.{VersionContext, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
+import sigma.ast.SGlobalMethods.{decodeNBitsMethod, encodeNBitsMethod}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}
 import sigma.ast.SType.{TypeCode, paramT, tT}
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.NumericOps.BigIntIsExactIntegral
 import sigma.data.OverloadHack.Overloaded1
-import sigma.data.{DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
+import sigma.data.{CBigInt, DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
 import sigma.eval.{CostDetails, ErgoTreeEvaluator, TracedCost}
 import sigma.reflection.RClass
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.{DataSerializer, SigmaByteWriter, SigmaSerializer}
+import sigma.util.NBitsUtils
 import sigma.utils.SparseArrayContainer
 
 import scala.annotation.unused
@@ -1842,6 +1845,20 @@ case object SGlobalMethods extends MonoTypeMethods {
       "Decode a number from big endian bytes.",
       ArgInfo("first", "Bytes which are big-endian encoded number."))
 
+  private lazy val EncodeNBitsCost = FixedCost(JitCost(25)) // cost for nbits encoding
+
+  private lazy val DecodeNBitsCost = FixedCost(JitCost(50)) // cost for nbits decoding
+
+  lazy val encodeNBitsMethod: SMethod = SMethod(
+    this, "encodeNbits", SFunc(Array(SGlobal, SBigInt), SLong), 6, EncodeNBitsCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Encode big integer number as nbits", ArgInfo("bigInt", "Big integer"))
+
+  lazy val decodeNBitsMethod: SMethod = SMethod(
+    this, "decodeNbits", SFunc(Array(SGlobal, SLong), SBigInt), 7, DecodeNBitsCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Decode nbits-encoded big integer number", ArgInfo("nbits", "NBits-encoded argument"))
+
   lazy val serializeMethod = SMethod(this, "serialize",
     SFunc(Array(SGlobal, tT), SByteArray, Array(paramT)), 3, DynamicCost)
       .withIRInfo(MethodCallIrBuilder)
@@ -1877,6 +1894,8 @@ case object SGlobalMethods extends MonoTypeMethods {
         groupGeneratorMethod,
         xorMethod,
         serializeMethod,
+        encodeNBitsMethod,
+        decodeNBitsMethod,
         fromBigEndianBytesMethod
       )
     } else {
