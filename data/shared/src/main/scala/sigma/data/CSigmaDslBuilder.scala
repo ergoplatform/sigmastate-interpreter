@@ -1,15 +1,18 @@
 package sigma.data
 
 import debox.cfor
-import org.ergoplatform.ErgoBox
+import org.ergoplatform.{ErgoBox, ErgoHeader}
 import org.ergoplatform.validation.ValidationRules
 import scorex.crypto.hash.{Blake2b256, Sha256}
+import scorex.util.serialization.VLQByteBufferReader
 import scorex.utils.{Ints, Longs}
 import sigma.ast.{AtLeast, SBigInt, SubstConstants}
 import scorex.utils.Longs
+import sigma.Evaluation.rtypeToSType
 import sigma.ast.{AtLeast, SType, SubstConstants}
 import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
+import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer}
 import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
 import sigma.serialization.{GroupElementSerializer, SerializerException, SigmaSerializer}
 import sigma.util.Extensions.BigIntegerOps
@@ -18,6 +21,7 @@ import sigma.validation.SigmaValidationSettings
 import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
 
 import java.math.BigInteger
+import java.nio.ByteBuffer
 
 /** A default implementation of [[SigmaDslBuilder]] interface.
   *
@@ -253,6 +257,13 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
     val w = SigmaSerializer.startWriter()
     DataSerializer.serialize(value.asInstanceOf[SType#WrappedType], tpe, w)
     Colls.fromArray(w.toBytes)
+  }
+
+  def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T = {
+    val tpe = rtypeToSType(cT)
+    val reader = new SigmaByteReader(new VLQByteBufferReader(ByteBuffer.wrap(bytes.toArray)), new ConstantStore(), false)
+    val res = DataSerializer.deserialize(tpe, reader)
+    res.asInstanceOf[T]
   }
 }
 

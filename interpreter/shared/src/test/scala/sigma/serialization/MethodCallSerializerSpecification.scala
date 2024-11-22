@@ -2,6 +2,7 @@ package sigma.serialization
 
 import sigma.VersionContext
 import sigma.ast.SCollection.SByteArray
+import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.validation.ValidationException
 
@@ -51,12 +52,36 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
     def code = {
       val b = ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))
       val expr = MethodCall(Global,
-        SGlobalMethods.serializeMethod.withConcreteTypes(Map(STypeVar("T") -> SByteArray)),
+        SGlobalMethods.serializeMethod.withConcreteTypes(Map(tT -> SByteArray)),
         Vector(b),
         Map()
       )
       roundTripTest(expr)
     }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+      code
+    }
+
+    an[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Global.deserializeTo[]") {
+    def code = {
+      val h = HeaderConstant(headerGen.sample.get)
+      val expr = MethodCall(h,
+        SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SHeader)),
+        Array(ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))), // wrong header bytes but ok for test
+        Map(tT -> SHeader)
+      )
+      roundTripTest(expr)
+    }
+
+    println(SGlobalMethods.deserializeToMethod.hasExplicitTypeArgs)
 
     VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
       code

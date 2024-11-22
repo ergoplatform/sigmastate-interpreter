@@ -1379,6 +1379,7 @@ object Header extends EntityObject("Header") {
         ArraySeq.empty,
         true, false, element[Boolean]))
     }
+
   }
 
   implicit object LiftableHeader
@@ -1989,6 +1990,12 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Coll[Byte]]))
     }
 
+    override def deserializeTo[T](l: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](l, cT),
+        true, false, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
     override def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
@@ -2176,6 +2183,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
+    def deserializeTo[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](bytes, cT),
+        true, true, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
     def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
@@ -2215,7 +2229,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Elem.declaredMethods(RClass(classOf[SigmaDslBuilder]), RClass(classOf[SSigmaDslBuilder]), Set(
         "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256",
           "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator",
-          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes"
+          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes", "deserializeTo"
         ))
     }
   }
@@ -2392,6 +2406,16 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         case _ => Nullable.None
       }
       def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+    }
+
+    object deserializeTo {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = d match {
+        case MethodCall(receiver, method, args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+          val res = (receiver, args(0), args(1))
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}]]
+        case _ => Nullable.None
+      }
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
     }
 
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */
