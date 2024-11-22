@@ -3,20 +3,28 @@ package sigmastate.utxo
 import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
+import scorex.crypto.authds.{ADKey, ADValue}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
+import scorex.crypto.hash.{Blake2b256, Digest32}
+import scorex.util.ByteArrayBuilder
 import scorex.util.encode.Base16
 import org.scalatest.Assertion
 import scorex.util.encode.Base16
 import scorex.utils.Ints
+import scorex.util.serialization.VLQByteBufferWriter
+import scorex.utils.Longs
+import sigma.{Colls, SigmaTestingData}
 import sigma.Extensions.ArrayOps
 import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
 import sigma.data.{AvlTreeData, CAnyValue, CHeader, CSigmaDslBuilder}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CAnyValue, CHeader, CSigmaDslBuilder, CSigmaProp}
 import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
-import sigma.crypto.CryptoConstants
+import sigma.crypto.{CryptoConstants, SecP256K1Group}
 import sigmastate._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -29,6 +37,8 @@ import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.util.NBitsUtils
+import sigma.serialization.{DataSerializer, ErgoTreeSerializer, SigmaByteWriter}
+import sigma.util.Extensions
 import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
@@ -55,7 +65,9 @@ class BasicOpsSpecification extends CompilerTestingCommons
   val booleanVar = 9.toByte
   val propVar1 = 10.toByte
   val propVar2 = 11.toByte
-  val lastExtVar = propVar2
+  val propVar3 = 12.toByte
+  val propBytesVar1 = 13.toByte
+  val lastExtVar = propBytesVar1
 
   val ext: Seq[VarBinding] = Seq(
     (intVar1, IntConstant(1)), (intVar2, IntConstant(2)),
@@ -72,7 +84,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
     "proofVar2" -> CAnyValue(propVar2)
     )
 
-  def test(name: String, env: ScriptEnv,
+  def test(name: String,
+           env: ScriptEnv,
            ext: Seq[VarBinding],
            script: String,
            propExp: SValue,
@@ -83,7 +96,14 @@ class BasicOpsSpecification extends CompilerTestingCommons
       override lazy val contextExtenders: Map[Byte, EvaluatedValue[_ <: SType]] = {
         val p1 = dlogSecrets(0).publicImage
         val p2 = dlogSecrets(1).publicImage
-        (ext ++ Seq(propVar1 -> SigmaPropConstant(p1), propVar2 -> SigmaPropConstant(p2))).toMap
+        val d1 = dhSecrets(0).publicImage
+
+        (ext ++ Seq(
+          propVar1 -> SigmaPropConstant(p1),
+          propVar2 -> SigmaPropConstant(p2),
+          propVar3 -> SigmaPropConstant(CSigmaProp(CAND(Seq(p1, d1)))),
+          propBytesVar1 -> ByteArrayConstant(CSigmaProp(CAND(Seq(p1, d1))).propBytes)
+        )).toMap
       }
       override val evalSettings: EvalSettings = DefaultEvalSettings.copy(
         isMeasureOperationTime = true,
@@ -1268,6 +1288,315 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an[sigma.validation.ValidationException] should be thrownBy powTest()
     } else {
       powTest()
+    }
+  }
+
+  property("serialize - deserialize roundtrip") {
+    val customExt = Seq(21.toByte -> ShortArrayConstant((1 to 10).map(_.toShort).toArray))
+    def deserTest() = test("serialize", env, customExt,
+      s"""{
+            val src = getVar[Coll[Short]](21).get
+            val ba = serialize(src)
+            val restored = deserializeTo[Coll[Short]](ba)
+            src == restored
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - int") {
+    val value = -109253
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putInt(value)
+    val bytes = Base16.encode(w.toBytes)
+    def deserTest() = {test("deserializeTo", env, ext,
+      s"""{ val ba = fromBase16("$bytes"); Global.deserializeTo[Int](ba) == $value }""",
+      null,
+      true
+    )}
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - coll[int]") {
+    val writer = new SigmaByteWriter(new VLQByteBufferWriter(new ByteArrayBuilder()), None, None, None)
+    DataSerializer.serialize[SCollection[SInt.type]](Colls.fromArray(Array(IntConstant(5).value)), SCollection(SInt), writer)
+    val bytes = Base16.encode(writer.toBytes)
+
+    def deserTest() = {
+      test("deserializeTo", env, ext,
+        s"""{val ba = fromBase16("$bytes"); val coll = Global.deserializeTo[Coll[Int]](ba); coll(0) == 5 }""",
+        null,
+        true
+      )
+    }
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - long") {
+    val value = -10009253L
+
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putLong(value)
+    val bytes = Base16.encode(w.toBytes)
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            Global.deserializeTo[Long](ba) == ${value}L
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - box rountrip") {
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val b = INPUTS(0);
+            val ba = b.bytes;
+            Global.deserializeTo[Box](ba) == b
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - bigint") {
+
+    val bigInt = SecP256K1Group.q.divide(new BigInteger("512"))
+    val biBytes = bigInt.toByteArray
+
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putUShort(biBytes.length)
+    val lengthBytes = w.toBytes
+
+    val bytes = Base16.encode(lengthBytes ++ biBytes)
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            val b = Global.deserializeTo[BigInt](ba)
+            b == bigInt("${bigInt.toString}")
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - short") {
+    val s = (-1925).toShort
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putShort(s)
+    val bytes = Base16.encode(w.toBytes)
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            Global.deserializeTo[Short](ba) == -1925
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - group element") {
+    val ge = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val ba = Base16.encode(ge.getEncoded.toArray)
+    def deserTest() = test("deserializeTo", env, Seq(21.toByte -> GroupElementConstant(ge)),
+      s"""{
+            val ge = getVar[GroupElement](21).get
+            val ba = fromBase16("$ba");
+            val ge2 = Global.deserializeTo[GroupElement](ba)
+            ba == ge2.getEncoded && ge == ge2
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+       an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - sigmaprop roundtrip") {
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val bytes = getVar[Coll[Byte]]($propBytesVar1).get
+            val ba = bytes.slice(2, bytes.size)
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop == getVar[SigmaProp]($propVar3).get && prop
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - .propBytes") {
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val p1 = getVar[SigmaProp]($propVar1).get
+            val bytes = p1.propBytes
+            val ba = bytes.slice(2, bytes.size)
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop == p1 && prop
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - sigmaprop roundtrip - non evaluated") {
+
+    val script = GT(Height, IntConstant(-1)).toSigmaProp
+    val scriptBytes = ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(ErgoTree.fromProposition(script))
+    val customExt = Seq(21.toByte -> ByteArrayConstant(scriptBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      an [Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("deserializeTo - avltree") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+    val treeBytes = AvlTreeData.serializer.toBytes(treeData)
+
+    val customExt = Seq(21.toByte -> ByteArrayConstant(treeBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val tree = Global.deserializeTo[AvlTree](ba)
+            tree.digest == fromBase16(${Base16.encode(treeData.digest.toArray)})
+              && tree.enabledOperations == 0
+              && tree.keyLength == 32
+              && tree.valueLengthOpt.isEmpty
+          }""",
+      null,
+      true
+    )
+
+    an [Exception] should be thrownBy deserTest()
+  }
+
+  property("deserializeTo - header") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+    val headerBytes = h1.asInstanceOf[CHeader].ergoHeader.bytes
+
+    val headerStateBytes = AvlTreeData.serializer.toBytes(Extensions.CoreAvlTreeOps(h1.stateRoot).toAvlTreeData)
+    val customExt = Seq(21.toByte -> ByteArrayConstant(headerBytes), 22.toByte -> ByteArrayConstant(headerStateBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val header = Global.deserializeTo[Header](ba)
+            val ba2 = getVar[Coll[Byte]](22).get
+            val tree = Global.deserializeTo[AvlTree](ba2)
+            val id = fromBase16("${Base16.encode(h1.id.toArray)}")
+            header.height == ${h1.height} && header.stateRoot == tree && header.id == id
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - header option") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1.asInstanceOf[CHeader].ergoHeader
+    val headerBytes = Colls.fromArray(Array(1.toByte) ++ h1.bytes)
+
+    val customExt = Seq(21.toByte -> ByteArrayConstant(headerBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val headerOpt = Global.deserializeTo[Option[Header]](ba)
+            val header = headerOpt.get
+            val id = fromBase16("${Base16.encode(h1.id.toArray)}")
+            header.height == ${h1.height} && header.id == id
+          }""",
+      null,
+      true
+    )
+
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
     }
   }
 

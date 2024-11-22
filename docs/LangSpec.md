@@ -68,7 +68,7 @@ The following sections describe ErgoScript and its operations.
 #### Operations and constructs overview
 
 - Binary operations: `>, <, >=, <=, +, -, &&, ||, ==, !=, |, &, *, /, %, ^, ++`
-- predefined primitives: `serialize`, `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
+- predefined primitives: `deserializeTo`, `serialize`, `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
 - val declarations: `val h = blake2b256(pubkey)`
 - if-then-else clause: `if (x > 0) 1 else 0`
 - collection literals: `Coll(1, 2, 3, 4)`
@@ -902,6 +902,10 @@ def blake2b256(input: Coll[Byte]): Coll[Byte]
 
 /** Cryptographic hash function Sha256 (See scorex.crypto.hash.Sha256) */
 def sha256(input: Coll[Byte]): Coll[Byte]
+
+/** Create an instance of type T from bytes of its wrapped type. 
+See https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979 for more details */
+def deserializeTo[T](input: Coll[Byte]): T
 
 /** Create BigInt from a collection of bytes. */
 def byteArrayToBigInt(input: Coll[Byte]): BigInt

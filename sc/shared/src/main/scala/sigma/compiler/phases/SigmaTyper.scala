@@ -37,13 +37,14 @@ class SigmaTyper(val builder: SigmaBuilder,
 
   private def processGlobalMethod(srcCtx: Nullable[SourceContext],
                                   method: SMethod,
-                                  args: IndexedSeq[SValue]) = {
+                                  args: IndexedSeq[SValue],
+                                  subst: Map[STypeVar, SType] = EmptySubst): SValue = {
     val global = Global.withPropagatedSrcCtx(srcCtx)
     val node = for {
       pf <- method.irInfo.irBuilder if lowerMethodCalls
-      res <- pf.lift((builder, global, method, args, EmptySubst))
+      res <- pf.lift((builder, global, method, args, subst))
     } yield res
-    node.getOrElse(mkMethodCall(global, method, args, EmptySubst).withPropagatedSrcCtx(srcCtx))
+    node.getOrElse(mkMethodCall(global, method, args, subst).withPropagatedSrcCtx(srcCtx))
   }
   /**
     * Rewrite tree to typed tree.  Checks constituent names and types.  Uses

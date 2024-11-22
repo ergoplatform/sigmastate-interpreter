@@ -11,11 +11,13 @@ import org.scalatest.BeforeAndAfterAll
 import scorex.util.encode.{Base16, Base58}
 import sigma.Colls
 import sigma.VersionContext.V6SoftForkVersion
+import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
 import sigma.data.{CAND, CAvlTree, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
 import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.VersionContext.V6SoftForkVersion
+import sigma.VersionContext
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
@@ -331,6 +333,27 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("Coll indexing (out of bounds with evaluated default value)") {
     testEval("Coll(1, 1).getOrElse(3, 1 + 1) == 2")
+  }
+
+  property("Evaluate powHit") {
+    val source =
+      """
+        |{
+        | val b: BigInt = bigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
+        | val k = 32
+        | val N = 1024 * 1024
+        | val msg = fromBase16("0a101b8c6a4f2e")
+        | val nonce = fromBase16("000000000000002c")
+        | val h = fromBase16("00000000")
+        |
+        | Global.powHit(k, msg, nonce, h, N) <= b // hit == b in this example
+        |}
+        |""".stripMargin
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    } else {
+      testEval(source)
+    }
   }
 
   property("Evaluation example #1") {
