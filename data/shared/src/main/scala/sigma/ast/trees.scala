@@ -415,18 +415,6 @@ trait NumericCastCompanion extends ValueCompanion {
   def costKind: TypeBasedCost = NumericCastCostKind
 }
 
-/** Cost of:
-  * 1) converting numeric value to the numeric value of the given type, i.e. Byte -> Int
-  * NOTE: the cost of BigInt casting is the same in JITC (comparing to AOTC) to simplify
-  * implementation.
-  */
-object NumericCastCostKind extends TypeBasedCost {
-  override def costFunc(targetTpe: SType): JitCost = targetTpe match {
-    case SBigInt => JitCost(30)
-    case _ => JitCost(10)
-  }
-}
-
 object Upcast extends NumericCastCompanion {
   override def opCode: OpCode = OpCodes.UpcastCode
   override def argInfos: Seq[ArgInfo] = UpcastInfo.argInfos

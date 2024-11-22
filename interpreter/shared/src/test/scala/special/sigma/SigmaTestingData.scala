@@ -1,6 +1,6 @@
 package sigma
 
-import org.ergoplatform.ErgoBox
+import org.ergoplatform.{ErgoBox, ErgoHeader}
 import org.ergoplatform.settings.ErgoAlgos
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.containerOfN
@@ -267,7 +267,10 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
 
     val h1: Header = create_h1()
 
-    val h2: Header = new CHeader(h1.asInstanceOf[CHeader].wrappedValue.copy(height = 2))
+    val eh1 = h1.asInstanceOf[CHeader].ergoHeader
+    val h2: Header = new CHeader(new ErgoHeader(eh1.version, eh1.parentId, eh1.ADProofsRoot, eh1.stateRoot,
+                                eh1.transactionsRoot, eh1.timestamp, eh1.nBits, 2, eh1.extensionRoot,
+                                eh1.powSolution, eh1.votes, eh1.unparsedBytes, null))
 
     val dlog_instances = new CloneSet(1000, ProveDlog(
       SigmaDsl.toECPoint(create_ge1()).asInstanceOf[EcPointType]

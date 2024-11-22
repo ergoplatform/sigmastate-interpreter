@@ -9,11 +9,15 @@ import scorex.util.ModifierId
 import scorex.utils.{Ints, Longs, Shorts}
 import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 import sigma.ast.SCollection.SByteArray
+import sigma.ast.SType.tT
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.CSigmaDslBuilder
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
+import sigma.crypto.SecP256K1Group
+import sigma.data.{CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, ExactNumeric, RType}
+import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
@@ -21,6 +25,11 @@ import sigmastate.eval.{CContext, CPreHeader}
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
+import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigma.data.RType
+import sigma.serialization.ValueCodes.OpCode
+import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
+import sigma.pow.Autolykos2PowValidation
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
@@ -109,8 +118,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
   }
-
-  // TODO v6.0: implement serialization roundtrip tests after merge with deserializeTo
 
   property("Boolean.toByte") {
     val toByte = newFeature((x: Boolean) => x.toByte, "{ (x: Boolean) => x.toByte }",
@@ -1460,6 +1467,48 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
+  property("Global.powHit") {
+    def powHit: Feature[Coll[Byte], sigma.BigInt] = newFeature(
+      { (x: Coll[Byte]) =>
+        val msg = x.slice(0, 7).toArray
+        val nonce = x.slice(7, 15).toArray
+        val h = x.slice(15, 19).toArray
+        CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
+      },
+      "{ (x: Coll[Byte]) => val msg = x.slice(0,7); val nonce = x.slice(7,15); val h = x.slice(15,19); " +
+        "Global.powHit(32, msg, nonce, h, 1024 * 1024) }",
+      FuncValue(
+        Array((1, SByteArray)),
+        MethodCall.typed[Value[SBigInt.type]](
+          Global,
+          SGlobalMethods.powHitMethod,
+          Array(
+            IntConstant(32),
+            Slice(ValUse(1, SByteArray), IntConstant(0), IntConstant(7)),
+            Slice(ValUse(1, SByteArray), IntConstant(7), IntConstant(15)),
+            Slice(ValUse(1, SByteArray), IntConstant(15), IntConstant(19)),
+            IntConstant(1048576)
+          ),
+          Map()
+        )
+      ),
+      sinceVersion = VersionContext.V6SoftForkVersion)
+
+    // bytes of real mainnet block header at height 614,440
+    val msg = Base16.decode("0a101b8c6a4f2e").get
+    val nonce = Base16.decode("000000000000002c").get
+    val h = Base16.decode("00000000").get
+    val x = Colls.fromArray(msg ++ nonce ++ h)
+    val hit = CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+
+    verifyCases(
+      Seq(
+        x -> new Expected(ExpectedResult(Success(hit), None))
+      ),
+      powHit
+    )
+  }
+
   property("higher order lambdas") {
     val f = newFeature[Coll[Int], Coll[Int]](
       { (xs: Coll[Int]) =>
@@ -1529,6 +1578,128 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         Coll(0, 1, 2, 3, 100, 1000)
       ))
     )
+  }
+
+  property("Global.deserializeTo - group element") {
+    def deserializeTo: Feature[GroupElement, Boolean] = {
+      newFeature(
+        { (x: GroupElement) => CSigmaDslBuilder.deserializeTo[GroupElement](x.getEncoded) == x},
+        "{ (x: GroupElement) => Global.deserializeTo[GroupElement](x.getEncoded) == x }",
+        FuncValue(
+          Array((1, SGroupElement)),
+          EQ(
+            MethodCall.typed[Value[SGroupElement.type]](
+              Global,
+              SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SGroupElement)),
+              Vector(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SGroupElement),
+                  SGroupElementMethods.getMethodByName("getEncoded"),
+                  IndexedSeq(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SGroupElement)
+            ),
+            ValUse(1, SGroupElement)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    verifyCases(
+      Seq(
+        CGroupElement(SecP256K1Group.generator) -> new Expected(ExpectedResult(Success(true), None))
+      ),
+      deserializeTo
+    )
+  }
+
+  property("Global.deserializeTo - header") {
+    val headerBytes = "02ac2101807f0000ca01ff0119db227f202201007f62000177a080005d440896d05d3f80dcff7f5e7f59007294c180808d0158d1ff6ba10000f901c7f0ef87dcfff17fffacb6ff7f7f1180d2ff7f1e24ffffe1ff937f807f0797b9ff6ebdae007e5c8c00b8403d3701557181c8df800001b6d5009e2201c6ff807d71808c00019780f087adb3fcdbc0b3441480887f80007f4b01cf7f013ff1ffff564a0000b9a54f00770e807f41ff88c00240000080c0250000000003bedaee069ff4829500b3c07c4d5fe6b3ea3d3bf76c5c28c1d4dcdb1bed0ade0c0000000000003105"
+    val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
+
+    // v1 header below
+    val header2Bytes = "010000000000000000000000000000000000000000000000000000000000000000766ab7a313cd2fb66d135b0be6662aa02dfa8e5b17342c05a04396268df0bfbb93fb06aa44413ff57ac878fda9377207d5db0e78833556b331b4d9727b3153ba18b7a08878f2a7ee4389c5a1cece1e2724abe8b8adc8916240dd1bcac069177303f1f6cee9ba2d0e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8060117650100000003be7ad70c74f691345cbedba19f4844e7fc514e1188a7929f5ae261d5bb00bb6602da9385ac99014ddcffe88d2ac5f28ce817cd615f270a0a5eae58acfb9fd9f6a0000000030151dc631b7207d4420062aeb54e82b0cfb160ff6ace90ab7754f942c4c3266b"
+    val header2 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(header2Bytes).get))
+
+    def deserializeTo: Feature[Header, Boolean] = {
+      newFeature(
+        { (x: Header) => CSigmaDslBuilder.deserializeTo[Header](CSigmaDslBuilder.serialize(x)) == x},
+        "{ (x: Header) => Global.deserializeTo[Header](serialize(x)) == x }",
+        FuncValue(
+          Array((1, SHeader)),
+          EQ(
+            MethodCall.typed[Value[SHeader.type]](
+              Global,
+              SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SHeader)),
+              Vector(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  Global,
+                  SGlobalMethods.serializeMethod.withConcreteTypes(
+                    Map(STypeVar("T") -> SHeader)
+                  ),
+                  Array(ValUse(1, SHeader)),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SHeader)
+            ),
+            ValUse(1, SHeader)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    verifyCases(
+      Seq(
+        header1 -> new Expected(ExpectedResult(Success(true), None)),
+        header2 -> new Expected(ExpectedResult(Success(true), None))
+      ),
+      deserializeTo
+    )
+  }
+
+  property("Global.serialize & deserialize roundtrip - BigInt") {
+    import sigma.data.OrderingOps.BigIntOrdering
+
+    def deserializeTo: Feature[BigInt, Boolean] = {
+      newFeature(
+        { (x: BigInt) => CSigmaDslBuilder.deserializeTo[BigInt](CSigmaDslBuilder.serialize(x)) == x},
+        "{ (x: BigInt) => Global.deserializeTo[BigInt](serialize(x)) == x }",
+        FuncValue(
+          Array((1, SBigInt)),
+          EQ(
+            MethodCall.typed[Value[SBigInt.type]](
+              Global,
+              SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SBigInt)),
+              Vector(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  Global,
+                  SGlobalMethods.serializeMethod.withConcreteTypes(
+                    Map(STypeVar("T") -> SBigInt)
+                  ),
+                  Array(ValUse(1, SBigInt)),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SBigInt)
+            ),
+            ValUse(1, SBigInt)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    val cases = Seq(
+      (CBigInt(BigInteger.ONE), new Expected(ExpectedResult(Success(true), None))),
+      (CBigInt(sigma.crypto.SecP256K1Group.q.divide(new BigInteger("2"))), new Expected(ExpectedResult(Success(true), None))),
+      (CBigInt(sigma.crypto.SecP256K1Group.p.divide(new BigInteger("2"))), new Expected(ExpectedResult(Success(true), None)))
+    )
+    verifyCases(cases, deserializeTo)
   }
 
   private def contextData() = {

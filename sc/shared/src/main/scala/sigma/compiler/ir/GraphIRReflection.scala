@@ -1,5 +1,6 @@
 package sigma.compiler.ir
 
+import sigma.Coll
 import sigma.{BigInt, SigmaDslBuilder}
 import sigma.ast.SType
 import sigma.compiler.ir.primitives.Thunks
@@ -588,6 +589,12 @@ object GraphIRReflection {
         mkMethod(clazz, "serialize", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].serialize(args(0).asInstanceOf[ctx.Ref[Any]])
         },
+        mkMethod(clazz, "powHit", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]],
+          classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].powHit(args(0).asInstanceOf[ctx.Ref[Int]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(2).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
+            args(3).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(4).asInstanceOf[ctx.Ref[Int]])
+        },
         mkMethod(clazz, "encodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
         },
@@ -596,6 +603,9 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "fromBigEndianBytes", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].fromBigEndianBytes(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
+        },
+        mkMethod(clazz, "deserializeTo", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].deserializeTo(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
         }
       )
     )
