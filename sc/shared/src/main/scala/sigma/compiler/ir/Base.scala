@@ -169,7 +169,7 @@ abstract class Base { thisIR: IRContext =>
 
     /** Create a copy of this definition applying the given transformer to all `syms`. */
     def transform(t: Transformer): Def[T] =
-      !!!(s"Cannot transfrom definition using transform($this)", self)
+      !!!(s"Cannot transform definition using transform($this)", self)
 
     /** Clone this definition transforming all symbols using `t`.
       * If new Def[A] is created, it is added to the graph with collapsing and rewriting.
