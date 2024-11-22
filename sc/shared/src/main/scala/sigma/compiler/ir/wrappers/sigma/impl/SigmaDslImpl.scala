@@ -2003,6 +2003,14 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, cT))
     }
 
+
+    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
+        Array[AnyRef](k, msg, nonce, h, N),
+        true, false, element[BigInt]))
+    }
+
     override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
       asRep[Long](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
@@ -2176,6 +2184,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
+    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
+        Array[AnyRef](k, msg, nonce, h, N),
+        true, true, element[BigInt]))
+    }
+
     def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
       asRep[Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("serialize", classOf[Sym]),
@@ -2229,7 +2244,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Elem.declaredMethods(RClass(classOf[SigmaDslBuilder]), RClass(classOf[SSigmaDslBuilder]), Set(
         "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256",
           "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator",
-          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes", "deserializeTo"
+          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes", "powHit", "deserializeTo"
         ))
     }
   }

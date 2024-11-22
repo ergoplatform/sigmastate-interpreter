@@ -112,8 +112,14 @@ object Autolykos2PowValidation {
     toBigInt(hash(Bytes.concat(indexBytes, heightBytes, M)).drop(1))
   }
 
-  def hitForVersion2ForMessage(k: Int, msg: Array[Byte], nonce: Array[Byte], h: Array[Byte], N: Int): BigInt = {
+  def hitForVersion2ForMessageWithChecks(k: Int, msg: Array[Byte], nonce: Array[Byte], h: Array[Byte], N: Int): BigInt = {
+    require(k >= 2) // at least 2 elements needed for sum
+    require(k <= 32) // genIndexes function of Autolykos2 not supporting k > 32
+    require(N >= 16) // min table size
+    hitForVersion2ForMessage(k, msg, nonce, h, N)
+  }
 
+  private def hitForVersion2ForMessage(k: Int, msg: Array[Byte], nonce: Array[Byte], h: Array[Byte], N: Int): BigInt = {
     val prei8 = BigIntegers.fromUnsignedByteArray(hash(Bytes.concat(msg, nonce)).takeRight(8))
     val i = BigIntegers.asUnsignedByteArray(4, prei8.mod(BigInt(N).underlying()))
     val f = Blake2b256(Bytes.concat(i, h, M)).drop(1) // .drop(1) is the same as takeRight(31)
