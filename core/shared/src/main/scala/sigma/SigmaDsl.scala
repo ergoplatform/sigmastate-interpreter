@@ -1,7 +1,5 @@
 package sigma
 
-import sigma.ast.SType
-
 import java.math.BigInteger
 import sigma.data._
 
