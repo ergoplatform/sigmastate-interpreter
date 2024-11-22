@@ -21,6 +21,11 @@ import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
+import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigma.data.RType
+import sigma.serialization.ValueCodes.OpCode
+import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
+import sigma.pow.Autolykos2PowValidation
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
@@ -1454,6 +1459,48 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         header1 -> new Expected(ExpectedResult(Success(true), None))
       ),
       checkPoW
+    )
+  }
+
+  property("Global.powHit") {
+    def powHit: Feature[Coll[Byte], sigma.BigInt] = newFeature(
+      { (x: Coll[Byte]) =>
+        val msg = x.slice(0, 7).toArray
+        val nonce = x.slice(7, 15).toArray
+        val h = x.slice(15, 19).toArray
+        CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
+      },
+      "{ (x: Coll[Byte]) => val msg = x.slice(0,7); val nonce = x.slice(7,15); val h = x.slice(15,19); " +
+        "Global.powHit(32, msg, nonce, h, 1024 * 1024) }",
+      FuncValue(
+        Array((1, SByteArray)),
+        MethodCall.typed[Value[SBigInt.type]](
+          Global,
+          SGlobalMethods.powHitMethod,
+          Array(
+            IntConstant(32),
+            Slice(ValUse(1, SByteArray), IntConstant(0), IntConstant(7)),
+            Slice(ValUse(1, SByteArray), IntConstant(7), IntConstant(15)),
+            Slice(ValUse(1, SByteArray), IntConstant(15), IntConstant(19)),
+            IntConstant(1048576)
+          ),
+          Map()
+        )
+      ),
+      sinceVersion = VersionContext.V6SoftForkVersion)
+
+    // bytes of real mainnet block header at height 614,440
+    val msg = Base16.decode("0a101b8c6a4f2e").get
+    val nonce = Base16.decode("000000000000002c").get
+    val h = Base16.decode("00000000").get
+    val x = Colls.fromArray(msg ++ nonce ++ h)
+    val hit = CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+
+    verifyCases(
+      Seq(
+        x -> new Expected(ExpectedResult(Success(hit), None))
+      ),
+      powHit
     )
   }
 

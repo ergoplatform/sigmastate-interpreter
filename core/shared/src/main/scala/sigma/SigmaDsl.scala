@@ -789,6 +789,9 @@ trait SigmaDslBuilder {
   /** Returns a byte-wise XOR of the two collections of bytes. */
   def xor(l: Coll[Byte], r: Coll[Byte]): Coll[Byte]
 
+  /** Calculates value of a custom Autolykos 2 hash function */
+  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt
+
   /** Deserializes provided `bytes` into a value of type `T`. **/
   def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
 

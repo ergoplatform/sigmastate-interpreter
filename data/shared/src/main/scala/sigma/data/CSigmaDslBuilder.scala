@@ -14,7 +14,8 @@ import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
 import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer}
 import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
-import sigma.serialization.{GroupElementSerializer, SerializerException, SigmaSerializer}
+import sigma.serialization.SerializerException
+import sigma.pow.Autolykos2PowValidation
 import sigma.util.Extensions.BigIntegerOps
 import sigma.util.NBitsUtils
 import sigma.validation.SigmaValidationSettings
@@ -258,6 +259,12 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
     DataSerializer.serialize(value.asInstanceOf[SType#WrappedType], tpe, w)
     Colls.fromArray(w.toBytes)
   }
+
+  override def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt = {
+    val bi = Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N)
+    this.BigInt(bi.bigInteger)
+  }
+
 
   def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T = {
     val tpe = rtypeToSType(cT)
