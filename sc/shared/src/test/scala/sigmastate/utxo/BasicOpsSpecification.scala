@@ -39,6 +39,7 @@ import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.util.NBitsUtils
 import sigma.serialization.{DataSerializer, ErgoTreeSerializer, SigmaByteWriter}
 import sigma.util.Extensions
+import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
 
@@ -2296,6 +2297,71 @@ class BasicOpsSpecification extends CompilerTestingCommons
         reg1 -> UnitConstant.instance
       ))
     )
+  }
+
+  property("Global.some") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val xo = Global.some[Int](5)
+          |   xo.get == 5
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("Global.some - computable value") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val i = getVar[Int](1)
+          |   val xo = Global.some[Int](i.get)
+          |   xo == i
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("Global.none") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val xo = Global.some[Long](5L)
+          |   val xn = Global.none[Long]()
+          |   xn.isDefined == false && xn != xo
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
   }
 
 }

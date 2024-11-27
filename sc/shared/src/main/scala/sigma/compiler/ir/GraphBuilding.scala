@@ -1210,6 +1210,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val bytes = asRep[Coll[Byte]](argsV(0))
               val cT = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.fromBigEndianBytes(bytes)(cT)
+            case SGlobalMethods.someMethod.name =>
+              val value = asRep[tT.WrappedType](argsV(0))
+              val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
+              g.some(value)(cT)
+            case SGlobalMethods.noneMethod.name =>
+              val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
+              g.none()(cT)
             case _ => throwError()
           }
           case (x: Ref[tNum], _: SNumericTypeMethods) => method.name match {
