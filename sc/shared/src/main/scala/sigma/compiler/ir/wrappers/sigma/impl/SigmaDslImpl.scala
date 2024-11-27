@@ -2275,8 +2275,22 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     override def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
-        Array[AnyRef](bytes, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))),
-        true, false, cT))
+        Array[AnyRef](bytes, cT),
+        true, false, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    override def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](value, cT),
+        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    override def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
+        Array[AnyRef](cT),
+        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
     }
 
 
@@ -2487,6 +2501,21 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Array[AnyRef](bytes, cT),
         true, true, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
     }
+
+    def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](value, cT),
+        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
+        Array[AnyRef](cT),
+        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
 
     override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
       asRep[Long](mkMethodCall(source,

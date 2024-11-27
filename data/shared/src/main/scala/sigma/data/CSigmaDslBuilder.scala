@@ -279,6 +279,14 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
     val res = DataSerializer.deserialize(tpe, reader)
     res.asInstanceOf[T]
   }
+
+  override def some[T](value: T)(implicit cT: RType[T]): Option[T] = {
+    Some(value)
+  }
+
+  override def none[T]()(implicit cT: RType[T]): Option[T] = {
+    None
+  }
 }
 
 /** Default singleton instance of Global object, which implements global ErgoTree functions. */

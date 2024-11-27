@@ -2045,6 +2045,21 @@ case object SGlobalMethods extends MonoTypeMethods {
     Colls.fromArray(w.toBytes)
   }
 
+  lazy val someMethod = SMethod(this, "some",
+    SFunc(Array(SGlobal, tT), SOption(tT), Array(paramT)), 9, FixedCost(JitCost(5)), Seq(tT))
+    .withIRInfo(MethodCallIrBuilder,
+      javaMethodOf[SigmaDslBuilder, Any, RType[_]]("some"),
+      { mtype => Array(mtype.tRange) })
+    .withInfo(MethodCall, "Wrap given input into optional value (Option()).",
+      ArgInfo("value", "Value to wrap into Option."))
+
+  lazy val noneMethod = SMethod(this, "none",
+    SFunc(Array(SGlobal), SOption(tT), Array(paramT)), 10, FixedCost(JitCost(5)), Seq(tT))
+    .withIRInfo(MethodCallIrBuilder,
+      javaMethodOf[SigmaDslBuilder, RType[_]]("none"),
+      { mtype => Array(mtype.tRange) })
+    .withInfo(MethodCall, "Returns empty Option[T] of given type T.")
+
   protected override def getMethods() = super.getMethods() ++ {
     if (VersionContext.current.isV6SoftForkActivated) {
       Seq(
@@ -2055,7 +2070,9 @@ case object SGlobalMethods extends MonoTypeMethods {
         deserializeToMethod,
         encodeNBitsMethod,
         decodeNBitsMethod,
-        FromBigEndianBytesMethod
+        FromBigEndianBytesMethod,
+        someMethod,
+        noneMethod
       )
     } else {
       Seq(
