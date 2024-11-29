@@ -207,7 +207,6 @@ trait UnsignedBigInt {
   /** Returns a big-endian representation of this BigInt in a collection of bytes.
     * For example, the value {@code 0x1213141516171819} would yield the
     * byte array {@code {0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19}}.
-    * @since 2.0
     */
   def toBytes: Coll[Byte]
 
