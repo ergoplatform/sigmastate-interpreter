@@ -315,6 +315,16 @@ object JavaHelpers {
 
   def collRType[T](tItem: RType[T]): RType[Coll[T]] = sigma.collRType(tItem)
 
+  def BigIntRType: RType[sigma.BigInt] = sigma.BigIntRType
+
+  def GroupElementRType: RType[sigma.GroupElement] = sigma.GroupElementRType
+
+  def SigmaPropRType: RType[sigma.SigmaProp] = sigma.SigmaPropRType
+
+  def AvlTreeRType: RType[sigma.AvlTree] = sigma.AvlTreeRType
+
+  def BoxRType: RType[sigma.Box] = sigma.BoxRType
+
   def SigmaDsl: CSigmaDslBuilder = sigma.eval.SigmaDsl
 
   def collFrom(arr: Array[Byte]): Coll[Byte] = {

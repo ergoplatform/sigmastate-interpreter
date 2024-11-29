@@ -54,16 +54,9 @@ object UnsignedBigIntNumericOps {
     def toDouble(x: UnsignedBigInt): Double = x.toDouble
   }
 
-  /** The instance of Integral for BigInt.
-    *
-    * Note: ExactIntegral was not defined for [[sigma.BigInt]] in v4.x.
-    * This is because arithmetic BigInt operations were handled in a special way
-    * (see `case op: ArithOp[t] if op.tpe == SBigInt =>` in RuntimeCosting.scala).
-    * As result [[scalan.primitives.UnBinOps.ApplyBinOp]] nodes were not created for
-    * BigInt operations in v4.x., and hence operation descriptors such as
-    * [[scalan.primitives.NumericOps.IntegralDivide]] and
-    * [[scalan.primitives.NumericOps.IntegralMod]] were not used for BigInt.
-    * NOTE: this instance is used in the new v5.0 interpreter.
+  /**
+    * The instance of Integral for UnsignedBigInt.
+    * Done similarly to BigIntIsIntegral.
     */
   object UnsignedBigIntIsIntegral extends UnsignedBigIntIsIntegral with UnsignedBigIntOrdering {
     def parseString(str: String): Option[UnsignedBigInt] = ???

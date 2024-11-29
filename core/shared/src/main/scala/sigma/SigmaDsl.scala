@@ -217,7 +217,8 @@ trait UnsignedBigInt {
     */
   def compareTo(that: UnsignedBigInt): Int
 
-  /** Returns a BigInt whose value is {@code (this + that)}.
+  /** Returns a BigInt whose value is {@code (this + that)}, or exception if result does not fit into 256 bits
+    * (consider using plusMod to avoid exception)
     *
     * @param  that value to be added to this BigInt.
     * @return { @code this + that}
@@ -225,7 +226,8 @@ trait UnsignedBigInt {
   def add(that: UnsignedBigInt): UnsignedBigInt
   def +(that: UnsignedBigInt): UnsignedBigInt = add(that)
 
-  /** Returns a BigInt whose value is {@code (this - that)}.
+  /** Returns a BigInt whose value is {@code (this - that)}, or exception if result is negative
+    * (consider using plusMod to avoid exception)
     *
     * @param  that value to be subtracted from this BigInt.
     * @return { @code this - that}
@@ -234,7 +236,8 @@ trait UnsignedBigInt {
 
   def -(that: UnsignedBigInt): UnsignedBigInt = subtract(that)
 
-  /** Returns a BigInt whose value is {@code (this * that)}.
+  /** Returns a BigInt whose value is {@code (this * that)} , or exception if result does not fit into 256 bits
+    * (consider using multiplyMod to avoid exception)
     *
     * @implNote An implementation may offer better algorithmic
     *           performance when { @code that == this}.
@@ -300,29 +303,48 @@ trait UnsignedBigInt {
   def |(that: UnsignedBigInt): UnsignedBigInt = or(that)
 
   def modInverse(m: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * @return this + that mod m , where mod is cryptographic mod operation
+    */
   def plusMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * @return this - that mod m , where mod is cryptographic mod operation, so result is always non-negative
+    */
   def subtractMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
+
+  /**
+    * @return this * that mod m , where mod is cryptographic mod operation
+    */
   def multiplyMod(that: UnsignedBigInt, m: UnsignedBigInt): UnsignedBigInt
 
   /**
-    * @return a big integer whose value is `this xor that`
+    * @return an unsigned big integer whose value is `this xor that`
     */
   def xor(that: UnsignedBigInt): UnsignedBigInt
 
   /**
-    * @return a 256-bit signed integer whose value is (this << n). The shift distance, n, may be negative,
+    * @return a 256-bit unsigned integer whose value is (this << n). The shift distance, n, may be negative,
     *         in which case this method performs a right shift. (Computes floor(this * 2n).)
     */
   def shiftLeft(n: Int): UnsignedBigInt
 
   /**
-    * @return a 256-bit signed integer whose value is (this >> n). Sign extension is performed. The shift distance, n,
+    * @return a 256-bit unsigned integer whose value is (this >> n). Sign extension is performed. The shift distance, n,
     *         may be negative, in which case this method performs a left shift. (Computes floor(this / 2n).)
     */
   def shiftRight(n: Int): UnsignedBigInt
 
+  /**
+    * @return an unsigned big integer value which is inverse of this (every bit is flipped)
+    */
   def bitwiseInverse(): UnsignedBigInt
 
+  /**
+    * @return signed version of the same value, or exception if the value does not fit into signed type (since it is
+    *         also about 256 bits, but one bit is encoding sign)
+    */
   def toSigned(): BigInt
 }
 
@@ -940,6 +962,7 @@ trait SigmaDslBuilder {
   /** Create DSL big integer from existing `java.math.BigInteger`*/
   def BigInt(n: BigInteger): BigInt
 
+  /** Create DSL unsigned big integer from existing `java.math.BigInteger`*/
   def UnsignedBigInt(n: BigInteger): UnsignedBigInt
 
   /** Extract `java.math.BigInteger` from DSL's `BigInt` type*/
