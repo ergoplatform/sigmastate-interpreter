@@ -173,12 +173,43 @@ class CErgoTreeEvaluator(
       // when the tree is empty we still need to add the insert cost
       val nItems = Math.max(bv.treeHeight, 1)
 
-      // here we use forall as looping with fast break on first failed tree oparation
+      // here we use forall as looping with fast break on first failed tree operation
       operations.forall { case (key, value) =>
         var res = true
         // the cost of tree update is O(bv.treeHeight)
         addSeqCost(UpdateAvlTree_Info, nItems) { () =>
           val updateRes = bv.performUpdate(key.toArray, value.toArray)
+          res = updateRes.isSuccess
+        }
+        res
+      }
+      bv.digest match {
+        case Some(d) =>
+          addCost(updateDigest_Info)
+          Some(tree.updateDigest(Colls.fromArray(d)))
+        case _ => None
+      }
+    }
+  }
+
+  override def insertOrUpdate_eval(
+                            mc: MethodCall, tree: AvlTree,
+                            operations: KeyValueColl, proof: Coll[Byte]): Option[AvlTree] = {
+    addCost(isUpdateAllowed_Info)
+    addCost(isInsertAllowed_Info)
+    if (!(tree.isUpdateAllowed && tree.isInsertAllowed)) {
+      None
+    } else {
+      val bv     = createVerifier(tree, proof)
+      // when the tree is empty we still need to add the insert cost
+      val nItems = Math.max(bv.treeHeight, 1)
+
+      // here we use forall as looping with fast break on first failed tree operation
+      operations.forall { case (key, value) =>
+        var res = true
+        // the cost of tree update is O(bv.treeHeight)
+        addSeqCost(UpdateAvlTree_Info, nItems) { () =>
+          val updateRes = bv.performInsertOrUpdate(key.toArray, value.toArray)
           res = updateRes.isSuccess
         }
         res

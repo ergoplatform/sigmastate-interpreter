@@ -932,6 +932,13 @@ object AvlTree extends EntityObject("AvlTree") {
         true, false, element[WOption[AvlTree]]))
     }
 
+    override def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
+      asRep[WOption[AvlTree]](mkMethodCall(self,
+        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](operations, proof),
+        true, false, element[WOption[AvlTree]]))
+    }
+
     override def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
       asRep[WOption[AvlTree]](mkMethodCall(self,
         AvlTreeClass.getMethod("remove", classOf[Sym], classOf[Sym]),
@@ -1052,6 +1059,13 @@ object AvlTree extends EntityObject("AvlTree") {
     def update(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
       asRep[WOption[AvlTree]](mkMethodCall(source,
         AvlTreeClass.getMethod("update", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](operations, proof),
+        true, true, element[WOption[AvlTree]]))
+    }
+
+    def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
+      asRep[WOption[AvlTree]](mkMethodCall(source,
+        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
         Array[AnyRef](operations, proof),
         true, true, element[WOption[AvlTree]]))
     }
