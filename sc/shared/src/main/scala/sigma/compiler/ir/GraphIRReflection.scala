@@ -237,10 +237,6 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.AvlTree].getMany(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.Coll[Byte]]]],
             args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
         },
-        mkMethod(clazz, "update", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].update(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
         mkMethod(clazz, "keyLength", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[ctx.AvlTree].keyLength
         },
@@ -255,6 +251,14 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "insert", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.AvlTree].insert(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "update", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.AvlTree].update(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "insertOrUpdate", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.AvlTree].insertOrUpdate(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
             args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
         },
         mkMethod(clazz, "isRemoveAllowed", Array[Class[_]]()) { (obj, _) =>
