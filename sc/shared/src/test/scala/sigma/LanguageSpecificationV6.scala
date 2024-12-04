@@ -14,6 +14,7 @@ import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.CSigmaDslBuilder
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
 import sigma.crypto.SecP256K1Group
 import sigma.data.{CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, ExactNumeric, RType}
 import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
@@ -21,6 +22,9 @@ import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
+import sigma.util.Extensions.{BooleanOps, IntOps}
+import sigma.serialization.ValueCodes.OpCode
+import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigma.data.RType
 import sigma.serialization.ValueCodes.OpCode
@@ -30,6 +34,8 @@ import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
 import sigma.Extensions.ArrayOps
+import sigma.Extensions.{ArrayOps, CollOps}
+import sigma.crypto.CryptoConstants
 import sigma.interpreter.{ContextExtension, ProverResult}
 
 import java.math.BigInteger
@@ -112,7 +118,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
   }
-
 
   property("Boolean.toByte") {
     val toByte = newFeature((x: Boolean) => x.toByte, "{ (x: Boolean) => x.toByte }",
@@ -1828,6 +1833,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       newFeature(
         { (x: Context) => x.getVar[Boolean](11)},
         "{ (x: Context) => CONTEXT.getVar[Boolean](11.toByte) }",
+        FuncValue(Array((1, SContext)), GetVar(11.toByte, SOption(SBoolean))),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -1937,11 +1943,31 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
   property("Global - fromBigEndianBytes") {
     import sigma.data.OrderingOps.BigIntOrdering
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
 
     def byteFromBigEndianBytes: Feature[Byte, Boolean] = {
       newFeature(
         { (x: Byte) => CSigmaDslBuilder.fromBigEndianBytes[Byte](Colls.fromArray(Array(x))) == x},
         "{ (x: Byte) => fromBigEndianBytes[Byte](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SByte)),
+          EQ(
+            MethodCall.typed[Value[SByte.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SByte)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SByte),
+                  SByteMethods.getMethodByName("toBytes"),
+                  Vector(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SByte)
+            ),
+            ValUse(1, SByte)
+          )
+        ),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -1959,6 +1985,25 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       newFeature(
         { (x: Short) => CSigmaDslBuilder.fromBigEndianBytes[Short](Colls.fromArray(Shorts.toByteArray(x))) == x},
         "{ (x: Short) => fromBigEndianBytes[Short](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SShort)),
+          EQ(
+            MethodCall.typed[Value[SShort.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SShort)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SShort),
+                  SShortMethods.getMethodByName("toBytes"),
+                  Vector(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SShort)
+            ),
+            ValUse(1, SShort)
+          )
+        ),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -1976,6 +2021,25 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       newFeature(
         { (x: Int) => CSigmaDslBuilder.fromBigEndianBytes[Int](Colls.fromArray(Ints.toByteArray(x))) == x},
         "{ (x: Int) => fromBigEndianBytes[Int](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SInt)),
+          EQ(
+            MethodCall.typed[Value[SInt.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SInt)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SInt),
+                  SIntMethods.getMethodByName("toBytes"),
+                  Vector(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SInt)
+            ),
+            ValUse(1, SInt)
+          )
+        ),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -1992,6 +2056,25 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       newFeature(
         { (x: Long) => CSigmaDslBuilder.fromBigEndianBytes[Long](Colls.fromArray(Longs.toByteArray(x))) == x},
         "{ (x: Long) => fromBigEndianBytes[Long](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SLong)),
+          EQ(
+            MethodCall.typed[Value[SLong.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SLong)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SLong),
+                  SLongMethods.getMethodByName("toBytes"),
+                  Vector(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SLong)
+            ),
+            ValUse(1, SLong)
+          )
+        ),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -2008,6 +2091,25 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       newFeature(
         { (x: BigInt) => CSigmaDslBuilder.fromBigEndianBytes[BigInt](x.toBytes) == x},
         "{ (x: BigInt) => Global.fromBigEndianBytes[BigInt](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SBigInt)),
+          EQ(
+            MethodCall.typed[Value[SBigInt.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SBigInt)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SBigInt),
+                  SBigIntMethods.getMethodByName("toBytes"),
+                  IndexedSeq(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SBigInt)
+            ),
+            ValUse(1, SBigInt)
+          )
+        ),
         sinceVersion = VersionContext.V6SoftForkVersion
       )
     }
@@ -2021,12 +2123,57 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       bigIntFromBigEndianBytes
     )
 
+    def unsignedBigIntFromBigEndianBytes: Feature[UnsignedBigInt, Boolean] = {
+      newFeature(
+        { (x: UnsignedBigInt) => CSigmaDslBuilder.fromBigEndianBytes[UnsignedBigInt](x.toBytes) == x},
+        "{ (x: UnsignedBigInt) => Global.fromBigEndianBytes[UnsignedBigInt](x.toBytes) == x }",
+        FuncValue(
+          Array((1, SUnsignedBigInt)),
+          EQ(
+            MethodCall.typed[Value[SUnsignedBigInt.type]](
+              Global,
+              SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(STypeVar("T") -> SUnsignedBigInt)),
+              Array(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  ValUse(1, SUnsignedBigInt),
+                  SUnsignedBigIntMethods.getMethodByName("toBytes"),
+                  IndexedSeq(),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SUnsignedBigInt)
+            ),
+            ValUse(1, SUnsignedBigInt)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    verifyCases(
+      Seq(
+        CUnsignedBigInt(BigInteger.valueOf(50)) -> new Expected(ExpectedResult(Success(true), None)),
+        CUnsignedBigInt(sigma.crypto.CryptoConstants.groupOrder.divide(BigInteger.valueOf(2))) -> new Expected(ExpectedResult(Success(true), None)),
+        CUnsignedBigInt(sigma.crypto.CryptoConstants.groupOrder) -> new Expected(ExpectedResult(Success(true), None))
+      ),
+      unsignedBigIntFromBigEndianBytes
+    )
+
   }
 
   property("Coll.reverse") {
     val f = newFeature[Coll[Int], Coll[Int]](
       { (xs: Coll[Int]) => xs.reverse },
       """{(xs: Coll[Int]) => xs.reverse }""".stripMargin,
+      FuncValue(
+        Array((1, SCollectionType(SInt))),
+        MethodCall.typed[Value[SCollection[SInt.type]]](
+          ValUse(1, SCollectionType(SInt)),
+          SCollectionMethods.ReverseMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
+          IndexedSeq(),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2043,6 +2190,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[Coll[Int], Coll[Int]](
       { (xs: Coll[Int]) => xs.distinct },
       """{(xs: Coll[Int]) => xs.distinct }""".stripMargin,
+      FuncValue(
+        Array((1, SCollectionType(SInt))),
+        MethodCall.typed[Value[SCollection[SInt.type]]](
+          ValUse(1, SCollectionType(SInt)),
+          SCollectionMethods.DistinctMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
+          IndexedSeq(),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2063,6 +2219,23 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) },
       """{(xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) }""".stripMargin,
+      FuncValue(
+        Array((1, SPair(SCollectionType(SInt), SCollectionType(SInt)))),
+        MethodCall.typed[Value[SBoolean.type]](
+          SelectField.typed[Value[SCollection[SInt.type]]](
+            ValUse(1, SPair(SCollectionType(SInt), SCollectionType(SInt))),
+            1.toByte
+          ),
+          SCollectionMethods.StartsWithMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
+          Array(
+            SelectField.typed[Value[SCollection[SInt.type]]](
+              ValUse(1, SPair(SCollectionType(SInt), SCollectionType(SInt))),
+              2.toByte
+            )
+          ),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2083,7 +2256,24 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.endsWith(xs._2) },
       """{(xs: (Coll[Int], Coll[Int])) => xs._1.endsWith(xs._2) }""".stripMargin,
-      sinceVersion = VersionContext.V6SoftForkVersion
+      FuncValue(
+        Array((1, SPair(SCollectionType(SInt), SCollectionType(SInt)))),
+        MethodCall.typed[Value[SBoolean.type]](
+          SelectField.typed[Value[SCollection[SInt.type]]](
+            ValUse(1, SPair(SCollectionType(SInt), SCollectionType(SInt))),
+            1.toByte
+          ),
+          SCollectionMethods.EndsWithMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
+          Array(
+            SelectField.typed[Value[SCollection[SInt.type]]](
+              ValUse(1, SPair(SCollectionType(SInt), SCollectionType(SInt))),
+              2.toByte
+            )
+          ),
+          Map()
+        )
+      ),
+        sinceVersion = VersionContext.V6SoftForkVersion
     )
 
     verifyCases(
@@ -2102,7 +2292,21 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[(Coll[Int], Int), Option[Int]](
       { (xs: (Coll[Int], Int)) => xs._1.get(xs._2) },
       """{(xs: (Coll[Int], Int)) => xs._1.get(xs._2) }""".stripMargin,
-      sinceVersion = VersionContext.V6SoftForkVersion
+      FuncValue(
+        Array((1, SPair(SCollectionType(SInt), SInt))),
+        MethodCall.typed[Value[SOption[SInt.type]]](
+          SelectField.typed[Value[SCollection[SInt.type]]](
+            ValUse(1, SPair(SCollectionType(SInt), SInt)),
+            1.toByte
+          ),
+          SCollectionMethods.GetMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
+          Array(
+            SelectField.typed[Value[SInt.type]](ValUse(1, SPair(SCollectionType(SInt), SInt)), 2.toByte)
+          ),
+          Map()
+        )
+      ),
+        sinceVersion = VersionContext.V6SoftForkVersion
     )
 
     verifyCases(
@@ -2156,6 +2360,476 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       ),
       f
     )
+  }
+
+  property("BigInt.toUnsigned") {
+    import sigma.data.OrderingOps.BigIntOrdering
+
+    val f = newFeature[BigInt, UnsignedBigInt](
+      { (x: BigInt) => x.toUnsigned },
+      """{(x: BigInt) => x.toUnsigned }""".stripMargin,
+      FuncValue(
+        Array((1, SBigInt)),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          ValUse(1, SBigInt),
+          SBigIntMethods.ToUnsigned,
+          IndexedSeq(),
+          Map()
+        )
+      ),
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        CBigInt(new BigInteger("5")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("5"))), None)),
+        CBigInt(new BigInteger("-5")) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger argument for .toUnsigned is negative")), None)),
+        CBigInt(new BigInteger("0")) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("0"))), None))
+      ),
+      f
+    )
+  }
+
+  property("BigInt.toUnsignedMod") {
+    import sigma.data.OrderingOps.BigIntOrdering
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    val f = newFeature[(BigInt, UnsignedBigInt), UnsignedBigInt](
+      { (xs: (BigInt, UnsignedBigInt)) => xs._1.toUnsignedMod(xs._2) },
+      """{ (xs: (BigInt, UnsignedBigInt)) => xs._1.toUnsignedMod(xs._2) }""".stripMargin,
+      FuncValue(
+        Array((1, SPair(SBigInt, SUnsignedBigInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SBigInt.type]](ValUse(1, SPair(SBigInt, SUnsignedBigInt)), 1.toByte),
+          SBigIntMethods.ToUnsignedMod,
+          Array(
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SBigInt, SUnsignedBigInt)),
+              2.toByte
+            )
+          ),
+          Map()
+        )
+      ),
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        (CBigInt(new BigInteger("50")), CUnsignedBigInt(new BigInteger("10"))) -> Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("0"))), None)),
+        (CBigInt(new BigInteger("50")), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Failure(new ArithmeticException("BigInteger: modulus not positive")), None))
+      ),
+      f
+    )
+  }
+
+  property("GroupElement.expUnsigned") {
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    val f = newFeature[(GroupElement, UnsignedBigInt), GroupElement](
+      { (xs: (GroupElement, UnsignedBigInt)) => xs._1.expUnsigned(xs._2) },
+      """{ (xs: (GroupElement, UnsignedBigInt)) => xs._1.expUnsigned(xs._2) }""".stripMargin,
+      sinceVersion = VersionContext.V6SoftForkVersion
+    )
+
+    verifyCases(
+      Seq(
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.generator)), None)),
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(CryptoConstants.dlogGroup.order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None))
+      ),
+      f
+    )
+  }
+
+  property("UnsignedBigInt methods") {
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    lazy val bitOr = newFeature[(UnsignedBigInt, UnsignedBigInt), UnsignedBigInt](
+      { (x: (UnsignedBigInt, UnsignedBigInt)) => (x._1 | x._2) },
+      "{ (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.bitwiseOr(x._2) }",
+      if (VersionContext.current.isV6SoftForkActivated) {
+        FuncValue(
+          Array((1, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+          MethodCall.typed[Value[SUnsignedBigInt.type]](
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+              1.toByte
+            ),
+            SUnsignedBigIntMethods.getMethodByName("bitwiseOr"),
+            Vector(
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      } else {
+        null
+      },
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(1)), CUnsignedBigInt(BigInteger.valueOf(2))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(3))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(1001)), CUnsignedBigInt(BigInteger.valueOf(2002))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2043))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(100001)), CUnsignedBigInt(BigInteger.valueOf(20002))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(118435))), None))
+      ),
+      bitOr
+    )
+
+    lazy val bitNot = newFeature[UnsignedBigInt, UnsignedBigInt](
+      { (x: UnsignedBigInt) => x.bitwiseInverse() },
+      "{ (x: UnsignedBigInt) => x.bitwiseInverse }",
+      if (VersionContext.current.isV6SoftForkActivated) {
+        FuncValue(
+          Array((1, SUnsignedBigInt)),
+          MethodCall.typed[Value[SUnsignedBigInt.type]](
+            ValUse(1, SUnsignedBigInt),
+            SUnsignedBigIntMethods.getMethodByName("bitwiseInverse"),
+            Vector(),
+            Map()
+          )
+        )
+      } else {
+        null
+      },
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        CUnsignedBigInt(BigInteger.valueOf(Byte.MaxValue)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(new BigInteger("115792089237316195423570985008687907853269984665640564039457584007913129639808"))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(0)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.ONE))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(1)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(2)))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(2)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(3)))), None)),
+        CUnsignedBigInt(BigInteger.valueOf(10001)) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(10002)))), None))
+      ),
+      bitNot
+    )
+
+
+    lazy val bitAnd = newFeature(
+      { (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.asInstanceOf[CUnsignedBigInt].and(x._2.asInstanceOf[CUnsignedBigInt]) },
+      "{ (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.bitwiseAnd(x._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)), 1.toByte),
+          SUnsignedBigIntMethods.v6Methods.find(_.name == "bitwiseAnd").get,
+          Vector(SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(3)), CUnsignedBigInt(BigInteger.valueOf(5))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(1))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(10001)), CUnsignedBigInt(BigInteger.valueOf(2202))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(16))), None))
+      ),
+      bitAnd
+    )
+
+    lazy val bitXor = newFeature(
+      { (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.asInstanceOf[CUnsignedBigInt].xor(x._2.asInstanceOf[CUnsignedBigInt]) },
+      "{ (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.bitwiseXor(x._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)), 1.toByte),
+          SUnsignedBigIntMethods.v6Methods.find(_.name == "bitwiseXor").get,
+          Vector(SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(3)), CUnsignedBigInt(BigInteger.valueOf(5))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(6))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(10001)), CUnsignedBigInt(BigInteger.valueOf(2202))) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(12171))), None))
+      ),
+      bitXor
+    )
+
+    lazy val toBigEndianBytes = newFeature[UnsignedBigInt, Coll[Byte]](
+      { x: UnsignedBigInt => x.toBytes },
+      "{ (x: UnsignedBigInt) => x.toBytes }",
+      FuncValue(
+        Array((1, SUnsignedBigInt)),
+        MethodCall.typed[Value[SCollection[SUnsignedBigInt.type]]](
+          ValUse(1, SUnsignedBigInt),
+          SUnsignedBigIntMethods.getMethodByName("toBytes"),
+          Vector(),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        CUnsignedBigInt(BigInteger.valueOf(127)) -> new Expected(ExpectedResult(Success(Coll(127.toByte)), None)),
+        CUnsignedBigInt(BigInteger.valueOf(Short.MaxValue)) -> new Expected(ExpectedResult(Success(Coll(127.toByte, (-1).toByte)), None)),
+        CUnsignedBigInt(BigInteger.valueOf(Int.MaxValue)) -> new Expected(ExpectedResult(Success(Coll(127.toByte, (-1).toByte, (-1).toByte, (-1).toByte)), None))
+      ),
+      toBigEndianBytes
+    )
+
+    def byte2Bools(b: Byte): Seq[Boolean] =
+      (0 to 7 map isBitSet(b)).reverse
+
+    def isBitSet(byte: Byte)(bit: Int): Boolean =
+      ((byte >> bit) & 1) == 1
+
+    lazy val toBits = newFeature[UnsignedBigInt, Coll[Boolean]](
+      { x: UnsignedBigInt => x.toBytes.flatMap(b => Colls.fromArray(byte2Bools(b).toArray)) },
+      "{ (x: UnsignedBigInt) => x.toBits }",
+      FuncValue(
+        Array((1, SUnsignedBigInt)),
+        MethodCall.typed[Value[SCollection[SUnsignedBigInt.type]]](
+          ValUse(1, SUnsignedBigInt),
+          SUnsignedBigIntMethods.getMethodByName("toBits"),
+          Vector(),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        CUnsignedBigInt(BigInteger.valueOf(83)) -> new Expected(ExpectedResult(Success(Coll(false, true, false, true, false, false, true, true)), None))
+      ),
+      toBits
+    )
+
+    lazy val shiftLeft = newFeature(
+      { (x: (UnsignedBigInt, Int)) => if (x._2 < 0 || x._2 >= 256) throw new IllegalArgumentException() else (x._1.asInstanceOf[UnsignedBigInt].shiftLeft(x._2)) },
+      "{ (x: (UnsignedBigInt, Int)) => x._1.shiftLeft(x._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SInt)), 1.toByte),
+          SUnsignedBigIntMethods.v6Methods.find(_.name == "shiftLeft").get,
+          Vector(SelectField.typed[Value[SInt.type]](ValUse(1, SPair(SUnsignedBigInt, SInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(3)), 3) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(24))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(3)), 8) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(768))), None))
+      ),
+      shiftLeft
+    )
+
+    lazy val shiftRight = newFeature(
+      { (x: (UnsignedBigInt, Int)) => if (x._2 < 0 || x._2 >= 256) throw new IllegalArgumentException() else (x._1.asInstanceOf[UnsignedBigInt].shiftRight(x._2)) },
+      "{ (x: (UnsignedBigInt, Int)) => x._1.shiftRight(x._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SUnsignedBigInt.type]](ValUse(1, SPair(SUnsignedBigInt, SInt)), 1.toByte),
+          SUnsignedBigIntMethods.v6Methods.find(_.name == "shiftRight").get,
+          Vector(SelectField.typed[Value[SInt.type]](ValUse(1, SPair(SUnsignedBigInt, SInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(24)), 3) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(3))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(1600)), 8) -> new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(6))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(24)), -1) -> new Expected(ExpectedResult(Failure(new IllegalArgumentException()), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(24)), 256) -> new Expected(ExpectedResult(Failure(new IllegalArgumentException()), None))
+      ),
+      shiftRight
+    )
+
+    lazy val plusMod = newFeature(
+      { (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.asInstanceOf[UnsignedBigInt].plusMod(x._2._1, x._2._2) },
+      "{ (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.plusMod(x._2._1, x._2._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt)))),
+        BlockValue(
+          Array(
+            ValDef(
+              3,
+              List(),
+              SelectField.typed[Value[STuple]](
+                ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+                2.toByte
+              )
+            )
+          ),
+          MethodCall.typed[Value[SUnsignedBigInt.type]](
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+              1.toByte
+            ),
+            SUnsignedBigIntMethods.getMethodByName("plusMod"),
+            Array(
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                1.toByte
+              ),
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(24)),
+          (CUnsignedBigInt(BigInteger.valueOf(24)), CUnsignedBigInt(BigInteger.valueOf(10)))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(8))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(24)),
+          (CUnsignedBigInt(BigInteger.valueOf(24)), CUnsignedBigInt(BigInteger.valueOf(24)))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(0))), None)),
+        (CUnsignedBigInt(CryptoConstants.groupOrder),
+          (CUnsignedBigInt(CryptoConstants.groupOrder), CUnsignedBigInt(CryptoConstants.groupOrder))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(0))), None))
+      ),
+      plusMod
+    )
+
+    lazy val subtractMod = newFeature(
+      { (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.asInstanceOf[UnsignedBigInt].subtractMod(x._2._1, x._2._2) },
+      "{ (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.subtractMod(x._2._1, x._2._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt)))),
+        BlockValue(
+          Array(
+            ValDef(
+              3,
+              List(),
+              SelectField.typed[Value[STuple]](
+                ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+                2.toByte
+              )
+            )
+          ),
+          MethodCall.typed[Value[SUnsignedBigInt.type]](
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+              1.toByte
+            ),
+            SUnsignedBigIntMethods.getMethodByName("subtractMod"),
+            Array(
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                1.toByte
+              ),
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(0)),
+          (CUnsignedBigInt(BigInteger.valueOf(24)), CUnsignedBigInt(BigInteger.valueOf(10)))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(6))), None)),
+        (CUnsignedBigInt(BigInteger.valueOf(24)),
+          (CUnsignedBigInt(BigInteger.valueOf(24)), CUnsignedBigInt(BigInteger.valueOf(24)))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(0))), None))
+      ),
+      subtractMod
+    )
+
+    lazy val multiplyMod = newFeature(
+      { (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.asInstanceOf[UnsignedBigInt].multiplyMod(x._2._1, x._2._2) },
+      "{ (x: (UnsignedBigInt, (UnsignedBigInt, UnsignedBigInt))) => x._1.multiplyMod(x._2._1, x._2._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt)))),
+        BlockValue(
+          Array(
+            ValDef(
+              3,
+              List(),
+              SelectField.typed[Value[STuple]](
+                ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+                2.toByte
+              )
+            )
+          ),
+          MethodCall.typed[Value[SUnsignedBigInt.type]](
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SUnsignedBigInt, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+              1.toByte
+            ),
+            SUnsignedBigIntMethods.getMethodByName("multiplyMod"),
+            Array(
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                1.toByte
+              ),
+              SelectField.typed[Value[SUnsignedBigInt.type]](
+                ValUse(3, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(CryptoConstants.groupOrder),
+          (CUnsignedBigInt(CryptoConstants.groupOrder), CUnsignedBigInt(CryptoConstants.groupOrder))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(0))), None))
+      ),
+      multiplyMod
+    )
+
+    lazy val modInverse = newFeature(
+      { (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.asInstanceOf[UnsignedBigInt].modInverse(x._2) },
+      "{ (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.modInverse(x._2) }",
+      FuncValue(
+        Array((1, SPair(SUnsignedBigInt, SUnsignedBigInt))),
+        MethodCall.typed[Value[SUnsignedBigInt.type]](
+          SelectField.typed[Value[SUnsignedBigInt.type]](
+            ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+            1.toByte
+          ),
+          SUnsignedBigIntMethods.getMethodByName("modInverse"),
+          Array(
+            SelectField.typed[Value[SUnsignedBigInt.type]](
+              ValUse(1, SPair(SUnsignedBigInt, SUnsignedBigInt)),
+              2.toByte
+            )
+          ),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (CUnsignedBigInt(BigInteger.valueOf(12)), CUnsignedBigInt(BigInteger.valueOf(5))) ->
+          new Expected(ExpectedResult(Success(CUnsignedBigInt(BigInteger.valueOf(3))), None))
+      ),
+      modInverse
+    )
+
   }
 
   property("Global.some") {

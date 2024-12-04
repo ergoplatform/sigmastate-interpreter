@@ -138,7 +138,7 @@ class OracleExamplesSpecification extends CompilerTestingCommons
         LastBlockUtxoRootHash, SAvlTreeMethods.getMethod,
         IndexedSeq(ExtractId(GetVarBox(22: Byte).get), GetVarByteArray(23: Byte).get)).asOption[SByteArray]),
       EQ(extract[SByteArray](ErgoBox.ScriptRegId), ByteArrayConstant(ErgoTree.fromSigmaBoolean(oraclePubKey).bytes)),
-      EQ(Exponentiate(GroupGenerator, extract[SBigInt.type](reg3)),
+      EQ(Exponentiate(GroupGenerator, extract[SBigInt.type](reg3)(SBigInt)),
         MultiplyGroup(extract[SGroupElement.type](reg2),
           Exponentiate(GroupElementConstant(oraclePubImage.value),
             ByteArrayToBigInt(

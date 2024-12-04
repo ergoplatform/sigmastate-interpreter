@@ -83,6 +83,7 @@ trait ObjectGenerators extends TypeGenerators
   implicit lazy val arbRegisterIdentifier: Arbitrary[RegisterId] = Arbitrary(registerIdentifierGen)
   implicit lazy val arbBigInteger: Arbitrary[BigInteger] = Arbitrary(Arbitrary.arbBigInt.arbitrary.map(_.bigInteger))
   implicit lazy val arbBigInt: Arbitrary[BigInt] = Arbitrary(arbBigInteger.arbitrary.map(SigmaDsl.BigInt(_)))
+  implicit lazy val arbUnsignedBigInt: Arbitrary[UnsignedBigInt] = Arbitrary(arbBigInteger.arbitrary.map(_.abs()).map(SigmaDsl.UnsignedBigInt(_)))
   implicit lazy val arbEcPointType: Arbitrary[dlogGroup.ElemType] = Arbitrary(Gen.const(()).flatMap(_ => CryptoConstants.dlogGroup.createRandomGenerator()))
   implicit lazy val arbGroupElement: Arbitrary[GroupElement] = Arbitrary(arbEcPointType.arbitrary.map(SigmaDsl.GroupElement(_)))
   implicit lazy val arbSigmaBoolean: Arbitrary[SigmaBoolean] = Arbitrary(Gen.oneOf(proveDHTGen, proveDHTGen))
@@ -142,6 +143,8 @@ trait ObjectGenerators extends TypeGenerators
     arbString.arbitrary.map { v => mkConstant[SString.type](v, SString) }
   lazy val bigIntConstGen: Gen[BigIntConstant] =
     arbBigInt.arbitrary.map { v => mkConstant[SBigInt.type](v, SBigInt) }
+  lazy val unsignedBigIntConstGen: Gen[UnsignedBigIntConstant] =
+    arbUnsignedBigInt.arbitrary.map { v => mkConstant[SUnsignedBigInt.type](v, SUnsignedBigInt) }
 
   lazy val byteArrayConstGen: Gen[CollectionConstant[SByte.type]] = for {
     bytes <- arrayOfRange(1, 100, arbByte.arbitrary)
@@ -305,6 +308,7 @@ trait ObjectGenerators extends TypeGenerators
     case SInt => arbInt
     case SLong => arbLong
     case SBigInt => arbBigInt
+    case SUnsignedBigInt => arbUnsignedBigInt
     case SGroupElement => arbGroupElement
     case SSigmaProp => arbSigmaProp
     case SBox => arbBox
@@ -325,6 +329,11 @@ trait ObjectGenerators extends TypeGenerators
       longConstGen,
       booleanConstGen,
       bigIntConstGen,
+      if(VersionContext.current.isV6SoftForkActivated) {
+        unsignedBigIntConstGen
+      } else {
+        bigIntConstGen
+      },
       groupElementConstGen,
       getVar[SInt.type],
       getVar[SLong.type],

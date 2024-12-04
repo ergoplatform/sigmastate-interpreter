@@ -14,6 +14,7 @@ package object data {
 
   val StringClassTag = classTag[String]
   val BigIntClassTag = classTag[BigInt]
+  val UnsignedBigIntClassTag = classTag[UnsignedBigInt]
   val GroupElementClassTag = classTag[GroupElement]
   val SigmaPropClassTag = classTag[SigmaProp]
   val SigmaBooleanClassTag = classTag[SigmaBoolean]

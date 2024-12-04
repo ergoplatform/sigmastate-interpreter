@@ -44,26 +44,20 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     implicit val tT = Evaluation.stypeToRType(tpe)
     implicit val tagT = tT.classTag
 
-    val withVersion = if (tpe == SHeader) {
-      Some(VersionContext.V6SoftForkVersion)
-    } else {
-      None
-    }
 
     forAll { xs: Array[T#WrappedType] =>
-      roundtrip[SCollection[T]](xs.toColl, SCollection(tpe), withVersion)
-      roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)), withVersion)
+      roundtrip[SCollection[T]](xs.toColl, SCollection(tpe))
+      roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)))
 
       val nested = xs.toColl.map(x => Colls.fromItems[T#WrappedType](x, x))
-      roundtrip[SCollection[SCollection[T]]](nested, SCollection(SCollection(tpe)), withVersion)
+      roundtrip[SCollection[SCollection[T]]](nested, SCollection(SCollection(tpe)))
 
       roundtrip[SType](
         xs.toColl.map { x =>
           val arr = Colls.fromItems[T#WrappedType](x, x)
           (arr, arr)
         }.asWrappedType,
-        SCollection(STuple(SCollection(tpe), SCollection(tpe))),
-        withVersion
+        SCollection(STuple(SCollection(tpe), SCollection(tpe)))
       )
     }
   }
@@ -74,17 +68,11 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     @nowarn implicit val tag     : ClassTag[T#WrappedType] = tT.classTag
     @nowarn implicit val tAny    : RType[Any]              = sigma.AnyType
 
-    val withVersion = if (tpe == SHeader) {
-      Some(VersionContext.V6SoftForkVersion)
-    } else {
-      None
-    }
-
     forAll { in: (T#WrappedType, T#WrappedType) =>
       val (x,y) = (in._1, in._2)
-      roundtrip[SType]((x, y).asWrappedType, STuple(tpe, tpe), withVersion)
-      roundtrip[SType](((x, y), (x, y)).asWrappedType, STuple(STuple(tpe, tpe), STuple(tpe, tpe)), withVersion)
-      roundtrip[SType](((x, y), ((x, y), (x, y))).asWrappedType, STuple(STuple(tpe, tpe), STuple(STuple(tpe, tpe), STuple(tpe, tpe))), withVersion)
+      roundtrip[SType]((x, y).asWrappedType, STuple(tpe, tpe))
+      roundtrip[SType](((x, y), (x, y)).asWrappedType, STuple(STuple(tpe, tpe), STuple(tpe, tpe)))
+      roundtrip[SType](((x, y), ((x, y), (x, y))).asWrappedType, STuple(STuple(tpe, tpe), STuple(STuple(tpe, tpe), STuple(tpe, tpe))))
     }
   }
 

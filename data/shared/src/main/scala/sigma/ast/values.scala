@@ -8,7 +8,7 @@ import sigma.ast.TypeCodes.ConstantCode
 import sigma.ast.syntax._
 import sigma.crypto.{CryptoConstants, EcPointType}
 import sigma.data.OverloadHack.Overloaded1
-import sigma.data.{CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
+import sigma.data.{CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, Nullable, RType, SigmaBoolean}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
 import sigma.exceptions.InterpreterException
@@ -497,6 +497,20 @@ object BigIntConstant {
   def apply(value: BigInteger): Constant[SBigInt.type] = Constant[SBigInt.type](SigmaDsl.BigInt(value), SBigInt)
 
   def apply(value: Long): Constant[SBigInt.type] = Constant[SBigInt.type](SigmaDsl.BigInt(BigInteger.valueOf(value)), SBigInt)
+}
+
+object UnsignedBigIntConstant {
+  def apply(value: UnsignedBigInt): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](value, SUnsignedBigInt)
+  }
+
+  def apply(value: BigInteger): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](CUnsignedBigInt(value), SUnsignedBigInt)
+  }
+
+  def apply(value: Long): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](CUnsignedBigInt(BigInteger.valueOf(value)), SUnsignedBigInt)
+  }
 }
 
 object StringConstant {

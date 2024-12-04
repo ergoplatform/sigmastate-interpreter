@@ -3,7 +3,7 @@ package sigma.data
 import sigma.{Coll, Colls}
 import sigma.util.Extensions.{ByteOps, ShortOps}
 
-/** Type-class which defines the operations on Integral types (Byte, Short, Int, Long, BigInt)
+/** Type-class which defines the operations on Integral types (Byte, Short, Int, Long, BigInt, UnsignedBigInt)
   * with overflow checks.
   *
   * An exception is raised when an overflow is detected.
