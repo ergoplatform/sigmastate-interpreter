@@ -32,8 +32,7 @@ object Platform {
       case ge: GroupElement => Nullable(mkConstant[SGroupElement.type](ge, SGroupElement))
       case b: Boolean => Nullable(if (b) TrueLeaf else FalseLeaf)
       case h: Header if VersionContext.current.isV6SoftForkActivated  => Nullable(mkConstant[SHeader.type](h, SHeader))
-
-      // todo: check UnsignedBigInt
+      case n: sigma.UnsignedBigInt => Nullable(mkConstant[SUnsignedBigInt.type](n, SUnsignedBigInt))
 
       case v: String if !VersionContext.current.isV6SoftForkActivated => Nullable(mkConstant[SString.type](v, SString))
 
