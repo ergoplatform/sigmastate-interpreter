@@ -16,10 +16,14 @@ import sigma.VersionContext
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.ExactOrdering.{ByteIsExactOrdering, IntIsExactOrdering, LongIsExactOrdering, ShortIsExactOrdering}
 import sigma.data.{CSigmaDslBuilder, ExactIntegral, ExactNumeric, ExactOrdering, Lazy, Nullable}
-import sigma.exceptions.GraphBuildingException
-import sigma.serialization.OpCodes
 import sigma.util.Extensions.ByteOps
 import sigmastate.interpreter.Interpreter.ScriptEnv
+import sigma.ast.{Ident, Select, Val}
+import sigma.data.UnsignedBigIntNumericOps.{UnsignedBigIntIsExactIntegral, UnsignedBigIntIsExactOrdering}
+import sigma.exceptions.GraphBuildingException
+import sigma.serialization.OpCodes
+import sigma.{SigmaException, ast}
+import sigma.VersionContext
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -35,6 +39,7 @@ import scala.collection.mutable.ArrayBuffer
 trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   import AvlTree._
   import BigInt._
+  import UnsignedBigInt._
   import Box._
   import Coll._
   import CollBuilder._
@@ -260,6 +265,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case SString => StringElement
     case SAny => AnyElement
     case SBigInt => bigIntElement
+    case SUnsignedBigInt => unsignedBigIntElement
     case SBox => boxElement
     case SContext => contextElement
     case SGlobal => sigmaDslBuilderElement
@@ -286,6 +292,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case StringElement => SString
     case AnyElement => SAny
     case _: BigIntElem[_] => SBigInt
+    case _: UnsignedBigIntElem[_] => SUnsignedBigInt
     case _: GroupElementElem[_] => SGroupElement
     case _: AvlTreeElem[_] => SAvlTree
     case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
@@ -313,6 +320,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case StringElement => StringIsLiftable
     case UnitElement => UnitIsLiftable
     case _: BigIntElem[_] => LiftableBigInt
+    case _: UnsignedBigIntElem[_] => LiftableUnsignedBigInt
     case _: GroupElementElem[_] => LiftableGroupElement
     case ce: CollElem[t,_] =>
       implicit val lt = liftableFromElem[t](ce.eItem)
@@ -333,20 +341,24 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     (ShortElement, ShortIsExactIntegral),
     (IntElement, IntIsExactIntegral),
     (LongElement, LongIsExactIntegral),
-    (bigIntElement, BigIntIsExactIntegral)
+    (bigIntElement, BigIntIsExactIntegral),
+    (unsignedBigIntElement, UnsignedBigIntIsExactIntegral)
   )
   private lazy val elemToExactIntegralMap = Map[Elem[_], ExactIntegral[_]](
     (ByteElement,   ByteIsExactIntegral),
     (ShortElement,  ShortIsExactIntegral),
     (IntElement,    IntIsExactIntegral),
-    (LongElement,   LongIsExactIntegral)
+    (LongElement,   LongIsExactIntegral),
+    (bigIntElement, BigIntIsExactIntegral),
+    (unsignedBigIntElement, UnsignedBigIntIsExactIntegral)
   )
   protected lazy val elemToExactOrderingMap = Map[Elem[_], ExactOrdering[_]](
     (ByteElement,   ByteIsExactOrdering),
     (ShortElement,  ShortIsExactOrdering),
     (IntElement,    IntIsExactOrdering),
     (LongElement,   LongIsExactOrdering),
-    (bigIntElement, BigIntIsExactOrdering)
+    (bigIntElement, BigIntIsExactOrdering),
+    (unsignedBigIntElement, UnsignedBigIntIsExactOrdering)
   )
 
   /** @return [[ExactNumeric]] instance for the given type */
@@ -455,6 +467,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         case bi: SBigInt =>
           assert(tpe == SBigInt)
           val resV = liftConst(bi)
+          resV
+        case ubi: SUnsignedBigInt =>
+          assert(tpe == SUnsignedBigInt)
+          val resV = liftConst(ubi)
           resV
         case p: SGroupElement =>
           assert(tpe == SGroupElement)
@@ -1031,6 +1047,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
             case SGroupElementMethods.ExponentiateMethod.name =>
               val k = asRep[BigInt](argsV(0))
               ge.exp(k)
+            case SGroupElementMethods.ExponentiateUnsignedMethod.name =>
+              val k = asRep[UnsignedBigInt](argsV(0))
+              ge.expUnsigned(k)
             case _ => throwError()
           }
           case (box: Ref[Box]@unchecked, SBoxMethods) => method.name match {
@@ -1210,7 +1229,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
             case SGlobalMethods.serializeMethod.name =>
               val value = asRep[Any](argsV(0))
               g.serialize(value)
-            case SGlobalMethods.fromBigEndianBytesMethod.name =>
+            case SGlobalMethods.FromBigEndianBytesMethod.name =>
               val bytes = asRep[Coll[Byte]](argsV(0))
               val cT = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.fromBigEndianBytes(bytes)(cT)
@@ -1223,7 +1242,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               g.none()(cT)
             case _ => throwError()
           }
-          case (x: Ref[tNum], _: SNumericTypeMethods) => method.name match {
+          case (x: Ref[tNum], ms: SNumericTypeMethods) => method.name match {
             case SNumericTypeMethods.ToBytesMethod.name =>
               val op = NumericToBigEndianBytes(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
@@ -1253,6 +1272,40 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftRight(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
+            case SBigIntMethods.ToUnsigned.name =>  // only bigint has toUnsigned method
+              val bi = asRep[BigInt](x)
+              bi.toUnsigned()
+            case SBigIntMethods.ToUnsignedMod.name => // only bigint has toUnsignedMod method
+              val bi = asRep[BigInt](x)
+              val m = asRep[UnsignedBigInt](argsV(0))
+              bi.toUnsignedMod(m)
+
+            case SUnsignedBigIntMethods.ModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val m = asRep[UnsignedBigInt](argsV(0))
+              ubi.mod(m)
+            case SUnsignedBigIntMethods.ModInverseMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val m = asRep[UnsignedBigInt](argsV(0))
+              ubi.modInverse(m)
+            case SUnsignedBigIntMethods.PlusModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.plusMod(that, m)
+            case SUnsignedBigIntMethods.SubtractModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.subtractMod(that, m)
+            case SUnsignedBigIntMethods.MultiplyModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              val that = asRep[UnsignedBigInt](argsV(0))
+              val m = asRep[UnsignedBigInt](argsV(1))
+              ubi.multiplyMod(that, m)
+            case SUnsignedBigIntMethods.ToSignedMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
+              val ubi = asRep[UnsignedBigInt](x)
+              ubi.toSigned()
             case _ => throwError()
           }
           case _ => throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")

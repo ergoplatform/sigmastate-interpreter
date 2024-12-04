@@ -66,11 +66,12 @@ class DataSerializerSpecification extends SerializationSpecification {
     implicit val tagT = tT.classTag
     implicit val tAny = sigma.AnyType
 
-    val withVersion = if (tpe == SHeader) {
-      Some(VersionContext.V6SoftForkVersion)
+    val withVersion = if (tpe == SHeader || tpe == SUnsignedBigInt) {
+      None // Some(VersionContext.V6SoftForkVersion)
     } else {
       None
     }
+
     forAll { xs: Array[T#WrappedType] =>
       roundtrip[SCollection[T]](xs.toColl, SCollection(tpe), withVersion)
       roundtrip[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)), withVersion)
@@ -148,6 +149,7 @@ class DataSerializerSpecification extends SerializationSpecification {
     forAll { x: Long => roundtrip[SLong.type](x, SLong) }
     forAll { x: String => roundtrip[SString.type](x, SString) }
     forAll { x: BigInteger => roundtrip[SBigInt.type](x.toBigInt, SBigInt) }
+    forAll { x: BigInteger => roundtrip[SUnsignedBigInt.type](x.abs().toUnsignedBigInt, SUnsignedBigInt, Some(VersionContext.V6SoftForkVersion)) }
     forAll { x: EcPointType => roundtrip[SGroupElement.type](x.toGroupElement, SGroupElement) }
     forAll { x: SigmaBoolean => roundtrip[SSigmaProp.type](x.toSigmaProp, SSigmaProp) }
     forAll { x: ErgoBox => roundtrip[SBox.type](x, SBox) }

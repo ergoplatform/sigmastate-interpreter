@@ -242,6 +242,16 @@ class TypeSerializer {
 object TypeSerializer extends TypeSerializer {
   /** The list of embeddable types, i.e. types that can be combined with type constructor for optimized encoding.
     * For each embeddable type `T`, and type constructor `C`, the type `C[T]` can be represented by single byte. */
-  val embeddableIdToType = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp)
+    def embeddableIdToType = {
+      if (VersionContext.current.isV6SoftForkActivated) {
+        embeddableV6
+      } else {
+        embeddableV5
+      }
+    }
+
+  private val embeddableV5 = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp)
+
+  private val embeddableV6 = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnsignedBigInt)
 
 }

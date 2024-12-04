@@ -203,6 +203,22 @@ object SigmaPredef {
         Seq(ArgInfo("", "")))
     )
 
+    val UBigIntFromStringFunc = PredefinedFunc("unsignedBigInt",
+      Lambda(Array("input" -> SString), SUnsignedBigInt, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: EvaluatedValue[SString.type]@unchecked)) =>
+          val bi = new BigInteger(arg.value)
+          if (bi.compareTo(BigInteger.ZERO) >= 0) {
+            UnsignedBigIntConstant(bi)
+          } else {
+            throw new InvalidArguments(s"Negative argument for unsignedBigInt()")
+          }
+        }),
+      OperationInfo(Constant,
+        """Parsing string literal argument as a 256-bit unsigned big integer.""".stripMargin,
+        Seq(ArgInfo("", "")))
+    )
+
     val FromBase16Func = PredefinedFunc("fromBase16",
       Lambda(Array("input" -> SString), SByteArray, None),
       PredefFuncInfo(
@@ -458,7 +474,7 @@ object SigmaPredef {
           val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
           MethodCall(
             Global,
-            SGlobalMethods.fromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
+            SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
             args.toIndexedSeq,
             Map(tT -> resType)
           )
@@ -483,6 +499,7 @@ object SigmaPredef {
       GetVarFunc,
       DeserializeFunc,
       BigIntFromStringFunc,
+      UBigIntFromStringFunc,
       FromBase16Func,
       FromBase64Func,
       FromBase58Func,
