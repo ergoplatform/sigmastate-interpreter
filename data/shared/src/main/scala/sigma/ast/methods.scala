@@ -2,20 +2,25 @@ package sigma.ast
 
 import org.ergoplatform._
 import org.ergoplatform.validation._
+import sigma.{Coll, VersionContext, _}
 import sigma.Evaluation.stypeToRType
 import sigma._
+import sigma.{VersionContext, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
+import sigma.ast.SGlobalMethods.{decodeNBitsMethod, encodeNBitsMethod}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}
 import sigma.ast.SType.{TypeCode, paramT, tT}
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.NumericOps.BigIntIsExactIntegral
 import sigma.data.OverloadHack.Overloaded1
-import sigma.data.{DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
+import sigma.data.{CBigInt, DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
 import sigma.eval.{CostDetails, ErgoTreeEvaluator, TracedCost}
+import sigma.pow.Autolykos2PowValidation
 import sigma.reflection.RClass
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.{DataSerializer, SigmaByteWriter, SigmaSerializer}
+import sigma.util.NBitsUtils
 import sigma.utils.SparseArrayContainer
 
 import scala.annotation.unused
@@ -1020,7 +1025,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
     SFunc(Array(ThisType, tIV, SInt), SInt, paramIVSeq),
       26, PerItemCost(baseCost = JitCost(20), perChunkCost = JitCost(10), chunkSize = 2))
       .withIRInfo(MethodCallIrBuilder, javaMethodOf[Coll[_], Any, Int]("indexOf"))
-      .withInfo(MethodCall, "")
+      .withInfo(MethodCall, "Returns index of a collection element, or -1 if not found")
 
   /** Implements evaluation of Coll.indexOf method call ErgoTree node.
     * Called via reflection based on naming convention.
@@ -1052,8 +1057,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
     baseCost = JitCost(10), perChunkCost = JitCost(1), chunkSize = 10)
 
   val ZipMethod = SMethod(this, "zip",
-    SFunc(Array(ThisType, tOVColl), SCollection(STuple(tIV, tOV)), Array[STypeParam](tIV, tOV)),
-    29, Zip_CostKind)
+    SFunc(Array(ThisType, tOVColl), SCollection(STuple(tIV, tOV)), Array[STypeParam](tIV, tOV)), 29, Zip_CostKind)
       .withIRInfo(MethodCallIrBuilder)
       .withInfo(MethodCall, "")
 
@@ -1069,29 +1073,133 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
     }
   }
 
+  // ======== 6.0 methods below ===========
+
+  private val reverseCostKind = Append.costKind
+
+  val ReverseMethod = SMethod(this, "reverse",
+    SFunc(Array(ThisType), ThisType, paramIVSeq), 30, reverseCostKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "")
+
+  /** Implements evaluation of Coll.reverse method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def reverse_eval[A](mc: MethodCall, xs: Coll[A])
+                    (implicit E: ErgoTreeEvaluator): Coll[A] = {
+    val m = mc.method
+    E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
+      xs.reverse
+    }
+  }
+
+  private val distinctCostKind = PerItemCost(baseCost = JitCost(60), perChunkCost = JitCost(5), chunkSize = 100)
+
+  val DistinctMethod = SMethod(this, "distinct",
+    SFunc(Array(ThisType), ThisType, paramIVSeq), 31, distinctCostKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Returns inversed collection.")
+
+  /** Implements evaluation of Coll.reverse method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def distinct_eval[A](mc: MethodCall, xs: Coll[A])
+                     (implicit E: ErgoTreeEvaluator): Coll[A] = {
+    val m = mc.method
+    E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
+      xs.distinct
+    }
+  }
+
+  private val startsWithCostKind = Zip_CostKind
+
+  val StartsWithMethod = SMethod(this, "startsWith",
+    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 32, startsWithCostKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Returns true if this collection starts with given one, false otherwise.",
+      ArgInfo("prefix", "Collection to be checked for being a prefix of this collection."))
+
+  /** Implements evaluation of Coll.zip method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def startsWith_eval[A](mc: MethodCall, xs: Coll[A], ys: Coll[A])
+                    (implicit E: ErgoTreeEvaluator): Boolean = {
+    val m = mc.method
+    E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
+      xs.startsWith(ys)
+    }
+  }
+
+  private val endsWithCostKind = Zip_CostKind
+
+  val EndsWithMethod = SMethod(this, "endsWith",
+    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 33, endsWithCostKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Returns true if this collection ends with given one, false otherwise.",
+      ArgInfo("suffix", "Collection to be checked for being a suffix of this collection."))
+
+  /** Implements evaluation of Coll.zip method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def endsWith_eval[A](mc: MethodCall, xs: Coll[A], ys: Coll[A])
+                        (implicit E: ErgoTreeEvaluator): Boolean = {
+    val m = mc.method
+    E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
+      xs.endsWith(ys)
+    }
+  }
+
+  val GetMethod = SMethod(this, "get",
+    SFunc(Array(ThisType, SInt), SOption(tIV), Array[STypeParam](tIV)), 34, ByIndex.costKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+              "Returns Some(element) if there is an element at given index, None otherwise.",
+              ArgInfo("index", "Index of an element (starting from 0).")
+            )
+
+  private val v5Methods = super.getMethods() ++ Seq(
+    SizeMethod,
+    GetOrElseMethod,
+    MapMethod,
+    ExistsMethod,
+    FoldMethod,
+    ForallMethod,
+    SliceMethod,
+    FilterMethod,
+    AppendMethod,
+    ApplyMethod,
+    IndicesMethod,
+    FlatMapMethod,
+    PatchMethod,
+    UpdatedMethod,
+    UpdateManyMethod,
+    IndexOfMethod,
+    ZipMethod
+  )
+
+  private val v6Methods = v5Methods ++ Seq(
+    ReverseMethod,
+    DistinctMethod,
+    StartsWithMethod,
+    EndsWithMethod,
+    GetMethod
+  )
+
   /** This method should be overriden in derived classes to add new methods in addition to inherited.
     * Typical override: `super.getMethods() ++ Seq(m1, m2, m3)`
     */
-  override protected def getMethods(): Seq[SMethod] = super.getMethods() ++
-      Seq(
-        SizeMethod,
-        GetOrElseMethod,
-        MapMethod,
-        ExistsMethod,
-        FoldMethod,
-        ForallMethod,
-        SliceMethod,
-        FilterMethod,
-        AppendMethod,
-        ApplyMethod,
-        IndicesMethod,
-        FlatMapMethod,
-        PatchMethod,
-        UpdatedMethod,
-        UpdateManyMethod,
-        IndexOfMethod,
-        ZipMethod
-      )
+  override protected def getMethods(): Seq[SMethod] = {
+    if (VersionContext.current.isV6SoftForkActivated) {
+      v6Methods
+    } else {
+      v5Methods
+    }
+  }
+
 }
 
 object STupleMethods extends MethodsContainer {
@@ -1574,15 +1682,51 @@ case object SContextMethods extends MonoTypeMethods {
   lazy val selfBoxIndexMethod = propertyCall("selfBoxIndex", SInt, 8, FixedCost(JitCost(20)))
   lazy val lastBlockUtxoRootHashMethod = property("LastBlockUtxoRootHash", SAvlTree, 9, LastBlockUtxoRootHash)
   lazy val minerPubKeyMethod = property("minerPubKey", SByteArray, 10, MinerPubkey)
-  lazy val getVarMethod = SMethod(
+
+  lazy val getVarV5Method = SMethod(
     this, "getVar", SFunc(ContextFuncDom, SOption(tT), Array(paramT)), 11, GetVar.costKind)
     .withInfo(GetVar, "Get context variable with given \\lst{varId} and type.",
       ArgInfo("varId", "\\lst{Byte} identifier of context variable"))
 
-  protected override def getMethods() = super.getMethods() ++ Seq(
+  lazy val getVarV6Method = SMethod(
+    this, "getVar", SFunc(ContextFuncDom, SOption(tT), Array(paramT)), 11, GetVar.costKind, Seq(tT))
+    .withIRInfo(
+      MethodCallIrBuilder,
+      javaMethodOf[Context, Byte, RType[_]]("getVar"),
+      { mtype => Array(mtype.tRange.asOption[SType].elemType) })
+    .withInfo(MethodCall, "Get context variable with given \\lst{varId} and type.")
+
+  lazy val getVarFromInputMethod = SMethod(
+    this, "getVarFromInput", SFunc(Array(SContext, SShort, SByte), SOption(tT), Array(paramT)), 12, GetVar.costKind, Seq(tT))
+    .withIRInfo(
+      MethodCallIrBuilder,
+      javaMethodOf[Context, Short, Byte, RType[_]]("getVarFromInput"),
+      { mtype => Array(mtype.tRange.asOption[SType].elemType) })
+    .withInfo(MethodCall, "Get context variable with given \\lst{varId} and type.",
+      ArgInfo("inputIdx", "Index of input to read variable from."),
+      ArgInfo("varId", "Index of variable.")
+    )
+
+  private lazy val commonMethods = super.getMethods() ++ Array(
     dataInputsMethod, headersMethod, preHeaderMethod, inputsMethod, outputsMethod, heightMethod, selfMethod,
-    selfBoxIndexMethod, lastBlockUtxoRootHashMethod, minerPubKeyMethod, getVarMethod
+    selfBoxIndexMethod, lastBlockUtxoRootHashMethod, minerPubKeyMethod
   )
+
+  private lazy val v5Methods = commonMethods ++ Seq(
+    getVarV5Method
+  )
+
+  private lazy val v6Methods = commonMethods ++ Seq(
+    getVarV6Method, getVarFromInputMethod
+  )
+
+  protected override def getMethods(): Seq[SMethod] = {
+    if (VersionContext.current.isV6SoftForkActivated) {
+      v6Methods
+    } else {
+      v5Methods
+    }
+  }
 
   /** Names of methods which provide blockchain context.
    * This value can be reused where necessary to avoid allocations. */
@@ -1612,6 +1756,7 @@ case object SHeaderMethods extends MonoTypeMethods {
   lazy val powDistanceMethod      = propertyCall("powDistance", SBigInt, 14, FixedCost(JitCost(10)))
   lazy val votesMethod            = propertyCall("votes", SByteArray, 15, FixedCost(JitCost(10)))
 
+  // methods added in 6.0 below
   // cost of checkPoW is 700 as about 2*32 hashes required, and 1 hash (id) over short data costs 10
   lazy val checkPowMethod = SMethod(
     this, "checkPow", SFunc(Array(SHeader), SBoolean), 16, FixedCost(JitCost(700)))
@@ -1682,6 +1827,35 @@ case object SGlobalMethods extends MonoTypeMethods {
     .withInfo(Xor, "Byte-wise XOR of two collections of bytes",
       ArgInfo("left", "left operand"), ArgInfo("right", "right operand"))
 
+  lazy val powHitMethod = SMethod(
+    this, "powHit", SFunc(Array(SGlobal, SInt, SByteArray, SByteArray, SByteArray, SInt), SBigInt), methodId = 8,
+    PowHitCostKind)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+      "Calculating Proof-of-Work hit (Autolykos 2 hash value) for custom Autolykos 2 function",
+      ArgInfo("k", "k parameter of Autolykos 2 (number of inputs in k-sum problem)"),
+      ArgInfo("msg", "Message to calculate Autolykos hash 2 for"),
+      ArgInfo("nonce", "Nonce used to pad the message to get Proof-of-Work hash function output with desirable properties"),
+      ArgInfo("h", "PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)"),
+      ArgInfo("N", "Size of table filled with pseudo-random data to find k elements in")
+    )
+
+  def powHit_eval(mc: MethodCall, G: SigmaDslBuilder, k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int)
+                 (implicit E: ErgoTreeEvaluator): BigInt = {
+    val cost = PowHitCostKind.cost(k, msg, nonce, h)
+    E.addCost(FixedCost(cost), powHitMethod.opDesc)
+    CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
+  }
+
+  private val deserializeCostKind = PerItemCost(baseCost = JitCost(30), perChunkCost = JitCost(20), chunkSize = 32)
+
+  lazy val deserializeToMethod = SMethod(
+    this, "deserializeTo", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 4, deserializeCostKind, Seq(tT))
+    .withIRInfo(MethodCallIrBuilder,
+      javaMethodOf[SigmaDslBuilder, Coll[Byte], RType[_]]("deserializeTo"))
+    .withInfo(MethodCall, "Deserialize provided bytes into an object of requested type",
+      ArgInfo("first", "Bytes to deserialize"))
+
   /** Implements evaluation of Global.xor method call ErgoTree node.
     * Called via reflection based on naming convention.
     * @see SMethod.evalMethod, Xor.eval, Xor.xorWithCosting
@@ -1702,6 +1876,29 @@ case object SGlobalMethods extends MonoTypeMethods {
     .withInfo(MethodCall,
       "Decode a number from big endian bytes.",
       ArgInfo("first", "Bytes which are big-endian encoded number."))
+
+  private lazy val EncodeNBitsCost = FixedCost(JitCost(25)) // cost for nbits encoding
+
+  private lazy val DecodeNBitsCost = FixedCost(JitCost(50)) // cost for nbits decoding
+
+  lazy val encodeNBitsMethod: SMethod = SMethod(
+    this, "encodeNbits", SFunc(Array(SGlobal, SBigInt), SLong), 6, EncodeNBitsCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Encode big integer number as nbits", ArgInfo("bigInt", "Big integer"))
+
+  lazy val decodeNBitsMethod: SMethod = SMethod(
+    this, "decodeNbits", SFunc(Array(SGlobal, SLong), SBigInt), 7, DecodeNBitsCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall, "Decode nbits-encoded big integer number", ArgInfo("nbits", "NBits-encoded argument"))
+
+  def deserializeTo_eval(mc: MethodCall, G: SigmaDslBuilder, bytes: Coll[Byte])
+                        (implicit E: ErgoTreeEvaluator): Any = {
+    val tpe = mc.tpe
+    val cT = stypeToRType(tpe)
+    E.addSeqCost(deserializeCostKind, bytes.length, deserializeToMethod.opDesc) { () =>
+      G.deserializeTo(bytes)(cT)
+    }
+  }
 
   lazy val serializeMethod = SMethod(this, "serialize",
     SFunc(Array(SGlobal, tT), SByteArray, Array(paramT)), 3, DynamicCost)
@@ -1732,13 +1929,34 @@ case object SGlobalMethods extends MonoTypeMethods {
     Colls.fromArray(w.toBytes)
   }
 
+  lazy val someMethod = SMethod(this, "some",
+    SFunc(Array(SGlobal, tT), SOption(tT), Array(paramT)), 9, FixedCost(JitCost(5)), Seq(tT))
+    .withIRInfo(MethodCallIrBuilder,
+      javaMethodOf[SigmaDslBuilder, Any, RType[_]]("some"),
+      { mtype => Array(mtype.tRange) })
+    .withInfo(MethodCall, "Wrap given input into optional value (Option()).",
+      ArgInfo("value", "Value to wrap into Option."))
+
+  lazy val noneMethod = SMethod(this, "none",
+    SFunc(Array(SGlobal), SOption(tT), Array(paramT)), 10, FixedCost(JitCost(5)), Seq(tT))
+    .withIRInfo(MethodCallIrBuilder,
+      javaMethodOf[SigmaDslBuilder, RType[_]]("none"),
+      { mtype => Array(mtype.tRange) })
+    .withInfo(MethodCall, "Returns empty Option[T] of given type T.")
+
   protected override def getMethods() = super.getMethods() ++ {
     if (VersionContext.current.isV6SoftForkActivated) {
       Seq(
         groupGeneratorMethod,
         xorMethod,
         serializeMethod,
-        fromBigEndianBytesMethod
+        powHitMethod,
+        deserializeToMethod,
+        encodeNBitsMethod,
+        decodeNBitsMethod,
+        fromBigEndianBytesMethod,
+        someMethod,
+        noneMethod
       )
     } else {
       Seq(

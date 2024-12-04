@@ -1,7 +1,5 @@
 package sigma
 
-import sigma.ast.SType
-
 import java.math.BigInteger
 import sigma.data._
 
@@ -490,7 +488,6 @@ trait Header {
     * @return result of header's proof-of-work validation
     */
   def checkPow: Boolean
-
 }
 
 /** Runtime representation of Context ErgoTree type.
@@ -588,6 +585,17 @@ trait Context {
     *                                   different from cT.
     */
   def getVar[T](id: Byte)(implicit cT: RType[T]): Option[T]
+
+  /**
+    * A variant of `getVar` to extract a context variable by id and type from any input
+    *
+    * @param inputIndex - input index
+    * @param id - context variable id
+    * @tparam T - expected type of the variable
+    * @return Some(value) if the variable is defined in the context AND has the given type.
+    *         None otherwise
+    */
+  def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit cT: RType[T]): Option[T]
 
   def vars: Coll[AnyValue]
 
@@ -728,6 +736,20 @@ trait SigmaDslBuilder {
   def groupGenerator: GroupElement
 
   /**
+    * @return NBits-encoded approximate representation of given big integer,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for NBits format details
+    */
+  def encodeNbits(bi: BigInt): Long
+
+  /**
+    * @return big integer decoded from NBits value provided,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for format details
+    */
+  def decodeNbits(l: Long): BigInt
+
+  /**
     * Transforms serialized bytes of ErgoTree with segregated constants by replacing constants
     * at given positions with new values. This operation allow to use serialized scripts as
     * pre-defined templates.
@@ -765,7 +787,17 @@ trait SigmaDslBuilder {
   /** Returns a byte-wise XOR of the two collections of bytes. */
   def xor(l: Coll[Byte], r: Coll[Byte]): Coll[Byte]
 
+  /** Calculates value of a custom Autolykos 2 hash function */
+  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt
+
+  /** Deserializes provided `bytes` into a value of type `T`. **/
+  def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
+
   /** Returns a number decoded from provided big-endian bytes array. */
   def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
+
+  def some[T](value: T)(implicit cT: RType[T]): Option[T]
+
+  def none[T]()(implicit cT: RType[T]): Option[T]
 }
 

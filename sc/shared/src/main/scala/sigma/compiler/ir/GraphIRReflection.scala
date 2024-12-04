@@ -1,5 +1,7 @@
 package sigma.compiler.ir
 
+import sigma.Coll
+import sigma.{BigInt, SigmaDslBuilder}
 import sigma.ast.SType
 import sigma.compiler.ir.primitives.Thunks
 import sigma.data.RType
@@ -203,6 +205,22 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "exists", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Coll[Any]].exists(args(0).asInstanceOf[ctx.Ref[Any => Boolean]])
+        },
+        // V6 methods
+        mkMethod(clazz, "reverse", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.Coll[Any]].reverse
+        },
+        mkMethod(clazz, "distinct", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.Coll[Any]].distinct
+        },
+        mkMethod(clazz, "startsWith", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[Any]].startsWith(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Any]]])
+        },
+        mkMethod(clazz, "endsWith", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[Any]].endsWith(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Any]]])
+        },
+        mkMethod(clazz, "get", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[_]].apply(args(0).asInstanceOf[ctx.Ref[Int]])
         }
       )
     )
@@ -332,6 +350,9 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "getVar", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].getVar(args(0).asInstanceOf[ctx.Ref[Byte]])(args(1).asInstanceOf[ctx.Elem[_]])
+        },
+        mkMethod(clazz, "getVarFromInput", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Context].getVarFromInput(args(0).asInstanceOf[ctx.Ref[Short]], args(1).asInstanceOf[ctx.Ref[Byte]])(args(2).asInstanceOf[ctx.Elem[_]])
         },
         mkMethod(clazz, "headers", Array[Class[_]]()) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].headers
@@ -512,8 +533,29 @@ object GraphIRReflection {
         mkMethod(clazz, "serialize", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].serialize(args(0).asInstanceOf[ctx.Ref[Any]])
         },
+        mkMethod(clazz, "powHit", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]],
+          classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].powHit(args(0).asInstanceOf[ctx.Ref[Int]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(2).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
+            args(3).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(4).asInstanceOf[ctx.Ref[Int]])
+        },
+        mkMethod(clazz, "encodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "decodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].decodeNbits(args(0).asInstanceOf[ctx.Ref[Long]])
+        },
         mkMethod(clazz, "fromBigEndianBytes", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].fromBigEndianBytes(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
+        },
+        mkMethod(clazz, "deserializeTo", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].deserializeTo(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
+        },
+        mkMethod(clazz, "some", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].some(args(0).asInstanceOf[ctx.Ref[Any]])(args(1).asInstanceOf[ctx.Elem[Any]])
+        },
+        mkMethod(clazz, "none", Array[Class[_]](classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].none()(args(0).asInstanceOf[ctx.Elem[SType]])
         }
       )
     )

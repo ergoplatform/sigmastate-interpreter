@@ -92,6 +92,7 @@ import scalan._
       def preHeader: Ref[PreHeader];
       def minerPubKey: Ref[Coll[Byte]];
       def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
+      def getVarFromInput[T](inputId: Ref[Short], id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
     };
     trait SigmaDslBuilder extends Def[SigmaDslBuilder] {
       def Colls: Ref[CollBuilder];
@@ -115,8 +116,14 @@ import scalan._
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
       def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
+      def encodeNbits(bi: Ref[BigInt]): Ref[Long]
+      def decodeNbits(l: Ref[Long]): Ref[BigInt]
+      def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt];
       def serialize[T](value: Ref[T]): Ref[Coll[Byte]]
       def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
+      def deserializeTo[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
+      def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]]
+      def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]]
     };
     trait CostModelCompanion;
     trait BigIntCompanion;

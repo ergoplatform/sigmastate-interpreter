@@ -509,15 +509,17 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(1, dataInputsMethod), MInfo(2, headersMethod), MInfo(3, preHeaderMethod),
         MInfo(4, inputsMethod), MInfo(5, outputsMethod), MInfo(6, heightMethod),
         MInfo(7, selfMethod), MInfo(8, selfBoxIndexMethod), MInfo(9, lastBlockUtxoRootHashMethod),
-        MInfo(10, minerPubKeyMethod), MInfo(11, getVarMethod)
-      ), true)
+        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV6SoftForkActivated){
+          Seq(MInfo(11, getVarV6Method), MInfo(12, getVarFromInputMethod))
+        } else {
+          Seq(MInfo(11, getVarV5Method))
+        }), true)
     },
     { import SGlobalMethods._
       (SGlobal.typeId, Seq(
         MInfo(1, groupGeneratorMethod), MInfo(2, xorMethod)
       ) ++ (if (isV6Activated) {
-        // id = 4 reserved for deserializeTo method
-        Seq(MInfo(3, serializeMethod), MInfo(5, fromBigEndianBytesMethod)) // methods added in v6.0
+        Seq(MInfo(3, serializeMethod), MInfo(4, deserializeToMethod), MInfo(5, fromBigEndianBytesMethod), MInfo(6, encodeNBitsMethod), MInfo(7, decodeNBitsMethod), MInfo(8, powHitMethod), MInfo(9, someMethod), MInfo(10, noneMethod)) // methods added in v6.0
       } else {
         Seq.empty[MInfo]
       }), true)
@@ -562,7 +564,9 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         EndsWithMethod,
         MapReduceMethod,
         */
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(30, ReverseMethod), MInfo(31, DistinctMethod), MInfo(32, StartsWithMethod), MInfo(33, EndsWithMethod), MInfo(34, GetMethod))
+      } else Seq.empty), true)
     },
     { import SOptionMethods._
       (SOption.typeId, Seq(

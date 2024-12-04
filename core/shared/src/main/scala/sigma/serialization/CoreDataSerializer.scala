@@ -135,7 +135,7 @@ class CoreDataSerializer {
     res
   }
 
-  def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
+  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
     tpeElem match {
       case SBoolean =>
         Colls.fromArray(r.getBits(len)).asInstanceOf[Coll[T#WrappedType]]
