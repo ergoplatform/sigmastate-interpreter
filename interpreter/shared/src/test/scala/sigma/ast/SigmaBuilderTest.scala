@@ -117,21 +117,18 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
 
   def testArray[T <: SType]
       (v: T#WrappedType, c: Constant[T])(implicit t: RType[T#WrappedType]) = {
-    // for any Byte and Short value `v`, lifting of array should succeed
     val arr = Array.fill[T#WrappedType](10)(v)(t.classTag)
     testSuccess(arr, TransformingSigmaBuilder.mkCollectionConstant(arr, c.tpe))
   }
 
   def testArrayFailure[T <: SType]
     (v: T#WrappedType, c: Constant[T])(implicit t: RType[T#WrappedType]) = {
-    // for any Byte and Short value `v`, lifting of array should succeed
     val arr = Array.fill[T#WrappedType](10)(v)(t.classTag)
     testFailure(arr)
   }
 
   def testColl[T <: SType]
       (v: T#WrappedType, c: Constant[T])(implicit t: RType[T#WrappedType]) = {
-    // for any Byte and Short value `v`, lifting of Coll should succeed
     val arr = Array.fill[T#WrappedType](10)(v)(t.classTag)
     val coll = arr.toColl
     testSuccess(coll, TransformingSigmaBuilder.mkCollectionConstant(coll, c.tpe))
