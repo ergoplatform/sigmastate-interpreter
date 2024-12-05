@@ -323,7 +323,7 @@ class SigmaDslTesting extends AnyPropSpec
         // Compile script the same way it is performed by applications (i.e. via Ergo Appkit)
         val prop = compile(env, code)(IR).asSigmaProp
 
-        // Add additional oparations which are not yet implemented in ErgoScript compiler
+        // Add additional operations which are not yet implemented in ErgoScript compiler
         val multisig = AtLeast(
           IntConstant(2),
           Array(
