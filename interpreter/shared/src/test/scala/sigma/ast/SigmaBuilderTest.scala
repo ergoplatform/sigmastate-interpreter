@@ -203,7 +203,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     val v = "abc"
     val c = StringConstant(v)
     if (!VersionContext.current.isV6SoftForkActivated) {
-      // v6.0: String should be liftable at all (not supported in ErgoTree) (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/905)
+      // v6.0: String should not be liftable at all (not supported in ErgoTree) (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/905)
       test[SString.type](v, c)
       testArray[SString.type](v, c)
       testColl[SString.type](v, c)
