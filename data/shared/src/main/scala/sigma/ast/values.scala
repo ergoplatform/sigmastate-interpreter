@@ -9,6 +9,7 @@ import sigma.ast.syntax._
 import sigma.crypto.{CryptoConstants, EcPointType}
 import sigma.data.OverloadHack.Overloaded1
 import sigma.data.{CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, Nullable, RType, SigmaBoolean}
+import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
 import sigma.exceptions.InterpreterException
@@ -550,6 +551,7 @@ object SigmaPropConstant {
 
 object AvlTreeConstant {
   def apply(value: AvlTree): Constant[SAvlTree.type] = Constant[SAvlTree.type](value, SAvlTree)
+  def apply(value: AvlTreeData): Constant[SAvlTree.type] = Constant[SAvlTree.type](CAvlTree(value), SAvlTree)
 }
 
 object PreHeaderConstant {
