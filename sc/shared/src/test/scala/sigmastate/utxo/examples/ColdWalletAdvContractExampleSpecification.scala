@@ -9,6 +9,7 @@ import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingIn
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 import sigma.ast.syntax._
+import sigmastate.interpreter.Interpreter
 
 
 class ColdWalletAdvContractExampleSpecification extends CompilerTestingCommons
@@ -35,7 +36,6 @@ class ColdWalletAdvContractExampleSpecification extends CompilerTestingCommons
     val minSpend = 100
 
     val env = Map(
-      ScriptNameProp -> "env",
       "user1" -> alicePubKey,
       "user2" -> bobPubKey,
       "user3" -> carolPubKey,
@@ -109,12 +109,9 @@ class ColdWalletAdvContractExampleSpecification extends CompilerTestingCommons
       )
     )
 
-    val dave = new ErgoLikeTestProvingInterpreter // paying to dave, some arbitrary user
-    val davePubKey = dave.dlogSecrets.head.publicImage
-
     val firstWithdrawHeight = depositHeight + 1 //
 
-    val spendEnv = Map(ScriptNameProp -> "spendEnv")
+    val spendEnv = Interpreter.emptyEnv
 
     // One of Alice, Bob  or Carol withdraws
     val firstWithdrawAmount1Key = depositAmount * percent1Key / 100 // less than or equal to percent
