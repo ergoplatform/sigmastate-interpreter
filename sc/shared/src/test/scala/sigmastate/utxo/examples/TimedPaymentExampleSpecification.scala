@@ -27,7 +27,6 @@ class TimedPaymentExampleSpecification extends CompilerTestingCommons
     val bobPubKey = bob.dlogSecrets.head.publicImage
 
     val env = Map(
-      ScriptNameProp -> "env",
       "alice" -> alicePubKey
     )
 
