@@ -86,6 +86,14 @@ object SigmaDataReflection {
     )
   )
 
+  registerClassEntry(classOf[ByteArrayToLong],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ByteArrayToLong(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
   registerClassEntry(classOf[LongToByteArray],
     constructors = Array(
       mkConstructor(Array(classOf[Value[_]])) { args =>
@@ -351,6 +359,21 @@ object SigmaDataReflection {
           obj.asInstanceOf[SGlobalMethods.type].serialize_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[SigmaDslBuilder],
             args(2).asInstanceOf[SType#WrappedType])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "deserializeTo_eval", Array[Class[_]](classOf[MethodCall], classOf[SigmaDslBuilder], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SGlobalMethods.type].deserializeTo_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[SigmaDslBuilder],
+            args(2).asInstanceOf[Coll[Byte]])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "powHit_eval", Array[Class[_]](classOf[MethodCall], classOf[SigmaDslBuilder], classOf[Int], classOf[Coll[_]], classOf[Coll[_]], classOf[Coll[_]], classOf[Int], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SGlobalMethods.type].powHit_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[SigmaDslBuilder],
+            args(2).asInstanceOf[Int],
+            args(3).asInstanceOf[Coll[Byte]],
+            args(4).asInstanceOf[Coll[Byte]],
+            args(5).asInstanceOf[Coll[Byte]],
+            args(6).asInstanceOf[Int]
+          )(args(7).asInstanceOf[ErgoTreeEvaluator])
         }
       )
     )

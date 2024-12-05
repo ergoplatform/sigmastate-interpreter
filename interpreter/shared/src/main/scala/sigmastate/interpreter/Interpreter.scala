@@ -126,7 +126,7 @@ trait Interpreter {
     case _ => None
   }
 
-  /** Extracts proposition for ErgoTree handing soft-fork condition.
+  /** Extracts proposition for ErgoTree handling soft-fork condition.
     * @note soft-fork handler */
   protected def propositionFromErgoTree(ergoTree: ErgoTree, context: CTX): SigmaPropValue = {
     val validationSettings = context.validationSettings

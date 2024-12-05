@@ -2,12 +2,21 @@ package sigmastate.eval
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
+import sigma.ast.{BigIntConstant, ErgoTree, Global, JitCost, MethodCall, SGlobalMethods}
+import scorex.util.encode.Base16
+import sigma.Extensions.ArrayOps
+import sigma.ast.{ByteArrayConstant, IntConstant}
 import sigma.crypto.SecP256K1Group
-import sigma.data.{CSigmaDslBuilder => SigmaDsl, TrivialProp}
+import sigma.data.{CBigInt, TrivialProp}
+import sigma.eval.SigmaDsl
 import sigma.util.Extensions.SigmaBooleanOps
+import sigma.util.NBitsUtils
 
 import java.math.BigInteger
 import sigma.{ContractsTestkit, SigmaProp}
+import sigmastate.interpreter.{CErgoTreeEvaluator, CostAccumulator}
+import sigmastate.interpreter.CErgoTreeEvaluator.DefaultProfiler
+import sigma.{Box, VersionContext}
 
 import scala.language.implicitConversions
 
@@ -61,6 +70,91 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
   test("box.creationInfo._1 is Int") {
     val box = newAliceBox(100)
     box.creationInfo._1 shouldBe a [Integer]
+  }
+
+  test("xor evaluation") {
+    val es = CErgoTreeEvaluator.DefaultEvalSettings
+    val accumulator = new CostAccumulator(
+      initialCost = JitCost(0),
+      costLimit = Some(JitCost.fromBlockCost(es.scriptCostLimitInEvaluator)))
+
+    val context = new CContext(
+      noInputs.toColl, noHeaders, dummyPreHeader,
+      Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
+      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+
+    val evaluator = new CErgoTreeEvaluator(
+      context = context,
+      constants = ErgoTree.EmptyConstants,
+      coster = accumulator, DefaultProfiler, es)
+
+    val msg = Colls.fromArray(Base16.decode("0a101b8c6a4f2e").get)
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      val res = MethodCall(Global, SGlobalMethods.xorMethod,
+        IndexedSeq(ByteArrayConstant(msg), ByteArrayConstant(msg)), Map.empty)
+        .evalTo[sigma.Coll[Byte]](Map.empty)(evaluator)
+
+      res should be(Colls.fromArray(Base16.decode("00000000000000").get))
+    }
+  }
+
+  /**
+    * Checks BigInt.nbits evaluation for SigmaDSL as well as AST interpreter (MethodCall) layers
+    */
+  test("powHit evaluation") {
+    val k = 32
+    val msg = Colls.fromArray(Base16.decode("0a101b8c6a4f2e").get)
+    val nonce = Colls.fromArray(Base16.decode("000000000000002c").get)
+    val hbs = Colls.fromArray(Base16.decode("00000000").get)
+    val N = 1024 * 1024
+
+    SigmaDsl.powHit(k, msg, nonce, hbs, N) shouldBe CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+
+    val es = CErgoTreeEvaluator.DefaultEvalSettings
+    val accumulator = new CostAccumulator(
+      initialCost = JitCost(0),
+      costLimit = Some(JitCost.fromBlockCost(es.scriptCostLimitInEvaluator)))
+
+    val context = new CContext(
+      noInputs.toColl, noHeaders, dummyPreHeader,
+      Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
+      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+
+    val evaluator = new CErgoTreeEvaluator(
+      context = context,
+      constants = ErgoTree.EmptyConstants,
+      coster = accumulator, DefaultProfiler, es)
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      val res = MethodCall(Global, SGlobalMethods.powHitMethod,
+        IndexedSeq(IntConstant(k), ByteArrayConstant(msg), ByteArrayConstant(nonce),
+          ByteArrayConstant(hbs), IntConstant(N)), Map.empty)
+        .evalTo[sigma.BigInt](Map.empty)(evaluator)
+
+      res should be(CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344")))
+    }
+  }
+
+  /**
+    * Checks BigInt.nbits evaluation for SigmaDSL as well as AST interpreter (MethodCall) layers
+    */
+  test("nbits evaluation") {
+    SigmaDsl.encodeNbits(CBigInt(BigInteger.valueOf(0))) should be
+      (NBitsUtils.encodeCompactBits(0))
+
+    val es = CErgoTreeEvaluator.DefaultEvalSettings
+    val accumulator = new CostAccumulator(
+      initialCost = JitCost(0),
+      costLimit = Some(JitCost.fromBlockCost(es.scriptCostLimitInEvaluator)))
+    val evaluator = new CErgoTreeEvaluator(
+      context = null,
+      constants = ErgoTree.EmptyConstants,
+      coster = accumulator, DefaultProfiler, es)
+
+    val res = MethodCall(Global, SGlobalMethods.encodeNBitsMethod, IndexedSeq(BigIntConstant(BigInteger.valueOf(0))), Map.empty)
+        .evalTo[Long](Map.empty)(evaluator)
+
+    res should be (NBitsUtils.encodeCompactBits(0))
   }
 
 }

@@ -9,8 +9,6 @@ import sigma.ast.ByteArrayConstant
 class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
   implicit lazy val IR = new TestingIRContext
 
-  private val reg1 = ErgoBox.nonMandatoryRegisters(0)
-
   case class OracleContract[Spec <: ContractSpec]
       (alice: Spec#ProvingParty)
       (implicit val spec: Spec) extends SigmaContractSyntax with StdContracts

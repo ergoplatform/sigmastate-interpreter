@@ -37,13 +37,14 @@ class SigmaTyper(val builder: SigmaBuilder,
 
   private def processGlobalMethod(srcCtx: Nullable[SourceContext],
                                   method: SMethod,
-                                  args: IndexedSeq[SValue]) = {
+                                  args: IndexedSeq[SValue],
+                                  subst: Map[STypeVar, SType] = EmptySubst): SValue = {
     val global = Global.withPropagatedSrcCtx(srcCtx)
     val node = for {
       pf <- method.irInfo.irBuilder if lowerMethodCalls
-      res <- pf.lift((builder, global, method, args, EmptySubst))
+      res <- pf.lift((builder, global, method, args, subst))
     } yield res
-    node.getOrElse(mkMethodCall(global, method, args, EmptySubst).withPropagatedSrcCtx(srcCtx))
+    node.getOrElse(mkMethodCall(global, method, args, subst).withPropagatedSrcCtx(srcCtx))
   }
   /**
     * Rewrite tree to typed tree.  Checks constituent names and types.  Uses
@@ -177,9 +178,20 @@ class SigmaTyper(val builder: SigmaBuilder,
           error(s"Cannot get field '$n' in in the object $newObj of non-product type ${newObj.tpe}", sel.sourceContext)
       }
 
-    case app @ Apply(sel @ Select(obj, n, _), args) =>
-      val newSel = assignType(env, sel)
+    case app @ Apply(selOriginal @ Select(obj, nOriginal, resType), args) =>
       val newArgs = args.map(assignType(env, _))
+
+      // hack to make possible to write g.exp(ubi) for both unsigned and signed big integers
+      // could be useful for other use cases where the same front-end code could be
+      // translated to different methods under the hood, based on argument types
+      // todo: consider better place for it
+      val (n, sel) = if (nOriginal == "exp" && newArgs(0).tpe.isInstanceOf[SUnsignedBigInt.type]) {
+        val newName = "expUnsigned"
+        (newName, Select(obj, newName, resType))
+      } else {
+        (nOriginal, selOriginal)
+      }
+      val newSel = assignType(env, sel)
       newSel.tpe match {
         case genFunTpe @ SFunc(argTypes, _, _) =>
           // If it's a function then the application has type of that function's return type.

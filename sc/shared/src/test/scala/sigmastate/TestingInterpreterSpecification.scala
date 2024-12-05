@@ -11,9 +11,13 @@ import org.scalatest.BeforeAndAfterAll
 import scorex.util.encode.{Base16, Base58}
 import sigma.Colls
 import sigma.VersionContext.V6SoftForkVersion
+import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
-import sigma.data.{CAND, CAvlTree, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.data.{CAND, CAvlTree, CBox, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
+import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.VersionContext.V6SoftForkVersion
+import sigma.VersionContext
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
@@ -143,12 +147,18 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     val env = Map(
       "dk1" -> dk1,
       "dk2" -> dk2,
-      "bytes1" -> Array[Byte](1, 2, 3),
-      "bytes2" -> Array[Byte](4, 5, 6),
-      "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
+      "bytes1" -> Colls.fromArray(Array[Byte](1, 2, 3)),
+      "bytes2" -> Colls.fromArray(Array[Byte](4, 5, 6)),
+      "box1" -> (if(VersionContext.current.isJitActivated) {
+        CBox(testBox(10, TrueTree, 0, Seq(), Map(
+        reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+        reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+      )))} else {
+        testBox(10, TrueTree, 0, Seq(), Map(
           reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
           reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
-      ))
+        ))
+      })
     )
     val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
     val challenge = Array.fill(32)(Random.nextInt(100).toByte)
@@ -224,6 +234,21 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         |  val arr = Coll(1, 2, 3)
         |  arr.filter {(i: Int) => i < 3} == Coll(1, 2)
         |}""".stripMargin)
+  }
+
+  property("Evaluate BigInt to nbits conversion") {
+    val source =
+      """
+        |{
+        | val b: BigInt = 11999.toBigInt
+        | Global.encodeNbits(b) == 36626176
+        |}
+        |""".stripMargin
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    } else {
+      testEval(source)
+    }
   }
 
   property("Evaluate numeric casting ops") {
@@ -314,6 +339,27 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("Coll indexing (out of bounds with evaluated default value)") {
     testEval("Coll(1, 1).getOrElse(3, 1 + 1) == 2")
+  }
+
+  property("Evaluate powHit") {
+    val source =
+      """
+        |{
+        | val b: BigInt = bigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
+        | val k = 32
+        | val N = 1024 * 1024
+        | val msg = fromBase16("0a101b8c6a4f2e")
+        | val nonce = fromBase16("000000000000002c")
+        | val h = fromBase16("00000000")
+        |
+        | Global.powHit(k, msg, nonce, h, N) <= b // hit == b in this example
+        |}
+        |""".stripMargin
+    if (activatedVersionInTests < V6SoftForkVersion) {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    } else {
+      testEval(source)
+    }
   }
 
   property("Evaluation example #1") {
@@ -466,7 +512,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   property("checkPow") {
     val source = """ {
                    |     val h = CONTEXT.headers(0)
-                   |      h.checkPow
+                   |     h.checkPow
                    | }
                    | """.stripMargin
 

@@ -6,9 +6,9 @@ import sigma.Evaluation.{rtypeToSType, stypeToRType}
 import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.ast.syntax.{ValueOps, _}
-import sigma.data.{ProveDHTuple, ProveDlog}
-import sigma.serialization.ConstantStore
 import sigma.serialization.OpCodes._
+import sigma.serialization.ConstantStore
+import sigma.data.{ProveDHTuple, ProveDlog}
 import sigma.serialization.ValueCodes.OpCode
 
 import scala.collection.mutable.ArrayBuffer
@@ -278,6 +278,13 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case ContextM.getVar(_, Def(Const(id)), eVar) =>
         val tpe = elemToSType(eVar)
         mkGetVar(id, tpe)
+
+      case SDBM.deserializeTo(g, bytes, eVar) =>
+        val tpe = elemToSType(eVar)
+        val typeSubst = Map(tT -> tpe): STypeSubst
+        // method specialization done to avoid serialization roundtrip issues
+        val method = SGlobalMethods.deserializeToMethod.withConcreteTypes(typeSubst)
+        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(bytes)), typeSubst)
 
       case BIM.subtract(In(x), In(y)) =>
         mkArith(x.asNumValue, y.asNumValue, MinusCode)

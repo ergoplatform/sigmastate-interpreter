@@ -4,18 +4,18 @@
 
 ErgoScript is a language to write contracts for [Ergo
 blockchain](https://ergoplatform.org). ErgoScript contracts can be compiled to
-[ErgoTrees](https://ergoplatform.org/docs/ErgoTree.pdf), serialized and stored
+[ErgoTrees](https://ergoplatform.org/docs/ErgoTree.pdf), typed abstract serialized and stored
 in UTXOs.
 
 A good starting point to writing contracts is to use [ErgoScript by
-Example](https://github.com/ergoplatform/ergoscript-by-example) with [Ergo
+Example](https://github.com/ergoplatform/ergoscript-by-example), with [Ergo
 Playgrounds](https://github.com/ergoplatform/ergo-playgrounds) or
-[Appkit](https://github.com/ergoplatform/ergo-appkit).
+[Appkit](https://github.com/ergoplatform/ergo-appkit) or [Fleet](https://github.com/fleet-sdk) .
 
 ErgoScript compiler is
 [published](https://mvnrepository.com/artifact/org.scorexfoundation/sigma-state)
 as a library which is cross compiled for Java 7 and Java 8+ and thus can be used
-from any JVM lanugage and also on Android and JavaFX platforms.
+from any JVM langugage and also on Android and JavaFX platforms. It is also cross-compiled to JavaScript using Scala.js.
 
 The following example shows how source code of ErgoScript contract can be used
 to create new transaction using
@@ -56,7 +56,7 @@ The following sections describe ErgoScript and its operations.
 
 #### ErgoScript language features overview
 
-- syntax borrowed from Scala
+- syntax borrowed from Scala but simplified
 - standard syntax and semantics for well known constructs (operations, code blocks, if branches etc.)
 - high-order language with first-class lambdas which are used in collection operations
 - call-by-value (eager evaluation)
@@ -68,7 +68,7 @@ The following sections describe ErgoScript and its operations.
 #### Operations and constructs overview
 
 - Binary operations: `>, <, >=, <=, +, -, &&, ||, ==, !=, |, &, *, /, %, ^, ++`
-- predefined primitives: `serialize`, `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
+- predefined primitives: `deserializeTo`, `serialize`, `blake2b256`, `byteArrayToBigInt`, `proveDlog` etc. 
 - val declarations: `val h = blake2b256(pubkey)`
 - if-then-else clause: `if (x > 0) 1 else 0`
 - collection literals: `Coll(1, 2, 3, 4)`
@@ -97,6 +97,7 @@ Type Name        |   Description
 `Int`            | 32 bit signed integer
 `Long`           | 64 bit signed integer
 `BigInt`         | 256 bit signed integer
+`UnsignedBigInt` | 256 bit unsigned integer
 `SigmaProp`      | a type representing a _sigma proposition_ which can be verified by executing a Sigma protocol with zero-knowledge proof of knowledge. Every contract should return a value of this type.
 `AvlTree`        | represents a digest of authenticated dynamic dictionary and can be used to verify proofs of operations performed on the dictionary
 `GroupElement`   | elliptic curve points
@@ -119,11 +120,12 @@ types as in the following example.
 Literals are used to introduce values of some types directly in program text
 like in the following example:
 ```
- val unit: Unit = ()       // unit constant
- val long: Int = 10        // interger value literal
- val bool: Boolean = true  // logical literal
- val arr = Coll(1, 2, 3)   // constructs a collection with given items
- val str = "abc"           // string of characters 
+ val unit: Unit = ()                           // unit constant
+ val long: Int = 10                            // interger value literal
+ val bool: Boolean = true                      // logical literal
+ val arr = Coll(1, 2, 3)                       // constructs a collection with given items
+ val str = "abc"                               // string of characters 
+ val ubi = unsignedBigInt("508473958676860")   // unsigned big integer
 ```
 Note that many types don't have literal syntax and their values are introduced 
 by applying operations, for example `deserialize` function can be used to introduce
@@ -167,8 +169,60 @@ class Numeric {
   
   /** Convert this Numeric value to BigInt. */
   def toBigInt: BigInt
+
+  /** Convert this Numeric value to UnsignedBigInt. */
+  def toUnsignedBigInt: UnsignedBigInt
+
+  /** Returns a big-endian representation of this value in a collection of bytes.
+    * For example, the `Int` value `0x12131415` would yield the
+    * collection of bytes [0x12, 0x13, 0x14, 0x15]
+    */
+  def toBytes(x: T): Coll[Byte]
+
+  /**
+   * Returns a big-endian binary representation of this value as boolean array.
+   */
+  def toBits(x: T): Coll[Boolean]
+
+  /**
+    * @return a numeric value which is inverse of `x` (every bit, including sign, is flipped)
+    */
+  def bitwiseInverse(x: T): T
+
+  /**
+    * @return a numeric value which is `this | that`
+    */
+  def bitwiseOr(x: T, y: T): T
+
+  /**
+    * @return a numeric value which is `this && that`
+    */
+  def bitwiseAnd(x: T, y: T): T
+
+  /**
+    * @return a numeric value which is `this xor that`
+    */
+  def bitwiseXor(x: T, y: T): T
+
+  /**
+    * @return a value which is (this << n). The shift distance, n, may be negative,
+    *         in which case this method performs a right shift. (Computes floor(this * 2n).)
+    */
+  def shiftLeft(x: T, bits: Int): T
+
+  /**
+    * @return a value which is (this >> n). Sign extension is performed. The shift distance, n,
+    *         may be negative, in which case this method performs a left shift. (Computes floor(this / 2n).)
+    */
+  def shiftRight(x: T, bits: Int): T
+ 
 }
 ```
+
+The only exception for conversions is about BigInt to and from UnsignedBigInt. To convert from signed big int to unsigned, use
+`.toUnsigned` method to convert signed big integer to unsigned, or `.toUnsignedMod(m)` to convert modulo `m` (and modulo
+ operation is cryptographic, ie always returns positive number modulo `m`). To convert from unsigned big int to signed,
+ use `.toSigned`.
 
 All the predefined numeric types inherit Numeric class and its methods.
 They can be thought as being pre-defined like the following.
@@ -179,7 +233,50 @@ class Short extends Numeric
 class Int extends Numeric
 class Long extends Numeric
 class BigInt extends Numeric
+class UnsignedBigInt extends Numeric
 ```
+
+examples: 
+
+```
+val b = (126 + 1).toByte  // max byte value
+b.bitwiseInverse == (-128).toByte // min byte value
+```
+
+```
+val x = 4.toByte
+val y = 2
+x.shiftLeft(y) == 16.toByte
+```
+
+```
+val l = getVar[Long](1).get
+val ba = l.toBytes
+Global.fromBigEndianBytes[Long](ba) == l
+```
+
+In addition to all the methods from above, UnsignedBigInt type has support for modular arithmetics, namely, `modInverse`,
+`plusMod`, `subtractMod`, `multiplyMod`, `mod`. Examples:
+
+```
+val bi1 = unsignedBigInt("2")
+val bi2 = unsignedBigInt("4")
+val m = unsignedBigInt("575879797")
+bi1.subtractMod(bi2, m) > 0
+```
+
+```
+val bi = unsignedBigInt("248486720836984554860790790898080606")
+val m = unsignedBigInt("575879797")
+bi.mod(m) < bi
+```
+
+```
+val bi = unsignedBigInt("248486720836984554860790790898080606")
+val m = unsignedBigInt("575879797")
+bi.modInverse(m) > 0 // returns multiplicative inverse of bi mod m
+```
+
 
 #### Context Data 
 
@@ -245,13 +342,34 @@ class Context {
     */
   def minerPubKey: Coll[Byte]
 
+  /** Extracts Context variable by id and type.
+    * ErgoScript is typed, so accessing a the variables is an operation which involves
+    * some expected type given in brackets. Thus `getVar[Int](id)` expression should
+    * evaluate to a valid value of the `Option[Int]` type.
+    */
+  def getVar[T](id: Byte): Option[T]
+
+  /**
+    * A variant of `getVar` to extract a context variable by id and type from any input
+    */
+  def getVarFromInput[T](inputIndex: Short, id: Byte): Option[T]
+
+  /** Returns new $coll with elements in reversed order.
+    *
+    *  @return A new $coll with all elements of this $coll in reversed order.
+    */
+  def reverse: Coll[T]
+
+  /** Builds a new $coll from this $coll without any duplicate elements.
+    *
+    *  @return  A new $coll which contains the first occurrence of every element of this $coll.
+    */
+  def distinct: Coll[T]
+  
 }
 
 /** Represents data of the block headers available in scripts. */
 class Header {  
-
-  /** Validate header's proof-of-work */  
-  def checkPow: Boolean
   
   /** Bytes representation of ModifierId of this Header */
   def id: Coll[Byte]
@@ -276,7 +394,7 @@ class Header {
 
   /** Current difficulty in a compressed view.
     * NOTE: actually it is unsigned Int*/
-  def nBits: Long  // actually it is unsigned Int 
+  def nBits: Long
 
   /** Block height */
   def height: Int
@@ -288,24 +406,16 @@ class Header {
     * Part of Autolykos solution (pk). 
     */
   def minerPk: GroupElement
-
-  /** One-time public key. Prevents revealing of miners secret. 
-    * Part of Autolykos solution (w). 
-    */
-  def powOnetimePk: GroupElement
-
+  
   /** Nonce value found by the miner. Part of Autolykos solution (n). */
   def powNonce: Coll[Byte]
-
-  /** Distance between pseudo-random number, corresponding to nonce `powNonce`
-    * and a secret, corresponding to `minerPk`. The lower `powDistance` is, the
-    * harder it was to find this solution. 
-    * Part of Autolykos solution (d).
-    */
-  def powDistance: BigInt
-
+  
   /** Miner votes for changing system parameters. */
   def votes: Coll[Byte]
+  
+  /** Validate header's proof-of-work */
+  def checkPow: Boolean
+
 }
 
 /** Only header fields that can be predicted by a miner. */
@@ -458,6 +568,12 @@ class GroupElement {
     * @return <code>this to the power of k</code>.
     */
   def exp(k: BigInt): GroupElement
+  
+  /** Exponentiate this <code>GroupElement</code> to the given unsigned 256 bit integer.
+    * @param k The power.
+    * @return <code>this to the power of k</code>.
+    */
+  def expUnsigned(k: UnsignedBigInt): GroupElement
 
   /** Group operation. */
   def multiply(that: GroupElement): GroupElement
@@ -669,8 +785,7 @@ class Option[A] {
   
   /** Returns the option's value if the option is nonempty, otherwise
     * return the result of evaluating `default`.
-    * NOTE: the `default` is evaluated even if the option contains the value
-    * i.e. not lazily.
+    * NOTE: the `default` is evaluated lazily.
     *
     * @param default  the default expression.
     */
@@ -845,6 +960,27 @@ class Coll[A] {
     *           to `elem`, or `-1`, if none exists.
     */
   def indexOf(elem: A, from: Int): Int
+
+  /** The element at given index or None if there is no such element. Indices start at `0`.
+    *
+    *  @param  i       the index
+    *  @return         the element at the given index, or None if there is no such element
+    */
+  def get(i: Int): Option[A]
+
+  /**
+    * @return true if first elements of this collection form given `ys` collection, false otherwise.
+    *         E.g. [1,2,3] starts with [1,2]
+    */
+  def startsWith(ys: Coll[A]): Boolean
+
+  /**
+    * @return true if last elements of this collection form given `ys` collection, false otherwise.
+    *         E.g. [1,2,3] ends with [2,3]
+    */
+  def endsWith(ys: Coll[A]): Boolean
+  
+  
 }
 ```
 
@@ -852,6 +988,14 @@ Each item can be accessed by constant index, for example:
 ```
 val myOutput = OUTPUTS(0)
 val myInput = INPUTS(0)
+```
+
+or, if you want to get None instead of exception: 
+```
+val elemOpt = coll.get(0)
+if (elemOpt.isDefined) {
+  val elem = elemOpt.get
+}
 ```
 
 Any collection have the `size` property which returns the number of elements in
@@ -867,6 +1011,73 @@ satisfying some predicate (condition)
 ```
 val ok = OUTPUTS.exists { (box: Box) => box.value > 1000 }
 ``` 
+
+### Predefined global functions
+
+There are some functions which do not belong to other types, thus they put under `Global` type. Those functions are:
+
+
+
+```
+{
+  /** The generator g of the group is an element of the group such that, when written
+    * multiplicative form, every element of the group is a power of g.
+    * @return the generator of this Dlog group
+    */
+  def groupGenerator: GroupElement
+
+  /**
+    * @return NBits-encoded approximate representation of given big integer,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for NBits format details
+    */
+  def encodeNbits(bi: BigInt): Long
+
+  /**
+    * @return big integer decoded from NBits value provided,
+    *         see (https://bitcoin.stackexchange.com/questions/57184/what-does-the-nbits-value-represent)
+    *         for format details
+    */
+  def decodeNbits(l: Long): BigInt
+  
+  
+  /** Serializes the given `value` into bytes using the default serialization format. */
+  def serialize[T](value: T)(implicit cT: RType[T]): Coll[Byte]
+
+  /** Returns a byte-wise XOR of the two collections of bytes. */
+  def xor(l: Coll[Byte], r: Coll[Byte]): Coll[Byte]
+
+  /** Calculates value of a custom Autolykos 2 hash function 
+    * @param k - k parameter of Autolykos 2 (number of inputs in k-sum problem)
+    * @param msg - message to calculate Autolykos hash 2 for
+    * @param nonce - used to pad the message to get Proof-of-Work hash function output with desirable properties
+    * @param h - PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)
+    */
+  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt
+
+  /** Deserializes provided `bytes` into a value of type `T`. **/
+  def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
+
+  /** Returns a number decoded from provided big-endian bytes array. */
+  def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
+}
+```
+
+examples:
+
+```
+val h = getVar[Header](21).get
+val n = h.nBits
+val target = Global.decodeNbits(n)
+```
+
+```
+val src = getVar[Coll[Short]](21).get
+val ba = Global.serialize(src)
+val restored = Global.deserializeTo[Coll[Short]](ba)
+src == restored
+```
+
 
 ### Predefined global functions
 <a name="PredefinedFunctions"></a>
@@ -902,6 +1113,10 @@ def blake2b256(input: Coll[Byte]): Coll[Byte]
 
 /** Cryptographic hash function Sha256 (See scorex.crypto.hash.Sha256) */
 def sha256(input: Coll[Byte]): Coll[Byte]
+
+/** Create an instance of type T from bytes of its wrapped type. 
+See https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979 for more details */
+def deserializeTo[T](input: Coll[Byte]): T
 
 /** Create BigInt from a collection of bytes. */
 def byteArrayToBigInt(input: Coll[Byte]): BigInt
@@ -1006,6 +1221,12 @@ def proveDlog(value: GroupElement): SigmaProp
   * argument.
   */
 def bigInt(input: String): BigInt
+
+/** Transforms Base16 encoded string literal into constant of type UnsignedBigInt.
+  * It is a compile-time operation and only string literal (constant) can be its
+  * argument.
+  */
+def unsignedBigInt(input: String): UnsignedBigInt
 
 /** Transforms Base16 encoded string literal into constant of type Coll[Byte].
   * It is a compile-time operation and only string literal (constant) can be its
