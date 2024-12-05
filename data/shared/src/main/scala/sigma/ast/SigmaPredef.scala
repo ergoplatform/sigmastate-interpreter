@@ -136,17 +136,6 @@ object SigmaPredef {
           Seq(ArgInfo("condition", "boolean value to embed in SigmaProp value")))
     )
 
-    val GetVarFunc = PredefinedFunc("getVar",
-      Lambda(Array(paramT), Array("varId" -> SByte), SOption(tT), None),
-      PredefFuncInfo(
-        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(id: Constant[SNumericType]@unchecked)) =>
-          mkGetVar(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
-        }),
-      OperationInfo(GetVar,
-        "Get context variable with given \\lst{varId} and type.",
-        Seq(ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
-    )
-
     def PKFunc(networkPrefix: NetworkPrefix) = PredefinedFunc("PK",
       Lambda(Array("input" -> SString), SSigmaProp, None),
       PredefFuncInfo(
@@ -366,13 +355,23 @@ object SigmaPredef {
         ArgInfo("newValues", "new values to be injected into the corresponding positions in ErgoTree.constants array")))
     )
 
+    val GetVarFunc = PredefinedFunc("getVar",
+      Lambda(Array(paramT), Array("varId" -> SByte), SOption(tT), None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          mkGetVar(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
+        }),
+      OperationInfo(GetVar,
+        "Get context variable with given \\lst{varId} and type.",
+        Seq(ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
+    )
+
     val ExecuteFromVarFunc = PredefinedFunc("executeFromVar",
-      Lambda(
-        Seq(paramT),
-        Array("id" -> SByte),
-        tT, None
-      ),
-      PredefFuncInfo(undefined),
+      Lambda(Array(paramT), Array("id" -> SByte), tT, None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          mkDeserializeContext(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
+        }),
       OperationInfo(DeserializeContext,
         """Extracts context variable as \lst{Coll[Byte]}, deserializes it to script
          | and then executes this script in the current context.
