@@ -85,13 +85,17 @@ sealed trait MethodsContainer {
 
   /** Lookup method in this type by method's id or throw ValidationException.
     * This method can be used in trySoftForkable section to either obtain valid method
-    * or catch ValidatioinException which can be checked for soft-fork condition.
+    * or catch ValidationException which can be checked for soft-fork condition.
     * It delegate to getMethodById to lookup method.
     *
     * @see getMethodById
     */
   def methodById(methodId: Byte): SMethod = {
-    ValidationRules.CheckAndGetMethod(this, methodId)
+    if (VersionContext.current.isV6SoftForkActivated) {
+      ValidationRules.CheckAndGetMethodV6(this, methodId)
+    } else {
+      ValidationRules.CheckAndGetMethod(this, methodId)
+    }
   }
 
   /** Finds a method descriptor [[SMethod]] for the given name. */
