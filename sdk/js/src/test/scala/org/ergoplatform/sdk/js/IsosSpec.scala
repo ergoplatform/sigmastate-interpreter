@@ -1,8 +1,9 @@
 package org.ergoplatform.sdk.js
 
+import io.circe.parser.parse
 import org.ergoplatform.ErgoBox.{AdditionalRegisters, BoxId, TokenId}
 import org.ergoplatform._
-import org.ergoplatform.sdk.ExtendedInputBox
+import org.ergoplatform.sdk.{ExtendedInputBox, JsonCodecs}
 import org.ergoplatform.sdk.wallet.protocol.context.BlockchainStateContext
 import org.scalacheck.Arbitrary
 import sigma.ast.{Constant, SType}
@@ -10,6 +11,7 @@ import sigma.data.Iso
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.js.AvlTree
 import sigma.{Coll, GroupElement}
+import sigma.data.js.{Isos => DataIsos}
 
 import scala.scalajs.js
 
@@ -31,19 +33,19 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
 
   property("Iso.isoStringToGroupElement") {
     forAll() { (bytes: GroupElement) =>
-      roundtrip(Isos.isoStringToGroupElement)(bytes)
+      roundtrip(DataIsos.isoStringToGroupElement)(bytes)
     }
   }
 
   property("Iso.isoBoxId") {
     forAll(boxIdGen) { (id: BoxId) =>
-      roundtrip(Isos.isoBoxId)(id)
+      roundtrip(DataIsos.isoBoxId)(id)
     }
   }
 
   property("Iso.isoHexStringToConstant") {
     forAll(constantGen, MinSuccessful(100)) { (c: Constant[SType]) =>
-      roundtrip(Isos.isoHexStringToConstant)(c)
+      roundtrip(DataIsos.isoHexStringToConstant)(c)
     }
   }
 
@@ -115,20 +117,20 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
 
   property("Iso.isoAmount") {
     forAll { (c: Long) =>
-      roundtrip(Isos.isoAmount)(c)
-      Isos.isoAmount.to(js.BigInt(c.toString)) shouldBe c
+      roundtrip(DataIsos.isoAmount)(c)
+      DataIsos.isoAmount.to(js.BigInt(c.toString)) shouldBe c
     }
   }
 
   property("Iso.isoToken") {
     forAll(tokenIdGen, Arbitrary.arbLong.arbitrary) { (id: TokenId, amount: Long) =>
-      roundtrip(Isos.isoToken)((id, amount))
+      roundtrip(DataIsos.isoToken)((id, amount))
     }
   }
 
   property("Iso.isoTokenArray") {
     forAll(ergoBoxTokens(tokensGen.sample.get)) { tokens =>
-      roundtrip(Isos.isoTokenArray)(tokens)
+      roundtrip(DataIsos.isoTokenArray)(tokens)
     }
   }
 
@@ -140,19 +142,19 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
 
   property("Iso.isoNonMandatoryRegisters") {
     forAll(additionalRegistersGen) { (x: AdditionalRegisters) =>
-      roundtrip(Isos.isoNonMandatoryRegisters)(x)
+      roundtrip(DataIsos.isoNonMandatoryRegisters)(x)
     }
   }
 
   property("Iso.isoBoxCandidate") {
     forAll { (box: ErgoBoxCandidate) =>
-      roundtrip(Isos.isoBoxCandidate)(box)
+      roundtrip(DataIsos.isoBoxCandidate)(box)
     }
   }
 
   property("Iso.isoBox") {
     forAll { (b: ErgoBox) =>
-      roundtrip(Isos.isoBox)(b)
+      roundtrip(sigma.js.Box.isoBox)(b)
     }
   }
 

@@ -1,13 +1,16 @@
 package sigma.js
 
 import sigma.{Coll, Colls}
-import sigma.data.{CBigInt, Iso, RType}
+import sigma.data.{CBigInt, CUnsignedBigInt, Iso, RType}
 
 import java.math.BigInteger
 import scala.reflect.ClassTag
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichOption
 
+/** Definitions of isomorphisms for sigma-core module.
+  * @see sigma.data.Iso
+  */
 object Isos {
 
   implicit def isoUndefOr[A, B](implicit iso: Iso[A, B]): Iso[js.UndefOr[A], Option[B]] = new Iso[js.UndefOr[A], Option[B]] {
@@ -34,6 +37,18 @@ object Isos {
 
     override def from(x: sigma.BigInt): js.BigInt = {
       val bi = x.asInstanceOf[CBigInt].wrappedValue
+      val s  = bi.toString(10)
+      js.BigInt(s)
+    }
+  }
+
+  implicit val isoUnsignedBigInt: Iso[js.BigInt, sigma.UnsignedBigInt] = new Iso[js.BigInt, sigma.UnsignedBigInt] {
+    override def to(x: js.BigInt): sigma.UnsignedBigInt = {
+      CUnsignedBigInt(new BigInteger(x.toString(10)))
+    }
+
+    override def from(x: sigma.UnsignedBigInt): js.BigInt = {
+      val bi = x.asInstanceOf[CUnsignedBigInt].wrappedValue
       val s  = bi.toString(10)
       js.BigInt(s)
     }

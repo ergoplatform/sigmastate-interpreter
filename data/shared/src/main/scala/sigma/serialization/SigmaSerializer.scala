@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import scorex.util.ByteArrayBuilder
 import scorex.util.serialization._
 import sigma.data.SigmaConstants
-import sigma.validation.SigmaValidationSettings
+import sigma.serialization.SigmaByteWriter.{FixedCostCallback, PerItemCostCallback}
 import sigma.serialization.ValueCodes.OpCode
 
 object SigmaSerializer {
@@ -35,8 +35,7 @@ object SigmaSerializer {
   /** Helper function to be use in serializers. */
   def startReader(bytes: Array[Byte],
                   constantStore: ConstantStore,
-                  resolvePlaceholdersToConstants: Boolean)
-                 (implicit vs: SigmaValidationSettings): SigmaByteReader = {
+                  resolvePlaceholdersToConstants: Boolean): SigmaByteReader = {
     val buf = ByteBuffer.wrap(bytes)
     val r = new SigmaByteReader(new VLQByteBufferReader(buf),
       constantStore,
@@ -53,14 +52,18 @@ object SigmaSerializer {
   def startWriter(): SigmaByteWriter = {
     val b = new ByteArrayBuilder()
     val wi = new VLQByteBufferWriter(b)
-    val w = new SigmaByteWriter(wi, constantExtractionStore = None)
+    val w = new SigmaByteWriter(wi, constantExtractionStore = None, addFixedCostCallbackOpt = None, addPerItemCostCallbackOpt = None)
     w
   }
 
-  def startWriter(constantExtractionStore: ConstantStore): SigmaByteWriter = {
+  def startWriter(
+      constantExtractionStore: Option[ConstantStore],
+      addFixedCostCallback: Option[FixedCostCallback] = None,
+      addPerItemCostCallback: Option[PerItemCostCallback] = None
+  ): SigmaByteWriter = {
     val b = new ByteArrayBuilder()
     val wi = new VLQByteBufferWriter(b)
-    val w = new SigmaByteWriter(wi, constantExtractionStore = Some(constantExtractionStore))
+    val w = new SigmaByteWriter(wi, constantExtractionStore = constantExtractionStore, addFixedCostCallback, addPerItemCostCallback)
     w
   }
 }

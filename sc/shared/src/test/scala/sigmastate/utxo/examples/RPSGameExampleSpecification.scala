@@ -4,6 +4,7 @@ package sigmastate.utxo.examples
 import org.ergoplatform.ErgoBox.{R4, R5, R6, R7}
 import scorex.crypto.hash.Blake2b256
 import scorex.utils.Random
+import sigma.Colls
 import sigma.data.{AvlTreeData, ProveDlog}
 import sigma.ast.{ByteArrayConstant, ByteConstant, ErgoTree, IntConstant, SigmaPropConstant}
 import sigmastate._
@@ -51,9 +52,8 @@ class RPSGameExampleSpecification extends CompilerTestingCommons
     val h = Blake2b256(s :+ a) // Alice's commitment
 
     val fullGameEnv = Map(
-      ScriptNameProp -> "fullGameScriptEnv",
       "alice" -> alicePubKey,
-      "k" -> h
+      "k" -> Colls.fromArray(h)
     )
 
     val fullGameScript = mkTestErgoTree(compile(fullGameEnv,
@@ -78,9 +78,8 @@ class RPSGameExampleSpecification extends CompilerTestingCommons
     ).asSigmaProp)
 
     val halfGameEnv = Map(
-      ScriptNameProp -> "halfGameScript",
       "alice" -> alicePubKey,
-      "fullGameScriptHash" -> Blake2b256(fullGameScript.bytes)
+      "fullGameScriptHash" -> Colls.fromArray(Blake2b256(fullGameScript.bytes))
     )
 
     // Note that below script allows Alice to spend the half-game output anytime before Bob spends it.

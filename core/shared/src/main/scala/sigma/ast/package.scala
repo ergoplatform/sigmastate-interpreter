@@ -137,6 +137,12 @@ package object ast {
 
     def asNumType: SNumericType = tpe.asInstanceOf[SNumericType]
 
+    /** Cast this type to numeric type or else throws the given error. */
+    def asNumTypeOrElse(error: => Exception): SNumericType = tpe match {
+      case nt: SNumericType => nt
+      case _ => throw error
+    }
+
     def asFunc: SFunc = tpe.asInstanceOf[SFunc]
 
     def asProduct: SProduct = tpe.asInstanceOf[SProduct]

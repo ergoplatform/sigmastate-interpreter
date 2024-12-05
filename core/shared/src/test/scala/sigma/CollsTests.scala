@@ -386,6 +386,32 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
     }
   }
 
+  property("Coll.startsWith") {
+    val minSuccess = minSuccessful(50)
+    forAll(collGen, minSuccess) { col =>
+      val n = col.length / 2
+      val prefix = col.take(n)
+      val pairs = col.zip(col)
+      pairs.startsWith(prefix.zip(prefix)) shouldBe true
+      col.startsWith(prefix) shouldBe true
+      val pairOfCols = new PairOfCols[Int, Int](col, col)
+      pairOfCols.startsWith(pairOfCols.take(n)) shouldBe true
+    }
+  }
+
+  property("Coll.endsWith") {
+    val minSuccess = minSuccessful(50)
+    forAll(collGen, minSuccess) { col =>
+      val n = col.length / 2
+      val suffix = col.slice(n, col.length)
+      col.endsWith(suffix) shouldBe true
+      val pairs = col.zip(col)
+      pairs.endsWith(suffix.zip(suffix)) shouldBe true
+      val pairOfCols = new PairOfCols[Int, Int](col, col)
+      pairOfCols.endsWith(pairOfCols.slice(n, col.length)) shouldBe true
+    }
+  }
+
   property("Coll.equals") {
     def checkColls(repl: Coll[_], coll: Coll[_]) = {
       assert(coll == repl)

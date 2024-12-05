@@ -1,16 +1,15 @@
 package sigmastate.lang
 
 import org.scalatest.matchers.should.Matchers
-import sigma.{Coll, _}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.ast._
 import sigma.crypto.CryptoConstants
 import sigma.data.{CAnyValue, CSigmaDslBuilder, ProveDHTuple, ProveDlog, SigmaBoolean}
 import sigma.util.Extensions.BigIntegerOps
+import sigma._
 import sigmastate.helpers.NegativeTesting
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigma.ast.{Ident, MethodCallLike}
 
 import java.math.BigInteger
 
@@ -80,4 +79,10 @@ trait LangTests extends Matchers with NegativeTesting {
         node
     }))(tree)
   }
+
+  /** Execute the given `block` having `version` as both activated and ErgoTree version. */
+  def runWithVersion[T](version: Byte)(block: => T): T = {
+    VersionContext.withVersions(version, version)(block)
+  }
+
 }

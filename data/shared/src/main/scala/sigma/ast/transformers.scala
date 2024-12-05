@@ -10,7 +10,7 @@ import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.OpCodes
 import sigma.serialization.ValueCodes.OpCode
-import sigma.{Box, Coll, Evaluation}
+import sigma.{Box, Coll, Evaluation, VersionContext}
 
 // TODO refactor: remove this trait as it doesn't have semantic meaning
 
@@ -258,10 +258,22 @@ case class ByIndex[V <: SType](input: Value[SCollection[V]],
     val indexV = index.evalTo[Int](env)
     default match {
       case Some(d) =>
-        val dV = d.evalTo[V#WrappedType](env)
-        Value.checkType(d, dV) // necessary because cast to V#WrappedType is erased
-        addCost(ByIndex.costKind)
-        inputV.getOrElse(indexV, dV)
+        if (VersionContext.current.isV6SoftForkActivated) {
+          // lazy evaluation of default in 6.0
+          addCost(ByIndex.costKind)
+          if (inputV.isDefinedAt(indexV)) {
+            inputV.apply(indexV)
+          } else {
+            val dV = d.evalTo[V#WrappedType](env)
+            Value.checkType(d, dV) // necessary because cast to V#WrappedType is erased
+            inputV.getOrElse(indexV, dV)
+          }
+        } else {
+          val dV = d.evalTo[V#WrappedType](env)
+          Value.checkType(d, dV) // necessary because cast to V#WrappedType is erased
+          addCost(ByIndex.costKind)
+          inputV.getOrElse(indexV, dV)
+        }
       case _ =>
         addCost(ByIndex.costKind)
         inputV.apply(indexV)
@@ -613,11 +625,22 @@ case class OptionGetOrElse[V <: SType](input: Value[SOption[V]], default: Value[
   override val opType = SFunc(IndexedSeq(input.tpe, tpe), tpe)
   override def tpe: V = input.tpe.elemType
   protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
-    val inputV = input.evalTo[Option[V#WrappedType]](env)
-    val dV = default.evalTo[V#WrappedType](env)  // TODO v6.0: execute lazily (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/906)
-    Value.checkType(default, dV) // necessary because cast to V#WrappedType is erased
-    addCost(OptionGetOrElse.costKind)
-    inputV.getOrElse(dV)
+    if(VersionContext.current.isV6SoftForkActivated) {
+      // lazy evaluation of default in 6.0
+      val inputV = input.evalTo[Option[V#WrappedType]](env)
+      addCost(OptionGetOrElse.costKind)
+      inputV.getOrElse {
+        val dV = default.evalTo[V#WrappedType](env)
+        Value.checkType(default, dV) // necessary because cast to V#WrappedType is erased
+        dV
+      }
+    } else {
+      val inputV = input.evalTo[Option[V#WrappedType]](env)
+      val dV = default.evalTo[V#WrappedType](env)
+      Value.checkType(default, dV) // necessary because cast to V#WrappedType is erased
+      addCost(OptionGetOrElse.costKind)
+      inputV.getOrElse(dV)
+    }
   }
 }
 object OptionGetOrElse extends ValueCompanion with FixedCostValueCompanion {

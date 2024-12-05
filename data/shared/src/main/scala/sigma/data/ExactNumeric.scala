@@ -1,5 +1,7 @@
 package sigma.data
 
+import debox.cfor
+import sigma.{Coll, Colls}
 import sigma.data.ExactIntegral._
 
 /** Numeric operations with overflow checks.
@@ -29,6 +31,63 @@ trait ExactNumeric[T] {
 
   def toInt(x: T): Int = n.toInt(x)
   def toLong(x: T): Long = n.toLong(x)
+
+  /** Returns a big-endian representation of this value in a collection of bytes.
+    * For example, the `Int` value `0x12131415` would yield the
+    * collection of bytes [0x12, 0x13, 0x14, 0x15]
+    */
+  def toBigEndianBytes(x: T): Coll[Byte]
+
+  /**
+    * Returns a big-endian binary representation of this value as boolean array.
+    */
+  def toBits(x: T): Coll[Boolean] = {
+
+    def isBitSet(byte: Byte)(bit: Int): Boolean = ((byte >> bit) & 1) == 1
+
+    val bytes = toBigEndianBytes(x)
+    val l = bytes.length
+    val res = new Array[Boolean](l * 8)
+    cfor(0)(_ < l, _ + 1) { i =>
+      val b = bytes(i)
+      cfor(0)(_ < 8, _ + 1) { bitIdx =>
+        res(i * 8 + (7 - bitIdx)) = isBitSet(b)(bitIdx)
+      }
+    }
+    Colls.fromArray(res)
+  }
+
+  /**
+    * @return a numeric value which is inverse of `x` (every bit, including sign, is flipped)
+    */
+  def bitwiseInverse(x: T): T
+
+  /**
+    * @return a numeric value which is `this | that`
+    */
+  def bitwiseOr(x: T, y: T): T
+
+  /**
+    * @return a numeric value which is `this && that`
+    */
+  def bitwiseAnd(x: T, y: T): T
+
+  /**
+    * @return a numeric value which is `this xor that`
+    */
+  def bitwiseXor(x: T, y: T): T
+
+  /**
+    * @return a value which is (this << n). The shift distance, n, may be negative,
+    *         in which case this method performs a right shift. (Computes floor(this * 2n).)
+    */
+  def shiftLeft(x: T, bits: Int): T
+
+  /**
+    * @return a value which is (this >> n). Sign extension is performed. The shift distance, n,
+    *         may be negative, in which case this method performs a left shift. (Computes floor(this / 2n).)
+    */
+  def shiftRight(x: T, bits: Int): T
 
   /** A value of type T which corresponds to integer 0. */
   lazy val zero: T = fromInt(0)

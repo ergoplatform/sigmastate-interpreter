@@ -280,7 +280,7 @@ class CProfiler extends Profiler {
           case ci: TypeBasedCostItem =>
             val comment = s"count: $count, suggested: $suggestedCost, actCost: ${ci.cost}$warn"
             (ci.opName, time, time, comment)
-          case ci @ SeqCostItem(_, costKind, nItems) =>
+          case ci @ SeqCostItem(_, costKind, _) =>
             val nChunks = ci.chunks
             val timePerChunk = if (nChunks > 0) time / nChunks else time
             val name = s"${ci.opName}(nChunks: $nChunks)"
@@ -289,7 +289,7 @@ class CProfiler extends Profiler {
         }
       }
       (name, timePerItem, time, comment)
-    }.sortBy({ case (name, tpi, t, c) => (name, tpi)})(Ordering[(String, Long)])
+    }.sortBy({ case (name, tpi, _, _) => (name, tpi)})(Ordering[(String, Long)])
 
     val estLines = estimationCostStat.mapToArray { case (script, stat) =>
       val (cost, count) = stat.mean
@@ -302,7 +302,7 @@ class CProfiler extends Profiler {
 
 
     val rows = opCodeLines
-        .map { case (opName, opCode, time, comment) =>
+        .map { case (opName, _, time, comment) =>
           val key = s"$opName".padTo(26, ' ')
           s"$key -> time: $time ns, $comment "
         }

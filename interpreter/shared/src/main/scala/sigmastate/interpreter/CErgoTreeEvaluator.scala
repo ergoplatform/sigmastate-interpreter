@@ -5,15 +5,17 @@ import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate.eval.{CAvlTreeVerifier, CProfiler}
 import sigmastate.interpreter.Interpreter.ReductionResult
-import sigma.{AvlTree, Coll, Colls, Context, VersionContext}
+import sigma.{AvlTree, Coll, Colls, Context, Header, VersionContext}
 import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey
 import sigma.ast.SAvlTreeMethods._
+import sigma.ast.SHeaderMethods.checkPowMethod
 import sigma.ast.SType
 import sigma.data.{CSigmaProp, KeyValueColl, SigmaBoolean}
 import sigma.eval.{AvlTreeVerifier, ErgoTreeEvaluator, EvalSettings, Profiler}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
+import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
 
 import scala.collection.compat.immutable.ArraySeq
 import scala.util.{DynamicVariable, Failure, Success}
@@ -293,7 +295,7 @@ class CErgoTreeEvaluator(
   }
 
   /** @hotspot don't beautify the code */
-  override def addFixedCost(costKind: FixedCost, opDesc: OperationDesc)(block: => Unit): Unit = {
+  override def addFixedCost[R](costKind: FixedCost, opDesc: OperationDesc)(block: => R): R = {
     var costItem: FixedCostItem = null
     if (settings.costTracingEnabled) {
       costItem = FixedCostItem(opDesc, costKind)
@@ -305,16 +307,17 @@ class CErgoTreeEvaluator(
       }
       val start = System.nanoTime()
       coster.add(costKind.cost)
-      val _ = block
+      val res = block
       val end = System.nanoTime()
       profiler.addCostItem(costItem, end - start)
+      res
     } else {
       coster.add(costKind.cost)
       block
     }
   }
 
-  override def addFixedCost(costInfo: OperationCostInfo[FixedCost])(block: => Unit): Unit = {
+  override def addFixedCost[R](costInfo: OperationCostInfo[FixedCost])(block: => R): R = {
     addFixedCost(costInfo.costKind, costInfo.opDesc)(block)
   }
 
@@ -449,7 +452,7 @@ object CErgoTreeEvaluator {
     * HOTSPOT: don't beautify the code
     * Note, `null` is used instead of Option to avoid allocations.
     */
-  def fixedCostOp[R <: AnyRef](costInfo: OperationCostInfo[FixedCost])
+  def fixedCostOp[R](costInfo: OperationCostInfo[FixedCost])
                               (block: => R)(implicit E: ErgoTreeEvaluator): R = {
     if (E != null) {
       var res: R = null.asInstanceOf[R]

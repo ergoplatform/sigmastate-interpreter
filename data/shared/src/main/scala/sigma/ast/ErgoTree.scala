@@ -25,13 +25,13 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   * ErgoTreeSerializer defines top-level serialization format of the scripts.
   * The interpretation of the byte array depend on the first `header` byte, which uses VLQ encoding up to 30 bits.
   * Currently we define meaning for only first byte, which may be extended in future versions.
-  * 7  6  5  4  3  2  1  0
+  *   7  6  5  4  3  2  1  0
   * -------------------------
   * |  |  |  |  |  |  |  |  |
   * -------------------------
   * Bit 7 == 1 if the header contains more than 1 byte (default == 0)
   * Bit 6 - reserved for GZIP compression (should be 0)
-  * Bit 5 == 1 - reserved for context dependent costing (should be = 0)
+  * Bit 5 == 1 - reserved (should be = 0)
   * Bit 4 == 1 if constant segregation is used for this ErgoTree (default = 0)
   * (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/264)
   * Bit 3 == 1 if size of the whole tree is serialized after the header byte (default = 0)
@@ -381,7 +381,7 @@ object ErgoTree {
     * */
   def withSegregation(header: HeaderType, prop: SigmaPropValue): ErgoTree = {
     val constantStore = new ConstantStore()
-    val w             = SigmaSerializer.startWriter(constantStore)
+    val w             = SigmaSerializer.startWriter(Some(constantStore))
     // serialize value and segregate constants into constantStore
     ValueSerializer.serialize(prop, w)
     val extractedConstants = constantStore.getAll
