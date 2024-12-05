@@ -50,6 +50,18 @@ trait AvlTreeVerifier {
     */
   def performUpdate(key: Array[Byte], value: Array[Byte]): Try[Option[Array[Byte]]]
 
+  /**
+    * Returns Failure if the proof does not verify.
+    * Otherwise, successfully modifies tree and so returns Success.
+    * After one failure, all subsequent operations with this verifier will fail and digest
+    * is None.
+    *
+    * @param key   key to look up
+    * @param value value to check it was updated
+    * @return Success(Some(value)), Success(None), or Failure
+    */
+  def performInsertOrUpdate(key: Array[Byte], value: Array[Byte]): Try[Option[Array[Byte]]]
+
   /** Check the key has been removed in the tree.
     * If `key` exists in the tree and the operation succeeds,
     * returns `Success(Some(v))`, where v is old value associated with `key`.

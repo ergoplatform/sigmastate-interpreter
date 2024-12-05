@@ -4,7 +4,7 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
 import scorex.crypto.authds.{ADKey, ADValue}
-import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, InsertOrUpdate}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ByteArrayBuilder
 import scorex.util.encode.Base16
@@ -13,15 +13,16 @@ import scorex.util.encode.Base16
 import scorex.utils.Ints
 import scorex.util.serialization.VLQByteBufferWriter
 import scorex.utils.Longs
-import sigma.{Colls, SigmaTestingData}
+import sigma.{Coll, Colls, SigmaTestingData, VersionContext}
 import sigma.Extensions.ArrayOps
-import sigma.{SigmaTestingData, VersionContext}
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
 import sigma.GroupElement
 import sigma.VersionContext.V6SoftForkVersion
 import sigma.ast.SCollection.SByteArray
+import sigma.ast.SType.{AnyOps, tD}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CAnyValue, CAvlTree, CHeader, CSigmaDslBuilder, CSigmaProp}
 import sigma.ast.SType.AnyOps
 import sigma.data.{AvlTreeData, CAnyValue, CBigInt, CGroupElement, CSigmaDslBuilder}
 import sigma.data.{AvlTreeData, CAnyValue, CHeader, CSigmaDslBuilder}
@@ -40,10 +41,10 @@ import sigma.ast.Apply
 import sigma.eval.EvalSettings
 import sigma.exceptions.InvalidType
 import sigma.serialization.{ErgoTreeSerializer, SerializerException}
+import sigma.serialization.{DataSerializer, ErgoTreeSerializer, SigmaByteWriter, SigmaSerializer, ValueSerializer}
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.validation.ValidationException
 import sigma.util.NBitsUtils
-import sigma.serialization.{DataSerializer, ErgoTreeSerializer, SigmaByteWriter}
 import sigma.util.Extensions
 import sigma.validation.ValidationException
 import sigmastate.utils.Helpers
@@ -3197,6 +3198,53 @@ class BasicOpsSpecification extends CompilerTestingCommons
       someTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("avltree.insertOrUpdate") {
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val elements2 = Seq(1, 22)
+    val treeElements2 = elements2.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    treeElements2.foreach(s => avlProver.performOneOperation(InsertOrUpdate(s._1, s._2)))
+    val updateProof = avlProver.generateProof()
+    val treeData2 = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val v: Coll[(Coll[Byte], Coll[Byte])] = treeElements2.map(t => t._1.toColl -> t._2.toColl).toArray.toColl
+    val ops = IR.builder.mkConstant[SType](v.asWrappedType, SCollection(STuple(SByteArray, SByteArray)))
+
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> AvlTreeConstant(treeData2),
+      23.toByte -> ops,
+      24.toByte -> ByteArrayConstant(updateProof)
+    )
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val tree1 = getVar[AvlTree](21).get
+            val tree2 = getVar[AvlTree](22).get
+
+            val toInsert = getVar[Coll[(Coll[Byte], Coll[Byte])]](23).get
+            val proof = getVar[Coll[Byte]](24).get
+
+            val tree1Updated = tree1.insertOrUpdate(toInsert, proof).get
+            tree2.digest == tree1Updated.digest
+          }""",
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      deserTest()
+    } else {
+      an[ValidationException] should be thrownBy deserTest()
     }
   }
 
