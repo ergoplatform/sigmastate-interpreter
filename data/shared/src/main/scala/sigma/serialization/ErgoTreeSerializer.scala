@@ -74,7 +74,7 @@ import sigma.validation.ValidationRules.CheckPositionLimit
   * End of proof.
   *
   */
-class ErgoTreeSerializer {
+class ErgoTreeSerializer(protocolVersion: Byte = VersionContext.V6SoftForkVersion) {
 
   /** Serialize header and constants section only.*/
   private def serializeHeader(ergoTree: ErgoTree, w: SigmaByteWriter): Unit = {
