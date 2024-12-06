@@ -129,10 +129,6 @@ class ErgoTreeSerializer {
   }
 
   def deserializeErgoTree(r: SigmaByteReader, maxTreeSizeBytes: Int): ErgoTree = {
-    deserializeErgoTree(r, maxTreeSizeBytes, true)
-  }
-
-  private[sigma] def deserializeErgoTree(r: SigmaByteReader, maxTreeSizeBytes: Int, checkType: Boolean): ErgoTree = {
     val startPos = r.position
     val previousPositionLimit = r.positionLimit
     r.positionLimit = r.position + maxTreeSizeBytes
@@ -158,9 +154,7 @@ class ErgoTreeSerializer {
         val isUsingBlockchainContext = r.wasUsingBlockchainContext // == true if there was a node using the blockchain context
         r.wasUsingBlockchainContext = wasUsingBlockchainContext_saved
 
-        if (checkType) {
-          CheckDeserializedScriptIsSigmaProp(root)
-        }
+        CheckDeserializedScriptIsSigmaProp(root)
 
         r.constantStore = previousConstantStore
         // now we know the end position of propositionBytes, read them all at once into array

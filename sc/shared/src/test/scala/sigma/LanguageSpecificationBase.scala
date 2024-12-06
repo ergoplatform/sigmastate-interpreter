@@ -47,7 +47,7 @@ abstract class LanguageSpecificationBase extends SigmaDslTesting
     * parameters.
     */
   protected override def testFun_Run(testName: String, testFun: => Any): Unit = {
-    VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+    VersionContext.withScriptVersion(activatedVersionInTests) {
       super.testFun_Run(testName, testFun)
     }
   }

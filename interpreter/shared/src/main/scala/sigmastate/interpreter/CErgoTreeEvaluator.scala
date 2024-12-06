@@ -251,7 +251,10 @@ class CErgoTreeEvaluator(
 
   /** Evaluates the given expression in the given data environment. */
   def eval(env: DataEnv, exp: SValue): Any = {
-    VersionContext.checkVersions(context.activatedScriptVersion, context.currentErgoTreeVersion)
+    VersionContext.checkVersion(context.activatedScriptVersion)
+    require(context.currentErgoTreeVersion <= context.activatedScriptVersion,
+      s"ergoTreeVersion must never exceed activatedVersion: $this")
+
     CErgoTreeEvaluator.currentEvaluator.withValue(this) {
       exp.evalTo[Any](env)(this)
     }

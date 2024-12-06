@@ -204,7 +204,7 @@ trait Interpreter {
                     ctx: CTX,
                     env: ScriptEnv): ReductionResult = {
     val context = ctx.withErgoTreeVersion(ergoTree.version).asInstanceOf[CTX]
-    VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+    VersionContext.withScriptVersion(context.activatedScriptVersion) {
       val prop = propositionFromErgoTree(ergoTree, context)
 
       val res = prop match {
@@ -217,12 +217,12 @@ trait Interpreter {
           ReductionResult(sb, resCost)
         case _ if !ergoTree.hasDeserialize =>
           val ctx = context.asInstanceOf[ErgoLikeContext]
-          val res = VersionContext.withVersions(ctx.activatedScriptVersion, ergoTree.version) {
+          val res = VersionContext.withScriptVersion(ctx.activatedScriptVersion) {
             CErgoTreeEvaluator.evalToCrypto(ctx, ergoTree, evalSettings)
           }
           res
         case _ =>
-          reductionWithDeserialize(ergoTree, prop, context, env)
+          reductionWithDeserialize(ergoTree, prop, context)
       }
       res
     }
@@ -239,16 +239,15 @@ trait Interpreter {
   /** Performs reduction of proposition which contains deserialization operations. */
   private def reductionWithDeserialize(ergoTree: ErgoTree,
                                        prop: SigmaPropValue,
-                                       context: CTX,
-                                       env: ScriptEnv): ReductionResult = {
+                                       context: CTX): ReductionResult = {
     implicit val vs: SigmaValidationSettings = context.validationSettings
-    val res = VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+    val res = VersionContext.withScriptVersion(context.activatedScriptVersion) {
       val deserializeSubstitutionCost = java7.compat.Math.multiplyExact(ergoTree.bytes.length, CostPerTreeByte)
       val currCost = addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
       val (propTree, context2) = trySoftForkable[(SigmaPropValue, CTX)](whenSoftFork = (TrueSigmaProp, context1)) {
         // Before ErgoTree V3 the deserialization cost was not added to the total cost
-        applyDeserializeContextJITC(if (VersionContext.current.activatedVersion >= VersionContext.V6SoftForkVersion) {
+        applyDeserializeContextJITC(if (VersionContext.current.isV6SoftForkActivated) {
           context1
         } else {
           context
@@ -359,7 +358,7 @@ trait Interpreter {
         case Some(resWhenSoftFork) => return Success(resWhenSoftFork)
         case None => // proceed normally
       }
-      VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+      VersionContext.withScriptVersion(context.activatedScriptVersion) {
         // NOTE, ergoTree.complexity is not acrued to the cost in v5.0
         val reduced = fullReduction(ergoTree, context, env)
         reduced.value match {
