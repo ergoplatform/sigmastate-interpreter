@@ -248,7 +248,7 @@ trait Interpreter {
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
       val (propTree, context2) = trySoftForkable[(SigmaPropValue, CTX)](whenSoftFork = (TrueSigmaProp, context1)) {
         // Before ErgoTree V3 the deserialization cost was not added to the total cost
-        applyDeserializeContextJITC(if (VersionContext.current.activatedVersion >= VersionContext.V6SoftForkVersion) {
+        applyDeserializeContextJITC(if (VersionContext.current.isV6SoftForkActivated) {
           context1
         } else {
           context
