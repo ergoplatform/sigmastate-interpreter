@@ -340,7 +340,7 @@ object ReducedErgoLikeTransactionSerializer extends SigmaSerializer[ReducedErgoL
     */
   def parse(r: SigmaByteReader, blockVersion: Byte): ReducedErgoLikeTransaction = {
     val scriptVersion = (blockVersion - 1).toByte
-    VersionContext.withVersions(scriptVersion, scriptVersion) {
+    VersionContext.withScriptVersion(scriptVersion) {
       parse(r)
     }
   }

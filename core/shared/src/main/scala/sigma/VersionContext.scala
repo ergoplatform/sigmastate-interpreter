@@ -10,13 +10,10 @@ import scala.util.DynamicVariable
   * thread.
   *
   * @param activatedVersion Currently activated script version == Block.headerVersion - 1
-  * @param ergoTreeVersion  version of the currently executed ErgoTree
   *
   * @see
   */
-case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
-  require(ergoTreeVersion <= activatedVersion,
-    s"In a valid VersionContext ergoTreeVersion must never exceed activatedVersion: $this")
+case class VersionContext(activatedVersion: Byte) {
 
   /** @return true, if the activated script version of Ergo protocol on the network is
    * greater than v1. */
@@ -51,8 +48,7 @@ object VersionContext {
   val V6SoftForkVersion: Byte = 3
 
   private val _defaultContext = VersionContext(
-    activatedVersion = 1 /* v4.x */,
-    ergoTreeVersion  = 1
+    activatedVersion = 1
   )
 
   /** Universally accessible version context which is used to version the code
@@ -87,21 +83,22 @@ object VersionContext {
     * necessary versions of Ergo protocol and ErgoTree.
     *
     * @param activatedVersion Currently activated script version == Block.headerVersion - 1
-    * @param ergoTreeVersion  ErgoTree version to be set on the current thread
     * @param block            block of code to execute
     * @return result of block execution
     */
-  def withVersions[T](activatedVersion: Byte, ergoTreeVersion: Byte)(block: => T): T =
-    _versionContext.withValue(VersionContext(activatedVersion, ergoTreeVersion))(block)
+  def withScriptVersion[T](activatedVersion: Byte)(block: => T): T =
+    _versionContext.withValue(VersionContext(activatedVersion))(block)
 
   /** Checks the version context has the given versions*/
-  def checkVersions(activatedVersion: Byte, ergoTreeVersion: Byte) = {
+  def checkVersion(activatedVersion: Byte): Unit = {
     val ctx = VersionContext.current
-    if (ctx.activatedVersion != activatedVersion || ctx.ergoTreeVersion != ergoTreeVersion) {
-      val expected = VersionContext(activatedVersion, ergoTreeVersion)
+    if (ctx.activatedVersion != activatedVersion) {
+      val expected = VersionContext(activatedVersion)
       throw new IllegalStateException(
         s"Global VersionContext.current = ${ctx} while expected $expected.")
     }
   }
+
+  def fromBlockVersion(blockVersion: Byte): VersionContext = VersionContext((blockVersion - 1).toByte)
 
 }

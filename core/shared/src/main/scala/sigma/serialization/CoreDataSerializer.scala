@@ -34,7 +34,7 @@ class CoreDataSerializer {
       val data = v.asInstanceOf[BigInt].toBigInteger.toByteArray
       w.putUShort(data.length)
       w.putBytes(data)
-    case SUnsignedBigInt if VersionContext.current.isV6SoftForkActivated =>
+    case SUnsignedBigInt =>
       val data = BigIntegers.asUnsignedByteArray(v.asInstanceOf[CUnsignedBigInt].wrappedValue)
       w.putUShort(data.length)
       w.putBytes(data)
@@ -73,7 +73,7 @@ class CoreDataSerializer {
         i += 1
       }
 
-    case SOption(elemType) if VersionContext.current.isV6SoftForkActivated =>
+    case SOption(elemType) =>
       val o = v.asInstanceOf[Option[elemType.WrappedType]]
       w.putOption(o){case (w, v) =>
         serialize(v, elemType, w)

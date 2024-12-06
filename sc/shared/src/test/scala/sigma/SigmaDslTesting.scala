@@ -527,11 +527,11 @@ class SigmaDslTesting extends AnyPropSpec
       */
     def checkEquality(input: A, logInputOutput: Boolean = false): Try[(B, CostDetails)] = {
       // check the old implementation against Scala semantic function
-      val oldRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      val oldRes = VersionContext.withScriptVersion(activatedVersionInTests) {
         checkEq(scalaFunc)(oldF)(input)
       }
 
-      val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      val newRes = VersionContext.withScriptVersion(activatedVersionInTests) {
         checkEq(scalaFunc)({ x =>
           var y: (B, CostDetails) = null
           val N = nBenchmarkIters + 1
@@ -588,13 +588,13 @@ class SigmaDslTesting extends AnyPropSpec
       */
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       // check the old implementation with Scala semantic
-      val (oldRes, _) = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      val (oldRes, _) = VersionContext.withScriptVersion(activatedVersionInTests) {
         checkEq(scalaFunc)(oldF)(input).get
       }
       oldRes shouldBe expected.value.get
 
       // check the new implementation with Scala semantic
-      val (newRes, newDetails) = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      val (newRes, newDetails) = VersionContext.withScriptVersion(activatedVersionInTests) {
         checkEq(scalaFunc)(newF)(input).get
       }
       newRes shouldBe expected.value.get
@@ -716,7 +716,7 @@ class SigmaDslTesting extends AnyPropSpec
     override def checkEquality(input: A, logInputOutput: Boolean = false): Try[(B, CostDetails)] = {
       // check the old implementation against Scala semantic function
       var oldRes: Try[(B, CostDetails)] = null
-        oldRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+        oldRes = VersionContext.withScriptVersion(activatedVersionInTests) {
           try checkEq(scalaFunc)(oldF)(input)
           catch {
             case e: TestFailedException =>
@@ -734,7 +734,7 @@ class SigmaDslTesting extends AnyPropSpec
 
       val newRes = {
         // check the new implementation against Scala semantic function
-        val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+        val newRes = VersionContext.withScriptVersion(activatedVersionInTests) {
           checkEq(scalaFuncNew)(newF)(input)
         }
         if (ergoTreeVersionInTests < VersionContext.JitActivationVersion) {
@@ -770,7 +770,7 @@ class SigmaDslTesting extends AnyPropSpec
       */
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       // check the new implementation with Scala semantic function
-      val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      val newRes = VersionContext.withScriptVersion(activatedVersionInTests) {
           checkEq(scalaFuncNew)(newF)(input)
       }
 
@@ -910,7 +910,7 @@ class SigmaDslTesting extends AnyPropSpec
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       Try(oldF(input)).isFailure shouldBe true
       if (!(newImpl eq oldImpl)) {
-        val (newRes, _) = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+        val (newRes, _) = VersionContext.withScriptVersion(activatedVersionInTests) {
           checkEq(scalaFuncNew)(newF)(input).get
         }
         val newExpectedRes = expected.newResults(ergoTreeVersionInTests)
@@ -1264,7 +1264,7 @@ class SigmaDslTesting extends AnyPropSpec
     val funcNoTrace = funcJit[A, B](f.script)(tA, tB, IR, noTraceSettings, cs)
     var iCase = 0
     val (res, total) = BenchmarkUtil.measureTimeNano {
-      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
+      VersionContext.withScriptVersion(activatedVersionInTests) {
         cases.map { x =>
           assert(func(x)._1 == f.newF(x)._1)
           iCase += 1
