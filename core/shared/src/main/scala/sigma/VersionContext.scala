@@ -83,11 +83,10 @@ object VersionContext {
     * necessary versions of Ergo protocol and ErgoTree.
     *
     * @param activatedVersion Currently activated script version == Block.headerVersion - 1
-    * @param ergoTreeVersion  ErgoTree version to be set on the current thread
     * @param block            block of code to execute
     * @return result of block execution
     */
-  def withVersions[T](activatedVersion: Byte, ergoTreeVersion: Byte)(block: => T): T =
+  def withScriptVersion[T](activatedVersion: Byte)(block: => T): T =
     _versionContext.withValue(VersionContext(activatedVersion))(block)
 
   /** Checks the version context has the given versions*/

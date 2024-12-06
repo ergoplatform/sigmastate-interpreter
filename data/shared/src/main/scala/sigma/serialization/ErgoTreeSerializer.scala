@@ -127,7 +127,7 @@ class ErgoTreeSerializer(protocolVersion: Byte = VersionContext.V6SoftForkVersio
     val r = SigmaSerializer.startReader(bytes)
     deserializeErgoTree(r, SigmaSerializer.MaxPropositionSize)
   }
-  
+
   def deserializeErgoTree(r: SigmaByteReader, maxTreeSizeBytes: Int): ErgoTree = {
     val startPos = r.position
     val previousPositionLimit = r.positionLimit
@@ -385,4 +385,8 @@ class ErgoTreeSerializer(protocolVersion: Byte = VersionContext.V6SoftForkVersio
     (resBytes, nConstants)
   }
 
+}
+
+object ErgoTreeSerializer {
+  val DefaultSerializer = new ErgoTreeSerializer
 }

@@ -82,7 +82,7 @@ trait LangTests extends Matchers with NegativeTesting {
 
   /** Execute the given `block` having `version` as both activated and ErgoTree version. */
   def runWithVersion[T](version: Byte)(block: => T): T = {
-    VersionContext.withVersions(version, version)(block)
+    VersionContext.withScriptVersion(version)(block)
   }
 
 }

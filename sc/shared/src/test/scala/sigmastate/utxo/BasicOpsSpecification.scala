@@ -16,7 +16,7 @@ import scorex.utils.Longs
 import sigma.{Colls, SigmaTestingData}
 import sigma.Extensions.ArrayOps
 import sigma.{SigmaTestingData, VersionContext}
-import sigma.VersionContext.{V6SoftForkVersion, withVersions}
+import sigma.VersionContext.{V6SoftForkVersion, withScriptVersion}
 import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
 import sigma.GroupElement
@@ -127,7 +127,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       propExp.asSigmaProp
     } else {
       // compile with the latest compiler version, to get validation exception during execution, not compilation error
-      withVersions(VersionContext.MaxSupportedScriptVersion, ergoTreeVersionInTests) {
+      withScriptVersion(VersionContext.MaxSupportedScriptVersion) {
         compile(env, script).asBoolValue.toSigmaProp
       }
     }

@@ -38,12 +38,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       roundTripTest(expr)
     }
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     a[SerializerException] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
       )
@@ -65,12 +65,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       roundTripTest(expr)
     }
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     an[ValidationException] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
       )
@@ -87,12 +87,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       roundTripTest(expr)
     }
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     an[ValidationException] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
     )
@@ -111,12 +111,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
 
     println(SGlobalMethods.deserializeToMethod.hasExplicitTypeArgs)
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     an[Exception] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       })
   }
@@ -133,12 +133,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
     }
 
     // should be ok
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     an[ValidationException] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       })
   }
@@ -154,12 +154,12 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       roundTripTest(expr)
     }
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
       code
     }
 
     an[ValidationException] should be thrownBy (
-      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
       )
