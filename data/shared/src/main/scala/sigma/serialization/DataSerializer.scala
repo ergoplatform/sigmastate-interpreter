@@ -16,7 +16,7 @@ object DataSerializer extends CoreDataSerializer {
     case SBox =>
       val b = v.asInstanceOf[CBox]
       ErgoBox.sigmaSerializer.serialize(b.ebox, w.asInstanceOf[SigmaByteWriter])
-    case SHeader if VersionContext.current.isV6SoftForkActivated =>
+    case SHeader =>
       val h = v.asInstanceOf[CHeader]
       ErgoHeader.sigmaSerializer.serialize(h.ergoHeader, w.asInstanceOf[SigmaByteWriter])
     case _ =>
