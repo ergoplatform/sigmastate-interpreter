@@ -26,6 +26,8 @@ case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
    * including v6.0 update. */
   def isV3OrLaterErgoTreeVersion: Boolean = ergoTreeVersion >= V6SoftForkVersion
 
+  def isV6Activated: Boolean = activatedVersion >= V6SoftForkVersion
+
 }
 
 object VersionContext {
