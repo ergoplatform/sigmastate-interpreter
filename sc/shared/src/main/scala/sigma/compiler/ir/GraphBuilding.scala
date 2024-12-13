@@ -1055,7 +1055,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           case (box: Ref[Box]@unchecked, SBoxMethods) => method.name match {
             case SBoxMethods.tokensMethod.name =>
               box.tokens
-            case SBoxMethods.getRegMethodV6.name if VersionContext.current.isV6SoftForkActivated =>
+            case SBoxMethods.getRegMethodV6.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Int](argsV(0))
               val c2 = stypeToElem(typeSubst.apply(tT))
               box.getReg(c1)(c2)
@@ -1188,7 +1188,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               h.powDistance
             case SHeaderMethods.votesMethod.name =>
               h.votes
-            case SHeaderMethods.checkPowMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SHeaderMethods.checkPowMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               h.checkPow
             case _ => throwError()
           }
@@ -1199,26 +1199,26 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val c1 = asRep[Coll[Byte]](argsV(0))
               val c2 = asRep[Coll[Byte]](argsV(1))
               g.xor(c1, c2)
-            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[BigInt](argsV(0))
               g.encodeNbits(c1)
-            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Long](argsV(0))
               g.decodeNbits(c1)
-            case SGlobalMethods.powHitMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.powHitMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val k = asRep[Int](argsV(0))
               val msg = asRep[Coll[Byte]](argsV(1))
               val nonce = asRep[Coll[Byte]](argsV(2))
               val h = asRep[Coll[Byte]](argsV(3))
               val N = asRep[Int](argsV(4))
               g.powHit(k, msg, nonce, h, N)
-            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[BigInt](argsV(0))
               g.encodeNbits(c1)
-            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Long](argsV(0))
               g.decodeNbits(c1)
-            case SGlobalMethods.deserializeToMethod.name if VersionContext.current.isV6SoftForkActivated =>
+            case SGlobalMethods.deserializeToMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Coll[Byte]](argsV(0))
               val c2 = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.deserializeTo(c1)(c2)

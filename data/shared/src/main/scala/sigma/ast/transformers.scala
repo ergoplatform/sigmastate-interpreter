@@ -258,7 +258,7 @@ case class ByIndex[V <: SType](input: Value[SCollection[V]],
     val indexV = index.evalTo[Int](env)
     default match {
       case Some(d) =>
-        if (VersionContext.current.isV6SoftForkActivatedAndTreeV3) {
+        if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
           // lazy evaluation of default in 6.0
           addCost(ByIndex.costKind)
           if (inputV.isDefinedAt(indexV)) {
@@ -625,7 +625,7 @@ case class OptionGetOrElse[V <: SType](input: Value[SOption[V]], default: Value[
   override val opType = SFunc(IndexedSeq(input.tpe, tpe), tpe)
   override def tpe: V = input.tpe.elemType
   protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
-    if(VersionContext.current.isV6SoftForkActivatedAndTreeV3) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       // lazy evaluation of default in 6.0
       val inputV = input.evalTo[Option[V#WrappedType]](env)
       addCost(OptionGetOrElse.costKind)

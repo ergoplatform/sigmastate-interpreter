@@ -267,7 +267,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("BigInt downcasting to byte") {
     def test() = testEval("{ sigmaProp(0L.toBigInt.toByte <= CONTEXT.preHeader.version) }")
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       test()
     } else {
       an[Exception] shouldBe thrownBy(test())
@@ -276,7 +276,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("BigInt downcasting to short") {
     def test() = testEval("{ sigmaProp(0L.toBigInt.toShort <= CONTEXT.preHeader.version.toShort) }")
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       test()
     } else {
       an[Exception] shouldBe thrownBy(test())
@@ -285,7 +285,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("BigInt downcasting to int") {
     def test() = testEval("{ sigmaProp(1L.toBigInt.toInt < CONTEXT.preHeader.timestamp.toInt) }")
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       test()
     } else {
       an[Exception] shouldBe thrownBy(test())
@@ -294,7 +294,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("BigInt downcasting to long") {
     def test() = testEval("{ sigmaProp(1L.toBigInt.toLong < CONTEXT.preHeader.timestamp) }")
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       test()
     } else {
       an[Exception] shouldBe thrownBy(test())

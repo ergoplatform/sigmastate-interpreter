@@ -348,7 +348,7 @@ class ErgoTreeSerializer {
       val w = SigmaSerializer.startWriter()
       w.put(header) // header byte
 
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         // fix in v6.0 to save tree size to respect size bit of the original tree
         if (ErgoTree.hasSize(header)) {
           val size = constBytes.length + treeBytes.length

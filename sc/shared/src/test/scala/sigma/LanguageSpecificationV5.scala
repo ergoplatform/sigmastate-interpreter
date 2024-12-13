@@ -8060,7 +8060,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           )
         )
     )
-    if(!VersionContext.current.isV6SoftForkActivated) {
+    if(!VersionContext.current.isV3OrLaterErgoTreeVersion) {
     verifyCases(
       // (coll, (index, default))
       {
@@ -8698,7 +8698,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         "{ (x: Option[Long]) => x.isDefined }",
         FuncValue(Vector((1, SOption(SLong))), OptionIsDefined(ValUse(1, SOption(SLong))))))
 
-        if (!VersionContext.current.isV6SoftForkActivated) {
+        if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       verifyCases(
         Seq(
           (None -> Expected(Success(1L), 1766, costDetails3, 1766, Seq.fill(4)(2006))),

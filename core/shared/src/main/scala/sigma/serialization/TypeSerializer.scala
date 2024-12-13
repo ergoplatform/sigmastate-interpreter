@@ -200,7 +200,7 @@ class TypeSerializer {
         case SHeader.typeCode => SHeader
         case SPreHeader.typeCode => SPreHeader
         case SGlobal.typeCode => SGlobal
-        case SFunc.FuncTypeCode if VersionContext.current.isV6SoftForkActivated =>
+        case SFunc.FuncTypeCode if VersionContext.current.isV3OrLaterErgoTreeVersion =>
           val tdLength = r.getUByte()
 
           val tDom = (1 to tdLength).map { _ =>
@@ -243,7 +243,7 @@ object TypeSerializer extends TypeSerializer {
   /** The list of embeddable types, i.e. types that can be combined with type constructor for optimized encoding.
     * For each embeddable type `T`, and type constructor `C`, the type `C[T]` can be represented by single byte. */
     def embeddableIdToType = {
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         embeddableV6
       } else {
         embeddableV5

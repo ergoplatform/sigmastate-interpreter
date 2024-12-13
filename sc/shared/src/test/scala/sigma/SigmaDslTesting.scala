@@ -329,7 +329,9 @@ class SigmaDslTesting extends AnyPropSpec
         val pkAlice = prover.pubKeys.head.toSigmaPropValue
         val env = Map("pkAlice" -> pkAlice)
         // Compile script the same way it is performed by applications (i.e. via Ergo Appkit)
-        val prop = compile(env, code)(IR).asSigmaProp
+        val prop = VersionContext.withVersions(3, 3) {
+          compile(env, code)(IR).asSigmaProp
+        }
 
         // Add additional operations which are not yet implemented in ErgoScript compiler
         val multisig = AtLeast(
@@ -404,10 +406,10 @@ class SigmaDslTesting extends AnyPropSpec
         ctx
       }
 
-      val (expectedResult, expectedCost) = if (activatedVersionInTests < sinceVersion)
+      val (expectedResult, expectedCost) = if (activatedVersionInTests < sinceVersion || ergoTreeVersionInTests < sinceVersion)
         (expected.oldResult, expected.verificationCostOpt)
       else {
-        val res = expected.newResults(ergoTreeVersionInTests)
+        val res = expected.newResults(sinceVersion)
         (res._1, res._1.verificationCost)
       }
 
@@ -774,7 +776,7 @@ class SigmaDslTesting extends AnyPropSpec
           checkEq(scalaFuncNew)(newF)(input)
       }
 
-      if (VersionContext.current.activatedVersion < changedInVersion) {
+      if (VersionContext.current.activatedVersion < changedInVersion && VersionContext.current.ergoTreeVersion < changedInVersion) {
         // check the old implementation with Scala semantic
         val expectedOldRes = expected.value
 
@@ -879,7 +881,7 @@ class SigmaDslTesting extends AnyPropSpec
     extends Feature[A, B] {
 
     override def isSupportedIn(vc: VersionContext): Boolean =
-      vc.activatedVersion >= sinceVersion
+      vc.activatedVersion >= sinceVersion && vc.ergoTreeVersion >= sinceVersion
 
     override def scalaFunc: A => B = { x =>
       if (isSupportedIn(VersionContext.current)) {
@@ -1092,6 +1094,21 @@ class SigmaDslTesting extends AnyPropSpec
           val commonNewResults = defaultNewResults.map {
             case (res, _) =>
               (ExpectedResult(res.value, Some(newCost)), Option(expectedDetails))
+          }
+          commonNewResults.updateMany(newVersionedResults).toSeq
+        }
+      }
+
+    def apply[A](value: Try[A],
+                 costOpt: Option[Int],
+                 expectedDetails: CostDetails,
+                 newCostOpt: Option[Int],
+                 newVersionedResults: Seq[(Int, (ExpectedResult[A], Option[CostDetails]))]): Expected[A] =
+      new Expected[A](ExpectedResult(value, costOpt)) {
+        override val newResults = {
+          val commonNewResults = defaultNewResults.map {
+            case (res, _) =>
+              (ExpectedResult(res.value, newCostOpt), Option(expectedDetails))
           }
           commonNewResults.updateMany(newVersionedResults).toSeq
         }
