@@ -236,12 +236,6 @@ object SigmaDataReflection {
   { val clazz = SAvlTreeMethods.getClass
     registerClassEntry(clazz,
       methods = Map(
-        mkMethod(clazz, "update_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
-          obj.asInstanceOf[SAvlTreeMethods.type].update_eval(args(0).asInstanceOf[MethodCall],
-            args(1).asInstanceOf[AvlTree],
-            args(2).asInstanceOf[KeyValueColl],
-            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
-        },
         mkMethod(clazz, "contains_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
           obj.asInstanceOf[SAvlTreeMethods.type].contains_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[AvlTree],
@@ -268,6 +262,18 @@ object SigmaDataReflection {
         },
         mkMethod(clazz, "insert_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
           obj.asInstanceOf[SAvlTreeMethods.type].insert_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[AvlTree],
+            args(2).asInstanceOf[KeyValueColl],
+            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "update_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SAvlTreeMethods.type].update_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[AvlTree],
+            args(2).asInstanceOf[KeyValueColl],
+            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "insertOrUpdate_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SAvlTreeMethods.type].insertOrUpdate_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[AvlTree],
             args(2).asInstanceOf[KeyValueColl],
             args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])

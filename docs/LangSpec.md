@@ -749,9 +749,23 @@ class AvlTree {
     * Return None if operations were not performed.
     * @param operations collection of key-value pairs to update in this
     *                   authenticated dictionary.
-    * @param proof      data to reconstruct part of the tree
+    * @param proof      subtree which is enough to check operations
     */
   def update(operations: Coll[(Coll[Byte], Coll[Byte])], proof: Coll[Byte]): Option[AvlTree]
+
+
+ /** Perform insertions or updates of key-value entries into this tree using proof `proof`.
+   * Throws exception if proof is incorrect
+   *
+   * @note CAUTION! Pairs must be ordered the same way they were in ops
+   * before proof was generated.
+   * Return Some(newTree) if successful
+   * Return None if operations were not performed.
+   * @param operations collection of key-value pairs to insert or update in this
+   *                   authenticated dictionary.
+   * @param proof subtree which is enough to check operations
+   */
+ def insertOrUpdate(operations: Coll[(Coll[Byte], Coll[Byte])], proof: Coll[Byte]): Option[AvlTree]
 
   /** Perform removal of entries into this tree using proof `proof`.
     * Throws exception if proof is incorrect
