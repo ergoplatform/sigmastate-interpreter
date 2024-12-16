@@ -134,7 +134,7 @@ abstract class ErgoTreeEvaluator {
       mc: MethodCall, tree: AvlTree,
       operations: KeyValueColl, proof: Coll[Byte]): Option[AvlTree]
 
-  /** Implements evaluation of AvlTree.insert method call ErgoTree node. */
+  /** Implements evaluation of AvlTree.insertOrUpdate method call ErgoTree node. */
   def insertOrUpdate_eval(
                    mc: MethodCall,
                    tree: AvlTree,
