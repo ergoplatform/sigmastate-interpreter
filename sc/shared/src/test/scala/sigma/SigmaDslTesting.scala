@@ -406,9 +406,12 @@ class SigmaDslTesting extends AnyPropSpec
         ctx
       }
 
-      val (expectedResult, expectedCost) = if (activatedVersionInTests < sinceVersion || ergoTreeVersionInTests < sinceVersion)
+      val (expectedResult, expectedCost) = if (
+        (activatedVersionInTests < VersionContext.V6SoftForkVersion && activatedVersionInTests < sinceVersion) ||
+          (activatedVersionInTests < sinceVersion && ergoTreeVersionInTests < sinceVersion)
+      ) {
         (expected.oldResult, expected.verificationCostOpt)
-      else {
+      } else {
         val res = expected.newResults(sinceVersion)
         (res._1, res._1.verificationCost)
       }
@@ -465,7 +468,8 @@ class SigmaDslTesting extends AnyPropSpec
           val verificationCost = cost.toIntExact
           if (expectedCost.isDefined) {
             assertResult(expectedCost.get,
-              s"Actual verify() cost $cost != expected ${expectedCost.get} (version: ${VersionContext.current.activatedVersion})")(verificationCost)
+              s"Actual verify() cost $cost != expected ${expectedCost.get} " +
+                s"(script version: ${VersionContext.current.activatedVersion}, tree version: ${VersionContext.current.ergoTreeVersion})")(verificationCost)
           }
 
         case Failure(t) => throw t
