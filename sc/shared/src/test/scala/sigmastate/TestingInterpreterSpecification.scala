@@ -10,13 +10,9 @@ import org.ergoplatform._
 import org.scalatest.BeforeAndAfterAll
 import scorex.util.encode.{Base16, Base58}
 import sigma.Colls
-import sigma.VersionContext.V6SoftForkVersion
-import sigma.VersionContext.V6SoftForkVersion
-import sigma.VersionContext
+import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.data.{CAND, CAvlTree, CBox, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
-import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
-import sigma.VersionContext.V6SoftForkVersion
 import sigma.VersionContext
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
@@ -244,10 +240,10 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         | Global.encodeNbits(b) == 36626176
         |}
         |""".stripMargin
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
-    } else {
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
       testEval(source)
+    } else {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
     }
   }
 
@@ -355,10 +351,10 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         | Global.powHit(k, msg, nonce, h, N) <= b // hit == b in this example
         |}
         |""".stripMargin
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
-    } else {
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
       testEval(source)
+    } else {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
     }
   }
 
@@ -516,10 +512,10 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
                    | }
                    | """.stripMargin
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an [Exception] should be thrownBy testEval(source)
-    } else {
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
       testEval(source)
+    } else {
+      an [Exception] should be thrownBy testEval(source)
     }
   }
 

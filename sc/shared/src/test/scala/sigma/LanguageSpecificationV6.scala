@@ -14,27 +14,17 @@ import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.CSigmaDslBuilder
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
+import sigma.data.{CGroupElement, CUnsignedBigInt}
 import sigma.crypto.SecP256K1Group
-import sigma.data.{CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, ExactNumeric, RType}
-import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
-import sigma.util.Extensions.{BooleanOps, IntOps}
-import sigma.serialization.ValueCodes.OpCode
-import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
-import sigma.util.Extensions.{BooleanOps, IntOps}
-import sigma.data.RType
-import sigma.serialization.ValueCodes.OpCode
-import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigma.pow.Autolykos2PowValidation
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
 import sigma.Extensions.ArrayOps
-import sigma.Extensions.{ArrayOps, CollOps}
 import sigma.crypto.CryptoConstants
 import sigma.interpreter.{ContextExtension, ProverResult}
 
