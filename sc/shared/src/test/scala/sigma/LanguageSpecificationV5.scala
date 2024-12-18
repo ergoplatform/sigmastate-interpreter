@@ -4876,7 +4876,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             Vector(),
             Map()
           )
-        )),
+        ), activationType = 0),
       preGeneratedSamples = Some(samples))
 
     // test vectors to reproduce v4.x bug (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/603)
@@ -5136,6 +5136,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             )
           )
         ),
+        activationType = 0,
         allowNewToSucceed = true
       ),
       preGeneratedSamples = Some(ArraySeq.empty))
@@ -6059,7 +6060,9 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         (x: Coll[Boolean]) => SigmaDsl.xorOf(x),
         (x: Coll[Boolean]) => SigmaDsl.xorOf(x),
         "{ (x: Coll[Boolean]) => xorOf(x) }",
-        FuncValue(Vector((1, SBooleanArray)), XorOf(ValUse(1, SBooleanArray)))))
+        FuncValue(Vector((1, SBooleanArray)), XorOf(ValUse(1, SBooleanArray))),
+        activationType = 0
+      ))
   }
 
   property("LogicalNot equivalence") {
@@ -6334,7 +6337,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         (x: (Coll[Byte], Coll[Byte])) => SigmaDsl.xor(x._1, x._2),
         (x: (Coll[Byte], Coll[Byte])) => SigmaDsl.xor(x._1, x._2),
         "{ (x: (Coll[Byte], Coll[Byte])) => xor(x._1, x._2) }",
-        if (lowerMethodCallsInTests)
+        {if (lowerMethodCallsInTests)
           FuncValue(
             Vector((1, STuple(Vector(SByteArray, SByteArray)))),
             Xor(
@@ -6366,7 +6369,8 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
               ),
               Map()
             )
-          )
+          )},
+        activationType = 0
       ))
   }
 
@@ -8965,6 +8969,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             LongConstant(5L)
           )
         ),
+        activationType = 0,
         allowNewToSucceed = true),
       preGeneratedSamples = Some(Nil))
   }
@@ -9538,7 +9543,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             ),
             ConcreteCollection(Array(BoolToSigmaProp(FalseLeaf)), SSigmaProp)
           )
-        )))
+        ), activationType = 0))
   }
 
   // Original issue: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/604
@@ -9687,6 +9692,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
               )
             )
           ),
+          activationType = 0,
           allowDifferentErrors = true,
           allowNewToSucceed = true
         ),
