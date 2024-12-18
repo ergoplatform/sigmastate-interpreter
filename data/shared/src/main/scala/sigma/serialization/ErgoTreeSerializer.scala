@@ -142,7 +142,8 @@ class ErgoTreeSerializer {
       try { // nested try-catch to intercept size limit exceptions and rethrow them as ValidationExceptions
 
         val treeVersion = getVersion(h)
-        VersionContext.withVersions(VersionContext.current.activatedVersion, treeVersion) {
+        val scriptVersion = Math.max(VersionContext.current.activatedVersion, treeVersion).toByte
+        VersionContext.withVersions(scriptVersion, treeVersion) {
           val cs = deserializeConstants(h, r)
           val previousConstantStore = r.constantStore
           // reader with constant store attached is required (to get tpe for a constant placeholder)
@@ -313,9 +314,7 @@ class ErgoTreeSerializer {
     val (header, _, constants, treeBytes) = deserializeHeaderWithTreeBytes(r)
     val nConstants = constants.length
 
-    val treeVersion = ErgoTree.getVersion(header)
-
-    val resBytes = VersionContext.withVersions(VersionContext.current.activatedVersion, treeVersion) {
+    val resBytes = {
       if (VersionContext.current.isJitActivated) {
         // need to measure the serialized size of the new constants
         // by serializing them into a separate writer
