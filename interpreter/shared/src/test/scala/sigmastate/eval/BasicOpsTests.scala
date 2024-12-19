@@ -89,7 +89,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
       coster = accumulator, DefaultProfiler, es)
 
     val msg = Colls.fromArray(Base16.decode("0a101b8c6a4f2e").get)
-    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
       val res = MethodCall(Global, SGlobalMethods.xorMethod,
         IndexedSeq(ByteArrayConstant(msg), ByteArrayConstant(msg)), Map.empty)
         .evalTo[sigma.Coll[Byte]](Map.empty)(evaluator)
@@ -125,7 +125,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
       constants = ErgoTree.EmptyConstants,
       coster = accumulator, DefaultProfiler, es)
 
-    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
       val res = MethodCall(Global, SGlobalMethods.powHitMethod,
         IndexedSeq(IntConstant(k), ByteArrayConstant(msg), ByteArrayConstant(nonce),
           ByteArrayConstant(hbs), IntConstant(N)), Map.empty)

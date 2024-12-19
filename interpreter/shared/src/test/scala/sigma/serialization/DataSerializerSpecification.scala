@@ -52,7 +52,7 @@ class DataSerializerSpecification extends SerializationSpecification {
 
     withVersion match {
       case Some(ver) =>
-        VersionContext.withScriptVersion(ver) {
+        VersionContext.withVersions(ver, 1) {
           test()
         }
       case None =>
@@ -122,14 +122,14 @@ class DataSerializerSpecification extends SerializationSpecification {
     val tT = Evaluation.stypeToRType(tpe)
 
     an[Exception] should be thrownBy (
-      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
         forAll { in: T#WrappedType =>
           roundtrip[SType](Some(in).asWrappedType, SOption(tpe))
           roundtrip[SOption[SCollection[T]]](Some(Colls.fromItems(in)(tT)), SOption(SCollectionType(tpe)))
         }
       })
 
-    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
       forAll { in: T#WrappedType =>
         roundtrip[SType](Some(in).asWrappedType, SOption(tpe))
         roundtrip[SOption[T]](None, SOption(tpe))
@@ -189,12 +189,12 @@ class DataSerializerSpecification extends SerializationSpecification {
   }
 
   property("nuanced versioned test for header roundtrip") {
-    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
       forAll { x: Header => roundtrip[SHeader.type](x, SHeader) }
     }
 
     an[SerializerException] should be thrownBy (
-      VersionContext.withScriptVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
         val h = headerGen.sample.get
         roundtrip[SHeader.type](h, SHeader)
       })
@@ -219,7 +219,7 @@ class DataSerializerSpecification extends SerializationSpecification {
       Colls.emptyColl
     )
 
-    VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
       roundtrip[SHeader.type](header, SHeader)
     }
   }

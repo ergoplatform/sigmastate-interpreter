@@ -31,7 +31,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
 
     withVersion match {
       case Some(ver) =>
-        VersionContext.withScriptVersion(ver) {
+        VersionContext.withVersions(ver, 0) {
           test()
         }
       case None =>
@@ -221,7 +221,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     }
 
     if (tpe == SHeader)  {
-      VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, 0) {
         test()
       }
     } else {
@@ -232,7 +232,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
   property("AnyValue") {
     forAll { t: SPredefType =>
       if (t == SHeader) {
-        VersionContext.withScriptVersion(VersionContext.V6SoftForkVersion) {
+        VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
           testAnyValue(t)
           testAnyValue(SOption(t))
         }

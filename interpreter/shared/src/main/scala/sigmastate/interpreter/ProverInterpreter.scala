@@ -134,7 +134,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       case None => // proceed normally
     }
 
-    VersionContext.withScriptVersion(context.activatedScriptVersion) {
+    VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
       val (resValue, resCost) = {
         val reduced = fullReduction(ergoTree, context, env)
         val fullCost = addCryptoCost(reduced.value, reduced.cost, context.costLimit)

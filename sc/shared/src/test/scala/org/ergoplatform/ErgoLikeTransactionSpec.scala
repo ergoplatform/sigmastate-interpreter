@@ -104,7 +104,7 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
       // We have versioned check here due to fixed collections equality in 6.0.0
       //  (PairOfColl equal CollOverArray now)
       // see (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/909)
-      if(VersionContext.current.isV6SoftForkActivated) {
+      if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
         val exp = Coll(
           (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token1).toColl) -> 10000000L,
           (Digest32Coll @@ ErgoAlgos.decodeUnsafe(token2).toColl) -> 500L

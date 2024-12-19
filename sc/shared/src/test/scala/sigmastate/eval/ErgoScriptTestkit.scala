@@ -188,7 +188,7 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
 
       if (ergoCtx.isDefined) {
         val ectx = ergoCtx.get.withErgoTreeVersion(ergoTreeVersionInTests)
-        VersionContext.withScriptVersion(ectx.activatedScriptVersion) {
+        VersionContext.withVersions(ectx.activatedScriptVersion, ergoTreeVersionInTests) {
           val calcCtx = ectx.toSigmaContext()
           val testContractRes = testContract.map(_(calcCtx))
           testContractRes.foreach { res =>

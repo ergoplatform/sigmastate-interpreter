@@ -17,7 +17,7 @@ trait VersionTestingProperty extends AnyPropSpec with VersionTesting {
                                  (implicit pos: Position): Unit = {
     super.property(testName, testTags:_*) {
       forEachScriptAndErgoTreeVersion(activatedVersions, ergoTreeVersions) {
-        VersionContext.withScriptVersion(activatedVersionInTests) {
+        VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
           testFun_Run(testName, testFun)
         }
       }

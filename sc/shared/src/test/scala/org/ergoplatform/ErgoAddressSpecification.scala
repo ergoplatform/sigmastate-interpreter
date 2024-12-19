@@ -272,7 +272,7 @@ class ErgoAddressSpecification extends SigmaDslTesting
   property("Pay2SHAddress.script should create ErgoTree v0") {
     val (prop, _) = createPropAndScriptBytes()
 
-    val address = VersionContext.withScriptVersion(activatedVersionInTests) {
+    val address = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
       Pay2SHAddress(prop)
     }
     address.script.version shouldBe 0

@@ -316,7 +316,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     */
   case class MInfo(methodId: Byte, method: SMethod, isResolvableFromIds: Boolean = true)
 
-  def isV6Activated = VersionContext.current.isV6SoftForkActivated
+  def isV6Activated = VersionContext.current.isV3OrLaterErgoTreeVersion
 
   // NOTE, the type code constants are checked above
   // The methodId codes as checked here, they MUST be PRESERVED.
@@ -476,7 +476,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(4, MultiplyMethod),
         MInfo(5, NegateMethod)
       ) ++ {
-        if(VersionContext.current.isV6SoftForkActivated) {
+        if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
           Seq(MInfo(6, ExponentiateUnsignedMethod))
         } else {
           Seq.empty
@@ -554,7 +554,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(1, dataInputsMethod), MInfo(2, headersMethod), MInfo(3, preHeaderMethod),
         MInfo(4, inputsMethod), MInfo(5, outputsMethod), MInfo(6, heightMethod),
         MInfo(7, selfMethod), MInfo(8, selfBoxIndexMethod), MInfo(9, lastBlockUtxoRootHashMethod),
-        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV6SoftForkActivated){
+        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV3OrLaterErgoTreeVersion){
           Seq(MInfo(11, getVarV6Method), MInfo(12, getVarFromInputMethod))
         } else {
           Seq(MInfo(11, getVarV5Method))
@@ -700,12 +700,12 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     val expr = Apply(FuncValue(Vector(), IntConstant(1)), IndexedSeq())
 
     forEachScriptAndErgoTreeVersion(activatedVersions, ergoTreeVersions) {
-      VersionContext.withScriptVersion(activatedVersionInTests) {
+      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
         val newF = funcJitFromExpr[Int, Int]("({ (x: Int) => 1 })()", expr)
         assertExceptionThrown(
           {
             val x = 100 // any value which is not used anyway
-            val _ = VersionContext.withScriptVersion(activatedVersionInTests) {
+            val _ = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
               newF.apply(x)
             }
           },
@@ -725,9 +725,9 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     val x = 1
 
     forEachScriptAndErgoTreeVersion(activatedVersions, ergoTreeVersions) {
-      VersionContext.withScriptVersion(activatedVersionInTests) {
+      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
         val newF = funcJitFromExpr[Int, Int](script, expr)
-        val (y, _) = VersionContext.withScriptVersion(activatedVersionInTests) {
+        val (y, _) = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
           newF.apply(x)
         }
         y shouldBe -1
@@ -743,11 +743,11 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     val script = "{ (x: Int, y: Int) => x + y }"
 
     forEachScriptAndErgoTreeVersion(activatedVersions, ergoTreeVersions) {
-      VersionContext.withScriptVersion(activatedVersionInTests) {
+      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
         val newF = funcJitFromExpr[(Int, Int), Int](script, expr)
         assertExceptionThrown(
           {
-            val _ = VersionContext.withScriptVersion(activatedVersionInTests) {
+            val _ = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
               newF.apply((1, 1))
             }
           },
@@ -844,7 +844,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     forEachScriptAndErgoTreeVersion(
        activatedVers = Array(JitActivationVersion),
        ergoTreeVers = ergoTreeVersions) {
-      VersionContext.withScriptVersion(activatedVersionInTests) {
+      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
 
         { // depth 3
           val cf = mkCompiledFunc(3)
@@ -954,13 +954,13 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         .dummy(fakeSelf, VersionContext.current.activatedVersion)
         .withErgoTreeVersion(tree.version)
 
-    VersionContext.withScriptVersion(activatedVersion = 1) {
+    VersionContext.withVersions(activatedVersion = 1, tree.version) {
       // v4.x behavior
       val res = CErgoTreeEvaluator.evalToCrypto(createCtx, tree, evalSettings)
       res shouldBe ReductionResult(TrivialProp(true), 3)
     }
 
-    VersionContext.withScriptVersion(activatedVersion = 2) {
+    VersionContext.withVersions(activatedVersion = 2, tree.version) {
       // v5.0 behavior
       assertExceptionThrown(
         CErgoTreeEvaluator.evalToCrypto(createCtx, tree, evalSettings),
