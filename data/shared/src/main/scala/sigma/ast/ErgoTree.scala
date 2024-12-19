@@ -375,7 +375,7 @@ object ErgoTree {
     * 3) write the `tree` to the Writer's buffer obtaining `treeBytes`;
     * 4) deserialize `tree` with ConstantPlaceholders.
     *
-    * @param headerFlags additional header flags to combine with
+    * @param header      additional header flags to combine with
     *                    ConstantSegregationHeader flag.
     * @param prop        expression to be transformed into ErgoTree
     * */
@@ -411,4 +411,5 @@ object ErgoTree {
   def fromBytes(bytes: Array[Byte]): ErgoTree = {
     ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(bytes)
   }
+
 }
