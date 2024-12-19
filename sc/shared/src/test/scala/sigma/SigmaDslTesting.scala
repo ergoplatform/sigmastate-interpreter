@@ -50,7 +50,11 @@ class SigmaDslTesting extends AnyPropSpec
     with Matchers
     with SigmaTestingData with SigmaContractSyntax with CompilerTestingCommons
     with ObjectGenerators { suite =>
+
   override def Coll[T](items: T*)(implicit cT: RType[T]): Coll[T] = super.Coll(items:_*)
+
+  protected val ActivationByScriptVersion: Byte = 0.toByte
+  protected val ActivationByTreeVersion: Byte   = 1.toByte
 
   lazy val spec: ContractSpec = TestContractSpec(suite)(new TestingIRContext)
 
@@ -410,8 +414,8 @@ class SigmaDslTesting extends AnyPropSpec
       }
 
       val (expectedResult, expectedCost) = if (
-        (activationType == 0 && activatedVersionInTests < sinceVersion) ||
-          (activationType == 1 && ergoTreeVersionInTests < sinceVersion)
+        (activationType == ActivationByScriptVersion && activatedVersionInTests < sinceVersion) ||
+          (activationType == ActivationByTreeVersion && ergoTreeVersionInTests < sinceVersion)
       ) {
         (expected.oldResult, expected.verificationCostOpt)
       } else {
@@ -522,7 +526,7 @@ class SigmaDslTesting extends AnyPropSpec
 
     override def sinceVersion: Byte = 0
 
-    override val activationType = 0
+    override val activationType = ActivationByScriptVersion
 
     override def isSupportedIn(vc: VersionContext): Boolean = true
 
@@ -692,7 +696,7 @@ class SigmaDslTesting extends AnyPropSpec
     printExpectedExpr: Boolean = true,
     logScript: Boolean = LogScriptDefault,
     allowNewToSucceed: Boolean = false,
-    override val activationType: Byte = 1,
+    override val activationType: Byte = ActivationByTreeVersion,
     override val allowDifferentErrors: Boolean = false
   )(implicit IR: IRContext, override val evalSettings: EvalSettings, val tA: RType[A], val tB: RType[B])
     extends Feature[A, B] { feature =>
@@ -892,7 +896,7 @@ class SigmaDslTesting extends AnyPropSpec
     override val scalaFuncNew: A => B,
     expectedExpr: Option[SValue],
     printExpectedExpr: Boolean = true,
-    override val activationType: Byte = 1,
+    override val activationType: Byte = ActivationByTreeVersion,
     logScript: Boolean = LogScriptDefault
   )(implicit IR: IRContext, override val evalSettings: EvalSettings, val tA: RType[A], val tB: RType[B])
     extends Feature[A, B] {
@@ -1169,7 +1173,7 @@ class SigmaDslTesting extends AnyPropSpec
        expectedExpr: SValue = null,
        allowNewToSucceed: Boolean = false,
        allowDifferentErrors: Boolean = false,
-       activationType: Byte = 1
+       activationType: Byte = ActivationByTreeVersion
       )
       (implicit IR: IRContext, evalSettings: EvalSettings): Feature[A, B] = {
     ChangedFeature(changedInVersion, script, scalaFunc, scalaFuncNew, Option(expectedExpr),

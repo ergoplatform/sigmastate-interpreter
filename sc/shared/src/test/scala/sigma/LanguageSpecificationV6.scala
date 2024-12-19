@@ -1418,7 +1418,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
             ConcreteCollection(Array(BoolToSigmaProp(FalseLeaf)), SSigmaProp)
           )
         ),
-        activationType = 1
+        activationType = ActivationByTreeVersion
       )
     )
 

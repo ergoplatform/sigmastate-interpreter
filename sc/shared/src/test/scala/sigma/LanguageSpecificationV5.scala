@@ -4876,7 +4876,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             Vector(),
             Map()
           )
-        ), activationType = 0),
+        ), activationType = ActivationByScriptVersion),
       preGeneratedSamples = Some(samples))
 
     // test vectors to reproduce v4.x bug (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/603)
@@ -5136,7 +5136,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             )
           )
         ),
-        activationType = 0,
+        activationType = ActivationByScriptVersion,
         allowNewToSucceed = true
       ),
       preGeneratedSamples = Some(ArraySeq.empty))
@@ -6061,7 +6061,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         (x: Coll[Boolean]) => SigmaDsl.xorOf(x),
         "{ (x: Coll[Boolean]) => xorOf(x) }",
         FuncValue(Vector((1, SBooleanArray)), XorOf(ValUse(1, SBooleanArray))),
-        activationType = 0
+        activationType = ActivationByScriptVersion
       ))
   }
 
@@ -6370,7 +6370,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
               Map()
             )
           )},
-        activationType = 0
+        activationType = ActivationByScriptVersion
       ))
   }
 
@@ -8969,7 +8969,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             LongConstant(5L)
           )
         ),
-        activationType = 0,
+        activationType = ActivationByScriptVersion,
         allowNewToSucceed = true),
       preGeneratedSamples = Some(Nil))
   }
@@ -9543,7 +9543,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             ),
             ConcreteCollection(Array(BoolToSigmaProp(FalseLeaf)), SSigmaProp)
           )
-        ), activationType = 0))
+        ), activationType = ActivationByScriptVersion))
   }
 
   // Original issue: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/604
@@ -9692,7 +9692,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
               )
             )
           ),
-          activationType = 0,
+          activationType = ActivationByScriptVersion,
           allowDifferentErrors = true,
           allowNewToSucceed = true
         ),
