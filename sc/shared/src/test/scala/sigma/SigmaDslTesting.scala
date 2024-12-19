@@ -50,7 +50,11 @@ class SigmaDslTesting extends AnyPropSpec
     with Matchers
     with SigmaTestingData with SigmaContractSyntax with CompilerTestingCommons
     with ObjectGenerators { suite =>
+
   override def Coll[T](items: T*)(implicit cT: RType[T]): Coll[T] = super.Coll(items:_*)
+
+  protected val ActivationByScriptVersion: Byte = 0.toByte
+  protected val ActivationByTreeVersion: Byte   = 1.toByte
 
   lazy val spec: ContractSpec = TestContractSpec(suite)(new TestingIRContext)
 
@@ -129,6 +133,9 @@ class SigmaDslTesting extends AnyPropSpec
 
     /** Version in which the feature is first implemented of changed. */
     def sinceVersion: Byte
+
+    /** 0 = script version based activation, 1 = tree version based activation */
+    def activationType: Byte
 
     /** Script containing this feature. */
     def script: String
@@ -329,7 +336,9 @@ class SigmaDslTesting extends AnyPropSpec
         val pkAlice = prover.pubKeys.head.toSigmaPropValue
         val env = Map("pkAlice" -> pkAlice)
         // Compile script the same way it is performed by applications (i.e. via Ergo Appkit)
-        val prop = compile(env, code)(IR).asSigmaProp
+        val prop = VersionContext.withVersions(3, 3) {
+          compile(env, code)(IR).asSigmaProp
+        }
 
         // Add additional operations which are not yet implemented in ErgoScript compiler
         val multisig = AtLeast(
@@ -404,10 +413,13 @@ class SigmaDslTesting extends AnyPropSpec
         ctx
       }
 
-      val (expectedResult, expectedCost) = if (activatedVersionInTests < sinceVersion)
+      val (expectedResult, expectedCost) = if (
+        (activationType == ActivationByScriptVersion && activatedVersionInTests < sinceVersion) ||
+          (activationType == ActivationByTreeVersion && ergoTreeVersionInTests < sinceVersion)
+      ) {
         (expected.oldResult, expected.verificationCostOpt)
-      else {
-        val res = expected.newResults(ergoTreeVersionInTests)
+      } else {
+        val res = expected.newResults(sinceVersion)
         (res._1, res._1.verificationCost)
       }
 
@@ -463,7 +475,8 @@ class SigmaDslTesting extends AnyPropSpec
           val verificationCost = cost.toIntExact
           if (expectedCost.isDefined) {
             assertResult(expectedCost.get,
-              s"Actual verify() cost $cost != expected ${expectedCost.get} (version: ${VersionContext.current.activatedVersion})")(verificationCost)
+              s"Actual verify() cost $cost != expected ${expectedCost.get} " +
+                s"(script version: ${VersionContext.current.activatedVersion}, tree version: ${VersionContext.current.ergoTreeVersion})")(verificationCost)
           }
 
         case Failure(t) => throw t
@@ -512,6 +525,8 @@ class SigmaDslTesting extends AnyPropSpec
     implicit val cs = compilerSettingsInTests
 
     override def sinceVersion: Byte = 0
+
+    override val activationType = ActivationByScriptVersion
 
     override def isSupportedIn(vc: VersionContext): Boolean = true
 
@@ -681,6 +696,7 @@ class SigmaDslTesting extends AnyPropSpec
     printExpectedExpr: Boolean = true,
     logScript: Boolean = LogScriptDefault,
     allowNewToSucceed: Boolean = false,
+    override val activationType: Byte = ActivationByTreeVersion,
     override val allowDifferentErrors: Boolean = false
   )(implicit IR: IRContext, override val evalSettings: EvalSettings, val tA: RType[A], val tB: RType[B])
     extends Feature[A, B] { feature =>
@@ -771,10 +787,16 @@ class SigmaDslTesting extends AnyPropSpec
     override def checkExpected(input: A, expected: Expected[B]): Unit = {
       // check the new implementation with Scala semantic function
       val newRes = VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
-          checkEq(scalaFuncNew)(newF)(input)
+        checkEq(scalaFuncNew)(newF)(input)
       }
 
-      if (VersionContext.current.activatedVersion < changedInVersion) {
+      val checkOld = if(changedInVersion < V6SoftForkVersion) {
+        VersionContext.current.activatedVersion < changedInVersion
+      } else {
+        VersionContext.current.ergoTreeVersion < changedInVersion
+      }
+
+      if (checkOld) {
         // check the old implementation with Scala semantic
         val expectedOldRes = expected.value
 
@@ -874,12 +896,13 @@ class SigmaDslTesting extends AnyPropSpec
     override val scalaFuncNew: A => B,
     expectedExpr: Option[SValue],
     printExpectedExpr: Boolean = true,
+    override val activationType: Byte = ActivationByTreeVersion,
     logScript: Boolean = LogScriptDefault
   )(implicit IR: IRContext, override val evalSettings: EvalSettings, val tA: RType[A], val tB: RType[B])
     extends Feature[A, B] {
 
     override def isSupportedIn(vc: VersionContext): Boolean =
-      vc.activatedVersion >= sinceVersion
+      vc.activatedVersion >= sinceVersion && vc.ergoTreeVersion >= sinceVersion
 
     override def scalaFunc: A => B = { x =>
       if (isSupportedIn(VersionContext.current)) {
@@ -1096,6 +1119,21 @@ class SigmaDslTesting extends AnyPropSpec
           commonNewResults.updateMany(newVersionedResults).toSeq
         }
       }
+
+    def apply[A](value: Try[A],
+                 costOpt: Option[Int],
+                 expectedDetails: CostDetails,
+                 newCostOpt: Option[Int],
+                 newVersionedResults: Seq[(Int, (ExpectedResult[A], Option[CostDetails]))]): Expected[A] =
+      new Expected[A](ExpectedResult(value, costOpt)) {
+        override val newResults = {
+          val commonNewResults = defaultNewResults.map {
+            case (res, _) =>
+              (ExpectedResult(res.value, newCostOpt), Option(expectedDetails))
+          }
+          commonNewResults.updateMany(newVersionedResults).toSeq
+        }
+      }
   }
 
   /** Describes existing language feature which should be equally supported in both
@@ -1134,12 +1172,15 @@ class SigmaDslTesting extends AnyPropSpec
        script: String,
        expectedExpr: SValue = null,
        allowNewToSucceed: Boolean = false,
-       allowDifferentErrors: Boolean = false
+       allowDifferentErrors: Boolean = false,
+       activationType: Byte = ActivationByTreeVersion
       )
       (implicit IR: IRContext, evalSettings: EvalSettings): Feature[A, B] = {
     ChangedFeature(changedInVersion, script, scalaFunc, scalaFuncNew, Option(expectedExpr),
       allowNewToSucceed = allowNewToSucceed,
-      allowDifferentErrors = allowDifferentErrors)
+      allowDifferentErrors = allowDifferentErrors,
+      activationType = activationType
+    )
   }
 
   /** Describes a NEW language feature which must NOT be supported in v4 and

@@ -138,7 +138,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
       val v = true
       val c = BooleanConstant(v)
       test[SBoolean.type](v, c)
-      if (!VersionContext.current.isV6SoftForkActivated) {
+      if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
         testArray[SBoolean.type](v, c)
       } else {
         testArrayFailure[SBoolean.type](v, c)
@@ -151,7 +151,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
       val c = ByteConstant(v)
       testNumeric[SByte.type](v, c)
       testLiftingOfCAnyValue[SByte.type](v, c)
-      if (!VersionContext.current.isV6SoftForkActivated) {
+      if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
         testArray[SByte.type](v, c)
       } else {
         testArrayFailure[SByte.type](v, c)
@@ -164,7 +164,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     val c = ShortConstant(v)
     testNumeric[SShort.type](v, c)
     testLiftingOfCAnyValue[SShort.type](v, c)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testArray[SShort.type](v, c)
     } else {
       testArrayFailure[SShort.type](v, c)
@@ -176,7 +176,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     val v = 1
     val c = IntConstant(v)
     test[SInt.type](v, c)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testArray[SInt.type](v, c)
     } else {
       testArrayFailure[SInt.type](v, c)
@@ -188,7 +188,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     val v = 1L
     val c = LongConstant(v)
     test[SLong.type](v, c)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testArray[SLong.type](v, c)
     } else {
       testArrayFailure[SLong.type](v, c)
@@ -199,7 +199,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
   property("liftToConstant String") {
     val v = "abc"
     val c = StringConstant(v)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       // v6.0: String should not be liftable at all (not supported in ErgoTree) (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/905)
       test[SString.type](v, c)
       testArray[SString.type](v, c)
@@ -212,13 +212,13 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
   property("liftToConstant BigInteger") {
     val v = BigInteger.valueOf(1L)
     val c = BigIntConstant(v)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testSuccess(v, c)
     } else {
       testFailure(v)
     }
     val arr = Array.fill(10)(v)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testSuccess(arr, TransformingSigmaBuilder.mkCollectionConstant[SBigInt.type](arr.map(SigmaDsl.BigInt), c.tpe))
     } else {
       testFailure(arr)
@@ -244,7 +244,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
   property("liftToConstant Header") {
     val h = TestData.h1
     val c = HeaderConstant(h)
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testSuccess(h, c)
     } else {
       testFailure(h)
@@ -256,7 +256,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
   property("liftToConstant ErgoBox") {
     val v = TestData.b2.asInstanceOf[CBox].wrappedValue
     val c = BoxConstant(TestData.b2)
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testSuccess(v, c)
     } else {
       testFailure(v)
@@ -287,7 +287,7 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
   property("liftToConstant AvlTreeData") {
     val v = TestData.t1.asInstanceOf[CAvlTree].wrappedValue
     val c = AvlTreeConstant(SigmaDsl.avlTree(v))
-    if (!VersionContext.current.isV6SoftForkActivated) {
+    if (!VersionContext.current.isV3OrLaterErgoTreeVersion) {
       testSuccess(v, c)
     } else {
       testFailure(v)
