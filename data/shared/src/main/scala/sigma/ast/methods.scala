@@ -1769,19 +1769,19 @@ case object SAvlTreeMethods extends MonoTypeMethods {
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall,
       """
-        |  /** Perform insertions of key-value entries into this tree using proof `proof`.
+        |  /** Perform insertions or updates of key-value entries into this tree using proof `proof`.
         |    * Throws exception if proof is incorrect
-        |    *
-        |    * @note CAUTION! Pairs must be ordered the same way they were in insert ops before proof was generated.
         |    * Return Some(newTree) if successful
         |    * Return None if operations were not performed.
-        |    * @param operations   collection of key-value pairs to insert in this authenticated dictionary.
+        |    *
+        |    * @note CAUTION! Pairs must be ordered the same way they were in insert ops before proof was generated.
+        |    * @param operations   collection of key-value pairs to insert or update in this authenticated dictionary.
         |    * @param proof
         |    */
         |
         """.stripMargin)
 
-  /** Implements evaluation of AvlTree.insert method call ErgoTree node.
+  /** Implements evaluation of AvlTree.insertOrUpdate method call ErgoTree node.
     * Called via reflection based on naming convention.
     * @see SMethod.evalMethod
     */

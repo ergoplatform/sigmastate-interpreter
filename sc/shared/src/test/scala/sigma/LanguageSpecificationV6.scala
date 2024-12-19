@@ -5,6 +5,9 @@ import scorex.util.encode.Base16
 import sigma.VersionContext.V6SoftForkVersion
 import org.ergoplatform.ErgoBox.Token
 import org.ergoplatform.settings.ErgoAlgos
+import scorex.crypto.authds.{ADKey, ADValue}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, InsertOrUpdate}
+import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ModifierId
 import scorex.utils.{Ints, Longs, Shorts}
 import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
@@ -26,10 +29,13 @@ import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
 import sigma.Extensions.ArrayOps
 import sigma.crypto.CryptoConstants
+import sigma.data.CSigmaDslBuilder.Colls
+import sigma.exceptions.InterpreterException
 import sigma.interpreter.{ContextExtension, ProverResult}
 
+import java.lang.reflect.InvocationTargetException
 import java.math.BigInteger
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /** This suite tests all operations for v6.0 version of the language.
   * The base classes establish the infrastructure for the tests.
@@ -2872,6 +2878,214 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
 
     testCases(cases, some)
+  }
+
+  type BatchProver = BatchAVLProver[Digest32, Blake2b256.type]
+
+  type KV = (Coll[Byte], Coll[Byte])
+
+  def performInsertOrUpdate(avlProver: BatchProver, keys: Seq[Coll[Byte]], values: Seq[Coll[Byte]]) = {
+    keys.zip(values).foreach{case (key, value) =>
+      avlProver.performOneOperation(InsertOrUpdate(ADKey @@ key.toArray, ADValue @@ value.toArray))
+    }
+    val proof = avlProver.generateProof().toColl
+    proof
+  }
+  def performInsert(avlProver: BatchProver, key: Coll[Byte], value: Coll[Byte]) = {
+    avlProver.performOneOperation(Insert(ADKey @@ key.toArray, ADValue @@ value.toArray))
+    val proof = avlProver.generateProof().toColl
+    proof
+  }
+
+  def createTree(digest: Coll[Byte], insertAllowed: Boolean = false, updateAllowed: Boolean = false, removeAllowed: Boolean = false) = {
+    val flags = AvlTreeFlags(insertAllowed, updateAllowed, removeAllowed).serializeToByte
+    val tree = SigmaDsl.avlTree(flags, digest, 32, None)
+    tree
+  }
+
+  property("AvlTree.insert equivalence") {
+    import sigmastate.eval.Extensions.AvlTreeOps
+    import sigmastate.utils.Helpers._
+
+    val insert = existingFeature(
+      (t: (AvlTree, (Coll[KV], Coll[Byte]))) => t._1.insert(t._2._1, t._2._2),
+      "{ (t: (AvlTree, (Coll[(Coll[Byte], Coll[Byte])], Coll[Byte]))) => t._1.insert(t._2._1, t._2._2) }",
+      FuncValue(
+        Vector(
+          (
+            1,
+            STuple(
+              Vector(
+                SAvlTree,
+                STuple(Vector(SCollectionType(STuple(Vector(SByteArray, SByteArray))), SByteArray))
+              )
+            )
+          )
+        ),
+        BlockValue(
+          Vector(
+            ValDef(
+              3,
+              List(),
+              SelectField.typed[Value[STuple]](
+                ValUse(
+                  1,
+                  STuple(
+                    Vector(
+                      SAvlTree,
+                      STuple(Vector(SCollectionType(STuple(Vector(SByteArray, SByteArray))), SByteArray))
+                    )
+                  )
+                ),
+                2.toByte
+              )
+            )
+          ),
+          MethodCall.typed[Value[SOption[SAvlTree.type]]](
+            SelectField.typed[Value[SAvlTree.type]](
+              ValUse(
+                1,
+                STuple(
+                  Vector(
+                    SAvlTree,
+                    STuple(Vector(SCollectionType(STuple(Vector(SByteArray, SByteArray))), SByteArray))
+                  )
+                )
+              ),
+              1.toByte
+            ),
+            SAvlTreeMethods.getMethodByName("insert"),
+            Vector(
+              SelectField.typed[Value[SCollection[STuple]]](
+                ValUse(
+                  3,
+                  STuple(Vector(SCollectionType(STuple(Vector(SByteArray, SByteArray))), SByteArray))
+                ),
+                1.toByte
+              ),
+              SelectField.typed[Value[SCollection[SByte.type]]](
+                ValUse(
+                  3,
+                  STuple(Vector(SCollectionType(STuple(Vector(SByteArray, SByteArray))), SByteArray))
+                ),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      ))
+
+    val testTraceBase = Array(
+      FixedCostItem(Apply),
+      FixedCostItem(FuncValue),
+      FixedCostItem(GetVar),
+      FixedCostItem(OptionGet),
+      FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+      ast.SeqCostItem(CompanionDesc(BlockValue), PerItemCost(JitCost(1), JitCost(1), 10), 1),
+      FixedCostItem(ValUse),
+      FixedCostItem(SelectField),
+      FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
+      FixedCostItem(ValUse),
+      FixedCostItem(SelectField),
+      FixedCostItem(MethodCall),
+      FixedCostItem(ValUse),
+      FixedCostItem(SelectField),
+      FixedCostItem(ValUse),
+      FixedCostItem(SelectField),
+      FixedCostItem(SAvlTreeMethods.isInsertAllowedMethod, FixedCost(JitCost(15)))
+    )
+    val costDetails1 = TracedCost(testTraceBase)
+    val costDetails2 = TracedCost(
+      testTraceBase ++ Array(
+        ast.SeqCostItem(NamedDesc("CreateAvlVerifier"), PerItemCost(JitCost(110), JitCost(20), 64), 70),
+        ast.SeqCostItem(NamedDesc("InsertIntoAvlTree"), PerItemCost(JitCost(40), JitCost(10), 1), 1),
+        FixedCostItem(SAvlTreeMethods.updateDigestMethod, FixedCost(JitCost(40)))
+      )
+    )
+
+    forAll(keyCollGen, bytesCollGen) { (key, value) =>
+      val (tree, avlProver) = createAvlTreeAndProver()
+      val preInsertDigest = avlProver.digest.toColl
+      val insertProof = performInsert(avlProver, key, value)
+      val kvs = Colls.fromItems((key -> value))
+
+      { // positive
+        val preInsertTree = createTree(preInsertDigest, insertAllowed = true)
+        val input = (preInsertTree, (kvs, insertProof))
+        val (res, _) = insert.checkEquality(input).getOrThrow
+        res.isDefined shouldBe true
+        insert.checkExpected(input, Expected(Success(res), 1796, costDetails2, 1796, Seq.fill(4)(2102)))
+      }
+
+      { // negative: readonly tree
+        val readonlyTree = createTree(preInsertDigest)
+        val input = (readonlyTree, (kvs, insertProof))
+        val (res, _) = insert.checkEquality(input).getOrThrow
+        res.isDefined shouldBe false
+        insert.checkExpected(input, Expected(Success(res), 1772, costDetails1, 1772, Seq.fill(4)(2078)))
+      }
+
+      { // positive: invalid key, but proof is enough to validate insert
+        val tree = createTree(preInsertDigest, insertAllowed = true)
+        val negKey = key.map(x => (-x).toByte)
+        val kvs = Colls.fromItems((negKey -> value))
+        val input = (tree, (kvs, insertProof))
+        val (res, _) = insert.checkEquality(input).getOrThrow
+        res.isDefined shouldBe true
+        insert.checkExpected(input, Expected(Success(res), 1796, costDetails2, 1796, Seq.fill(4)(2102)))
+      }
+
+      { // nagative: duplicate keys
+        val tree = createTree(preInsertDigest, insertAllowed = true)
+        val invalidKvs = Colls.fromItems((key -> value), (key -> value))
+        val input = (tree, (invalidKvs, insertProof))
+        if (VersionContext.current.isV6SoftForkActivated) {
+          insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
+        } else {
+          val res = insert.checkEquality(input)
+          res.isFailure shouldBe true
+        }
+      }
+
+
+      { // negative: invalid proof
+        val tree = createTree(preInsertDigest, insertAllowed = true)
+        val invalidProof = insertProof.map(x => (-x).toByte) // any other different from proof
+        val input = (tree, (kvs, invalidProof))
+        if (VersionContext.current.isV6SoftForkActivated) {
+          insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
+        } else {
+          val res = insert.checkEquality(input)
+          res.isFailure shouldBe true
+        }
+      }
+    }
+  }
+
+  property("AvlTree.insertOrUpdate") {
+    import sigmastate.eval.Extensions.AvlTreeOps
+
+    lazy val iou = newFeature(
+      (t: (AvlTree, (Coll[KV], Coll[Byte]))) => t._1.insertOrUpdate(t._2._1, t._2._2),
+      "{ (t: (AvlTree, (Coll[(Coll[Byte], Coll[Byte])], Coll[Byte]))) => t._1.insertOrUpdate(t._2._1, t._2._2) }",
+      sinceVersion = V6SoftForkVersion)
+
+    val key = keyCollGen.sample.get
+    val value = bytesCollGen.sample.get
+    val (_, avlProver) = createAvlTreeAndProver()
+    val preInsertDigest = avlProver.digest.toColl
+    val tree = createTree(preInsertDigest, insertAllowed = true, updateAllowed = true)
+    val insertProof = performInsertOrUpdate(avlProver, Seq(key, key), Seq(value, value))
+    val kvs = Colls.fromItems((key -> value), (key -> value))
+    val input1 = (tree, (kvs, insertProof))
+
+    val digest = avlProver.digest
+    val updTree = tree.updateDigest(Colls.fromArray(digest))
+
+    val cases = Seq(input1 -> Success((Some(updTree))))
+
+    testCases(cases, iou, preGeneratedSamples = Some(Seq.empty))
   }
 
 }
