@@ -15,7 +15,7 @@ class TypeSerializer {
 
   def getEmbeddableType(code: Int): SType = {
     // todo : add unsigned bit int to embeddable id to type
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       CheckPrimitiveTypeCodeV6(code.toByte)
     } else {
       CheckPrimitiveTypeCode(code.toByte)
@@ -205,7 +205,7 @@ class TypeSerializer {
         case SHeader.typeCode => SHeader
         case SPreHeader.typeCode => SPreHeader
         case SGlobal.typeCode => SGlobal
-        case SFunc.FuncTypeCode if VersionContext.current.isV3OrLaterErgoTreeVersion =>
+        case SFunc.FuncTypeCode if VersionContext.current.isV6Activated =>
           val tdLength = r.getUByte()
 
           val tDom = (1 to tdLength).map { _ =>
@@ -222,7 +222,7 @@ class TypeSerializer {
         case _ =>
           // the #1008 check replaced with one with identical behavior but different opcode (1018), to activate
           //  ReplacedRule(1008 -> 1018) during 6.0 activation
-          if (VersionContext.current.isV6SoftForkActivated) {
+          if (VersionContext.current.isV6Activated) {
             CheckTypeCodeV6(c.toByte)
           } else {
             CheckTypeCode(c.toByte)
@@ -252,7 +252,7 @@ object TypeSerializer extends TypeSerializer {
   /** The list of embeddable types, i.e. types that can be combined with type constructor for optimized encoding.
     * For each embeddable type `T`, and type constructor `C`, the type `C[T]` can be represented by single byte. */
     def embeddableIdToType = {
-      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      if (VersionContext.current.isV6Activated) {
         embeddableV6
       } else {
         embeddableV5

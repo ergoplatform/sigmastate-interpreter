@@ -239,8 +239,7 @@ trait Interpreter {
   /** Performs reduction of proposition which contains deserialization operations. */
   private def reductionWithDeserialize(ergoTree: ErgoTree,
                                        prop: SigmaPropValue,
-                                       context: CTX,
-                                       env: ScriptEnv): ReductionResult = {
+                                       context: CTX): ReductionResult = {
     implicit val vs: SigmaValidationSettings = context.validationSettings
     val res = VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
       val deserializeSubstitutionCost = java7.compat.Math.multiplyExact(ergoTree.bytes.length, CostPerTreeByte)

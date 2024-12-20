@@ -3242,7 +3242,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       deserTest()
     } else {
       an[ValidationException] should be thrownBy deserTest()

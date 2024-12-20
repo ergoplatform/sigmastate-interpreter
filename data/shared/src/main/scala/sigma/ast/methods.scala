@@ -91,7 +91,7 @@ sealed trait MethodsContainer {
     * @see getMethodById
     */
   def methodById(methodId: Byte): SMethod = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       ValidationRules.CheckAndGetMethodV6(this, methodId)
     } else {
       ValidationRules.CheckAndGetMethod(this, methodId)
@@ -1813,7 +1813,7 @@ case object SAvlTreeMethods extends MonoTypeMethods {
   lazy val v6Methods = v5Methods ++ Seq(insertOrUpdateMethod)
 
   protected override def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
