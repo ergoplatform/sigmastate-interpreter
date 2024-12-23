@@ -103,20 +103,24 @@ class ErgoTreeSerializer {
     * Doesn't apply any transformations and guarantee to preserve original
     * structure after deserialization. */
   def serializeErgoTree(ergoTree: ErgoTree): Array[Byte] = {
-    val res = ergoTree.root match {
-      case Left(UnparsedErgoTree(bytes, _)) => bytes.array.asInstanceOf[Array[Byte]]
-      case _ =>
-        val bytes = serializeWithoutSize(ergoTree)
-        if (ergoTree.hasSize) {
-          val w = SigmaSerializer.startWriter()
-          val header = bytes(0)
-          val contentLength = bytes.length - 1
-          w.put(header)
-          w.putUInt(contentLength)
-          w.putBytes(bytes, 1, contentLength)
-          w.toBytes
-        }
-        else bytes
+    val treeVersion = ergoTree.version
+    val scriptVersion = Math.max(VersionContext.current.activatedVersion, treeVersion).toByte
+    val res = VersionContext.withVersions(scriptVersion, treeVersion) {
+      ergoTree.root match {
+        case Left(UnparsedErgoTree(bytes, _)) => bytes.array.asInstanceOf[Array[Byte]]
+        case _ =>
+          val bytes = serializeWithoutSize(ergoTree)
+          if (ergoTree.hasSize) {
+            val w = SigmaSerializer.startWriter()
+            val header = bytes(0)
+            val contentLength = bytes.length - 1
+            w.put(header)
+            w.putUInt(contentLength)
+            w.putBytes(bytes, 1, contentLength)
+            w.toBytes
+          }
+          else bytes
+      }
     }
     res
   }
