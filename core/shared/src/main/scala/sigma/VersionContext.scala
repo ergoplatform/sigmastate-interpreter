@@ -107,4 +107,8 @@ object VersionContext {
     }
   }
 
+  def fromBlockVersion(blockVersion: Byte): VersionContext = {
+    VersionContext((blockVersion - 1).toByte, (blockVersion - 1).toByte)
+  }
+
 }

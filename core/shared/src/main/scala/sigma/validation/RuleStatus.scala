@@ -32,7 +32,7 @@ case object DisabledRule extends RuleStatus {
   * @see `ValidationSettings.isSoftFork`
   * @param newRuleId  id of a new rule which replaces the rule marked with this status
   */
-case class  ReplacedRule(newRuleId: Short) extends RuleStatus {
+case class ReplacedRule(newRuleId: Short) extends RuleStatus {
   val statusCode: Byte = RuleStatus.ReplacedRuleCode
 }
 

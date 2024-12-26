@@ -1,5 +1,7 @@
 package sigma.validation
 
+import sigma.VersionContext
+
 /**
   * Configuration of validation. Each `ValidationRule` instance should be
   * implemented as an `object` to facilitate type-safe usage. It then should be
@@ -48,7 +50,11 @@ abstract class SigmaValidationSettings extends Iterable[(Short, (ValidationRule,
   def isSoftFork(ruleId: Short, ve: ValidationException): Boolean = {
     val infoOpt = get(ruleId)
     infoOpt match {
-      case Some((_, ReplacedRule(_))) => true
+      case Some((vr, ReplacedRule(_))) => if ((vr.id == 1011 || vr.id == 1007 || vr.id == 1008) && VersionContext.current.isV6Activated) {
+        false
+      } else {
+        true
+      }
       case Some((rule, status)) => rule.isSoftFork(this, rule.id, status, ve.args)
       case None => false
     }

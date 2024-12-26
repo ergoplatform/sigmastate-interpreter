@@ -109,8 +109,9 @@ object ValidationRules {
     final def apply[T](objType: MethodsContainer, methodId: Byte): SMethod = {
       checkRule()
       val methodOpt = objType.getMethodById(methodId)
-      if (methodOpt.isDefined) methodOpt.get
-      else {
+      if (methodOpt.isDefined) {
+        methodOpt.get
+      } else {
         throwValidationException(
           new SerializerException(s"The method with code $methodId doesn't declared in the type $objType."),
           Array[Any](objType, methodId))
@@ -120,15 +121,25 @@ object ValidationRules {
     override def isSoftFork(vs: SigmaValidationSettings,
                             ruleId: Short,
                             status: RuleStatus,
-                            args: Seq[Any]): Boolean = (status, args) match {
-      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
-        val key = Array(objType.ownerType.typeId, methodId)
-        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
-      case _ => false
+                            args: Seq[Any]): Boolean = {
+      (status, args) match {
+        case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
+          val key = Array(objType.ownerType.typeId, methodId)
+          newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+        case _ => false
+      }
     }
   }
 
-  object CheckAndGetMethod extends CheckAndGetMethodTemplate(1011)
+  object CheckAndGetMethod extends CheckAndGetMethodTemplate(1011) {
+    override def isSoftFork(vs: SigmaValidationSettings,
+                            ruleId: Short,
+                            status: RuleStatus,
+                            args: Seq[Any]): Boolean = {
+      false
+    }
+  }
+
   object CheckAndGetMethodV6 extends CheckAndGetMethodTemplate(1016)
 
   object CheckHeaderSizeBit extends ValidationRule(1012,
