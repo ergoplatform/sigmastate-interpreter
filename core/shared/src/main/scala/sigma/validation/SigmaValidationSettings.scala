@@ -50,7 +50,7 @@ abstract class SigmaValidationSettings extends Iterable[(Short, (ValidationRule,
   def isSoftFork(ruleId: Short, ve: ValidationException): Boolean = {
     val infoOpt = get(ruleId)
     infoOpt match {
-      case Some((vr, ReplacedRule(_))) => if (vr.id == 1011 && VersionContext.current.isV6Activated) {
+      case Some((vr, ReplacedRule(_))) => if ((vr.id == 1011 || vr.id == 1007 || vr.id == 1008) && VersionContext.current.isV6Activated) {
         false
       } else {
         true
