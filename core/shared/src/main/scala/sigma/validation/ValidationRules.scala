@@ -208,7 +208,7 @@ object ValidationRules {
   )
 
   private def ruleSpecs: Seq[ValidationRule] = {
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV6Activated) {
       ruleSpecsV6
     } else {
       ruleSpecsV5

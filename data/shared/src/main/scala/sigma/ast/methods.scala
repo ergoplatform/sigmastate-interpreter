@@ -91,7 +91,7 @@ sealed trait MethodsContainer {
     * @see getMethodById
     */
   def methodById(methodId: Byte): SMethod = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       ValidationRules.CheckAndGetMethodV6(this, methodId)
     } else {
       ValidationRules.CheckAndGetMethod(this, methodId)

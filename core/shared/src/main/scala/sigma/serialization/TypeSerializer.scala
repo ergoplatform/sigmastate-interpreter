@@ -15,7 +15,7 @@ class TypeSerializer {
 
   def getEmbeddableType(code: Int): SType = {
     // todo : add unsigned bit int to embeddable id to type
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       CheckPrimitiveTypeCodeV6(code.toByte)
     } else {
       CheckPrimitiveTypeCode(code.toByte)
@@ -222,7 +222,7 @@ class TypeSerializer {
         case _ =>
           // the #1008 check replaced with one with identical behavior but different opcode (1018), to activate
           //  ReplacedRule(1008 -> 1018) during 6.0 activation
-          if (VersionContext.current.isV6SoftForkActivated) {
+          if (VersionContext.current.isV6Activated) {
             CheckTypeCodeV6(c.toByte)
           } else {
             CheckTypeCode(c.toByte)

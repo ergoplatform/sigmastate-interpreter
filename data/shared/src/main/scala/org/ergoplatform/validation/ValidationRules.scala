@@ -120,11 +120,13 @@ object ValidationRules {
     override def isSoftFork(vs: SigmaValidationSettings,
                             ruleId: Short,
                             status: RuleStatus,
-                            args: Seq[Any]): Boolean = (status, args) match {
-      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
-        val key = Array(objType.ownerType.typeId, methodId)
-        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
-      case _ => false
+                            args: Seq[Any]): Boolean = {
+      (status, args) match {
+        case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
+          val key = Array(objType.ownerType.typeId, methodId)
+          newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+        case _ => false
+      }
     }
   }
 
@@ -183,7 +185,7 @@ object ValidationRules {
   }
 
   def ruleSpecs: Seq[ValidationRule] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       ruleSpecsV6
     } else {
       ruleSpecsV5
