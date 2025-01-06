@@ -3200,4 +3200,23 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("Global.decodeNbits - result of more than 256 bits") {
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        s"""{
+          |   val target = Global.decodeNbits(${Long.MaxValue}L) // result is 2031 bits long
+          |   target != 0
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
+      an[Exception] should be thrownBy someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
 }
