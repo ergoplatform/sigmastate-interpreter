@@ -550,7 +550,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         ctx.getVar(id)(e)
 
       case d: DeserializeContext[T] =>
-        val e = stypeToElem(d.tpe).asInstanceOf[Elem[T]]
+        val e = stypeToElem(d.tpe)
         DeserializeContextDef(d, e)
 
       case ValUse(valId, _) =>

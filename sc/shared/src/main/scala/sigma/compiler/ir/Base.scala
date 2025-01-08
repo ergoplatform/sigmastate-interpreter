@@ -13,7 +13,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.{implicitNotFound, unused}
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
-import scala.language.implicitConversions
+import scala.language.{existentials, implicitConversions}
 
 /**
   * The Base trait houses common AST nodes. It also manages a list of encountered definitions which
@@ -207,8 +207,8 @@ abstract class Base { thisIR: IRContext =>
   /**
     * Def done in order to carry on DeserializeContext through stages of compilation intact
     */
-  case class DeserializeContextDef[V <: SType](d: DeserializeContext[V], e: Elem[V]) extends Def[V] {
-    override def resultType: Elem[V] = e
+  case class DeserializeContextDef[V <: SType](d: DeserializeContext[V], e: Elem[V#WrappedType]) extends Def[V#WrappedType] {
+    override def resultType: Elem[V#WrappedType] = e
   }
 
   /** Base class for virtualized instances of type companions.
