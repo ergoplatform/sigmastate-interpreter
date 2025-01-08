@@ -1,6 +1,7 @@
 package sigma.interpreter
 
 import org.ergoplatform.ErgoBoxCandidate.serializer.containsV6Types
+import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import sigma.ast.{EvaluatedValue, SType}
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.serialization.{SerializerException, SigmaByteReader, SigmaByteWriter, SigmaSerializer}
@@ -53,9 +54,7 @@ object ContextExtension {
           .map{_ =>
             val k = r.getByte()
             val v = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
-            if(containsV6Types(v)){
-              throw SerializerException("")
-            }
+            CheckV6Type(v)
             (k, v)
           }
       ContextExtension(values.toMap)

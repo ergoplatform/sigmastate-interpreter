@@ -435,7 +435,7 @@ class DeserializationResilience extends DeserializationResilienceTesting {
                   additionalRegisters = Map(R4 -> UnsignedBigIntConstant(new BigInteger("2"))))
     VersionContext.withVersions(3, 3) {
       val bs = ErgoBoxCandidate.serializer.toBytes(b)
-      a[V6TypeUsedException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
     }
   }
 

@@ -1,7 +1,7 @@
 package org.ergoplatform.validation
 
 import sigma.SigmaException
-import sigma.ast.{DeserializeContext, ErgoTree, MethodsContainer, SMethod}
+import sigma.ast.{Constant, DeserializeContext, ErgoTree, EvaluatedCollection, EvaluatedValue, GroupGenerator, MethodsContainer, SHeader, SMethod, SType, SUnsignedBigInt}
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.serialization.{InvalidOpCode, SerializerException}
 import sigma.util.Extensions.toUByte
@@ -155,6 +155,38 @@ object ValidationRules {
     override protected lazy val settings: SigmaValidationSettings = currentSettings
   }
 
+  object CheckV6Type extends ValidationRule(1020,
+    "Check the type has the declared method.") {
+    override protected lazy val settings: SigmaValidationSettings = currentSettings
+
+    final def apply[T](v: EvaluatedValue[_]): Unit = {
+      checkRule()
+
+      def v6TypeCheck(tpe: SType) = {
+        if (tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode) {
+          throwValidationException(
+            new SerializerException(s"V6 type used in register or context var extension: $tpe"),
+            Array[Any](tpe))
+        }
+      }
+      v match {
+        case c: Constant[_] => v6TypeCheck(c.tpe)
+        case c: EvaluatedCollection[_, _] => v6TypeCheck(c.elementType)
+        case GroupGenerator =>
+      }
+    }
+
+    override def isSoftFork(vs: SigmaValidationSettings,
+                            ruleId: Short,
+                            status: RuleStatus,
+                            args: Seq[Any]): Boolean = (status, args) match {
+      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
+        val key = Array(objType.ownerType.typeId, methodId)
+        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+      case _ => false
+    }
+  }
+
   val ruleSpecs: Seq[ValidationRule] = Seq(
     CheckDeserializedScriptType,
     CheckDeserializedScriptIsSigmaProp,
@@ -171,7 +203,8 @@ object ValidationRules {
     CheckHeaderSizeBit,
     CheckCostFuncOperation,
     CheckPositionLimit,
-    CheckLoopLevelInCostFunction
+    CheckLoopLevelInCostFunction,
+    CheckV6Type
   )
 
   /** Validation settings that correspond to the current version of the ErgoScript implementation.
