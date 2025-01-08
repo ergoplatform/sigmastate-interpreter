@@ -306,7 +306,7 @@ trait PerItemCostValueCompanion extends ValueCompanion {
   *
   * @see Constant, ConcreteCollection, Tuple
   */
-abstract class EvaluatedValue[+S <: SType] extends Value[S] {
+sealed trait EvaluatedValue[+S <: SType] extends Value[S] {
   /** The evaluated data value of the corresponding underlying data type. */
   val value: S#WrappedType
 

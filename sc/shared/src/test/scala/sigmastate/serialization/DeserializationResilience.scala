@@ -1,6 +1,7 @@
 package sigma.serialization
 
-import org.ergoplatform.ErgoBoxCandidate
+import org.ergoplatform.ErgoBox.R4
+import org.ergoplatform.{ErgoBoxCandidate, ErgoTreePredef}
 import org.scalacheck.Gen
 import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
 import scorex.crypto.authds.{ADKey, ADValue}
@@ -11,7 +12,7 @@ import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckPositionLimit
-import sigma.{Colls, Environment}
+import sigma.{Colls, Environment, VersionContext}
 import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate._
@@ -25,6 +26,7 @@ import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoL
 import sigma.serialization.OpCodes._
 import sigmastate.utils.Helpers._
 
+import java.math.BigInteger
 import java.nio.ByteBuffer
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -425,4 +427,16 @@ class DeserializationResilience extends DeserializationResilienceTesting {
     // NOTE, even though performOneOperation fails, some AvlTree$ methods used in Interpreter
     // (remove_eval, update_eval, contains_eval) won't throw, while others will.
   }
+
+
+  property("impossible to use v6 types in box registers") {
+    val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+    val b = new ErgoBoxCandidate(1L, trueProp, 1,
+                  additionalRegisters = Map(R4 -> UnsignedBigIntConstant(new BigInteger("2"))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b)
+      a[V6TypeUsedException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+  }
+
 }

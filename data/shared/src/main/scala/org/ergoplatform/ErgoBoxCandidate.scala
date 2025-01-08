@@ -13,7 +13,7 @@ import sigma.{Coll, Colls}
 import sigma.ast._
 import sigma.ast.syntax._
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
-import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
+import sigma.serialization.{SerializerException, SigmaByteReader, SigmaByteWriter, SigmaSerializer, V6TypeUsedException}
 
 import scala.collection.{immutable, mutable}
 import scala.runtime.ScalaRunTime
@@ -228,6 +228,9 @@ object ErgoBoxCandidate {
       cfor(0)(_ < nRegs, _ + 1) { iReg =>
         val reg = ErgoBox.nonMandatoryRegisters(iReg)
         val v = r.getValue().asInstanceOf[EvaluatedValue[SType]]  // READ
+        if (containsV6Types(v)) {
+          throw new V6TypeUsedException(v.tpe)
+        }
         b += ((reg, v))  // don't use `->` since it incur additional wrapper overhead
       }
       r.positionLimit = previousPositionLimit

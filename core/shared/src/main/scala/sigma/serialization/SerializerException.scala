@@ -1,6 +1,7 @@
 package sigma.serialization
 
 import sigma.SigmaException
+import sigma.ast.SType
 
 import scala.collection.compat.immutable.ArraySeq
 
@@ -37,3 +38,6 @@ final class DeserializeCallDepthExceeded(message: String, cause: Option[Throwabl
 /** Thrown by [[org.ergoplatform.validation.ValidationRules.CheckValidOpCode]] validation rule. */
 final class InvalidOpCode(message: String, cause: Option[Throwable] = None)
     extends SerializerException(message, cause)
+
+final class V6TypeUsedException(tpe: SType, cause: Option[Throwable] = None)
+  extends SerializerException(s"V6 type used in register or context var extension: $tpe", cause)

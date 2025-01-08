@@ -3,6 +3,7 @@ package sigma.serialization
 import java.nio.ByteBuffer
 import scorex.util.ByteArrayBuilder
 import scorex.util.serialization._
+import sigma.ast.{Constant, EvaluatedCollection, EvaluatedValue, GroupGenerator, SHeader, SType, SUnsignedBigInt}
 import sigma.data.SigmaConstants
 import sigma.serialization.SigmaByteWriter.{FixedCostCallback, PerItemCostCallback}
 import sigma.serialization.ValueCodes.OpCode
@@ -80,6 +81,17 @@ abstract class SigmaSerializer[TFamily, T <: TFamily] extends Serializer[TFamily
 
   final def fromBytes(bytes: Array[Byte]): TFamily = {
     parse(SigmaSerializer.startReader(bytes))
+  }
+
+  protected final def containsV6Types(v: EvaluatedValue[_]): Boolean = {
+    def v6TypeCheck(tpe: SType) = {
+      tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode
+    }
+    v match {
+      case c: Constant[_] => v6TypeCheck(c.tpe)
+      case c: EvaluatedCollection[_, _] => v6TypeCheck(c.elementType)
+      case GroupGenerator => false
+    }
   }
 }
 

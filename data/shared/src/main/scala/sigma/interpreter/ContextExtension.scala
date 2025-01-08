@@ -1,8 +1,9 @@
 package sigma.interpreter
 
+import org.ergoplatform.ErgoBoxCandidate.serializer.containsV6Types
 import sigma.ast.{EvaluatedValue, SType}
 import sigma.interpreter.ContextExtension.VarBinding
-import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
+import sigma.serialization.{SerializerException, SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 
 /**
   * User-defined variables to be put into context.
@@ -49,7 +50,14 @@ object ContextExtension {
       if (extSize < 0)
         error(s"Negative amount of context extension values: $extSize")
       val values = (0 until extSize)
-          .map(_ => (r.getByte(), r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]))
+          .map{_ =>
+            val k = r.getByte()
+            val v = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
+            if(containsV6Types(v)){
+              throw SerializerException("")
+            }
+            (k, v)
+          }
       ContextExtension(values.toMap)
     }
   }

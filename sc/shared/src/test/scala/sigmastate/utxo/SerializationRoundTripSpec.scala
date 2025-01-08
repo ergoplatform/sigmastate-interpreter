@@ -65,6 +65,10 @@ class SerializationRoundTripSpec extends AnyPropSpec
     }
   }
 
+  property("ErgoBoxCandidate: Serializer round trip") {
+
+  }
+
   property("ContextExtension: Serializer round trip") {
     forAll { t: ContextExtension => roundTripTest(t)(ContextExtension.serializer) }
     forAll { t: ContextExtension => roundTripTestWithPos(t)(ContextExtension.serializer) }
