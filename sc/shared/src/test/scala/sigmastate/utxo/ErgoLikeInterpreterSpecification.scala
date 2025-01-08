@@ -12,16 +12,18 @@ import sigmastate._
 import sigma.ast.syntax._
 import sigma.data.{AvlTreeData, CBox, ProveDHTuple, ProveDlog, TrivialProp}
 import sigma.util.Extensions.EcpOps
-import sigma.validation.ValidationException
+import sigma.validation.{ReplacedRule, ValidationException, ValidationRules}
 import sigmastate.eval._
 import sigmastate.interpreter.Interpreter._
 import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.eval.Extensions.SigmaBooleanOps
-import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, ProverResult}
 import sigma.serialization.{SerializationSpecification, ValueSerializer}
 import sigmastate.utils.Helpers._
+
+import java.math.BigInteger
 
 class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
   with SerializationSpecification
@@ -758,6 +760,27 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
     val scriptProp = compile(Map.empty, script)  // of Int type
     val scriptBytes = ValueSerializer.serialize(scriptProp)
     val tree = mkTestErgoTree(EQ(DeserializeContext(1, SInt), IntConstant(3)).toSigmaProp)
+    prove(tree, script = 1.toByte -> ByteArrayConstant(scriptBytes))
+  }
+
+  property("DeserializeContext can return expression of UnsignedBigInt type in 6.0") {
+    def prove(ergoTree: ErgoTree, script: VarBinding) = {
+      val boxToSpend = testBox(10, ergoTree, creationHeight = 5)
+      val updVs = ValidationRules.coreSettings.updated(1007.toShort, ReplacedRule(1017.toShort))
+      val ctx = ErgoLikeContextTesting.dummy(boxToSpend, 2)
+        .withExtension(
+          ContextExtension(Seq(script).toMap)) // provide script bytes in context variable
+        .withValidationSettings(updVs)
+
+      val prover = new ErgoLikeTestProvingInterpreter()
+      prover.prove(ergoTree, ctx, fakeMessage).getOrThrow
+    }
+
+    val script = """{unsignedBigInt("0")}"""
+    val scriptProp = VersionContext.withVersions(3,2){compile(Map.empty, script)}  // of Int type
+    val scriptBytes = VersionContext.withVersions(3,2){ValueSerializer.serialize(scriptProp)}
+    val tree = VersionContext.withVersions(3,2){ErgoTree.fromProposition(ErgoTree.defaultHeaderWithVersion(2),
+      EQ(DeserializeContext(1, SUnsignedBigInt), UnsignedBigIntConstant(new BigInteger("0"))).toSigmaProp)}
     prove(tree, script = 1.toByte -> ByteArrayConstant(scriptBytes))
   }
 
