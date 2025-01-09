@@ -1,7 +1,6 @@
 package sigma.serialization
 
 import sigma.SigmaException
-import sigma.ast.SType
 
 import scala.collection.compat.immutable.ArraySeq
 

@@ -1,10 +1,9 @@
 package sigma.interpreter
 
-import org.ergoplatform.ErgoBoxCandidate.serializer.containsV6Types
 import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import sigma.ast.{EvaluatedValue, SType}
 import sigma.interpreter.ContextExtension.VarBinding
-import sigma.serialization.{SerializerException, SigmaByteReader, SigmaByteWriter, SigmaSerializer}
+import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 
 /**
   * User-defined variables to be put into context.

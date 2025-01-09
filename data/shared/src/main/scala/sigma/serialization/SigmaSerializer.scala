@@ -82,17 +82,6 @@ abstract class SigmaSerializer[TFamily, T <: TFamily] extends Serializer[TFamily
   final def fromBytes(bytes: Array[Byte]): TFamily = {
     parse(SigmaSerializer.startReader(bytes))
   }
-
-  protected final def containsV6Types(v: EvaluatedValue[_]): Boolean = {
-    def v6TypeCheck(tpe: SType) = {
-      tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode
-    }
-    v match {
-      case c: Constant[_] => v6TypeCheck(c.tpe)
-      case c: EvaluatedCollection[_, _] => v6TypeCheck(c.elementType)
-      case GroupGenerator => false
-    }
-  }
 }
 
 trait SigmaSerializerCompanion[TFamily] {
