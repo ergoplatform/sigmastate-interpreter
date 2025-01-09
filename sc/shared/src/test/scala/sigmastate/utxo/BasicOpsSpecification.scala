@@ -3088,7 +3088,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       getRegTest()
     } else {
-      an[sigma.exceptions.ConstraintFailed] should be thrownBy getRegTest()
+      an[sigma.validation.ValidationException] should be thrownBy getRegTest()
     }
   }
 
@@ -3109,7 +3109,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (VersionContext.current.isV6SoftForkActivated) {
       getRegTest()
     } else {
-      an[java.nio.BufferUnderflowException] should be thrownBy getRegTest()
+      an[sigma.validation.ValidationException] should be thrownBy getRegTest()
     }
   }
 
