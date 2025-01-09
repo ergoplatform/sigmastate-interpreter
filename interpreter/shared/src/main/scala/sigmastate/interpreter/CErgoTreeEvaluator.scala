@@ -207,7 +207,10 @@ class CErgoTreeEvaluator(
       operations.forall { case (key, value) =>
         var res = true
         // the cost of tree update is O(bv.treeHeight)
-        addSeqCost(UpdateAvlTree_Info, nItems) { () =>
+      // Here (and in the previous methods) the cost is not properly approximated. 
+      // When the tree is small (or empty), but there are many `operations`, the treeHeight will grow on every iteration. 
+      // So should the cost on every iteration.
+      addSeqCost(UpdateAvlTree_Info, nItems) { () =>
           val updateRes = bv.performInsertOrUpdate(key.toArray, value.toArray)
           res = updateRes.isSuccess
         }
