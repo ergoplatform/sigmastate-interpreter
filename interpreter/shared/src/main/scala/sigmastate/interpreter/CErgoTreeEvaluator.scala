@@ -144,8 +144,7 @@ class CErgoTreeEvaluator(
         // the cost of tree lookup is O(bv.treeHeight)
         addSeqCost(InsertIntoAvlTree_Info, nItems) { () =>
           val insertRes = bv.performInsert(key.toArray, value.toArray)
-          // TODO v6.0: throwing exception is not consistent with update semantics
-          //  however it preserves v4.0 semantics (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908)
+          // For versioned change details, see see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908
           if (insertRes.isFailure && !VersionContext.current.isV6SoftForkActivated) {
             syntax.error(s"Incorrect insert for $tree (key: $key, value: $value, digest: ${tree.digest}): ${insertRes.failed.get}}")
           }

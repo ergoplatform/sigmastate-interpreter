@@ -58,7 +58,8 @@ trait AvlTreeVerifier {
     *
     * @param key   key to look up
     * @param value value to check it was inserted or updated
-    * @return Success(Some(value)), Success(None), or Failure
+    * @return Success(Some(oldValue)) if there was some oldValue associated with the key,
+    *         Success(None) in case of insertion, or Failure if proof invalid
     */
   def performInsertOrUpdate(key: Array[Byte], value: Array[Byte]): Try[Option[Array[Byte]]]
 
