@@ -16,8 +16,7 @@ import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIs
 import sigma.data.NumericOps.BigIntIsExactIntegral
 import sigma.data.OverloadHack.Overloaded1
 import sigma.data.UnsignedBigIntNumericOps.UnsignedBigIntIsExactIntegral
-import sigma.data.{DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
-import sigma.data.{CBigInt, DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
+import sigma.data.{CBigInt, CUnsignedBigInt, DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
 import sigma.eval.{CostDetails, ErgoTreeEvaluator, TracedCost}
 import sigma.pow.Autolykos2PowValidation
 import sigma.reflection.RClass
@@ -1944,7 +1943,7 @@ case object SGlobalMethods extends MonoTypeMethods {
       ArgInfo("left", "left operand"), ArgInfo("right", "right operand"))
 
   lazy val powHitMethod = SMethod(
-    this, "powHit", SFunc(Array(SGlobal, SInt, SByteArray, SByteArray, SByteArray, SInt), SBigInt), methodId = 8,
+    this, "powHit", SFunc(Array(SGlobal, SInt, SByteArray, SByteArray, SByteArray, SInt), SUnsignedBigInt), methodId = 8,
     PowHitCostKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall,
@@ -1957,10 +1956,10 @@ case object SGlobalMethods extends MonoTypeMethods {
     )
 
   def powHit_eval(mc: MethodCall, G: SigmaDslBuilder, k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int)
-                 (implicit E: ErgoTreeEvaluator): BigInt = {
+                 (implicit E: ErgoTreeEvaluator): UnsignedBigInt = {
     val cost = PowHitCostKind.cost(k, msg, nonce, h)
     E.addCost(FixedCost(cost), powHitMethod.opDesc)
-    CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
+    CUnsignedBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
   }
 
   private val deserializeCostKind = PerItemCost(baseCost = JitCost(30), perChunkCost = JitCost(20), chunkSize = 32)

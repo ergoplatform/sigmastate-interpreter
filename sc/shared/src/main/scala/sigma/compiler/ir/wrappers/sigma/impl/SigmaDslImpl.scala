@@ -2294,11 +2294,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
 
-    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
+    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
-        true, false, element[BigInt]))
+        true, false, element[UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
     }
 
     override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
@@ -2474,11 +2474,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
-    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
+    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
-        true, true, element[BigInt]))
+        true, true, element[UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
     }
 
     def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
