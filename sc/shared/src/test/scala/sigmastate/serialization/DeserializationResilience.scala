@@ -431,11 +431,19 @@ class DeserializationResilience extends DeserializationResilienceTesting {
 
   property("impossible to use v6 types in box registers") {
     val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+
     val b = new ErgoBoxCandidate(1L, trueProp, 1,
                   additionalRegisters = Map(R4 -> UnsignedBigIntConstant(new BigInteger("2"))))
     VersionContext.withVersions(3, 3) {
       val bs = ErgoBoxCandidate.serializer.toBytes(b)
       a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b2 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Constant[SOption[SInt.type]](Some(2), SOption(SInt))))
+    VersionContext.withVersions(3, 3) {
+      val bs2 = ErgoBoxCandidate.serializer.toBytes(b2)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs2)
     }
   }
 
