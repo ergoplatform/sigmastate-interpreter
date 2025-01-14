@@ -24,7 +24,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.{CostLimitException, InterpreterException}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.{CrossVersionProps, Plus}
-import sigmastate.utils.Helpers.TryOps
+import sigmastate.utils.Helpers.{TryOps, decodeGroupElement}
 
 
 /** Regression tests with ErgoTree related test vectors.
