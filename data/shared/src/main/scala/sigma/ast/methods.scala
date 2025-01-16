@@ -1196,7 +1196,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   val ReverseMethod = SMethod(this, "reverse",
     SFunc(Array(ThisType), ThisType, paramIVSeq), 30, reverseCostKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Returns inversed collection.")
 
   /** Implements evaluation of Coll.reverse method call ErgoTree node.
     * Called via reflection based on naming convention.
@@ -1963,7 +1963,7 @@ case object SGlobalMethods extends MonoTypeMethods {
     CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
   }
 
-  private val deserializeCostKind = PerItemCost(baseCost = JitCost(30), perChunkCost = JitCost(20), chunkSize = 32)
+  private val deserializeCostKind = PerItemCost(baseCost = JitCost(100), perChunkCost = JitCost(32), chunkSize = 32)
 
   lazy val deserializeToMethod = SMethod(
     this, "deserializeTo", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 4, deserializeCostKind, Seq(tT))

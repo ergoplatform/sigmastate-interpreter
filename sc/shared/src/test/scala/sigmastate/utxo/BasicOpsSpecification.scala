@@ -3227,9 +3227,11 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if (activatedVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy distinctTest()
     } else {
-      val start = System.nanoTime()
+      val start = System.currentTimeMillis()
       distinctTest()
-      println("time: " + (System.nanoTime() - start) / 1000000)
+      val eta = System.currentTimeMillis() - start
+      println("time (s): " + eta / 1000)
+      (eta < 2000) shouldBe true
     }
   }
 

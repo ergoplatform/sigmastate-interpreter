@@ -11,10 +11,15 @@ import sigma.{BigInt, Coll, Colls, GroupElement, UnsignedBigInt}
   */
 case class CGroupElement(override val wrappedValue: Ecp) extends GroupElement with WrapperOf[Ecp] {
 
+  private var _encoded: Coll[Byte] = null
   override def toString: String = s"GroupElement(${wrappedValue.showECPoint})"
 
-  override def getEncoded: Coll[Byte] =
-    Colls.fromArray(GroupElementSerializer.toBytes(wrappedValue))
+  override def getEncoded: Coll[Byte] = {
+    if(_encoded == null) {
+      _encoded = Colls.fromArray(GroupElementSerializer.toBytes(wrappedValue))
+    }
+    _encoded
+  }
 
   override def isIdentity: Boolean = CryptoFacade.isInfinityPoint(wrappedValue)
 
@@ -29,4 +34,11 @@ case class CGroupElement(override val wrappedValue: Ecp) extends GroupElement wi
 
   override def negate: GroupElement =
     CGroupElement(CryptoFacade.negatePoint(wrappedValue))
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case cg: GroupElement => cg.getEncoded == this.getEncoded
+      case _ => false
+    }
+  }
 }
