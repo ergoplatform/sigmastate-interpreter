@@ -263,9 +263,6 @@ object GraphIRReflection {
         mkMethod(clazz, "reverse", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[ctx.Coll[Any]].reverse
         },
-        mkMethod(clazz, "distinct", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Coll[Any]].distinct
-        },
         mkMethod(clazz, "startsWith", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Coll[Any]].startsWith(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Any]]])
         },

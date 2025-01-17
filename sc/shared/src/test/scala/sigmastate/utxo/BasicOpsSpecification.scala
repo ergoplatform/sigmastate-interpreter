@@ -1487,27 +1487,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  property("Coll.distinct"){
-    def reverseTest() = test("distinct", env, ext,
-      """{
-        | val c1 = Coll(1, 2, 3, 3, 2)
-        | val c2 = Coll(3, 2, 1)
-        |
-        | val h1 = Coll(INPUTS(0), INPUTS(0))
-        | val h2 = Coll(INPUTS(0))
-        |
-        | c1.distinct.reverse == c2 && h1.distinct == h2
-        | }""".stripMargin,
-      null
-    )
-
-    if(VersionContext.current.isV6SoftForkActivated) {
-      reverseTest()
-    } else {
-      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
-    }
-  }
-
   property("Coll.startsWith"){
     def reverseTest() = test("distinct", env, ext,
       """{
@@ -3197,41 +3176,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
       someTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy someTest()
-    }
-  }
-
-  property("distinct - spam attempt") {
-    val customExt = Seq(21.toByte -> CollectionConstant[SGroupElement.type](
-      Colls.fromArray(Array.fill(65535)(decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b"))),
-      SGroupElement),
-      22.toByte -> CollectionConstant[SGroupElement.type](
-        Colls.fromArray(Array.fill(65535)(decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b"))),
-        SGroupElement), 23.toByte -> CollectionConstant[SGroupElement.type](
-        Colls.fromArray(Array.fill(65535)(decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b"))),
-        SGroupElement), 24.toByte -> CollectionConstant[SGroupElement.type](
-        Colls.fromArray(Array.fill(1000)(decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b"))),
-        SGroupElement))
-    def distinctTest() = test("serialize", env, customExt,
-      s"""{
-            val coll1 = getVar[Coll[GroupElement]](21).get
-            val coll2 = getVar[Coll[GroupElement]](22).get
-            val coll3 = getVar[Coll[GroupElement]](23).get
-            val coll4 = getVar[Coll[GroupElement]](24).get
-
-            coll4.filter({(a: GroupElement) => coll1.distinct.size == coll2.distinct.size}).size != coll3.distinct.size
-          }""",
-      null,
-      true
-    )
-
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[sigma.validation.ValidationException] should be thrownBy distinctTest()
-    } else {
-      val start = System.currentTimeMillis()
-      distinctTest()
-      val eta = System.currentTimeMillis() - start
-      println("time (s): " + eta / 1000)
-      (eta < 2000) shouldBe true
     }
   }
 

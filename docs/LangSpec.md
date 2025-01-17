@@ -359,13 +359,7 @@ class Context {
     *  @return A new $coll with all elements of this $coll in reversed order.
     */
   def reverse: Coll[T]
-
-  /** Builds a new $coll from this $coll without any duplicate elements.
-    *
-    *  @return  A new $coll which contains the first occurrence of every element of this $coll.
-    */
-  def distinct: Coll[T]
-  
+ 
 }
 
 /** Represents data of the block headers available in scripts. */

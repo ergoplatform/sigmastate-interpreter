@@ -577,36 +577,15 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(8, FilterMethod),
         MInfo(9, AppendMethod),
         MInfo(10, ApplyMethod),
-        /* TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-        BitShiftLeftMethod,
-        BitShiftRightMethod,
-        BitShiftRightZeroedMethod,
-        */
         MInfo(14, IndicesMethod),
         MInfo(15, FlatMapMethod),
         MInfo(19, PatchMethod),
         MInfo(20, UpdatedMethod),
         MInfo(21, UpdateManyMethod),
-        /*TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-        UnionSetsMethod,
-        DiffMethod,
-        IntersectMethod,
-        PrefixLengthMethod,
-        */
         MInfo(26, IndexOfMethod),
-        /* TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-        LastIndexOfMethod,
-        FindMethod,
-        */
         MInfo(29, ZipMethod)
-        /* TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-        DistinctMethod,
-        StartsWithMethod,
-        EndsWithMethod,
-        MapReduceMethod,
-        */
       ) ++ (if (isV6Activated) {
-        Seq(MInfo(30, ReverseMethod), MInfo(31, DistinctMethod), MInfo(32, StartsWithMethod), MInfo(33, EndsWithMethod), MInfo(34, GetMethod))
+        Seq(MInfo(30, ReverseMethod), MInfo(31, StartsWithMethod), MInfo(32, EndsWithMethod), MInfo(33, GetMethod))
       } else Seq.empty), true)
     },
     { import SOptionMethods._
