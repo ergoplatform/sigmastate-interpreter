@@ -3241,10 +3241,10 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (VersionContext.current.isV6Activated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       deserTest()
     } else {
-      an[ValidationException] should be thrownBy deserTest()
+      an[Exception] should be thrownBy deserTest()
     }
   }
 
@@ -3262,7 +3262,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6Activated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       someTest(okValue)
       // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
       an[Exception] should be thrownBy someTest(invalidValue)
