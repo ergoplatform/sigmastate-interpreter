@@ -38,7 +38,7 @@ import sigma.interpreter.ContextExtension.VarBinding
 import sigmastate.interpreter.CErgoTreeEvaluator.{DefaultEvalSettings, currentEvaluator}
 import sigmastate.interpreter.Interpreter._
 import sigma.ast.Apply
-import sigma.eval.EvalSettings
+import sigma.eval.{EvalSettings, SigmaDsl}
 import sigma.exceptions.InvalidType
 import sigma.serialization.{ErgoTreeSerializer, SerializerException}
 import sigma.serialization.{DataSerializer, ErgoTreeSerializer, SigmaByteWriter, SigmaSerializer, ValueSerializer}
@@ -3245,6 +3245,29 @@ class BasicOpsSpecification extends CompilerTestingCommons
       deserTest()
     } else {
       an[ValidationException] should be thrownBy deserTest()
+    }
+  }
+
+  property("Global.decodeNbits - result of more than 256 bits") {
+    val okValue = SigmaDsl.encodeNbits(CBigInt(new BigInteger("2").pow(255).subtract(BigInteger.ONE)))
+    val invalidValue = SigmaDsl.encodeNbits(CBigInt(new BigInteger("2").pow(256).subtract(BigInteger.ONE)))
+
+    def someTest(value: Long): Assertion = {
+      test("some", env, ext,
+        s"""{
+          |   val target = Global.decodeNbits(${value}L)
+          |   target != 0
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV6SoftForkActivated) {
+      someTest(okValue)
+      // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
+      an[Exception] should be thrownBy someTest(invalidValue)
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest(okValue)
     }
   }
 
