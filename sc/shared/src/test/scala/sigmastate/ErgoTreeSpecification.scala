@@ -523,7 +523,11 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(13, updateMethod),
         MInfo(14, removeMethod),
         MInfo(15, updateDigestMethod)
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(16, insertOrUpdateMethod))
+      } else {
+        Seq.empty
+      }), true)
     },
     { import SHeaderMethods._
       (SHeader.typeId,  Seq(

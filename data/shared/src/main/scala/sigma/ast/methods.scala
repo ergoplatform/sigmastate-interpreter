@@ -1763,23 +1763,63 @@ case object SAvlTreeMethods extends MonoTypeMethods {
     OperationCostInfo(m.costKind.asInstanceOf[FixedCost], m.opDesc)
   }
 
-  protected override def getMethods(): Seq[SMethod] = super.getMethods() ++ Seq(
-    digestMethod,
-    enabledOperationsMethod,
-    keyLengthMethod,
-    valueLengthOptMethod,
-    isInsertAllowedMethod,
-    isUpdateAllowedMethod,
-    isRemoveAllowedMethod,
-    updateOperationsMethod,
-    containsMethod,
-    getMethod,
-    getManyMethod,
-    insertMethod,
-    updateMethod,
-    removeMethod,
-    updateDigestMethod
-  )
+  // 6.0 methods below
+  lazy val insertOrUpdateMethod = SMethod(this, "insertOrUpdate",
+    SFunc(Array(SAvlTree, CollKeyValue, SByteArray), SAvlTreeOption), 16, DynamicCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+      """
+        |  /** Perform insertions or updates of key-value entries into this tree using proof `proof`.
+        |    * Throws exception if proof is incorrect
+        |    * Return Some(newTree) if successful
+        |    * Return None if operations were not performed.
+        |    *
+        |    * @note CAUTION! Pairs must be ordered the same way they were in insert ops before proof was generated.
+        |    * @param operations   collection of key-value pairs to insert or update in this authenticated dictionary.
+        |    * @param proof
+        |    */
+        |
+        """.stripMargin)
+
+  /** Implements evaluation of AvlTree.insertOrUpdate method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def insertOrUpdate_eval(mc: MethodCall, tree: AvlTree, entries: KeyValueColl, proof: Coll[Byte])
+                         (implicit E: ErgoTreeEvaluator): Option[AvlTree] = {
+    E.insertOrUpdate_eval(mc, tree, entries, proof)
+  }
+
+  lazy val v5Methods = {
+    super.getMethods() ++ Seq(
+      digestMethod,
+      enabledOperationsMethod,
+      keyLengthMethod,
+      valueLengthOptMethod,
+      isInsertAllowedMethod,
+      isUpdateAllowedMethod,
+      isRemoveAllowedMethod,
+      updateOperationsMethod,
+      containsMethod,
+      getMethod,
+      getManyMethod,
+      insertMethod,
+      updateMethod,
+      removeMethod,
+      updateDigestMethod
+    )
+  }
+
+  lazy val v6Methods = v5Methods ++ Seq(insertOrUpdateMethod)
+
+  protected override def getMethods(): Seq[SMethod] = {
+    if (VersionContext.current.isV6SoftForkActivated) {
+      v6Methods
+    } else {
+      v5Methods
+    }
+  }
+
 }
 
 /** Type descriptor of `Context` type of ErgoTree. */

@@ -1138,6 +1138,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
               val proof = asRep[Coll[Byte]](argsV(1))
               tree.update(operations, proof)
+            case SAvlTreeMethods.insertOrUpdateMethod.name =>
+              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
+              val proof = asRep[Coll[Byte]](argsV(1))
+              tree.insertOrUpdate(operations, proof)
             case _ => throwError()
           }
           case (ph: Ref[PreHeader]@unchecked, SPreHeaderMethods) => method.name match {
