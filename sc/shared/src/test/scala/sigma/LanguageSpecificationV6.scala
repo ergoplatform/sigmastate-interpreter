@@ -3040,7 +3040,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         val tree = createTree(preInsertDigest, insertAllowed = true)
         val invalidKvs = Colls.fromItems((key -> value), (key -> value))
         val input = (tree, (invalidKvs, insertProof))
-        if (VersionContext.current.isV6SoftForkActivated) {
+        if (VersionContext.current.isV6Activated) {
           insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
         } else {
           val res = insert.checkEquality(input)
@@ -3053,7 +3053,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         val tree = createTree(preInsertDigest, insertAllowed = true)
         val invalidProof = insertProof.map(x => (-x).toByte) // any other different from proof
         val input = (tree, (kvs, invalidProof))
-        if (VersionContext.current.isV6SoftForkActivated) {
+        if (VersionContext.current.isV6Activated) {
           insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
         } else {
           val res = insert.checkEquality(input)

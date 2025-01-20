@@ -3241,7 +3241,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       deserTest()
     } else {
       an[ValidationException] should be thrownBy deserTest()
@@ -3262,7 +3262,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV6Activated) {
       someTest(okValue)
       // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
       an[Exception] should be thrownBy someTest(invalidValue)
