@@ -1813,7 +1813,7 @@ case object SAvlTreeMethods extends MonoTypeMethods {
   lazy val v6Methods = v5Methods ++ Seq(insertOrUpdateMethod)
 
   protected override def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6Activated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
