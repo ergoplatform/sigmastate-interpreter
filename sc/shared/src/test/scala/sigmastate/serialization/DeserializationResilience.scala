@@ -7,13 +7,12 @@ import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
 import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.serialization.{Reader, VLQByteBufferReader}
-import sigma.ast.{SBoolean, SInt, SizeOf}
+import sigma.ast.{SBoolean, SInt, SizeOf, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckPositionLimit
 import sigma.{Colls, Environment, VersionContext}
-import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate._
 import sigma.Extensions.ArrayOps
@@ -445,6 +444,28 @@ class DeserializationResilience extends DeserializationResilienceTesting {
       val bs2 = ErgoBoxCandidate.serializer.toBytes(b2)
       a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs2)
     }
+
+    val b3 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Tuple(UnsignedBigIntConstant(new BigInteger("1")), IntConstant(1))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b3)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b4 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> ConcreteCollection(Seq(UnsignedBigIntConstant(new BigInteger("1"))), SUnsignedBigInt)))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b4)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b5 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Tuple(IntConstant(1), UnsignedBigIntConstant(new BigInteger("1")))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b5)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
   }
 
 }

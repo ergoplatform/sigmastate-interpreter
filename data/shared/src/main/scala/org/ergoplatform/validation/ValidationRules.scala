@@ -1,7 +1,7 @@
 package org.ergoplatform.validation
 
 import sigma.SigmaException
-import sigma.ast.{Constant, DeserializeContext, ErgoTree, EvaluatedCollection, EvaluatedValue, GroupGenerator, MethodsContainer, SHeader, SMethod, SType, SUnsignedBigInt}
+import sigma.ast.{Constant, DeserializeContext, ErgoTree, EvaluatedCollection, EvaluatedValue, GroupGenerator, MethodsContainer, SHeader, SMethod, SType, SUnsignedBigInt, Tuple, syntax}
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.serialization.{InvalidOpCode, SerializerException}
 import sigma.util.Extensions.toUByte
@@ -172,6 +172,12 @@ object ValidationRules {
       }
       v match {
         case c: Constant[_] => v6TypeCheck(c.tpe)
+        case t: Tuple => if(t.items.length != 2) {
+          syntax.error(s"Invalid tuple $this")
+        } else {
+          v6TypeCheck(t.items.head.tpe)
+          v6TypeCheck(t.items(1).tpe)
+        }
         case c: EvaluatedCollection[_, _] => v6TypeCheck(c.elementType)
         case GroupGenerator =>
       }
