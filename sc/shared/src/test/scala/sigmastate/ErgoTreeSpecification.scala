@@ -497,11 +497,12 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(4, BytesWithoutRefMethod),
         MInfo(5, IdMethod),
         MInfo(6, creationInfoMethod),
+        MInfo(7, getRegMethodV5),
         MInfo(8, tokensMethod)
       ) ++ (if (isV6Activated) {
-        Seq(MInfo(7, getRegMethodV6))
+        Seq(MInfo(19, getRegMethodV6))
       } else {
-        Seq(MInfo(7, getRegMethodV5))
+        Seq()
       }) ++ registers(idOfs = 8)
         .zipWithIndex
         .map { case (m,i) => MInfo((8 + i + 1).toByte, m) }, true)

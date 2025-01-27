@@ -1400,7 +1400,7 @@ case object SBoxMethods extends MonoTypeMethods {
          | identifier followed by box index in the transaction outputs.
         """.stripMargin ) // see ExtractCreationInfo
 
-  lazy val getRegMethodV5 = SMethod(this, "getReg",
+  lazy val getRegMethodV5 = SMethod(this, "getRegV5",
     SFunc(Array(SBox, SInt), SOption(tT), Array(paramT)), 7, ExtractRegisterAs.costKind)
       .withInfo(ExtractRegisterAs,
         """ Extracts register by id and type.
@@ -1410,7 +1410,7 @@ case object SBoxMethods extends MonoTypeMethods {
         ArgInfo("regId", "zero-based identifier of the register."))
 
   lazy val getRegMethodV6 = SMethod(this, "getReg",
-    SFunc(Array(SBox, SInt), SOption(tT), Array(paramT)), 7, ExtractRegisterAs.costKind, Seq(tT))
+    SFunc(Array(SBox, SInt), SOption(tT), Array(paramT)), 19, ExtractRegisterAs.costKind, Seq(tT))
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[Box, Int, RType[_]]("getReg"),
       { mtype => Array(mtype.tRange.asOption[SType].elemType) })
@@ -1432,12 +1432,11 @@ case object SBoxMethods extends MonoTypeMethods {
     BytesWithoutRefMethod, // see ExtractBytesWithNoRef
     IdMethod, // see ExtractId
     creationInfoMethod,
-    tokensMethod
+    tokensMethod,
+    getRegMethodV5
   ) ++ registers(8)
 
-  lazy val v5Methods = commonBoxMethods ++ Array(
-    getRegMethodV5
-  )
+  lazy val v5Methods = commonBoxMethods
 
   lazy val v6Methods = commonBoxMethods ++ Array(
     getRegMethodV6
