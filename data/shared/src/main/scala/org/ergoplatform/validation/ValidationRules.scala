@@ -1,5 +1,7 @@
 package org.ergoplatform.validation
 
+import sigma.SigmaException
+import sigma.ast.{Constant, DeserializeContext, ErgoTree, EvaluatedCollection, EvaluatedValue, GroupGenerator, MethodsContainer, SHeader, SMethod, SType, SUnsignedBigInt, Tuple, syntax}
 import sigma.{SigmaException, VersionContext}
 import sigma.ast.{DeserializeContext, ErgoTree, MethodsContainer, SMethod}
 import sigma.ast.TypeCodes.LastConstantCode
@@ -169,6 +171,45 @@ object ValidationRules {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
 
+  // todo: recheck id after merge
+  object CheckV6Type extends ValidationRule(1016,
+    "Check the type has the declared method.") {
+    override protected lazy val settings: SigmaValidationSettings = currentSettings
+
+    final def apply[T](v: EvaluatedValue[_]): Unit = {
+      checkRule()
+
+      def v6TypeCheck(tpe: SType) = {
+        if (tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode) {
+          throwValidationException(
+            new SerializerException(s"V6 type used in register or context var extension: $tpe"),
+            Array[Any](tpe))
+        }
+      }
+      v match {
+        case c: Constant[_] => v6TypeCheck(c.tpe)
+        case t: Tuple => if(t.items.length != 2) {
+          syntax.error(s"Invalid tuple $this")
+        } else {
+          v6TypeCheck(t.items.head.tpe)
+          v6TypeCheck(t.items(1).tpe)
+        }
+        case c: EvaluatedCollection[_, _] => v6TypeCheck(c.elementType)
+        case GroupGenerator =>
+      }
+    }
+
+    override def isSoftFork(vs: SigmaValidationSettings,
+                            ruleId: Short,
+                            status: RuleStatus,
+                            args: Seq[Any]): Boolean = (status, args) match {
+      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
+        val key = Array(objType.ownerType.typeId, methodId)
+        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+      case _ => false
+    }
+  }
+
   private val ruleSpecsV5: Seq[ValidationRule] = Seq(
     CheckDeserializedScriptType,
     CheckDeserializedScriptIsSigmaProp,
@@ -185,7 +226,8 @@ object ValidationRules {
     CheckHeaderSizeBit,
     CheckCostFuncOperation,
     CheckPositionLimit,
-    CheckLoopLevelInCostFunction
+    CheckLoopLevelInCostFunction,
+    CheckV6Type
   )
 
   // v6 validation rules below

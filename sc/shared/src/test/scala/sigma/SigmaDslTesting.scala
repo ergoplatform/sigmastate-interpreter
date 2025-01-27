@@ -4,6 +4,7 @@ import debox.cfor
 import org.ergoplatform._
 import org.ergoplatform.dsl.{ContractSpec, SigmaContractSyntax, TestContractSpec}
 import org.ergoplatform.validation.ValidationRules
+import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.frequency
 import org.scalacheck.{Arbitrary, Gen}
@@ -399,8 +400,9 @@ class SigmaDslTesting extends AnyPropSpec
               parsed.bytes shouldBe box.bytes
             }
             catch {
-              case ValidationException(_, r: CheckSerializableTypeCode.type, Seq(SOption.OptionTypeCode), _) =>
-                // ignore the problem with Option serialization, but test all the other cases
+              // ignore the problem with Option serialization, but test all the other cases
+              case ValidationException(_, _: CheckV6Type.type, Seq(SOption(_)), _) =>
+              case ValidationException(_, _: CheckSerializableTypeCode.type, Seq(SOption.OptionTypeCode), _) =>
             }
 
             ErgoLikeContextTesting.dummy(box, activatedVersionInTests)
