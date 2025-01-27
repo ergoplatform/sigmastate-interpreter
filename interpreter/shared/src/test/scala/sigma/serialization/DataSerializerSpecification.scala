@@ -52,7 +52,7 @@ class DataSerializerSpecification extends SerializationSpecification {
 
     withVersion match {
       case Some(ver) =>
-        VersionContext.withVersions(ver, 1) {
+        VersionContext.withVersions(ver, ver) {
           test()
         }
       case None =>
@@ -129,7 +129,7 @@ class DataSerializerSpecification extends SerializationSpecification {
         }
       })
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
       forAll { in: T#WrappedType =>
         roundtrip[SType](Some(in).asWrappedType, SOption(tpe))
         roundtrip[SOption[T]](None, SOption(tpe))
@@ -189,7 +189,7 @@ class DataSerializerSpecification extends SerializationSpecification {
   }
 
   property("nuanced versioned test for header roundtrip") {
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
       forAll { x: Header => roundtrip[SHeader.type](x, SHeader) }
     }
 
@@ -219,7 +219,7 @@ class DataSerializerSpecification extends SerializationSpecification {
       Colls.emptyColl
     )
 
-    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 1) {
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
       roundtrip[SHeader.type](header, SHeader)
     }
   }
