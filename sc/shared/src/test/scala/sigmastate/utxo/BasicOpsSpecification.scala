@@ -1489,27 +1489,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  property("Coll.distinct"){
-    def reverseTest() = test("distinct", env, ext,
-      """{
-        | val c1 = Coll(1, 2, 3, 3, 2)
-        | val c2 = Coll(3, 2, 1)
-        |
-        | val h1 = Coll(INPUTS(0), INPUTS(0))
-        | val h2 = Coll(INPUTS(0))
-        |
-        | c1.distinct.reverse == c2 && h1.distinct == h2
-        | }""".stripMargin,
-      null
-    )
-
-    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
-      reverseTest()
-    } else {
-      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
-    }
-  }
-
   property("Coll.startsWith"){
     def reverseTest() = test("distinct", env, ext,
       """{

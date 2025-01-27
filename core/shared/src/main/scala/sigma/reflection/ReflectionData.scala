@@ -233,9 +233,6 @@ object ReflectionData {
         mkMethod(clazz, "reverse", Array[Class[_]]()) { (obj, args) =>
           obj.asInstanceOf[Coll[Any]].reverse
         },
-        mkMethod(clazz, "distinct", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[Coll[Any]].distinct
-        },
         mkMethod(clazz, "startsWith", Array[Class[_]](classOf[Coll[_]])) { (obj, args) =>
           obj.asInstanceOf[Coll[Any]].startsWith(args(0).asInstanceOf[Coll[Any]])
         },

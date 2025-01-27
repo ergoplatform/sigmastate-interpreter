@@ -2176,35 +2176,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll.distinct") {
-    val f = newFeature[Coll[Int], Coll[Int]](
-      { (xs: Coll[Int]) => xs.distinct },
-      """{(xs: Coll[Int]) => xs.distinct }""".stripMargin,
-      FuncValue(
-        Array((1, SCollectionType(SInt))),
-        MethodCall.typed[Value[SCollection[SInt.type]]](
-          ValUse(1, SCollectionType(SInt)),
-          SCollectionMethods.DistinctMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
-          IndexedSeq(),
-          Map()
-        )
-      ),
-      sinceVersion = VersionContext.V6SoftForkVersion
-    )
-
-    verifyCases(
-      Seq(
-        Coll(1, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(1, 1, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(1, 2, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(2, 2, 2) -> Expected(ExpectedResult(Success(Coll(2)), None)),
-        Coll(3, 1, 2, 2, 2, 4, 4, 1) -> Expected(ExpectedResult(Success(Coll(3, 1, 2, 4)), None)),
-        Coll[Int]() -> Expected(ExpectedResult(Success(Coll[Int]()), None))
-      ),
-      f
-    )
-  }
-
   property("Coll.startsWith") {
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) },

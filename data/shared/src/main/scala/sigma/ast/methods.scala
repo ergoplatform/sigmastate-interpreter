@@ -1199,7 +1199,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   val ReverseMethod = SMethod(this, "reverse",
     SFunc(Array(ThisType), ThisType, paramIVSeq), 30, reverseCostKind)
     .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "")
+    .withInfo(MethodCall, "Returns inversed collection.")
 
   /** Implements evaluation of Coll.reverse method call ErgoTree node.
     * Called via reflection based on naming convention.
@@ -1213,29 +1213,10 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
     }
   }
 
-  private val distinctCostKind = PerItemCost(baseCost = JitCost(60), perChunkCost = JitCost(5), chunkSize = 100)
-
-  val DistinctMethod = SMethod(this, "distinct",
-    SFunc(Array(ThisType), ThisType, paramIVSeq), 31, distinctCostKind)
-    .withIRInfo(MethodCallIrBuilder)
-    .withInfo(MethodCall, "Returns inversed collection.")
-
-  /** Implements evaluation of Coll.reverse method call ErgoTree node.
-    * Called via reflection based on naming convention.
-    * @see SMethod.evalMethod
-    */
-  def distinct_eval[A](mc: MethodCall, xs: Coll[A])
-                     (implicit E: ErgoTreeEvaluator): Coll[A] = {
-    val m = mc.method
-    E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
-      xs.distinct
-    }
-  }
-
   private val startsWithCostKind = Zip_CostKind
 
   val StartsWithMethod = SMethod(this, "startsWith",
-    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 32, startsWithCostKind)
+    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 31, startsWithCostKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Returns true if this collection starts with given one, false otherwise.",
       ArgInfo("prefix", "Collection to be checked for being a prefix of this collection."))
@@ -1255,7 +1236,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   private val endsWithCostKind = Zip_CostKind
 
   val EndsWithMethod = SMethod(this, "endsWith",
-    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 33, endsWithCostKind)
+    SFunc(Array(ThisType, ThisType), SBoolean, paramIVSeq), 32, endsWithCostKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Returns true if this collection ends with given one, false otherwise.",
       ArgInfo("suffix", "Collection to be checked for being a suffix of this collection."))
@@ -1273,7 +1254,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   }
 
   val GetMethod = SMethod(this, "get",
-    SFunc(Array(ThisType, SInt), SOption(tIV), Array[STypeParam](tIV)), 34, ByIndex.costKind)
+    SFunc(Array(ThisType, SInt), SOption(tIV), Array[STypeParam](tIV)), 33, ByIndex.costKind)
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall,
               "Returns Some(element) if there is an element at given index, None otherwise.",
@@ -1302,7 +1283,6 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
 
   private val v6Methods = v5Methods ++ Seq(
     ReverseMethod,
-    DistinctMethod,
     StartsWithMethod,
     EndsWithMethod,
     GetMethod
@@ -1996,7 +1976,7 @@ case object SGlobalMethods extends MonoTypeMethods {
     CUnsignedBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
   }
 
-  private val deserializeCostKind = PerItemCost(baseCost = JitCost(30), perChunkCost = JitCost(20), chunkSize = 32)
+  private val deserializeCostKind = PerItemCost(baseCost = JitCost(100), perChunkCost = JitCost(32), chunkSize = 32)
 
   lazy val deserializeToMethod = SMethod(
     this, "deserializeTo", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 4, deserializeCostKind, Seq(tT))
