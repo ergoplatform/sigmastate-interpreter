@@ -1080,7 +1080,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ctx.LastBlockUtxoRootHash
             case SContextMethods.minerPubKeyMethod.name =>
               ctx.minerPubKey
-            case SContextMethods.getVarFromInputMethod.name if VersionContext.current.isV6SoftForkActivated  =>
+            case SContextMethods.getVarFromInputMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Short](argsV(0))
               val c2 = asRep[Byte](argsV(1))
               val c3 = stypeToElem(typeSubst.apply(tT))
