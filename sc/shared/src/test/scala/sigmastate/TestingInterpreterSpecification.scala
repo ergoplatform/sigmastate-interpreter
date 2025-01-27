@@ -341,7 +341,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     val source =
       """
         |{
-        | val b: BigInt = bigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
+        | val b = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
         | val k = 32
         | val N = 1024 * 1024
         | val msg = fromBase16("0a101b8c6a4f2e")

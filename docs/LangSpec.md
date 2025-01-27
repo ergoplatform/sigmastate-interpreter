@@ -1067,7 +1067,7 @@ There are some functions which do not belong to other types, thus they put under
     * @param nonce - used to pad the message to get Proof-of-Work hash function output with desirable properties
     * @param h - PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)
     */
-  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt
+  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): UnsignedBigInt
 
   /** Deserializes provided `bytes` into a value of type `T`. **/
   def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T

@@ -7,7 +7,7 @@ import scorex.util.encode.Base16
 import sigma.Extensions.ArrayOps
 import sigma.ast.{ByteArrayConstant, IntConstant}
 import sigma.crypto.SecP256K1Group
-import sigma.data.{CBigInt, TrivialProp}
+import sigma.data.{CBigInt, CUnsignedBigInt, TrivialProp}
 import sigma.eval.SigmaDsl
 import sigma.util.Extensions.SigmaBooleanOps
 import sigma.util.NBitsUtils
@@ -108,7 +108,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
     val hbs = Colls.fromArray(Base16.decode("00000000").get)
     val N = 1024 * 1024
 
-    SigmaDsl.powHit(k, msg, nonce, hbs, N) shouldBe CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+    SigmaDsl.powHit(k, msg, nonce, hbs, N) shouldBe CUnsignedBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
 
     val es = CErgoTreeEvaluator.DefaultEvalSettings
     val accumulator = new CostAccumulator(
@@ -129,9 +129,9 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
       val res = MethodCall(Global, SGlobalMethods.powHitMethod,
         IndexedSeq(IntConstant(k), ByteArrayConstant(msg), ByteArrayConstant(nonce),
           ByteArrayConstant(hbs), IntConstant(N)), Map.empty)
-        .evalTo[sigma.BigInt](Map.empty)(evaluator)
+        .evalTo[sigma.UnsignedBigInt](Map.empty)(evaluator)
 
-      res should be(CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344")))
+      res should be(CUnsignedBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344")))
     }
   }
 

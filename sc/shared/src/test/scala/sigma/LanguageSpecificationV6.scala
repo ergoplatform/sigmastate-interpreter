@@ -1471,12 +1471,12 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   property("Global.powHit") {
-    def powHit: Feature[Coll[Byte], sigma.BigInt] = newFeature(
+    def powHit: Feature[Coll[Byte], sigma.UnsignedBigInt] = newFeature(
       { (x: Coll[Byte]) =>
         val msg = x.slice(0, 7).toArray
         val nonce = x.slice(7, 15).toArray
         val h = x.slice(15, 19).toArray
-        CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
+        CUnsignedBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
       },
       "{ (x: Coll[Byte]) => val msg = x.slice(0,7); val nonce = x.slice(7,15); val h = x.slice(15,19); " +
         "Global.powHit(32, msg, nonce, h, 1024 * 1024) }",
@@ -1502,7 +1502,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val nonce = Base16.decode("000000000000002c").get
     val h = Base16.decode("00000000").get
     val x = Colls.fromArray(msg ++ nonce ++ h)
-    val hit = CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+    val hit = CUnsignedBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
 
     verifyCases(
       Seq(
