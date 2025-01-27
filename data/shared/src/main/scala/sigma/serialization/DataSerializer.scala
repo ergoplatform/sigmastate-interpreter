@@ -16,7 +16,7 @@ object DataSerializer extends CoreDataSerializer {
     case SBox =>
       val b = v.asInstanceOf[CBox]
       ErgoBox.sigmaSerializer.serialize(b.ebox, w.asInstanceOf[SigmaByteWriter])
-    case SHeader if VersionContext.current.isV6Activated =>
+    case SHeader if VersionContext.current.isV3OrLaterErgoTreeVersion =>
       val h = v.asInstanceOf[CHeader]
       ErgoHeader.sigmaSerializer.serialize(h.ergoHeader, w.asInstanceOf[SigmaByteWriter])
     case _ =>
@@ -36,7 +36,7 @@ object DataSerializer extends CoreDataSerializer {
         val res = CBox(ErgoBox.sigmaSerializer.parse(r.asInstanceOf[SigmaByteReader]))
         r.level = r.level - 1
         res
-      case SHeader if VersionContext.current.isV6Activated =>
+      case SHeader if VersionContext.current.isV3OrLaterErgoTreeVersion =>
         val depth = r.level
         r.level = depth + 1
         val res = new CHeader(ErgoHeader.sigmaSerializer.parse(r.asInstanceOf[SigmaByteReader]))

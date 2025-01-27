@@ -192,7 +192,8 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
   }
 
   override def decodeNbits(l: Long): BigInt = {
-    CBigInt(NBitsUtils.decodeCompactBits(l).bigInteger)
+    // Result is limited to 256 bits with .toSignedBigIntValueExact
+    CBigInt(NBitsUtils.decodeCompactBits(l).bigInteger.toSignedBigIntValueExact)
   }
 
   /**

@@ -48,7 +48,7 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       }
       )
 
-    a[ValidationException] should be thrownBy (
+    a[sigma.serialization.SerializerException] should be thrownBy (
       VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
@@ -137,7 +137,7 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       }
       )
 
-    a[ValidationException] should be thrownBy (
+    a[sigma.serialization.SerializerException] should be thrownBy (
       VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
         code
       }
