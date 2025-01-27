@@ -1848,14 +1848,6 @@ case object SContextMethods extends MonoTypeMethods {
     .withInfo(GetVar, "Get context variable with given \\lst{varId} and type.",
       ArgInfo("varId", "\\lst{Byte} identifier of context variable"))
 
-  lazy val getVarV6Method = SMethod(
-    this, "getVar", SFunc(ContextFuncDom, SOption(tT), Array(paramT)), 11, GetVar.costKind, Seq(tT))
-    .withIRInfo(
-      MethodCallIrBuilder,
-      javaMethodOf[Context, Byte, RType[_]]("getVar"),
-      { mtype => Array(mtype.tRange.asOption[SType].elemType) })
-    .withInfo(MethodCall, "Get context variable with given \\lst{varId} and type.")
-
   lazy val getVarFromInputMethod = SMethod(
     this, "getVarFromInput", SFunc(Array(SContext, SShort, SByte), SOption(tT), Array(paramT)), 12, GetVar.costKind, Seq(tT))
     .withIRInfo(
@@ -1869,15 +1861,13 @@ case object SContextMethods extends MonoTypeMethods {
 
   private lazy val commonMethods = super.getMethods() ++ Array(
     dataInputsMethod, headersMethod, preHeaderMethod, inputsMethod, outputsMethod, heightMethod, selfMethod,
-    selfBoxIndexMethod, lastBlockUtxoRootHashMethod, minerPubKeyMethod
+    selfBoxIndexMethod, lastBlockUtxoRootHashMethod, minerPubKeyMethod, getVarV5Method
   )
 
-  private lazy val v5Methods = commonMethods ++ Seq(
-    getVarV5Method
-  )
+  private lazy val v5Methods = commonMethods
 
   private lazy val v6Methods = commonMethods ++ Seq(
-    getVarV6Method, getVarFromInputMethod
+    getVarFromInputMethod
   )
 
   protected override def getMethods(): Seq[SMethod] = {

@@ -1830,29 +1830,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Context.getVar") {
-
-    def getVar = {
-      newFeature(
-        { (x: Context) => x.getVar[Boolean](11)},
-        "{ (x: Context) => CONTEXT.getVar[Boolean](11.toByte) }",
-        FuncValue(Array((1, SContext)), GetVar(11.toByte, SOption(SBoolean))),
-        sinceVersion = VersionContext.V6SoftForkVersion
-      )
-    }
-
-    val (_, ctx2, ctx3, ctx4) = contextData()
-
-    verifyCases(
-      Seq(
-        ctx2 -> new Expected(ExpectedResult(Success(Some(true)), None)),
-        ctx3 -> new Expected(ExpectedResult(Failure(new sigma.exceptions.InvalidType("Cannot getVar[Boolean](11): invalid type of value TestValue(0) at id=11")), None)), // not expected type in context var
-        ctx4 -> new Expected(ExpectedResult(Success(Some(false)), None))
-      ),
-      getVar
-    )
-  }
-
   property("Option.getOrElse with lazy default") {
 
     val trace = TracedCost(
