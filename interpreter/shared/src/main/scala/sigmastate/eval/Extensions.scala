@@ -91,7 +91,7 @@ object Extensions {
         val bv = CAvlTreeVerifier(tree, proof)
         entries.forall { case (key, value) =>
           val insertRes = bv.performOneOperation(Insert(ADKey @@ key.toArray, ADValue @@ value.toArray))
-          if (insertRes.isFailure && !VersionContext.current.isV6SoftForkActivated) {
+          if (insertRes.isFailure && !VersionContext.current.isV6Activated) {
             syntax.error(s"Incorrect insert for $tree (key: $key, value: $value, digest: ${tree.digest}): ${insertRes.failed.get}}")
           }
           insertRes.isSuccess

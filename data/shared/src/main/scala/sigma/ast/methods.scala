@@ -85,13 +85,17 @@ sealed trait MethodsContainer {
 
   /** Lookup method in this type by method's id or throw ValidationException.
     * This method can be used in trySoftForkable section to either obtain valid method
-    * or catch ValidatioinException which can be checked for soft-fork condition.
+    * or catch ValidationException which can be checked for soft-fork condition.
     * It delegate to getMethodById to lookup method.
     *
     * @see getMethodById
     */
   def methodById(methodId: Byte): SMethod = {
-    ValidationRules.CheckAndGetMethod(this, methodId)
+    if (VersionContext.current.isV6Activated) {
+      ValidationRules.CheckAndGetMethodV6(this, methodId)
+    } else {
+      ValidationRules.CheckAndGetMethod(this, methodId)
+    }
   }
 
   /** Finds a method descriptor [[SMethod]] for the given name. */
@@ -132,7 +136,7 @@ object MethodsContainer {
   private val containersV6 = new SparseArrayContainer[MethodsContainer](methodsV6.map(m => (m.typeId, m)))
 
   def contains(typeId: TypeCode): Boolean = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       containersV6.contains(typeId)
     } else {
       containersV5.contains(typeId)
@@ -140,7 +144,7 @@ object MethodsContainer {
   }
 
   def apply(typeId: TypeCode): MethodsContainer = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       containersV6(typeId)
     } else {
       containersV5(typeId)
@@ -157,7 +161,7 @@ object MethodsContainer {
     case tup: STuple =>
       STupleMethods.getTupleMethod(tup, methodName)
     case _ =>
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         containersV6.get(tpe.typeCode).flatMap(_.method(methodName))
       } else {
         containersV5.get(tpe.typeCode).flatMap(_.method(methodName))
@@ -208,7 +212,7 @@ trait SNumericTypeMethods extends MonoTypeMethods {
   }
 
   protected override def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       super.getMethods() ++ v6Methods
     } else {
       super.getMethods() ++ v5Methods
@@ -523,7 +527,7 @@ case object SBigIntMethods extends SNumericTypeMethods {
               ArgInfo("m", "modulo value"))
 
   protected override def getMethods(): Seq[SMethod]  = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       super.getMethods() ++ Seq(ToUnsigned, ToUnsignedMod)
     } else {
       super.getMethods()
@@ -651,7 +655,7 @@ case object SGroupElementMethods extends MonoTypeMethods {
       MultiplyMethod,
       NegateMethod)
 
-    super.getMethods() ++ (if (VersionContext.current.isV6SoftForkActivated) {
+    super.getMethods() ++ (if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v5Methods ++ Seq(ExponentiateUnsignedMethod)
     } else {
       v5Methods
@@ -1309,7 +1313,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
     * Typical override: `super.getMethods() ++ Seq(m1, m2, m3)`
     */
   override protected def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
@@ -1462,7 +1466,7 @@ case object SBoxMethods extends MonoTypeMethods {
 
   // should be lazy to solve recursive initialization
   protected override def getMethods() = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
@@ -1809,7 +1813,7 @@ case object SAvlTreeMethods extends MonoTypeMethods {
   lazy val v6Methods = v5Methods ++ Seq(insertOrUpdateMethod)
 
   protected override def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
@@ -1877,7 +1881,7 @@ case object SContextMethods extends MonoTypeMethods {
   )
 
   protected override def getMethods(): Seq[SMethod] = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
@@ -1928,7 +1932,7 @@ case object SHeaderMethods extends MonoTypeMethods {
   private lazy val v6Methods = v5Methods ++ Seq(checkPowMethod)
 
   protected override def getMethods() = {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6Methods
     } else {
       v5Methods
@@ -2101,7 +2105,7 @@ case object SGlobalMethods extends MonoTypeMethods {
     .withInfo(MethodCall, "Returns empty Option[T] of given type T.")
 
   protected override def getMethods() = super.getMethods() ++ {
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       Seq(
         groupGeneratorMethod,
         xorMethod,

@@ -24,7 +24,10 @@ case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
 
   /** @return true, if the activated script version of Ergo protocol on the network is
    * including v6.0 update. */
-  def isV6SoftForkActivated: Boolean = activatedVersion >= V6SoftForkVersion
+  def isV3OrLaterErgoTreeVersion: Boolean = ergoTreeVersion >= V6SoftForkVersion
+
+  def isV6Activated: Boolean = activatedVersion >= V6SoftForkVersion
+
 }
 
 object VersionContext {
@@ -102,6 +105,10 @@ object VersionContext {
       throw new IllegalStateException(
         s"Global VersionContext.current = ${ctx} while expected $expected.")
     }
+  }
+
+  def fromBlockVersion(blockVersion: Byte): VersionContext = {
+    VersionContext((blockVersion - 1).toByte, (blockVersion - 1).toByte)
   }
 
 }

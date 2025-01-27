@@ -128,7 +128,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       propExp.asSigmaProp
     } else {
       // compile with the latest compiler version, to get validation exception during execution, not compilation error
-      withVersions(VersionContext.MaxSupportedScriptVersion, ergoTreeVersionInTests) {
+      withVersions(VersionContext.MaxSupportedScriptVersion, VersionContext.MaxSupportedScriptVersion) {
         compile(env, script).asBoolValue.toSigmaProp
       }
     }
@@ -153,7 +153,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val ctx = ErgoLikeContextTesting(currentHeight = 0,
       lastBlockUtxoRoot = AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, boxesToSpend = IndexedSeq(boxToSpend),
-      spendingTransaction = tx, self = boxToSpend, activatedVersionInTests)
+      spendingTransaction = tx, self = boxToSpend, ergoTreeVersionInTests)
 
     val pr = prover.prove(env + (ScriptNameProp -> s"${name}_prove"), tree, ctx, fakeMessage).getOrThrow
 
@@ -194,7 +194,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getVarTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy getVarTest()
@@ -215,7 +215,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getVarTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy getVarTest()
@@ -233,7 +233,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getVarTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy getVarTest()
@@ -259,8 +259,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy deserTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
     }
@@ -280,8 +280,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
     } else {
       conversionTest()
     }
@@ -298,8 +298,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
     } else {
       an[Exception] should be thrownBy conversionTest()
     }
@@ -315,7 +315,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[Exception] should be thrownBy conversionTest()
     } else {
       an[sigma.exceptions.InvalidArguments] should be thrownBy conversionTest()
@@ -335,8 +335,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
     } else {
       conversionTest()
     }
@@ -355,8 +355,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
     } else {
       conversionTest()
     }
@@ -374,8 +374,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
     } else {
       conversionTest()
     }
@@ -393,8 +393,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
     } else {
       an[Exception] should be thrownBy conversionTest()
     }
@@ -411,8 +411,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy conversionTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
     } else {
       conversionTest()
     }
@@ -428,7 +428,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[Exception] should be thrownBy conversionTest()
     } else {
       val t = Try(conversionTest())
@@ -505,8 +505,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy schnorrTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy schnorrTest()
     } else {
       schnorrTest()
     }
@@ -526,7 +526,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[Exception] should be thrownBy miTest()
     } else {
       miTest()
@@ -546,8 +546,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy miTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
     }
@@ -566,8 +566,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy miTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
     }
@@ -587,8 +587,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy miTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
     }
@@ -608,8 +608,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy miTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
     }
@@ -629,8 +629,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy miTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
     }
@@ -741,8 +741,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy rangeTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy rangeTest()
     } else {
       rangeTest()
     }
@@ -800,8 +800,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
-      an[Exception] should be thrownBy circuitTest()
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy circuitTest()
     } else {
       circuitTest()
     }
@@ -819,7 +819,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBitsTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
@@ -841,7 +841,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBitsTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
@@ -858,7 +858,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBitsTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
@@ -876,7 +876,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBitsTest()
     } else {
       an[ValidationException] shouldBe thrownBy(toBitsTest())
@@ -893,7 +893,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBitsTest()
     } else {
       an[ValidationException] shouldBe thrownBy(toBitsTest())
@@ -911,7 +911,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseInverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
@@ -928,7 +928,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseInverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
@@ -945,7 +945,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseInverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
@@ -965,7 +965,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseInverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
@@ -986,7 +986,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseOrTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
@@ -1002,7 +1002,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseOrTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
@@ -1018,7 +1018,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseOrTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
@@ -1036,7 +1036,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseOrTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
@@ -1053,7 +1053,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseAndTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
@@ -1070,7 +1070,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseAndTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
@@ -1090,7 +1090,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseAndTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
@@ -1110,7 +1110,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseAndTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
@@ -1130,7 +1130,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseXorTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseXorTest())
@@ -1150,7 +1150,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       bitwiseAndTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
@@ -1167,7 +1167,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftLeftTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1184,7 +1184,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[IllegalArgumentException] shouldBe thrownBy(shiftLeftTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1201,7 +1201,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftLeftTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1218,7 +1218,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftLeftTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1235,7 +1235,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftLeftTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1251,7 +1251,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[ArithmeticException] shouldBe thrownBy(shiftLeftTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1268,7 +1268,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftLeftTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1284,7 +1284,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[ArithmeticException] shouldBe thrownBy(shiftLeftTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
@@ -1301,7 +1301,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1318,7 +1318,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1335,7 +1335,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1353,7 +1353,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1370,7 +1370,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1388,7 +1388,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1406,7 +1406,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1424,7 +1424,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       shiftRightTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1442,7 +1442,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
@@ -1460,7 +1460,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getVarTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy getVarTest()
@@ -1481,7 +1481,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1502,7 +1502,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1526,7 +1526,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1550,7 +1550,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1574,7 +1574,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1598,7 +1598,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       reverseTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
@@ -1616,7 +1616,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(getTest())
@@ -1632,7 +1632,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1648,7 +1648,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1664,7 +1664,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1681,7 +1681,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1701,7 +1701,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1718,7 +1718,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
          |""".stripMargin,
       null
     )
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       fromTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy(fromTest())
@@ -1737,7 +1737,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1756,7 +1756,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1775,7 +1775,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1792,7 +1792,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1807,7 +1807,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1823,7 +1823,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       toBytesTest()
     } else {
       an[ValidationException] shouldBe thrownBy(toBytesTest())
@@ -1840,7 +1840,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1857,7 +1857,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1874,7 +1874,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1893,7 +1893,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1914,7 +1914,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1935,7 +1935,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1958,7 +1958,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -1982,7 +1982,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2004,7 +2004,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       // we have wrapped CostLimitException here
@@ -2024,7 +2024,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       optTest()
     } else {
       assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
@@ -2042,7 +2042,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       null
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       optTest()
     } else {
       assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
@@ -2089,7 +2089,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
         testExceededCost = false
       )
     }
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy powTest()
     } else {
       powTest()
@@ -2121,7 +2121,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy powTest()
     } else {
       powTest()
@@ -2141,7 +2141,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[Exception] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2158,7 +2158,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )}
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2178,7 +2178,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2200,7 +2200,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2218,7 +2218,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2245,7 +2245,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2265,7 +2265,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2286,7 +2286,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
        an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2306,7 +2306,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2326,7 +2326,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2349,7 +2349,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       an [Exception] should be thrownBy deserTest()
@@ -2404,7 +2404,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2430,7 +2430,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (activatedVersionInTests < V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
       an[sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
@@ -2753,7 +2753,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if(VersionContext.current.isV6SoftForkActivated) {
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       holTest()
     } else {
       an[sigma.validation.ValidationException] shouldBe thrownBy(holTest())
@@ -3086,7 +3086,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getRegTest()
     } else {
       an[sigma.exceptions.ConstraintFailed] should be thrownBy getRegTest()
@@ -3107,7 +3107,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       getRegTest()
     } else {
       an[java.nio.BufferUnderflowException] should be thrownBy getRegTest()
@@ -3150,7 +3150,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       someTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy someTest()
@@ -3172,7 +3172,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       someTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy someTest()
@@ -3194,7 +3194,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       someTest()
     } else {
       an[sigma.validation.ValidationException] should be thrownBy someTest()
@@ -3241,10 +3241,10 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       deserTest()
     } else {
-      an[ValidationException] should be thrownBy deserTest()
+      an[Exception] should be thrownBy deserTest()
     }
   }
 
@@ -3262,7 +3262,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
       )
     }
 
-    if (VersionContext.current.isV6SoftForkActivated) {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       someTest(okValue)
       // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
       an[Exception] should be thrownBy someTest(invalidValue)
