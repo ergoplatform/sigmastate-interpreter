@@ -43,7 +43,9 @@ trait ContractSyntax { contract: SigmaContract =>
           val itemTag = ClassTag[Any](itemClass)
           RType.fromClassTag(itemTag)
         } else
-          sys.error(s"Cannot compute rtypeOf($value): non-primitive type of array items")
+          sys.error(s"We can't determine the data type of $value because it includes non-basic types in its array items. " +
+            "Please make sure all array elements are basic types (like strings or numbers) for correct calculation. " +
+            "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
       case coll: Coll[_] => collRType(coll.tItem)
 
       // all primitive types

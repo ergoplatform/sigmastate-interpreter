@@ -22,7 +22,9 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-release", "8")
       case Some((2, 11)) =>
         Seq()
-      case _ => sys.error("Unsupported scala version")
+      case _ => sys.error("The Scala version you are using is not supported. " +
+        "Please use one of the supported versions: Scala 2.11, 2.12, or 2.13. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     }
   },
   javacOptions ++= javacReleaseOption,

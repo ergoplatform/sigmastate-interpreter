@@ -163,17 +163,23 @@ object SType {
     case _: SOption[_] => x.isInstanceOf[Option[_]]
     case t: STuple =>
       if (t.items.length == 2) x.isInstanceOf[Tuple2[_,_]]
-      else sys.error(s"Unsupported tuple type $t")
+      else sys.error(s"The type $t is not supported. " +
+        "Please make sure you are using a valid type. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     case tF: SFunc =>
       if (tF.tDom.length == 1) x.isInstanceOf[Function1[_,_]]
-      else sys.error(s"Unsupported function type $tF")
+      else sys.error(s"The type $tF is not supported. " +
+        "Please make sure you are using a valid type. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     case SContext => x.isInstanceOf[Context]
     case SAvlTree => x.isInstanceOf[AvlTree]
     case SGlobal => x.isInstanceOf[SigmaDslBuilder]
     case SHeader => x.isInstanceOf[Header]
     case SPreHeader => x.isInstanceOf[PreHeader]
     case SUnit => x.isInstanceOf[Unit]
-    case _ => sys.error(s"Unknown type $tpe")
+    case _ => sys.error(s"We don't recognize the type $tpe. " +
+      "Please check the type and make sure it is correct. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 
 
@@ -346,7 +352,9 @@ object SNumericType extends STypeCompanion {
   override def typeId: TypeCode = 106: Byte
 
   /** Since this object is not used in SMethod instances. */
-  override def reprClass: RClass[_] = sys.error(s"Shouldn't be called.")
+  override def reprClass: RClass[_] = sys.error("Please avoid using the reprClass method. " +
+    "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
+
 }
 
 /** Descriptor of ErgoTree type `Boolean` holding `true` or `false` values. */
@@ -368,14 +376,19 @@ case object SByte extends SPrimType with SEmbeddable with SNumericType with SMon
   override def numericTypeIndex: Int = 0
   override def upcast(v: AnyVal): Byte = v match {
     case b: Byte => b
-    case _ => sys.error(s"Cannot upcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
+
   }
   override def downcast(v: AnyVal): Byte = v match {
     case b: Byte => b
     case s: Short => s.toByteExact
     case i: Int => i.toByteExact
     case l: Long => l.toByteExact
-    case _ => sys.error(s"Cannot downcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 
@@ -390,13 +403,17 @@ case object SShort extends SPrimType with SEmbeddable with SNumericType with SMo
   override def upcast(v: AnyVal): Short = v match {
     case x: Byte => x.toShort
     case x: Short => x
-    case _ => sys.error(s"Cannot upcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
   override def downcast(v: AnyVal): Short = v match {
     case s: Short => s
     case i: Int => i.toShortExact
     case l: Long => l.toShortExact
-    case _ => sys.error(s"Cannot downcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 
@@ -412,14 +429,18 @@ case object SInt extends SPrimType with SEmbeddable with SNumericType with SMono
     case x: Byte => x.toInt
     case x: Short => x.toInt
     case x: Int => x
-    case _ => sys.error(s"Cannot upcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
   override def downcast(v: AnyVal): Int = v match {
     case b: Byte => b.toInt
     case s: Short => s.toInt
     case i: Int => i
     case l: Long => l.toIntExact
-    case _ => sys.error(s"Cannot downcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 
@@ -437,14 +458,18 @@ case object SLong extends SPrimType with SEmbeddable with SNumericType with SMon
     case x: Short => x.toLong
     case x: Int => x.toLong
     case x: Long => x
-    case _ => sys.error(s"Cannot upcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
   override def downcast(v: AnyVal): Long = v match {
     case b: Byte => b.toLong
     case s: Short => s.toLong
     case i: Int => i.toLong
     case l: Long => l
-    case _ => sys.error(s"Cannot downcast value $v to the type $this")
+    case _ => sys.error(s"We cannot convert value $v to type $this. " +
+      "Please check compatibility between the value and the expected type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 
@@ -470,7 +495,9 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
-      case _ => sys.error(s"Cannot upcast value $v to the type $this")
+      case _ => sys.error(s"We cannot convert value $v to type $this. " +
+        "Please check compatibility between the value and the expected type. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     }
     CBigInt(bi)
   }
@@ -480,7 +507,9 @@ case object SBigInt extends SPrimType with SEmbeddable with SNumericType with SM
       case x: Short => BigInteger.valueOf(x.toLong)
       case x: Int => BigInteger.valueOf(x.toLong)
       case x: Long => BigInteger.valueOf(x)
-      case _ => sys.error(s"Cannot downcast value $v to the type $this")
+      case _ => sys.error(s"We cannot convert value $v to type $this. " +
+        "Please check compatibility between the value and the expected type. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     }
     CBigInt(bi)
   }

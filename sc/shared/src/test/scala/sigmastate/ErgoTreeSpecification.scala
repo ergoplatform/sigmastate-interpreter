@@ -39,7 +39,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
 
     assertExceptionThrown(
       value.withSrcCtx(Nullable(srcCtx)),
-      t => t.isInstanceOf[RuntimeException] && t.getMessage.contains("can be set only once"))
+      t => t.isInstanceOf[RuntimeException] && t.getMessage.contains("can only be set once."))
   }
 
   property("Value.opType") {

@@ -111,7 +111,7 @@ class TypesSpecification extends SigmaTestingData {
     assertValidType((1, Some(1)), STuple(SInt, SOption(SLong))) // because type check is shallow
     assertExceptionThrown(
       assertValidType((1, 1L, Some(1)), STuple(SInt, SLong, SOption(SInt))),
-      exceptionLike[RuntimeException](s"Unsupported tuple type")
+      exceptionLike[RuntimeException](" is not supported.")
     )
 
     assertValidType((x: Any) => x, SFunc(SInt, SLong))  // note, arg and result types not checked
@@ -119,12 +119,12 @@ class TypesSpecification extends SigmaTestingData {
     assertInvalidType(1, SFunc(SInt, SLong))
     assertExceptionThrown(
       assertValidType((x: Any) => x, SFunc(Array(SInt, SLong), SOption(SInt))),
-      exceptionLike[RuntimeException](s"Unsupported function type")
+      exceptionLike[RuntimeException](" is not supported.")
     )
 
     assertExceptionThrown(
       assertValidType("", SString),
-      exceptionLike[RuntimeException](s"Unknown type")
+      exceptionLike[RuntimeException]("We don't recognize the type")
     )
   }
 }

@@ -881,7 +881,9 @@ object ArithOp {
   /** Returns operation name for the given opCode. */
   def opcodeToArithOpName(opCode: Byte): String = operations.get(opCode) match {
     case Some(c)  => c.name
-    case _ => sys.error(s"Cannot find ArithOpName for opcode $opCode")
+    case _ => sys.error(s"We couldn't find the arithmetic operation name for opcode $opCode. " +
+      "Please check that the opcode is correct and supported. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 
@@ -956,7 +958,10 @@ object BitOp {
 
   def opcodeToName(opCode: Byte): String = operations.get(opCode) match {
     case Some(c)  => c.name
-    case _ => sys.error(s"Cannot find BitOpName for opcode $opCode")
+    case _ => sys.error(s"We couldn't find the bitwise operation name for opcode $opCode. " +
+      "Please check that the opcode is correct and supported. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>."
+    )
   }
 }
 
@@ -1002,7 +1007,9 @@ object ModQArithOp extends OpGroup[ModQArithOpCompanion] {
 
   def opcodeToName(opCode: Byte): String = operations.get(opCode) match {
     case Some(c)  => c.name
-    case _ => sys.error(s"Cannot find ModQArithOp operation name for opcode $opCode")
+    case _ => sys.error(s"We couldn't find the modular Q arithmetic operation for opcode $opCode. " +
+      "Please verify that the opcode is correct and supported. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 }
 /**

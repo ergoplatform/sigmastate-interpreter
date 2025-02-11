@@ -31,7 +31,9 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
   /** Wraps the given elliptic curve point into GroupElement type. */
   def GroupElement(p: Ecp): GroupElement = p match {
     case ept: EcPointType => CGroupElement(ept)
-    case m => sys.error(s"Point of type ${m.getClass} is not supported")
+    case m => sys.error(s"The point type ${m.getClass} is not supported in this context. " +
+      "Please make sure you are using a supported point type. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 
   /** Wraps the given sigma proposition into SigmaDsl value of type SigmaProp. */

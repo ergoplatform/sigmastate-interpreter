@@ -19,7 +19,9 @@ object Platform {
         assert(c.clazz == clazz)
         c
       case _ =>
-        sys.error(s"Cannot find RClass data for $clazz")
+        sys.error(s"We couldn't find the data for class $clazz. " +
+          "Please check that the class name is correct and try again. " +
+          "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
       // Uncomment the following line to collect missing reflection data and generate Scala code for it
       //        memoize(classes)(clazz, new JRClass[T](clazz))
     }

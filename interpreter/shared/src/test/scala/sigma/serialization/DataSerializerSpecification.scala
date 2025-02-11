@@ -116,7 +116,7 @@ class DataSerializerSpecification extends SerializationSpecification {
       },
       { t =>
         t.isInstanceOf[RuntimeException] &&
-        t.getMessage.contains(s"Length of tuple $len exceeds ${0xFFFF} limit.")
+        t.getMessage.contains("The tuple length (65536) is too long (maximum limit is 65535).")
       })
 
     val tooBigBytes  = Helpers.decodeBytes(

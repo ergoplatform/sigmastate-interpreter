@@ -142,7 +142,9 @@ object SigmaPredef {
         { case (_, Seq(arg: EvaluatedValue[SString.type]@unchecked)) =>
           ErgoAddressEncoder(networkPrefix).fromString(arg.value).get match {
             case a: P2PKAddress => SigmaPropConstant(a.pubkey)
-            case a => sys.error(s"unsupported address $a")
+            case a => sys.error(s"The address $a is not supported. " +
+              "Please make sure the address is correct and try again. " +
+              "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
           }
         }),
       OperationInfo(Constant, "",
@@ -154,16 +156,22 @@ object SigmaPredef {
       PredefFuncInfo(
       { case (Ident(_, SFunc(_, tpe, _)), args) =>
         if (args.length != 1)
-          throw new InvalidArguments(s"Wrong number of arguments in $args: expected one argument")
+          throw new InvalidArguments(s"The provided inputs ($args) are incorrect. This operation requires only one input. " +
+            "Please adjust your input to include just one item and try again. " +
+            "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
         val str = args.head match {
           case StringConstant(s) => s
           case _ =>
-            throw new InvalidArguments(s"invalid argument in $args: expected a string constant")
+            throw new InvalidArguments(s"The input provided ($args) is invalid. This operation requires a text value. " +
+              "Please make sure the input is a valid text and try again. " +
+              "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
         }
         val bytes = Base58.decode(str).get
         val res = ValueSerializer.deserialize(bytes)
         if (res.tpe != tpe)
-          throw new InvalidArguments(s"Wrong type after deserialization, expected $tpe, got ${res.tpe}")
+          throw new InvalidArguments(s"The data type is incorrect. Expected: $tpe, but received: ${res.tpe}. " +
+            "Please make sure the data matches the expected type. " +
+            "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
         res
       }),
       OperationInfo(Constant, "Deserializes values from Base58 encoded binary data at compile time into a value of type T.",

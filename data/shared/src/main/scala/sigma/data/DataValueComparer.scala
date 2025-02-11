@@ -404,7 +404,10 @@ object DataValueComparer {
         okEqual = r.isInstanceOf[Unit]
 
       case _ =>
-        sys.error(s"Cannot compare $l and $r: unknown type")
+        sys.error(s"We cannot compare $l and $r because their types are unknown. " +
+          "Please ensure both values have compatible types for comparison. " +
+          "If the issue keeps happening, contact <a href=\"#\">Customer care</a>."
+        )
     }
     okEqual
   }

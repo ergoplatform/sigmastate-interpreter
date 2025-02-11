@@ -15,7 +15,9 @@ case class CSigmaProp(sigmaTree: SigmaBoolean) extends SigmaProp with WrapperOf[
   // TODO refactor: remove this (it shouldn't be used in interpreter)
   override def isValid: Boolean = sigmaTree match {
     case p: TrivialProp => p.condition
-    case _ => sys.error(s"Method CostingSigmaProp.isValid is not defined for $sigmaTree")
+    case _ => sys.error(s"The method CostingSigmaProp.isValid does not apply to $sigmaTree. " +
+      "Please make sure to use the correct method for $sigmaTree. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
   }
 
   override def propBytes: Coll[Byte] = {
