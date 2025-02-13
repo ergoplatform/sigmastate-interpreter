@@ -12,7 +12,7 @@ import scorex.crypto.hash.Digest32
 import scorex.util.ModifierId
 import sigma.Extensions.ArrayOps
 import sigma.ast.{ErgoTree, EvaluatedValue, SType}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CBigInt, Digest32Coll, WrapperOf}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CBigInt, CHeader, Digest32Coll, WrapperOf}
 import sigma.eval.Extensions.EvalIterableOps
 import sigma.eval.SigmaDsl
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -125,13 +125,18 @@ trait JsonCodecs {
       "powOnetimePk" -> h.powOnetimePk.getEncoded.asJson,
       "powNonce" -> h.powNonce.asJson,
       "powDistance" -> h.powDistance.asJson,
-      "votes" -> h.votes.asJson
+      "votes" -> h.votes.asJson,
+      "unparsedBytes" -> h.unparsedBytes.asJson
     ).asJson
   })
 
+  /**
+    * JSON decoder for Header instance. Field "unparsedBytes" is optional for now, to preserve compatibility
+    * with clients using older JSON decoders (before node 5.0.23). Better to add an (empty) field anyway if possible.
+    * This field could become mandatory in future.
+    */
   implicit val headerDecoder: Decoder[Header] = Decoder.instance({ cursor =>
     for {
-      id <- cursor.downField("id").as[Coll[Byte]]
       version <- cursor.downField("version").as[Byte]
       parentId <- cursor.downField("parentId").as[Coll[Byte]]
       adProofsRoot <- cursor.downField("adProofsRoot").as[Coll[Byte]]
@@ -146,8 +151,10 @@ trait JsonCodecs {
       powNonce <- cursor.downField("powNonce").as[Coll[Byte]]
       powDistance <- cursor.downField("powDistance").as[sigma.BigInt]
       votes <- cursor.downField("votes").as[Coll[Byte]]
-    } yield new CHeader(id, version, parentId, adProofsRoot, stateRoot, transactionsRoot, timestamp, nBits,
-      height, extensionRoot, SigmaDsl.decodePoint(minerPk), SigmaDsl.decodePoint(powOnetimePk), powNonce, powDistance, votes)
+      unparsedBytes <- cursor.downField("unparsedBytes").as[Option[Coll[Byte]]]
+    } yield CHeader(version, parentId, adProofsRoot, stateRoot.digest, transactionsRoot, timestamp, nBits,
+      height, extensionRoot, SigmaDsl.decodePoint(minerPk), SigmaDsl.decodePoint(powOnetimePk), powNonce, powDistance,
+      votes, unparsedBytes.getOrElse(Colls.emptyColl))
   })
 
   implicit val preHeaderEncoder: Encoder[PreHeader] = Encoder.instance({ v: PreHeader =>

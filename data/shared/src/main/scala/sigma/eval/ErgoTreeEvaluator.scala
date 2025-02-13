@@ -1,6 +1,6 @@
 package sigma.eval
 
-import sigma.{AvlTree, Coll, Context}
+import sigma.{AvlTree, Coll, Context, Header}
 import sigma.ast.{Constant, FixedCost, MethodCall, OperationCostInfo, OperationDesc, PerItemCost, SType, TypeBasedCost}
 import sigma.data.KeyValueColl
 
@@ -59,9 +59,9 @@ abstract class ErgoTreeEvaluator {
     * @param opDesc   the operation descriptor to associate the cost with (when costTracingEnabled)
     * @param block    operation executed under the given cost
     */
-  def addFixedCost(costKind: FixedCost, opDesc: OperationDesc)(block: => Unit): Unit
+  def addFixedCost[R](costKind: FixedCost, opDesc: OperationDesc)(block: => R): R
 
-  def addFixedCost(costInfo: OperationCostInfo[FixedCost])(block: => Unit): Unit
+  def addFixedCost[R](costInfo: OperationCostInfo[FixedCost])(block: => R): R
 
   /** Adds the given cost to the `coster`. If tracing is enabled, creates a new cost item
     * with the given operation.
@@ -133,6 +133,13 @@ abstract class ErgoTreeEvaluator {
   def update_eval(
       mc: MethodCall, tree: AvlTree,
       operations: KeyValueColl, proof: Coll[Byte]): Option[AvlTree]
+
+  /** Implements evaluation of AvlTree.insertOrUpdate method call ErgoTree node. */
+  def insertOrUpdate_eval(
+                   mc: MethodCall,
+                   tree: AvlTree,
+                   entries: KeyValueColl,
+                   proof: Coll[Byte]): Option[AvlTree]
 
   /** Implements evaluation of AvlTree.remove method call ErgoTree node. */
   def remove_eval(

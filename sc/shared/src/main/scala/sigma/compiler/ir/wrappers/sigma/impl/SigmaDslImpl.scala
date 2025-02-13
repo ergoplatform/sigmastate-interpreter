@@ -8,6 +8,8 @@ import sigma.compiler.ir.wrappers.sigma.impl.SigmaDslDefs
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
+  import sigma.Evaluation
+  import sigma.ast.SType.tT
   import sigma.compiler.ir.meta.ModuleInfo
   import sigma.compiler.ir.wrappers.sigma.SigmaDsl
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
@@ -97,6 +99,22 @@ object BigInt extends EntityObject("BigInt") {
         Array[AnyRef](that),
         true, false, element[BigInt]))
     }
+
+    import UnsignedBigInt.unsignedBigIntElement
+
+    override def toUnsigned(): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        BigIntClass.getMethod("toUnsigned"),
+        Array[AnyRef](),
+        true, false, element[UnsignedBigInt](unsignedBigIntElement)))
+    }
+
+    override def toUnsignedMod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
+        Array[AnyRef](m),
+        true, false, element[UnsignedBigInt](unsignedBigIntElement)))
+    }
   }
 
   implicit object LiftableBigInt
@@ -165,6 +183,22 @@ object BigInt extends EntityObject("BigInt") {
         Array[AnyRef](that),
         true, true, element[BigInt]))
     }
+
+    import UnsignedBigInt.unsignedBigIntElement
+
+    def toUnsigned(): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        BigIntClass.getMethod("toUnsigned"),
+        Array[AnyRef](),
+        true, true, element[UnsignedBigInt](unsignedBigIntElement)))
+    }
+
+    def toUnsignedMod(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt](unsignedBigIntElement)))
+    }
   }
 
   // entityUnref: single unref method for each type family
@@ -182,7 +216,7 @@ object BigInt extends EntityObject("BigInt") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[BigInt]), RClass(classOf[SBigInt]), Set(
-        "add", "subtract", "multiply", "divide", "mod", "min", "max"
+        "add", "subtract", "multiply", "divide", "mod", "min", "max", "toUnsigned", "toUnsignedMod"
         ))
     }
   }
@@ -267,6 +301,236 @@ object BigInt extends EntityObject("BigInt") {
 } // of object BigInt
   registerEntityObject("BigInt", BigInt)
 
+object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
+  import Liftables._
+
+  type SUnsignedBigInt = sigma.UnsignedBigInt
+  unsignedBigIntElement
+
+  case class UnsignedBigIntConst(constValue: SUnsignedBigInt)
+      extends LiftedConst[SUnsignedBigInt, UnsignedBigInt] with UnsignedBigInt
+        with Def[UnsignedBigInt] with UnsignedBigIntConstMethods {
+    val liftable: Liftable[SUnsignedBigInt, UnsignedBigInt] = LiftableUnsignedBigInt
+    val resultType: Elem[UnsignedBigInt] = liftable.eW
+  }
+
+  trait UnsignedBigIntConstMethods extends UnsignedBigInt  { thisConst: Def[_] =>
+
+    private val UnsignedBigIntClass = RClass(classOf[UnsignedBigInt])
+
+    override def add(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("add", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def subtract(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("subtract", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def multiply(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("multiply", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def divide(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("divide", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def mod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("mod", classOf[Sym]),
+        Array[AnyRef](m),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def min(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("min", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def max(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("max", classOf[Sym]),
+        Array[AnyRef](that),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def modInverse(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("modInverse", classOf[Sym]),
+        Array[AnyRef](m),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("plusMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("subtractMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("multiplyMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, false, element[UnsignedBigInt]))
+    }
+
+    override def toSigned(): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(self,
+        UnsignedBigIntClass.getMethod("toSigned"),
+        Array[AnyRef](),
+        true, false, element[BigInt]))
+    }
+  }
+
+  implicit object LiftableUnsignedBigInt extends Liftable[SUnsignedBigInt, UnsignedBigInt] {
+    lazy val eW: Elem[UnsignedBigInt] = unsignedBigIntElement
+    lazy val sourceType: RType[SUnsignedBigInt] = {
+      RType[SUnsignedBigInt]
+    }
+
+    def lift(x: SUnsignedBigInt): Ref[UnsignedBigInt] = UnsignedBigIntConst(x)
+  }
+
+  private val UnsignedBigIntClass = RClass(classOf[UnsignedBigInt])
+
+  // entityAdapter for BigInt trait
+  case class UnsignedBigIntAdapter(source: Ref[UnsignedBigInt])
+    extends Node with UnsignedBigInt
+      with Def[UnsignedBigInt] {
+    val resultType: Elem[UnsignedBigInt] = element[UnsignedBigInt]
+
+    override def transform(t: Transformer) = UnsignedBigIntAdapter(t(source))
+
+    def add(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("add", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def subtract(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("subtract", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def multiply(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("multiply", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def divide(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("divide", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def mod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("mod", classOf[Sym]),
+        Array[AnyRef](m),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def min(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("min", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def max(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("max", classOf[Sym]),
+        Array[AnyRef](that),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def modInverse(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("modInverse", classOf[Sym]),
+        Array[AnyRef](m),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("plusMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("subtractMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
+      asRep[UnsignedBigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("multiplyMod", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](that, m),
+        true, true, element[UnsignedBigInt]))
+    }
+
+    def toSigned(): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(source,
+        UnsignedBigIntClass.getMethod("toSigned"),
+        Array[AnyRef](),
+        true, true, element[BigInt]))
+    }
+  }
+
+  // entityUnref: single unref method for each type family
+  implicit final def unrefUnsignedBigInt(p: Ref[UnsignedBigInt]): UnsignedBigInt = {
+    if (p.node.isInstanceOf[UnsignedBigInt]) p.node.asInstanceOf[UnsignedBigInt]
+    else
+      UnsignedBigIntAdapter(p)
+  }
+
+  class UnsignedBigIntElem[To <: UnsignedBigInt]
+    extends EntityElem[To] {
+    override val liftable: Liftables.Liftable[_, To] = asLiftable[SUnsignedBigInt, To](LiftableUnsignedBigInt)
+
+    override protected def collectMethods: Map[RMethod, MethodDesc] = {
+      super.collectMethods ++
+        Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
+          "add", "subtract", "multiply", "divide", "mod", "modInverse",
+          "min", "max", "plusMod", "subtractMod", "multiplyMod", "toSigned"
+        ))
+    }
+  }
+
+  implicit lazy val unsignedBigIntElement: Elem[UnsignedBigInt] = new UnsignedBigIntElem[UnsignedBigInt]
+}   // of object BigInt
+    registerEntityObject("UnsignedBigInt", UnsignedBigInt)
+
 object GroupElement extends EntityObject("GroupElement") {
   // entityConst: single const for each entity
   import Liftables._
@@ -287,6 +551,13 @@ object GroupElement extends EntityObject("GroupElement") {
     override def exp(k: Ref[BigInt]): Ref[GroupElement] = {
       asRep[GroupElement](mkMethodCall(self,
         GroupElementClass.getMethod("exp", classOf[Sym]),
+        Array[AnyRef](k),
+        true, false, element[GroupElement]))
+    }
+
+    override def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement] = {
+      asRep[GroupElement](mkMethodCall(self,
+        GroupElementClass.getMethod("expUnsigned", classOf[Sym]),
         Array[AnyRef](k),
         true, false, element[GroupElement]))
     }
@@ -334,6 +605,13 @@ object GroupElement extends EntityObject("GroupElement") {
     def exp(k: Ref[BigInt]): Ref[GroupElement] = {
       asRep[GroupElement](mkMethodCall(source,
         GroupElementClass.getMethod("exp", classOf[Sym]),
+        Array[AnyRef](k),
+        true, true, element[GroupElement]))
+    }
+
+    def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement] = {
+      asRep[GroupElement](mkMethodCall(source,
+        GroupElementClass.getMethod("expUnsigned", classOf[Sym]),
         Array[AnyRef](k),
         true, true, element[GroupElement]))
     }
@@ -620,10 +898,11 @@ object Box extends EntityObject("Box") {
     }
 
     override def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(self,
         BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](i, cT),
-        true, false, element[WOption[T]]))
+        true, false, element[WOption[T]], Map(tT -> st) ))
     }
 
     override def tokens: Ref[Coll[(Coll[Byte], Long)]] = {
@@ -695,10 +974,11 @@ object Box extends EntityObject("Box") {
     }
 
     def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(source,
         BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](i, cT),
-        true, true, element[WOption[T]]))
+        true, true, element[WOption[T]], Map(tT -> st)))
     }
 
     def tokens: Ref[Coll[(Coll[Byte], Long)]] = {
@@ -928,6 +1208,13 @@ object AvlTree extends EntityObject("AvlTree") {
         true, false, element[WOption[AvlTree]]))
     }
 
+    override def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
+      asRep[WOption[AvlTree]](mkMethodCall(self,
+        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](operations, proof),
+        true, false, element[WOption[AvlTree]]))
+    }
+
     override def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
       asRep[WOption[AvlTree]](mkMethodCall(self,
         AvlTreeClass.getMethod("remove", classOf[Sym], classOf[Sym]),
@@ -1052,6 +1339,13 @@ object AvlTree extends EntityObject("AvlTree") {
         true, true, element[WOption[AvlTree]]))
     }
 
+    def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
+      asRep[WOption[AvlTree]](mkMethodCall(source,
+        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](operations, proof),
+        true, true, element[WOption[AvlTree]]))
+    }
+
     def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
       asRep[WOption[AvlTree]](mkMethodCall(source,
         AvlTreeClass.getMethod("remove", classOf[Sym], classOf[Sym]),
@@ -1075,7 +1369,7 @@ object AvlTree extends EntityObject("AvlTree") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[AvlTree]), RClass(classOf[SAvlTree]), Set(
-        "digest", "enabledOperations", "keyLength", "valueLengthOpt", "isInsertAllowed", "isUpdateAllowed", "isRemoveAllowed", "updateDigest", "updateOperations", "contains", "get", "getMany", "insert", "update", "remove"
+        "digest", "enabledOperations", "keyLength", "valueLengthOpt", "isInsertAllowed", "isUpdateAllowed", "isRemoveAllowed", "updateDigest", "updateOperations", "contains", "get", "getMany", "insert", "update", "insertOrUpdate", "remove"
         ))
     }
   }
@@ -1368,6 +1662,14 @@ object Header extends EntityObject("Header") {
         ArraySeq.empty,
         true, false, element[Coll[Byte]]))
     }
+
+    override def checkPow: Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(self,
+        HeaderClass.getMethod("checkPow"),
+        ArraySeq.empty,
+        true, false, element[Boolean]))
+    }
+
   }
 
   implicit object LiftableHeader
@@ -1492,6 +1794,13 @@ object Header extends EntityObject("Header") {
         ArraySeq.empty,
         true, true, element[Coll[Byte]]))
     }
+
+    def checkPow: Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(source,
+        HeaderClass.getMethod("checkPow"),
+        ArraySeq.empty,
+        true, true, element[Boolean]))
+    }
   }
 
   // entityUnref: single unref method for each type family
@@ -1509,7 +1818,7 @@ object Header extends EntityObject("Header") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[Header]), RClass(classOf[SHeader]), Set(
-        "id", "version", "parentId", "ADProofsRoot", "stateRoot", "transactionsRoot", "timestamp", "nBits", "height", "extensionRoot", "minerPk", "powOnetimePk", "powNonce", "powDistance", "votes"
+        "id", "version", "parentId", "ADProofsRoot", "stateRoot", "transactionsRoot", "timestamp", "nBits", "height", "extensionRoot", "minerPk", "powOnetimePk", "powNonce", "powDistance", "votes", "checkPow"
         ))
     }
   }
@@ -1608,10 +1917,19 @@ object Context extends EntityObject("Context") {
     }
 
     override def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(self,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
-        true, false, element[WOption[T]]))
+        true, false, element[WOption[T]], Map(tT -> st)))
+    }
+
+    override def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
+      asRep[WOption[T]](mkMethodCall(self,
+        ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](inputId, varId, cT),
+        true, false, element[WOption[T]], Map(tT -> st)))
     }
 
   }
@@ -1705,10 +2023,19 @@ object Context extends EntityObject("Context") {
     }
 
     def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
       asRep[WOption[T]](mkMethodCall(source,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
-        true, true, element[WOption[T]]))
+        true, true, element[WOption[T]], Map(tT -> st)))
+    }
+
+    def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      val st = Evaluation.rtypeToSType(cT.sourceType)
+      asRep[WOption[T]](mkMethodCall(source,
+        ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](inputId, varId, cT),
+        true, true, element[WOption[T]], Map(tT -> st)))
     }
   }
 
@@ -1727,7 +2054,7 @@ object Context extends EntityObject("Context") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[Context]), RClass(classOf[SContext]), Set(
-        "OUTPUTS", "INPUTS", "dataInputs", "HEIGHT", "SELF", "selfBoxIndex", "LastBlockUtxoRootHash", "headers", "preHeader", "minerPubKey", "getVar", "vars"
+        "OUTPUTS", "INPUTS", "dataInputs", "HEIGHT", "SELF", "selfBoxIndex", "LastBlockUtxoRootHash", "headers", "preHeader", "minerPubKey", "getVar", "getVarFromInput", "vars"
         ))
     }
   }
@@ -1945,6 +2272,62 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Array[AnyRef](l, r),
         true, false, element[Coll[Byte]]))
     }
+
+    def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("serialize", classOf[Sym]),
+        Array[AnyRef](value),
+        true, false, element[Coll[Byte]]))
+    }
+
+    override def deserializeTo[T](l: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](l, cT),
+        true, false, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+    override def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](bytes, cT),
+        true, false, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    override def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](value, cT),
+        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    override def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
+        Array[AnyRef](cT),
+        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+
+    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
+        Array[AnyRef](k, msg, nonce, h, N),
+        true, false, element[BigInt]))
+    }
+
+    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+      asRep[Long](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
+        Array[AnyRef](bi),
+        true, false, element[Long]))
+    }
+
+    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(self,
+        SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
+        Array[AnyRef](l),
+        true, false, element[BigInt]))
+    }
   }
 
   implicit object LiftableSigmaDslBuilder
@@ -2104,6 +2487,63 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         Array[AnyRef](l, r),
         true, true, element[Coll[Byte]]))
     }
+
+    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
+        Array[AnyRef](k, msg, nonce, h, N),
+        true, true, element[BigInt]))
+    }
+
+    def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("serialize", classOf[Sym]),
+        Array[AnyRef](value),
+        true, true, element[Coll[Byte]]))
+    }
+
+    def deserializeTo[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[_]]),
+        Array[AnyRef](bytes, cT),
+        true, true, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+      asRep[T](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](bytes, cT),
+        true, true, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
+        Array[AnyRef](value, cT),
+        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+    def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
+      asRep[WOption[T]](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
+        Array[AnyRef](cT),
+        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+    }
+
+
+    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+      asRep[Long](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
+        Array[AnyRef](bi),
+        true, true, element[Long]))
+    }
+
+    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
+      asRep[BigInt](mkMethodCall(source,
+        SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
+        Array[AnyRef](l),
+        true, true, element[BigInt]))
+    }
   }
 
   // entityUnref: single unref method for each type family
@@ -2121,7 +2561,9 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     override protected def collectMethods: Map[RMethod, MethodDesc] = {
       super.collectMethods ++
         Elem.declaredMethods(RClass(classOf[SigmaDslBuilder]), RClass(classOf[SSigmaDslBuilder]), Set(
-        "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256", "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator", "substConstants", "decodePoint", "avlTree", "xor"
+        "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256",
+          "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator",
+          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes", "powHit", "deserializeTo"
         ))
     }
   }
@@ -2298,6 +2740,16 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         case _ => Nullable.None
       }
       def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+    }
+
+    object deserializeTo {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = d match {
+        case MethodCall(receiver, method, args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+          val res = (receiver, args(0), args(1))
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}]]
+        case _ => Nullable.None
+      }
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
     }
 
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */

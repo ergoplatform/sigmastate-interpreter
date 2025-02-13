@@ -185,6 +185,7 @@ object Platform {
     case _: Int => tpe == SInt
     case _: Long => tpe == SLong
     case _: BigInt => tpe == SBigInt
+    case _: UnsignedBigInt => tpe == SUnsignedBigInt
     case _: String => tpe == SString  // TODO v6.0: remove this case (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/905)
     case _: GroupElement => tpe.isGroupElement
     case _: SigmaProp => tpe.isSigmaProp

@@ -7,10 +7,12 @@ import sigma.ast.SCollection.SByteArray
 import sigma.ast._
 import sigma.ast.syntax.{SValue, SigmaPropValue, TrueSigmaProp}
 import sigma.data.RType.asType
-import sigma.data.{CBox, Nullable, RType, TrivialProp}
+import sigma.data.{Nullable, RType, TrivialProp}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckTypeCode
 import ErgoTree.HeaderType
+import sigma.ast.SBigIntMethods.{ToUnsigned, ToUnsignedMod}
+import sigma.ast.SUnsignedBigIntMethods.{ModInverseMethod, ModMethod, MultiplyModMethod, PlusModMethod, SubtractModMethod, ToSignedMethod}
 import sigmastate.eval.CProfiler
 import sigmastate.helpers.{ErgoLikeContextTesting, SigmaPPrint}
 import sigmastate.interpreter.Interpreter.ReductionResult
@@ -20,14 +22,14 @@ import sigma.compiler.CompilerSettings
 import sigma.eval.EvalSettings
 import sigma.exceptions.{CostLimitException, InterpreterException}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
-import sigmastate.Plus
+import sigmastate.{CrossVersionProps, Plus}
 import sigmastate.utils.Helpers.TryOps
 
 
 /** Regression tests with ErgoTree related test vectors.
   * This test vectors verify various constants which are consensus critical and should not change.
   */
-class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
+class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with CrossVersionProps {
 
   property("Value.sourceContext") {
     val srcCtx = SourceContext.fromParserIndex(0, "")
@@ -263,7 +265,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
 
   val typeCodes = Table(
     ("constant", "expectedValue"),
-    (SPrimType.LastPrimTypeCode, 8),
+    (SPrimType.LastPrimTypeCode, 9),
     (SPrimType.MaxPrimTypeCode, 11)
   )
   
@@ -284,6 +286,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
     (SBigInt,  6, true, true, true),
     (SGroupElement, 7, true, true, false),
     (SSigmaProp,    8, true, true, false),
+    (SUnsignedBigInt, 9, true, true, true),
     (SBox,       99,  false, false, false),
     (SAvlTree,   100, false, false, false),
     (SContext,   101, false, false, false),
@@ -312,45 +315,172 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
     */
   case class MInfo(methodId: Byte, method: SMethod, isResolvableFromIds: Boolean = true)
 
+  def isV6Activated = VersionContext.current.isV6SoftForkActivated
+
   // NOTE, the type code constants are checked above
   // The methodId codes as checked here, they MUST be PRESERVED.
-  // The following table should be made dependent on HF activation
-  val methods = Table(
+  // Note, the following table is dependent on SF activation.
+  def methods = {
+    import SNumericTypeMethods._
+    Table(
     ("typeId",        "methods",               "CanHaveMethods"),
     (SBoolean.typeId, Seq.empty[MInfo], true),
-    (SByte.typeId,    Seq.empty[MInfo], false),
-    (SShort.typeId,   Seq.empty[MInfo], false),
-    (SInt.typeId,     Seq.empty[MInfo], false),
-    (SLong.typeId,    Seq.empty[MInfo], false),
-
-    { // SNumericType.typeId is erroneously shadowed by SGlobal.typeId
-      // this should be preserved in v3.x and fixed in v4.0
-      (SNumericType.typeId,  Seq(
-        MInfo(methodId = 1, SGlobalMethods.groupGeneratorMethod),
-        MInfo(2, SGlobalMethods.xorMethod)
-      ), true)
+    {
+      if (isV6Activated)
+        (SByte.typeId, Seq(
+          MInfo(methodId = 1, ToByteMethod),
+          MInfo(2, ToShortMethod),
+          MInfo(3, ToIntMethod),
+          MInfo(4, ToLongMethod),
+          MInfo(5, ToBigIntMethod),
+          MInfo(6, ToBytesMethod),
+          MInfo(7, ToBitsMethod),
+          MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+          MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+          MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+          MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+          MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+          MInfo(13, ShiftRightMethod, isResolvableFromIds = true)
+        ), true)
+      else
+        (SByte.typeId, Seq.empty[MInfo], false)
     },
+    {
+      if (isV6Activated)
+        (SShort.typeId, Seq(
+          MInfo(methodId = 1, ToByteMethod),
+          MInfo(2, ToShortMethod),
+          MInfo(3, ToIntMethod),
+          MInfo(4, ToLongMethod),
+          MInfo(5, ToBigIntMethod),
+          MInfo(6, ToBytesMethod),
+          MInfo(7, ToBitsMethod),
+          MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+          MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+          MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+          MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+          MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+          MInfo(13, ShiftRightMethod, isResolvableFromIds = true)
+        ), true)
+      else
+        (SShort.typeId, Seq.empty[MInfo], false)
+    },
+    {
+      if (isV6Activated)
+        (SInt.typeId, Seq(
+          MInfo(methodId = 1, ToByteMethod),
+          MInfo(2, ToShortMethod),
+          MInfo(3, ToIntMethod),
+          MInfo(4, ToLongMethod),
+          MInfo(5, ToBigIntMethod),
+          MInfo(6, ToBytesMethod),
+          MInfo(7, ToBitsMethod),
+          MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+          MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+          MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+          MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+          MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+          MInfo(13, ShiftRightMethod, isResolvableFromIds = true)
+        ), true)
+      else
+        (SInt.typeId, Seq.empty[MInfo], false)
+    },
+    {
+      if (isV6Activated)
+        (SLong.typeId, Seq(
+          MInfo(methodId = 1, ToByteMethod),
+          MInfo(2, ToShortMethod),
+          MInfo(3, ToIntMethod),
+          MInfo(4, ToLongMethod),
+          MInfo(5, ToBigIntMethod),
+          MInfo(6, ToBytesMethod),
+          MInfo(7, ToBitsMethod),
+          MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+          MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+          MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+          MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+          MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+          MInfo(13, ShiftRightMethod, isResolvableFromIds = true)
+        ), true)
+      else
+        (SLong.typeId, Seq.empty[MInfo], false)
+    },
+
+//    { // SNumericType.typeId is erroneously shadowed by SGlobal.typeId
+//      // this should be preserved in v3.x and fixed in v4.0
+//      (SNumericType.typeId,  Seq(
+//        MInfo(methodId = 1, SGlobalMethods.groupGeneratorMethod),
+//        MInfo(2, SGlobalMethods.xorMethod)
+//      ), true)
+//    },
 
     { // SBigInt inherit methods from SNumericType.methods
-      // however they are not resolvable via SBigInt.typeId
+      // however they are not resolvable via SBigInt.typeId before v6.0
       import SNumericTypeMethods._
       (SBigInt.typeId,  Seq(
-        MInfo(methodId = 1, ToByteMethod, isResolvableFromIds = false),
-        MInfo(2, ToShortMethod, isResolvableFromIds = false),
-        MInfo(3, ToIntMethod, isResolvableFromIds = false),
-        MInfo(4, ToLongMethod, isResolvableFromIds = false),
-        MInfo(5, ToBigIntMethod, isResolvableFromIds = false),
-        MInfo(6, ToBytesMethod, isResolvableFromIds = false),
-        MInfo(7, ToBitsMethod, isResolvableFromIds = false)
-      ), true)
+        MInfo(methodId = 1, ToByteMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(2, ToShortMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(3, ToIntMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(4, ToLongMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(5, ToBigIntMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(6, ToBytesMethod, isResolvableFromIds = if (isV6Activated) true else false),
+        MInfo(7, ToBitsMethod, isResolvableFromIds = if (isV6Activated) true else false)) ++
+        (if (isV6Activated) Seq(
+          // methods added in v6.0
+          MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+          MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+          MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+          MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+          MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+          MInfo(13, ShiftRightMethod, isResolvableFromIds = true),
+          MInfo(14, ToUnsigned, isResolvableFromIds = true),
+          MInfo(15, ToUnsignedMod, isResolvableFromIds = true)
+        ) else Seq.empty)
+        , true)
     },
+      {
+        if (isV6Activated) {
+          // SUnsignedBigInt inherit methods from SNumericType.methods
+          // however they are not resolvable via SBigInt.typeId before v6.0
+          import SNumericTypeMethods._
+          (SUnsignedBigInt.typeId, Seq(
+            MInfo(methodId = 1, ToByteMethod, isResolvableFromIds = true),
+            MInfo(2, ToShortMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(3, ToIntMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(4, ToLongMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(5, ToBigIntMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(6, ToBytesMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(7, ToBitsMethod, isResolvableFromIds = if (isV6Activated) true else false),
+            MInfo(8, BitwiseInverseMethod, isResolvableFromIds = true),
+            MInfo(9, BitwiseOrMethod, isResolvableFromIds = true),
+            MInfo(10, BitwiseAndMethod, isResolvableFromIds = true),
+            MInfo(11, BitwiseXorMethod, isResolvableFromIds = true),
+            MInfo(12, ShiftLeftMethod, isResolvableFromIds = true),
+            MInfo(13, ShiftRightMethod, isResolvableFromIds = true),
+            MInfo(14, ModInverseMethod, true),
+            MInfo(15, PlusModMethod, true),
+            MInfo(16, SubtractModMethod, true),
+            MInfo(17, MultiplyModMethod, true),
+            MInfo(18, ModMethod, true),
+            MInfo(19, ToSignedMethod, true)
+          ), true)
+        } else {
+          (SUnsignedBigInt.typeId, Seq.empty, false)
+        }
+      },
     { import SGroupElementMethods._
       (SGroupElement.typeId,  Seq(
         MInfo(2, GetEncodedMethod),
         MInfo(3, ExponentiateMethod),
         MInfo(4, MultiplyMethod),
         MInfo(5, NegateMethod)
-      ), true)
+      ) ++ {
+        if(VersionContext.current.isV6SoftForkActivated) {
+          Seq(MInfo(6, ExponentiateUnsignedMethod))
+        } else {
+          Seq.empty
+        }
+      }, true)
     },
     { import SSigmaPropMethods._
       (SSigmaProp.typeId,  Seq(
@@ -366,9 +496,12 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         MInfo(4, BytesWithoutRefMethod),
         MInfo(5, IdMethod),
         MInfo(6, creationInfoMethod),
-        MInfo(7, getRegMethod),
         MInfo(8, tokensMethod)
-      ) ++ registers(idOfs = 8)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(7, getRegMethodV6))
+      } else {
+        Seq(MInfo(7, getRegMethodV5))
+      }) ++ registers(idOfs = 8)
         .zipWithIndex
         .map { case (m,i) => MInfo((8 + i + 1).toByte, m) }, true)
     },
@@ -389,7 +522,11 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         MInfo(13, updateMethod),
         MInfo(14, removeMethod),
         MInfo(15, updateDigestMethod)
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(16, insertOrUpdateMethod))
+      } else {
+        Seq.empty
+      }), true)
     },
     { import SHeaderMethods._
       (SHeader.typeId,  Seq(
@@ -398,7 +535,11 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         MInfo(7, timestampMethod), MInfo(8, nBitsMethod), MInfo(9, heightMethod),
         MInfo(10, extensionRootMethod), MInfo(11, minerPkMethod), MInfo(12, powOnetimePkMethod),
         MInfo(13, powNonceMethod), MInfo(14, powDistanceMethod), MInfo(15, votesMethod)
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(16, checkPowMethod)) // methods added in v6.0
+      } else {
+        Seq.empty[MInfo]
+      }), true)
     },
     { import SPreHeaderMethods._
       (SPreHeader.typeId,  Seq(
@@ -412,13 +553,20 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         MInfo(1, dataInputsMethod), MInfo(2, headersMethod), MInfo(3, preHeaderMethod),
         MInfo(4, inputsMethod), MInfo(5, outputsMethod), MInfo(6, heightMethod),
         MInfo(7, selfMethod), MInfo(8, selfBoxIndexMethod), MInfo(9, lastBlockUtxoRootHashMethod),
-        MInfo(10, minerPubKeyMethod), MInfo(11, getVarMethod)
-      ), true)
+        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV6SoftForkActivated){
+          Seq(MInfo(11, getVarV6Method), MInfo(12, getVarFromInputMethod))
+        } else {
+          Seq(MInfo(11, getVarV5Method))
+        }), true)
     },
     { import SGlobalMethods._
       (SGlobal.typeId, Seq(
         MInfo(1, groupGeneratorMethod), MInfo(2, xorMethod)
-        ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(3, serializeMethod), MInfo(4, deserializeToMethod), MInfo(5, FromBigEndianBytesMethod), MInfo(6, encodeNBitsMethod), MInfo(7, decodeNBitsMethod), MInfo(8, powHitMethod), MInfo(9, someMethod), MInfo(10, noneMethod)) // methods added in v6.0
+      } else {
+        Seq.empty[MInfo]
+      }), true)
     },
     { import SCollectionMethods._
       (SCollection.typeId, Seq(
@@ -460,7 +608,9 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         EndsWithMethod,
         MapReduceMethod,
         */
-      ), true)
+      ) ++ (if (isV6Activated) {
+        Seq(MInfo(30, ReverseMethod), MInfo(31, DistinctMethod), MInfo(32, StartsWithMethod), MInfo(33, EndsWithMethod), MInfo(34, GetMethod))
+      } else Seq.empty), true)
     },
     { import SOptionMethods._
       (SOption.typeId, Seq(
@@ -474,7 +624,13 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
         MInfo(8, FilterMethod)
       ), true)
     }
-  )
+    )
+  }
+
+  property("SNumericType.typeId resolves to SGlobal") {
+    SNumericType.typeId shouldBe SGlobal.typeId
+    SMethod.fromIds(SNumericType.typeId, 1) shouldBe SGlobalMethods.groupGeneratorMethod
+  }
 
   property("MethodCall Codes") {
     forAll(methods) { (typeId, methods, canHaveMethods) =>
@@ -483,7 +639,9 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
           assert(canHaveMethods, s"Type $tyDesc should NOT have methods")
 
           val mc = MethodsContainer(tyDesc.typeId)
+
           mc.methods.length shouldBe methods.length
+
           for (expectedMethod <- methods) {
             if (expectedMethod.isResolvableFromIds) {
 
@@ -507,21 +665,28 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit {
           assert(!canHaveMethods, s"Type with code $typeId can have methods")
       }
     }
-
   }
 
   property("MethodCall on numerics") {
-    forAll(Table[STypeCompanion]("type", SByte, SShort, SInt, SLong, SBigInt)) { t =>
-      // this methods are expected to fail resolution in v3.x (but may change in future)
-      (1 to 7).foreach { methodId =>
-        assertExceptionThrown(
-          SMethod.fromIds(t.typeId, methodId.toByte),
-          {
-            case _: ValidationException => true
-            case _ => false
-          },
-          s"SMethod mustn't resolve for typeId = ${t.typeId} and methodId = $methodId"
-        )
+    forAll(Table[STypeCompanion]("type", SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt)) { t =>
+      // this methods are expected to fail resolution in before v6.0
+      if (!isV6Activated) {
+        (1 to 7).foreach { methodId =>
+          assertExceptionThrown(
+            SMethod.fromIds(t.typeId, methodId.toByte),
+            {
+              case _: ValidationException => true
+              case _ => false
+            },
+            s"SMethod mustn't resolve for typeId = ${t.typeId} and methodId = $methodId"
+          )
+        }
+      } else {
+        // in v6.0 these codes should resolve to the methods of the concrete numeric type
+        (1 to 7).foreach { methodId =>
+          val m = SMethod.fromIds(t.typeId, methodId.toByte)
+          m.objType.ownerType shouldBe t
+        }
       }
     }
   }

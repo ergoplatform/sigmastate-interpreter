@@ -5,7 +5,6 @@ import org.ergoplatform.{ErgoAddressEncoder, P2PKAddress}
 import scorex.util.encode.{Base16, Base58, Base64}
 import sigma.ast.SCollection.{SByteArray, SIntArray}
 import sigma.ast.SOption.SIntOption
-import sigma.ast.SigmaPropConstant
 import sigma.ast.syntax._
 import sigma.data.Nullable
 import sigma.exceptions.InvalidArguments
@@ -136,6 +135,18 @@ object SigmaPredef {
           Seq(ArgInfo("condition", "boolean value to embed in SigmaProp value")))
     )
 
+    val GetVarFromInputFunc = PredefinedFunc("getVarFromInput",
+      Lambda(Array(paramT), Array("inputId" -> SShort, "varId" -> SByte), SOption(tT), None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked)) =>
+          mkMethodCall(Context, SContextMethods.getVarFromInputMethod, IndexedSeq(SShort.downcast(inputId.value.asInstanceOf[AnyVal]), SByte.downcast(varId.value.asInstanceOf[AnyVal])), Map(tT -> rtpe))
+        }),
+      OperationInfo(MethodCall,
+        "Get context variable with given \\lst{varId} and type.",
+        Seq(ArgInfo("inputId", "\\lst{Byte} index of input to read context variable from"),
+            ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
+    )
+
     def PKFunc(networkPrefix: NetworkPrefix) = PredefinedFunc("PK",
       Lambda(Array("input" -> SString), SSigmaProp, None),
       PredefFuncInfo(
@@ -178,6 +189,22 @@ object SigmaPredef {
         }),
       OperationInfo(Constant,
         """Parsing string literal argument as a 256-bit signed big integer.""".stripMargin,
+        Seq(ArgInfo("", "")))
+    )
+
+    val UBigIntFromStringFunc = PredefinedFunc("unsignedBigInt",
+      Lambda(Array("input" -> SString), SUnsignedBigInt, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: EvaluatedValue[SString.type]@unchecked)) =>
+          val bi = new BigInteger(arg.value)
+          if (bi.compareTo(BigInteger.ZERO) >= 0) {
+            UnsignedBigIntConstant(bi)
+          } else {
+            throw new InvalidArguments(s"Negative argument for unsignedBigInt()")
+          }
+        }),
+      OperationInfo(Constant,
+        """Parsing string literal argument as a 256-bit unsigned big integer.""".stripMargin,
         Seq(ArgInfo("", "")))
     )
 
@@ -402,6 +429,62 @@ object SigmaPredef {
           ArgInfo("default", "optional default value, if register is not available")))
     )
 
+    val SerializeFunc = PredefinedFunc("serialize",
+      Lambda(Seq(paramT), Array("value" -> tT), SByteArray, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (_, args @ Seq(value)) =>
+          MethodCall.typed[Value[SCollection[SByte.type]]](
+            Global,
+            SGlobalMethods.serializeMethod.withConcreteTypes(Map(tT -> value.tpe)),
+            args.toIndexedSeq,
+            Map()
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Serializes the given `value` into bytes using the default serialization format.
+        """.stripMargin,
+        Seq(ArgInfo("value", "value to serialize"))
+      )
+    )
+
+    val DeserializeToFunc = PredefinedFunc("deserializeTo",
+      Lambda(Seq(paramT), Array("bytes" -> SByteArray), tT, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (u, args) =>
+          val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
+          MethodCall(
+            Global,
+            SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> resType)),
+            args.toIndexedSeq,
+            Map(tT -> resType)
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Deserializes provided bytes into a value of given type using the default serialization format.
+        """.stripMargin,
+        Seq(ArgInfo("bytes", "bytes to deserialize"))
+      )
+    )
+
+    val FromBigEndianBytesFunc = PredefinedFunc("fromBigEndianBytes",
+      Lambda(Seq(paramT), Array("bytes" -> SByteArray), tT, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (u, args) =>
+          val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
+          MethodCall(
+            Global,
+            SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
+            args.toIndexedSeq,
+            Map(tT -> resType)
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Deserializes provided big endian bytes into a numeric value of given type.
+        """.stripMargin,
+        Seq(ArgInfo("bytes", "bytes to deserialize"))
+      )
+    )
+
     val globalFuncs: Map[String, PredefinedFunc] = Seq(
       AllOfFunc,
       AnyOfFunc,
@@ -415,6 +498,7 @@ object SigmaPredef {
       GetVarFunc,
       DeserializeFunc,
       BigIntFromStringFunc,
+      UBigIntFromStringFunc,
       FromBase16Func,
       FromBase64Func,
       FromBase58Func,
@@ -429,7 +513,11 @@ object SigmaPredef {
       AvlTreeFunc,
       SubstConstantsFunc,
       ExecuteFromVarFunc,
-      ExecuteFromSelfRegFunc
+      ExecuteFromSelfRegFunc,
+      SerializeFunc,
+      DeserializeToFunc,
+      GetVarFromInputFunc,
+      FromBigEndianBytesFunc
     ).map(f => f.name -> f).toMap
 
     def comparisonOp(symbolName: String, opDesc: ValueCompanion, desc: String, args: Seq[ArgInfo]) = {
@@ -543,7 +631,7 @@ object SigmaPredef {
 
     val funcs: Map[String, PredefinedFunc] = globalFuncs ++ infixFuncs ++ unaryFuncs
 
-    /** WARNING: This operations are not used in frontend, and should be be used.
+    /** WARNING: This operations are not used in frontend, and should not be used.
       * They are used in SpecGen only the source of metadata for the corresponding ErgoTree nodes.
       */
     val specialFuncs: Map[String, PredefinedFunc] = Seq(

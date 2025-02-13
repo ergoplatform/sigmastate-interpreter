@@ -14,6 +14,7 @@ import SigmaPredef.PredefinedFuncRegistry
 import sigma.ast.syntax._
 import sigmastate.lang.parsers.ParserException
 import sigma.serialization.OpCodes
+import sigmastate.helpers.SigmaPPrint
 
 class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with LangTests {
   import StdSigmaBuilder._
@@ -32,6 +33,17 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
         println(s"\nTRACE: ${traced.msg}")
         f.get // force show error diagnostics
     }
+  }
+
+  /** Checks parsing result, printing the actual value as a test vector if expected value
+    * is not equal to actual.
+    */
+  def checkParsed(x: String, expected: SValue) = {
+    val parsed = parse(x)
+    if (expected != parsed) {
+      SigmaPPrint.pprintln(parsed, width = 100)
+    }
+    parsed shouldBe expected
   }
 
   def parseWithException(x: String): SValue = {
@@ -892,6 +904,17 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     parse("executeFromVar[Boolean](1)") shouldBe Apply(
       ApplyTypes(ExecuteFromVarFunc.symNoType, Vector(SBoolean)), Vector(IntConstant(1))
     )
+  }
+
+  property("serialize") {
+    checkParsed("serialize(1)", Apply(Ident("serialize", NoType), Array(IntConstant(1))))
+    checkParsed("serialize((1, 2L))",
+      Apply(Ident("serialize", NoType), Array(Tuple(Vector(IntConstant(1), LongConstant(2L))))))
+    checkParsed("serialize(Coll(1, 2, 3))",
+      Apply(
+        Ident("serialize", NoType),
+        Array(Apply(Ident("Coll", NoType), Array(IntConstant(1), IntConstant(2), IntConstant(3))))
+      ))
   }
 
   property("single name pattern fail") {

@@ -2,6 +2,7 @@ package sigma.serialization
 
 import debox.cfor
 import sigma.ast._
+import sigma.crypto.BigIntegers
 import sigma.data._
 import sigma.util.Extensions.{BigIntOps, BigIntegerOps, CoreAvlTreeOps, GroupElementOps, SigmaPropOps}
 import sigma.validation.ValidationRules.CheckSerializableTypeCode
@@ -33,6 +34,10 @@ class CoreDataSerializer {
       val bi = v.asInstanceOf[BigInt].toBigInteger
       require(bi.fitsIn256Bits, s"BigInt value $bi doesn't fit into 256 bits")
       val data = bi.toByteArray
+      w.putUShort(data.length)
+      w.putBytes(data)
+    case SUnsignedBigInt if VersionContext.current.isV6SoftForkActivated =>
+      val data = BigIntegers.asUnsignedByteArray(v.asInstanceOf[CUnsignedBigInt].wrappedValue)
       w.putUShort(data.length)
       w.putBytes(data)
     case SGroupElement =>
@@ -70,7 +75,12 @@ class CoreDataSerializer {
         i += 1
       }
 
-    // TODO v6.0 (3h): support Option[T] (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/659)
+    case SOption(elemType) if VersionContext.current.isV6SoftForkActivated =>
+      val o = v.asInstanceOf[Option[elemType.WrappedType]]
+      w.putOption(o){case (w, v) =>
+        serialize(v, elemType, w)
+      }
+
     case _ =>
       CheckSerializableTypeCode(tpe.typeCode)
       throw new SerializerException(s"Don't know how to serialize ($v, $tpe)")
@@ -105,6 +115,13 @@ class CoreDataSerializer {
         }
         val valueBytes = r.getBytes(size)
         CBigInt(new BigInteger(valueBytes))
+      case SUnsignedBigInt if VersionContext.current.isV6SoftForkActivated =>
+        val size: Short = r.getUShort().toShort
+        if (size > SBigInt.MaxSizeInBytes) {
+          throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
+        }
+        val valueBytes = r.getBytes(size)
+        CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(valueBytes))
       case SGroupElement =>
         CGroupElement(GroupElementSerializer.parse(r))
       case SSigmaProp =>
@@ -120,6 +137,10 @@ class CoreDataSerializer {
         }.toArray[Any]
         val coll = Colls.fromArray(arr)(sigma.AnyType)
         Evaluation.toDslTuple(coll, tuple)
+      case tOption: SOption[_] if VersionContext.current.isV6SoftForkActivated =>
+        r.getOption[tOption.ElemWrappedType] {
+          deserialize(tOption.elemType, r).asInstanceOf[tOption.ElemWrappedType]
+        }
       case t =>
         CheckSerializableTypeCode(t.typeCode)
         throw new SerializerException(s"Not defined DataSerializer for type $t")
@@ -128,7 +149,7 @@ class CoreDataSerializer {
     res
   }
 
-  def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
+  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
     tpeElem match {
       case SBoolean =>
         Colls.fromArray(r.getBits(len)).asInstanceOf[Coll[T#WrappedType]]

@@ -5,15 +5,13 @@ import org.ergoplatform.ErgoBox.RegisterId
 import org.ergoplatform.settings.ErgoAlgos
 import pprint.{PPrinter, Tree}
 import sigma.ast.SCollection.{SBooleanArray, SByteArray, SByteArray2}
-import sigma.ast._
+import sigma.ast.{ConstantNode, FuncValue, MethodCall, ValueCompanion, _}
 import sigma.crypto.EcPointType
 import sigma.data.{AvlTreeData, AvlTreeFlags, CollType, PrimitiveType, TrivialProp}
 import sigma.serialization.GroupElementSerializer
 import sigma.{Coll, GroupElement}
-import sigma.ast.{ConstantNode, FuncValue, ValueCompanion}
-import sigmastate._
 import sigmastate.crypto.GF2_192_Poly
-import sigma.ast.MethodCall
+
 import java.math.BigInteger
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
@@ -54,6 +52,8 @@ object SigmaPPrint extends PPrinter {
       s"SOption[${typeName(ot.elemType)}]"
     case _: STuple =>
       "STuple"
+    case _: SFunc =>
+      s"SFunc"
     case _ =>
       sys.error(s"Cannot get typeName($tpe)")
   }

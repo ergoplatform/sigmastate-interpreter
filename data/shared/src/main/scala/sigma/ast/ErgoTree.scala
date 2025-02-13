@@ -381,7 +381,7 @@ object ErgoTree {
     * */
   def withSegregation(header: HeaderType, prop: SigmaPropValue): ErgoTree = {
     val constantStore = new ConstantStore()
-    val w             = SigmaSerializer.startWriter(constantStore)
+    val w             = SigmaSerializer.startWriter(Some(constantStore))
     // serialize value and segregate constants into constantStore
     ValueSerializer.serialize(prop, w)
     val extractedConstants = constantStore.getAll

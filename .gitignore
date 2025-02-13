@@ -8,7 +8,9 @@
 *.fdb_latexmk
 *.gz
 
+yarn.lock
 *.log
+yarn.lock
 docs/spec/out/
 test-out/
 flamegraphs/

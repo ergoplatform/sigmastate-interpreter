@@ -7,9 +7,10 @@ import sigma.ast.{Constant, SType}
 import sigma.data.Iso
 import sigma.data.Iso.{isoStringToArray, isoStringToColl}
 import sigma.data.js.{Isos => DataIsos}
+import sigma.data.CHeader
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.js.AvlTree
-import sigmastate.eval.{CHeader, CPreHeader}
+import sigmastate.eval.CPreHeader
 import sigmastate.fleetSdkCommon.distEsmTypesBoxesMod.Box
 import sigmastate.fleetSdkCommon.distEsmTypesRegistersMod.NonMandatoryRegisters
 import sigmastate.fleetSdkCommon.distEsmTypesTokenMod.TokenAmount
@@ -27,11 +28,10 @@ object Isos {
   implicit val isoHeader: Iso[Header, sigma.Header] = new Iso[Header, sigma.Header] {
     override def to(a: Header): sigma.Header = {
       CHeader(
-        id = isoStringToColl.to(a.id),
         version = a.version,
         parentId = isoStringToColl.to(a.parentId),
         ADProofsRoot = isoStringToColl.to(a.ADProofsRoot),
-        stateRoot = AvlTree.isoAvlTree.to(a.stateRoot),
+        stateRootDigest = AvlTree.isoAvlTree.to(a.stateRoot).digest,
         transactionsRoot = isoStringToColl.to(a.transactionsRoot),
         timestamp = sigma.js.Isos.isoBigIntToLong.to(a.timestamp),
         nBits = sigma.js.Isos.isoBigIntToLong.to(a.nBits),
@@ -41,7 +41,8 @@ object Isos {
         powOnetimePk = DataIsos.isoGroupElement.to(a.powOnetimePk),
         powNonce = isoStringToColl.to(a.powNonce),
         powDistance = sigma.js.Isos.isoBigInt.to(a.powDistance),
-        votes = isoStringToColl.to(a.votes)
+        votes = isoStringToColl.to(a.votes),
+        unparsedBytes = isoStringToColl.to(a.unparsedBytes)
       )
     }
     override def from(b: sigma.Header): Header = {
@@ -61,7 +62,8 @@ object Isos {
         powOnetimePk = DataIsos.isoGroupElement.from(header.powOnetimePk),
         powNonce = isoStringToColl.from(header.powNonce),
         powDistance = sigma.js.Isos.isoBigInt.from(header.powDistance),
-        votes = isoStringToColl.from(header.votes)
+        votes = isoStringToColl.from(header.votes),
+        unparsedBytes = isoStringToColl.from(header.unparsedBytes)
       )
     }
   }

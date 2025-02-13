@@ -1,30 +1,42 @@
 package sigma.data
 
 import debox.cfor
-import org.ergoplatform.ErgoBox
+import org.ergoplatform.{ErgoBox, ErgoHeader}
 import org.ergoplatform.validation.ValidationRules
 import scorex.crypto.hash.{Blake2b256, Sha256}
+import scorex.util.serialization.VLQByteBufferReader
+import scorex.utils.{Ints, Longs}
+import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
 import scorex.utils.Longs
-import sigma.ast.{AtLeast, SubstConstants}
+import sigma.Evaluation.rtypeToSType
+import sigma.ast.{AtLeast, SType, SubstConstants}
 import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
+import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
-import sigma.serialization.{GroupElementSerializer, SigmaSerializer}
+import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer}
+import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
+import sigma.serialization.SerializerException
+import sigma.pow.Autolykos2PowValidation
 import sigma.util.Extensions.BigIntegerOps
+import sigma.util.NBitsUtils
 import sigma.validation.SigmaValidationSettings
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
+import java.nio.ByteBuffer
 
 /** A default implementation of [[SigmaDslBuilder]] interface.
   *
   * @see [[SigmaDslBuilder]] for detailed descriptions
   */
 class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
-  implicit val validationSettings: SigmaValidationSettings = ValidationRules.currentSettings
 
   override val Colls: CollBuilder = sigma.Colls
 
   override def BigInt(n: BigInteger): BigInt = CBigInt(n)
+
+  override def UnsignedBigInt(n: BigInteger): UnsignedBigInt = CUnsignedBigInt(n)
 
   override def toBigInteger(n: BigInt): BigInteger = n.asInstanceOf[CBigInt].wrappedValue
 
@@ -149,7 +161,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
   }
 
   override def byteArrayToBigInt(bytes: Coll[Byte]): BigInt = {
-    val bi = new BigInteger(bytes.toArray).to256BitValueExact
+    val bi = new BigInteger(bytes.toArray).toSignedBigIntValueExact
     this.BigInt(bi)
   }
 
@@ -175,6 +187,15 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
 
   override def groupGenerator: GroupElement = _generatorElement
 
+  override def encodeNbits(bi: BigInt): Long = {
+    NBitsUtils.encodeCompactBits(bi.asInstanceOf[CBigInt].wrappedValue)
+  }
+
+  override def decodeNbits(l: Long): BigInt = {
+    // Result is limited to 256 bits with .toSignedBigIntValueExact
+    CBigInt(NBitsUtils.decodeCompactBits(l).bigInteger.toSignedBigIntValueExact)
+  }
+
   /**
     * @return the identity of the Dlog group used in ErgoTree
     */
@@ -191,7 +212,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
       case e: Throwable =>
         throw new RuntimeException(s"Cannot evaluate substConstants($scriptBytes, $positions, $newValues)", e)
     }
-    val (res, _)  = SubstConstants.eval(scriptBytes.toArray, positions.toArray, constants)(validationSettings)
+    val (res, _)  = SubstConstants.eval(scriptBytes.toArray, positions.toArray, constants)
     Colls.fromArray(res)
   }
 
@@ -199,6 +220,73 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
     val r = SigmaSerializer.startReader(encoded.toArray)
     val p = GroupElementSerializer.parse(r)
     this.GroupElement(p)
+  }
+
+  override def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T = {
+    cT match {
+      case sigma.ByteType => if (bytes.length != 1) {
+        throw new IllegalArgumentException("To deserialize SByte with fromBigEndianBytes, exactly one byte should be provided")
+      } else {
+        bytes.apply(0).asInstanceOf[T]
+      }
+      case sigma.ShortType => if (bytes.length != 2) {
+        throw new IllegalArgumentException("To deserialize SShort with fromBigEndianBytes, exactly two bytes should be provided")
+      } else {
+        val b0 = bytes(0)
+        val b1 = bytes(1)
+        ((b0 & 0xFF) << 8 | (b1 & 0xFF)).toShort.asInstanceOf[T]
+      }
+      case sigma.IntType => if (bytes.length != 4) {
+        throw new IllegalArgumentException("To deserialize SInt with fromBigEndianBytes, exactly four bytes should be provided")
+      } else {
+        Ints.fromByteArray(bytes.toArray).asInstanceOf[T]
+      }
+      case sigma.LongType => if (bytes.length != 8) {
+        throw new IllegalArgumentException("To deserialize SLong with fromBigEndianBytes, exactly eight bytes should be provided")
+      } else {
+        Longs.fromByteArray(bytes.toArray).asInstanceOf[T]
+      }
+      case sigma.BigIntRType =>
+        if (bytes.length > SBigInt.MaxSizeInBytes) {
+          throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes in fromBigEndianBytes")
+        }
+        CBigInt(new BigInteger(bytes.toArray).toSignedBigIntValueExact).asInstanceOf[T]
+      case sigma.UnsignedBigIntRType =>
+        if (bytes.length > SUnsignedBigInt.MaxSizeInBytes) {
+          throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes in fromBigEndianBytes")
+        }
+        CUnsignedBigInt(BigIntegers.fromUnsignedByteArray(bytes.toArray)).asInstanceOf[T]
+      case _ => throw new IllegalArgumentException("Unsupported type provided in fromBigEndianBytes")
+    }
+  }
+
+  /** Serializes the given `value` into bytes using the default serialization format. */
+  override def serialize[T](value: T)(implicit cT: RType[T]): Coll[Byte] = {
+    val tpe = Evaluation.rtypeToSType(cT)
+    val w = SigmaSerializer.startWriter()
+    DataSerializer.serialize(value.asInstanceOf[SType#WrappedType], tpe, w)
+    Colls.fromArray(w.toBytes)
+  }
+
+  override def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt = {
+    val bi = Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N)
+    this.BigInt(bi.bigInteger)
+  }
+
+
+  def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T = {
+    val tpe = rtypeToSType(cT)
+    val reader = new SigmaByteReader(new VLQByteBufferReader(ByteBuffer.wrap(bytes.toArray)), new ConstantStore(), false)
+    val res = DataSerializer.deserialize(tpe, reader)
+    res.asInstanceOf[T]
+  }
+
+  override def some[T](value: T)(implicit cT: RType[T]): Option[T] = {
+    Some(value)
+  }
+
+  override def none[T]()(implicit cT: RType[T]): Option[T] = {
+    None
   }
 }
 

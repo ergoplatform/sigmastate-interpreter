@@ -2,6 +2,7 @@ package sigma.serialization.generators
 
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbString
+import sigma.VersionContext
 import sigma.ast._
 
 trait TypeGenerators {
@@ -11,17 +12,24 @@ trait TypeGenerators {
   implicit val intTypeGen: Gen[SInt.type] = Gen.const(SInt)
   implicit val longTypeGen: Gen[SLong.type] = Gen.const(SLong)
   implicit val bigIntTypeGen: Gen[SBigInt.type] = Gen.const(SBigInt)
+  implicit val unsignedBigIntTypeGen: Gen[SUnsignedBigInt.type] = Gen.const(SUnsignedBigInt)
   implicit val groupElementTypeGen: Gen[SGroupElement.type] = Gen.const(SGroupElement)
   implicit val sigmaPropTypeGen: Gen[SSigmaProp.type] = Gen.const(SSigmaProp)
   implicit val boxTypeGen: Gen[SBox.type] = Gen.const(SBox)
   implicit val avlTreeTypeGen: Gen[SAvlTree.type] = Gen.const(SAvlTree)
   implicit val optionSigmaPropTypeGen: Gen[SOption[SSigmaProp.type]] = Gen.const(SOption(SSigmaProp))
+  implicit val headerTypeGen: Gen[SHeader.type] = Gen.const(SHeader)
 
   implicit val primTypeGen: Gen[SPrimType] =
-    Gen.oneOf[SPrimType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnit)
+    Gen.oneOf[SPrimType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit)
   implicit val arbPrimType: Arbitrary[SPrimType] = Arbitrary(primTypeGen)
-  implicit val predefTypeGen: Gen[SPredefType] =
-    Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree)
+  implicit val predefTypeGen: Gen[SPredefType] = {
+    if(VersionContext.current.isV6SoftForkActivated){
+      Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree, SHeader)
+    } else {
+      Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree)
+    }
+  }
   implicit val arbPredefType: Arbitrary[SPredefType] = Arbitrary(predefTypeGen)
 
   implicit def genToArbitrary[T: Gen]: Arbitrary[T] = Arbitrary(implicitly[Gen[T]])
@@ -33,7 +41,12 @@ trait TypeGenerators {
       shortTypeGen,
       intTypeGen,
       longTypeGen,
-      bigIntTypeGen
+      bigIntTypeGen,
+      if(VersionContext.current.isV6SoftForkActivated) {
+        unsignedBigIntTypeGen
+      } else {
+        bigIntTypeGen
+      }
     ))
   } yield STuple(values.toIndexedSeq)
 

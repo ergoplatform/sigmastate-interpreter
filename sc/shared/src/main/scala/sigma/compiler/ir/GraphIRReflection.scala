@@ -1,5 +1,8 @@
 package sigma.compiler.ir
 
+import sigma.Coll
+import sigma.{BigInt, SigmaDslBuilder}
+import sigma.ast.SType
 import sigma.compiler.ir.primitives.Thunks
 import sigma.data.RType
 import sigma.reflection.ReflectionData.registerClassEntry
@@ -114,6 +117,59 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.BigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "toUnsigned", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.BigInt].toUnsigned()
+        },
+        mkMethod(clazz, "toUnsignedMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.BigInt].toUnsignedMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        }
+      )
+    )
+  }
+
+  { val clazz = classOf[SigmaDsl#UnsignedBigInt]
+    val ctx = null.asInstanceOf[SigmaDsl] // ok! type level only
+    registerClassEntry(clazz,
+      methods = Map(
+        mkMethod(clazz, "add", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].add(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "max", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].max(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "min", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].min(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "subtract", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].subtract(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].multiply(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].mod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "plusMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].plusMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "subtractMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].subtractMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "multiplyMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].multiplyMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].mod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "modInverse", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].modInverse(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
+        },
+        mkMethod(clazz, "toSigned", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.UnsignedBigInt].toSigned
         }
       )
     )
@@ -202,6 +258,22 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "exists", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Coll[Any]].exists(args(0).asInstanceOf[ctx.Ref[Any => Boolean]])
+        },
+        // V6 methods
+        mkMethod(clazz, "reverse", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.Coll[Any]].reverse
+        },
+        mkMethod(clazz, "distinct", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.Coll[Any]].distinct
+        },
+        mkMethod(clazz, "startsWith", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[Any]].startsWith(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Any]]])
+        },
+        mkMethod(clazz, "endsWith", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[Any]].endsWith(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Any]]])
+        },
+        mkMethod(clazz, "get", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Coll[_]].apply(args(0).asInstanceOf[ctx.Ref[Int]])
         }
       )
     )
@@ -218,10 +290,6 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.AvlTree].getMany(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.Coll[Byte]]]],
             args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
         },
-        mkMethod(clazz, "update", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].update(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
         mkMethod(clazz, "keyLength", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[ctx.AvlTree].keyLength
         },
@@ -236,6 +304,14 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "insert", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.AvlTree].insert(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "update", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.AvlTree].update(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "insertOrUpdate", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.AvlTree].insertOrUpdate(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
             args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
         },
         mkMethod(clazz, "isRemoveAllowed", Array[Class[_]]()) { (obj, _) =>
@@ -332,6 +408,9 @@ object GraphIRReflection {
         mkMethod(clazz, "getVar", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].getVar(args(0).asInstanceOf[ctx.Ref[Byte]])(args(1).asInstanceOf[ctx.Elem[_]])
         },
+        mkMethod(clazz, "getVarFromInput", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.Context].getVarFromInput(args(0).asInstanceOf[ctx.Ref[Short]], args(1).asInstanceOf[ctx.Ref[Byte]])(args(2).asInstanceOf[ctx.Elem[_]])
+        },
         mkMethod(clazz, "headers", Array[Class[_]]()) { (obj, args) =>
           obj.asInstanceOf[ctx.Context].headers
         }
@@ -345,6 +424,9 @@ object GraphIRReflection {
       methods = Map(
         mkMethod(clazz, "exp", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.GroupElement].exp(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "expUnsigned", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.GroupElement].expUnsigned(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
         },
         mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.GroupElement].multiply(args(0).asInstanceOf[ctx.Ref[ctx.GroupElement]])
@@ -407,6 +489,9 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "powDistance", Array[Class[_]]()) { (obj, args) =>
           obj.asInstanceOf[ctx.Header].powDistance
+        },
+        mkMethod(clazz, "checkPow", Array[Class[_]]()) { (obj, args) =>
+          obj.asInstanceOf[ctx.Header].checkPow
         }
       )
     )
@@ -504,6 +589,33 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "decodePoint", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].decodePoint(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "serialize", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].serialize(args(0).asInstanceOf[ctx.Ref[Any]])
+        },
+        mkMethod(clazz, "powHit", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]],
+          classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].powHit(args(0).asInstanceOf[ctx.Ref[Int]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(2).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
+            args(3).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(4).asInstanceOf[ctx.Ref[Int]])
+        },
+        mkMethod(clazz, "encodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+        },
+        mkMethod(clazz, "decodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].decodeNbits(args(0).asInstanceOf[ctx.Ref[Long]])
+        },
+        mkMethod(clazz, "fromBigEndianBytes", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].fromBigEndianBytes(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
+        },
+        mkMethod(clazz, "deserializeTo", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].deserializeTo(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])(args(1).asInstanceOf[ctx.Elem[SType]])
+        },
+        mkMethod(clazz, "some", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].some(args(0).asInstanceOf[ctx.Ref[Any]])(args(1).asInstanceOf[ctx.Elem[Any]])
+        },
+        mkMethod(clazz, "none", Array[Class[_]](classOf[TypeDescs#Elem[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.SigmaDslBuilder].none()(args(0).asInstanceOf[ctx.Elem[SType]])
         }
       )
     )

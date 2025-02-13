@@ -1,8 +1,9 @@
 package sigma.serialization
 
-import org.ergoplatform.ErgoBox
+import org.ergoplatform.{ErgoBox, ErgoHeader}
+import sigma.VersionContext
 import sigma.ast._
-import sigma.data.CBox
+import sigma.data.{CBox, CHeader}
 
 /** This works in tandem with ConstantSerializer, if you change one make sure to check the other.*/
 object DataSerializer extends CoreDataSerializer {
@@ -15,6 +16,9 @@ object DataSerializer extends CoreDataSerializer {
     case SBox =>
       val b = v.asInstanceOf[CBox]
       ErgoBox.sigmaSerializer.serialize(b.ebox, w.asInstanceOf[SigmaByteWriter])
+    case SHeader if VersionContext.current.isV6SoftForkActivated =>
+      val h = v.asInstanceOf[CHeader]
+      ErgoHeader.sigmaSerializer.serialize(h.ergoHeader, w.asInstanceOf[SigmaByteWriter])
     case _ =>
       super.serialize(v, tpe, w)
   }
@@ -30,6 +34,12 @@ object DataSerializer extends CoreDataSerializer {
         val depth = r.level
         r.level = depth + 1
         val res = CBox(ErgoBox.sigmaSerializer.parse(r.asInstanceOf[SigmaByteReader]))
+        r.level = r.level - 1
+        res
+      case SHeader if VersionContext.current.isV6SoftForkActivated =>
+        val depth = r.level
+        r.level = depth + 1
+        val res = new CHeader(ErgoHeader.sigmaSerializer.parse(r.asInstanceOf[SigmaByteReader]))
         r.level = r.level - 1
         res
       case t =>

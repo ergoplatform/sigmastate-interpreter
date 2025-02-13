@@ -13,7 +13,7 @@ object Extensions {
       * For example, the Byte value {@code 0x12} would yield the
       * byte array {@code {0x12}}.
       */
-    def toBytes: Coll[Byte] = SigmaDsl.Colls.fromItems(b)
+    def toBigEndianBytes: Coll[Byte] = SigmaDsl.Colls.fromItems(b)
 
   }
 
@@ -22,7 +22,7 @@ object Extensions {
       * For example, the Short value {@code 0x1213} would yield the
       * byte array {@code {0x12, 0x13}}.
       */
-    def toBytes: Coll[Byte] = Colls.fromArray(Shorts.toByteArray(x))
+    def toBigEndianBytes: Coll[Byte] = Colls.fromArray(Shorts.toByteArray(x))
   }
 
   implicit class IntOpsForSigma(val x: Int) extends AnyVal {
@@ -30,7 +30,7 @@ object Extensions {
       * For example, the Int value {@code 0x12131415} would yield the
       * byte array {@code {0x12, 0x13, 0x14, 0x15}}.
       */
-    def toBytes: Coll[Byte] = Colls.fromArray(Ints.toByteArray(x))
+    def toBigEndianBytes: Coll[Byte] = Colls.fromArray(Ints.toByteArray(x))
   }
 
   implicit class LongOpsForSigma(val x: Long) extends AnyVal {
@@ -38,7 +38,7 @@ object Extensions {
       * For example, the Long value {@code 0x1213141516171819} would yield the
       * byte array {@code {0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19}}.
       */
-    def toBytes: Coll[Byte] = Colls.fromArray(Longs.toByteArray(x))
+    def toBigEndianBytes: Coll[Byte] = Colls.fromArray(Longs.toByteArray(x))
   }
 
   /** Provides extension methods for `ModifierId` instances.
