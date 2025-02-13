@@ -32,6 +32,20 @@ package object reflection {
     }
   }
 
+  /** Creates a new SRField instance with the given parameters.
+    * This is analogous to the Java Reflection API's [[java.lang.reflect.Field]] class.
+    *
+    * @param clazz      the [[java.lang.Class]] that declares the field
+    * @param name       the name of the field
+    * @param fieldType  the type of the field value
+    * @return a tuple containing the field's name  as its first element,
+    *         and an SRField instance as its second element
+    * @see [[SRField]]
+    */
+  def mkField(clazz: Class[_], name: String, fieldType: Class[_]): (String, RField) = {
+    name -> new SRField(clazz, name, fieldType)
+  }
+
   /** Creates a new SRMethod instance with the given parameters and handler function.
     * This is analogous to the Java Reflection API's [[java.lang.reflect.Method]] class.
     *

@@ -124,6 +124,7 @@ jobs:
         working-directory: ./sigma-js
 
       - name: Publish JS snapshot ${{ github.ref }}
+        if: env.HAS_SECRETS == 'true'
         run: npm publish --tag snapshot
         working-directory: ./sigma-js
         env:

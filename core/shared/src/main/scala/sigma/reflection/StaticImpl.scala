@@ -5,17 +5,18 @@ package sigma.reflection
   * Extends [[RField]] by providing a concrete implementation without relying on Java reflection.
   * The instances of this class are used as parameters of `registerClassEntry` method.
   *
+  * @param declaringClass the class that declares the field
   * @param name the name of the field
   * @param tpe the type of the field as runtime [[java.lang.Class]]
   */
-class SRField(val name: String, tpe: Class[_]) extends RField {
+class SRField(val declaringClass: Class[_], val name: String, tpe: Class[_]) extends RField {
   override def getType: Class[_] = tpe
 
   override def equals(other: Any): Boolean = (this eq other.asInstanceOf[AnyRef]) || (other match {
-    case that: SRField => name == that.name
+    case that: SRField => declaringClass == that.declaringClass && name == that.name
     case _ => false
   })
-  override def hashCode(): Int = name.hashCode()
+  override def hashCode(): Int = 31 * name.hashCode() + declaringClass.hashCode()
 }
 
 /** Represents a constructor in an Sigma Reflection metadata.
@@ -60,7 +61,7 @@ abstract class SRMethod(declaringClass: Class[_], name: String, parameterTypes: 
   */
 class SRClass[T](val clazz: Class[T],
                  constructors: Seq[SRConstructor[_]],
-                 fields: Map[String, SRField],
+                 fields: Map[String, RField],
                  methods: Map[(String, Seq[Class[_]]), RMethod]) extends RClass[T] {
 
   override def getField(fieldName: String): RField = fields.get(fieldName) match {

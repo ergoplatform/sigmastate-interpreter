@@ -33,7 +33,7 @@ object ReflectionData {
     */
   def registerClassEntry[T](clazz: Class[T],
                             constructors: Seq[SRConstructor[_]] = ArraySeq.empty,
-                            fields: Map[String, SRField] = Map.empty,
+                            fields: Map[String, RField] = Map.empty,
                             methods: Map[(String, Seq[Class[_]]), RMethod] = Map.empty): Unit = classes.synchronized {
     classes.put(clazz, new SRClass(clazz, constructors, fields, methods))
   }

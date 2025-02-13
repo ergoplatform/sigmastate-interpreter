@@ -28,7 +28,7 @@ object Platform {
     // Should be used only for debugging and never in production.
 //    /** Check class registration. Should be used only for debugging. */
 //    def checkRegisteredClass[T](clazz: Class[T]): Unit = {
-//      CommonReflection.classes.get(clazz) match {
+//      ReflectionData.classes.get(clazz) match {
 //        case Some(c) =>
 //          assert(c.clazz == clazz)
 //        case _ =>

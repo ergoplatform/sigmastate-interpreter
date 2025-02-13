@@ -217,6 +217,9 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val tpe = elemToSType(s.elem)
         mkConstant[tpe.type](wc.constValue.asInstanceOf[tpe.WrappedType], tpe)
 
+      case Def(DeserializeContextDef(d, _)) =>
+        d
+
       case Def(IsContextProperty(v)) => v
       case s if s == sigmaDslBuilder => Global
 

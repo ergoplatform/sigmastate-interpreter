@@ -11,7 +11,6 @@ import sigma.data.{Nullable, RType, TrivialProp}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckTypeCode
 import ErgoTree.HeaderType
-import SCollectionMethods.checkValidFlatmap
 import sigma.ast.SBigIntMethods.{ToUnsigned, ToUnsignedMod}
 import sigma.ast.SUnsignedBigIntMethods.{ModInverseMethod, ModMethod, MultiplyModMethod, PlusModMethod, SubtractModMethod, ToSignedMethod}
 import sigmastate.eval.CProfiler
@@ -870,74 +869,6 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
 
       }
     }
-  }
-
-  property("checkValidFlatmap") {
-    implicit val E = CErgoTreeEvaluator.forProfiling(new CProfiler, evalSettings)
-    def mkLambda(t: SType, mkBody: SValue => SValue) = {
-      MethodCall(
-        ValUse(1, SCollectionType(t)),
-        SCollectionMethods.getMethodByName("flatMap").withConcreteTypes(
-          Map(STypeVar("IV") -> t, STypeVar("OV") -> SByte)
-        ),
-        Vector(FuncValue(Vector((3, t)), mkBody(ValUse(3, t)))),
-        Map()
-      )
-    }
-    val validLambdas = Seq[(SType, SValue => SValue)](
-      (SBox, x => ExtractScriptBytes(x.asBox)),
-      (SBox, x => ExtractId(x.asBox)),
-      (SBox, x => ExtractBytes(x.asBox)),
-      (SBox, x => ExtractBytesWithNoRef(x.asBox)),
-      (SSigmaProp, x => SigmaPropBytes(x.asSigmaProp)),
-      (SBox, x => MethodCall(x, SBoxMethods.getMethodByName("id"), Vector(), Map()))
-    ).map { case (t, f) => mkLambda(t, f) }
-
-    validLambdas.foreach { l =>
-      checkValidFlatmap(l)
-    }
-
-    val invalidLambdas = Seq[(SType, SValue => SValue)](
-      // identity lambda `xss.flatMap(xs => xs)`
-      (SByteArray, x => x),
-
-      // identity lambda `xss.flatMap(xs => xs ++ xs)`
-      (SByteArray, x => Append(x.asCollection[SByte.type], x.asCollection[SByte.type]))
-    ).map { case (t, f) => mkLambda(t, f) } ++
-      Seq(
-        // invalid MC like `boxes.flatMap(b => b.id, 10)`
-        MethodCall(
-          ValUse(1, SBox),
-          SCollectionMethods.getMethodByName("flatMap").withConcreteTypes(
-            Map(STypeVar("IV") -> SBox, STypeVar("OV") -> SByte)
-          ),
-          Vector(
-            FuncValue(Vector((3, SBox)), ExtractId(ValUse(3, SBox))),
-            IntConstant(10) // too much arguments
-          ),
-          Map()
-        ),
-        // invalid MC like `boxes.flatMap((b,_) => b.id)`
-        MethodCall(
-          ValUse(1, SBox),
-          SCollectionMethods.getMethodByName("flatMap").withConcreteTypes(
-            Map(STypeVar("IV") -> SBox, STypeVar("OV") -> SByte)
-          ),
-          Vector(
-            FuncValue(Vector((3, SBox), (4, SInt)/*too much arguments*/), ExtractId(ValUse(3, SBox)))
-          ),
-          Map()
-        )
-      )
-
-    invalidLambdas.foreach { l =>
-      assertExceptionThrown(
-        checkValidFlatmap(l),
-        exceptionLike[RuntimeException](
-          s"Unsupported lambda in flatMap: allowed usage `xs.flatMap(x => x.property)`")
-      )
-    }
-
   }
 
   // Test vectors for https://github.com/ScorexFoundation/sigmastate-interpreter/issues/828

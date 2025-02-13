@@ -2437,6 +2437,50 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("executeFromVar - SigmaProp") {
+    val script = GT(Height, IntConstant(-1)).toSigmaProp
+    val scriptBytes = ValueSerializer.serialize(script)
+    val customExt = Seq(21.toByte -> ByteArrayConstant(scriptBytes))
+    test("executeFromVar", env, customExt,
+      "executeFromVar[SigmaProp](21)",
+      null,
+      true
+    )
+  }
+
+  property("executeFromVar - Int") {
+    val valueBytes = ValueSerializer.serialize(Plus(IntConstant(2), IntConstant(3)))
+    val customExt = Seq(21.toByte -> ByteArrayConstant(valueBytes))
+    test("executeFromVar", env, customExt,
+      "{ executeFromVar[Int](21) == 5 }",
+      null,
+      true
+    )
+  }
+
+  property("executeFromVar - Coll[Byte]") {
+    val bytes = Slice(ByteArrayConstant(Colls.fromArray(Array.fill(5)(1.toByte))), IntConstant(1), IntConstant(3))
+    val valueBytes = ValueSerializer.serialize(bytes)
+    val customExt = Seq(21.toByte -> ByteArrayConstant(valueBytes))
+    test("executeFromVar", env, customExt,
+      "{val ba = executeFromVar[Coll[Byte]](21); ba.size == 2 }",
+      null,
+      true
+    )
+  }
+
+  // test which is showing impossibility of nested Deserialize*
+  property("executeFromVar - deserialize") {
+    val script = DeserializeContext(21.toByte, SSigmaProp)
+    val scriptBytes = ValueSerializer.serialize(script)
+    val customExt = Seq(21.toByte -> ByteArrayConstant(scriptBytes))
+    an [Exception] should be thrownBy test("executeFromVar", env, customExt,
+      "executeFromVar[SigmaProp](21)",
+      null,
+      true
+    )
+  }
+
   property("Relation operations") {
     test("R1", env, ext,
       "{ allOf(Coll(getVar[Boolean](trueVar).get, true, true)) }",

@@ -1,9 +1,10 @@
 package org.ergoplatform.sdk
 
-import cats.syntax.either._  // required for Scala 2.11
+import cats.syntax.either._ // required for Scala 2.11
 import debox.cfor
 import io.circe._
 import io.circe.syntax.EncoderOps
+import org.ergoplatform.sdk
 import org.ergoplatform.sdk.utils.SerializationUtils.{parseString, serializeString}
 import org.ergoplatform.sdk.utils.Zero
 import sigma.Evaluation
@@ -14,6 +15,7 @@ import sigma.ast.ErgoTree.{ZeroHeader, headerWithVersion, setConstantSegregation
 import sigma.ast._
 import sigma.ast.syntax.SigmaPropValue
 import sigma.serialization._
+
 import java.util.Objects
 import scala.collection.mutable
 
@@ -205,6 +207,21 @@ object ContractTemplate {
             expressionTree: SigmaPropValue): ContractTemplate = {
     new ContractTemplate(None, name, description, constTypes, constValues, parameters, expressionTree)
   }
+
+  /** Create a new contract template from a JSON string.
+    *
+    * @param json JSON string representing a contract template.
+    * @return a new contract template.
+    */
+  def fromJsonString(json: String): ContractTemplate = {
+    io.circe.parser.parse(json) match {
+      case Left(err) => throw err
+      case Right(json) =>
+        val ct = sdk.ContractTemplate.jsonEncoder.decoder(json.hcursor).toOption.get
+        ct
+    }
+  }
+
 
   object serializer extends SigmaSerializer[ContractTemplate, ContractTemplate] {
 

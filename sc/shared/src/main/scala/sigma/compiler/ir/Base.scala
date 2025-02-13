@@ -2,8 +2,9 @@ package sigma.compiler.ir
 
 import debox.{cfor, Buffer => DBuffer}
 import sigma.compiler.ir.core.MutableLazy
-import sigma.data.OverloadHack.Overloaded1
+import sigma.ast.{DeserializeContext, SType}
 import sigma.data.{AVHashMap, Nullable, RType}
+import sigma.data.OverloadHack.Overloaded1
 import sigma.reflection.RConstructor
 import sigma.util.StringUtil
 
@@ -12,7 +13,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.{implicitNotFound, unused}
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
-import scala.language.implicitConversions
+import scala.language.{existentials, implicitConversions}
 
 /**
   * The Base trait houses common AST nodes. It also manages a list of encountered definitions which
@@ -203,10 +204,11 @@ abstract class Base { thisIR: IRContext =>
     }
   }
 
-  /** Logical AND between two pattern matches of the save value `x`.
-    * Can be used to construct patterns like `case P1 && P2 => ...` */
-  object && {
-    def unapply[T](x: T): Option[(T,T)] = Some((x, x))
+  /**
+    * Def done in order to carry on DeserializeContext through stages of compilation intact
+    */
+  case class DeserializeContextDef[V <: SType](d: DeserializeContext[V], e: Elem[V#WrappedType]) extends Def[V#WrappedType] {
+    override def resultType: Elem[V#WrappedType] = e
   }
 
   /** Base class for virtualized instances of type companions.
@@ -383,7 +385,6 @@ abstract class Base { thisIR: IRContext =>
     /** Returns the string like `x45: Int = Const(10)` */
     def toStringWithDefinition: String
     def varNameWithType = varName + ":" + elem.name
-
   }
 
   /** Untyped shortcut sinonim of Ref, which is used as untyped reference to graph nodes (definitions).

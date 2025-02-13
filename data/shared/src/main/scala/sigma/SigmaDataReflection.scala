@@ -7,7 +7,7 @@ import sigma.ast.syntax._
 import sigma.data.KeyValueColl
 import sigma.eval.ErgoTreeEvaluator
 import sigma.reflection.ReflectionData.registerClassEntry
-import sigma.reflection.{ReflectionData, mkConstructor, mkMethod}
+import sigma.reflection.{ReflectionData, mkConstructor, mkField, mkMethod}
 import sigma.serialization.ValueCodes.OpCode
 
 /** Reflection metadata for `interpreter` module.
@@ -691,6 +691,134 @@ object SigmaDataReflection {
       mkConstructor(Array(classOf[Value[_]], classOf[Value[_]], classOf[Value[_]])) { args =>
         new Slice(args(0).asInstanceOf[CollectionValue[SType]],
           args(1).asInstanceOf[IntValue], args(2).asInstanceOf[IntValue])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[GetVar[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[Byte], classOf[SOption[_]])) { args =>
+        new GetVar[SType](args(0).asInstanceOf[Byte], args(1).asInstanceOf[SOption[SType]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[LongToByteArray],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new LongToByteArray(args(0).asInstanceOf[Value[SLong.type]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ValUse[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[Int], classOf[SType])) { args =>
+        new ValUse(args(0).asInstanceOf[Int], args(1).asInstanceOf[SType])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ByteArrayToLong],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ByteArrayToLong(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ConstantNode[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[java.lang.Object], classOf[SType])) { args =>
+        ConstantNode(args(0).asInstanceOf[SType#WrappedType], args(1).asInstanceOf[SType])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[CreateProveDlog],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new CreateProveDlog(args(0).asInstanceOf[Value[SGroupElement.type]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[DecodePoint],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new DecodePoint(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ExtractBytes],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ExtractBytes(args(0).asInstanceOf[Value[SBox.type]])
+      }
+    )
+  )
+
+  { val clazz = sigma.ast.Global.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.GroupGenerator.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = Height.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Inputs.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.LastBlockUtxoRootHash.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = MinerPubkey.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Outputs.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Self.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  registerClassEntry(classOf[Xor],
+    constructors = Array(
+      mkConstructor(Array(classOf[ast.Value[_]], classOf[ast.Value[_]])) { args =>
+        new Xor(args(0).asInstanceOf[Value[SByteArray]], args(1).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[XorOf],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new XorOf(args(0).asInstanceOf[Value[SCollection[SBoolean.type]]])
       }
     )
   )

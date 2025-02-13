@@ -112,12 +112,8 @@ object ContractTemplate extends js.Object {
     * @return a new contract template.
     */
   def fromJsonString(json: String): ContractTemplate = {
-    io.circe.parser.parse(json) match {
-      case Left(err) => throw err
-      case Right(json) =>
-        val ct = sdk.ContractTemplate.jsonEncoder.decoder(json.hcursor).toOption.get
-        ContractTemplate.isoToSdk.from(ct)
-    }
+    val ct = sdk.ContractTemplate.fromJsonString(json)
+    ContractTemplate.isoToSdk.from(ct)
   }
 
   private val constsIso = isoUndefOr(isoArrayToIndexed(isoUndefOr(sigma.ast.js.isoValueToConstant)))
