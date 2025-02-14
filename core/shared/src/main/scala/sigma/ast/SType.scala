@@ -541,7 +541,7 @@ case object SUnsignedBigInt extends SPrimType with SEmbeddable with SNumericType
   val RelationOpType = SFunc(Array(SUnsignedBigInt, SUnsignedBigInt), SBoolean)
 
   /** The maximum size of BigInteger value in byte array representation. */
-  val MaxSizeInBytes: Long = SigmaConstants.MaxBigIntSizeInBytes.value // todo: 256 bits or more?
+  val MaxSizeInBytes: Long = SigmaConstants.MaxBigIntSizeInBytes.value
 
   override def numericTypeIndex: Int = 5
 
