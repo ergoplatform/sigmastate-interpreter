@@ -121,6 +121,16 @@ object SType {
     }
   }
 
+  private val v5Types = Seq(
+    SBoolean, SString, STuple, SGroupElement, SSigmaProp, SContext, SGlobal, SHeader, SPreHeader,
+    SAvlTree, SBox, SOption, SCollection, SBigInt
+  )
+  private val v6Types = v5Types ++ Seq(SByte, SShort, SInt, SLong, SUnsignedBigInt)
+
+  private val v5TypesMap = v5Types.map { t => (t.typeId, t) }.toMap
+
+  private val v6TypesMap = v6Types.map { t => (t.typeId, t) }.toMap
+
   /** A mapping of object types supporting MethodCall operations. For each serialized
     * typeId this map contains a companion object which can be used to access the list of
     * corresponding methods.
@@ -154,16 +164,6 @@ object SType {
     *
     * The regression tests in `property("MethodCall Codes")` should pass.
     */
-  private val v5Types = Seq(
-    SBoolean, SString, STuple, SGroupElement, SSigmaProp, SContext, SGlobal, SHeader, SPreHeader,
-    SAvlTree, SBox, SOption, SCollection, SBigInt
-  )
-  private val v6Types = v5Types ++ Seq(SByte, SShort, SInt, SLong, SUnsignedBigInt)
-
-  private val v5TypesMap = v5Types.map { t => (t.typeId, t) }.toMap
-
-  private val v6TypesMap = v6Types.map { t => (t.typeId, t) }.toMap
-
   def types: Map[Byte, STypeCompanion] = if (VersionContext.current.isV6SoftForkActivated) {
     v6TypesMap
   } else {
