@@ -3,27 +3,23 @@ package sigma.ast
 import org.ergoplatform._
 import org.ergoplatform.validation._
 import sigma.{UnsignedBigInt, _}
-import sigma.{Coll, VersionContext, _}
+import sigma.{Coll, VersionContext}
 import sigma.Evaluation.stypeToRType
-import sigma._
-import sigma.{VersionContext, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
-import sigma.ast.SGlobalMethods.{decodeNBitsMethod, encodeNBitsMethod}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}
 import sigma.ast.SType.{TypeCode, paramT, tT}
-import sigma.ast.syntax.{SValue, ValueOps}
+import sigma.ast.syntax.ValueOps
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.NumericOps.BigIntIsExactIntegral
 import sigma.data.OverloadHack.Overloaded1
 import sigma.data.UnsignedBigIntNumericOps.UnsignedBigIntIsExactIntegral
-import sigma.data.{DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
-import sigma.data.{CBigInt, DataValueComparer, KeyValueColl, Nullable, RType, SigmaConstants}
+import sigma.data.{DataValueComparer, KeyValueColl, RType, SigmaConstants}
+import sigma.data.{CBigInt}
 import sigma.eval.{CostDetails, ErgoTreeEvaluator, TracedCost}
 import sigma.pow.Autolykos2PowValidation
 import sigma.reflection.RClass
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.{DataSerializer, SigmaByteWriter, SigmaSerializer}
-import sigma.util.NBitsUtils
 import sigma.utils.SparseArrayContainer
 
 import scala.annotation.unused
@@ -466,15 +462,6 @@ object SNumericTypeMethods extends MethodsContainer {
 case object SBooleanMethods extends MonoTypeMethods {
   /** Type for which this container defines methods. */
   override def ownerType: SMonoType = SBoolean
-
-  val ToByte = "toByte"
-  protected override def getMethods() = super.getMethods()
-  /* TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-  ++ Seq(
-    SMethod(this, ToByte, SFunc(this, SByte), 1)
-      .withInfo(PropertyCall, "Convert true to 1 and false to 0"),
-  )
-  */
 }
 
 /** Methods of ErgoTree type `Byte`. */
@@ -641,10 +628,6 @@ case object SGroupElementMethods extends MonoTypeMethods {
     .withInfo(PropertyCall, "Inverse element of the group.")
 
   protected override def getMethods(): Seq[SMethod] = {
-    /* TODO soft-fork: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-    SMethod(this, "isIdentity", SFunc(this, SBoolean),   1)
-        .withInfo(PropertyCall, "Checks if this value is identity element of the eliptic curve group."),
-    */
     val v5Methods = Seq(
       GetEncodedMethod,
       ExponentiateMethod,

@@ -375,7 +375,7 @@ trait SNumericType extends SProduct with STypeCompanion {
 
 object SNumericType extends STypeCompanion {
 
-  // TODO v6.0: this typeId is now shadowed by SGlobal.typeId
+  //  this typeId is now shadowed by SGlobal.typeId
   //  see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/667
   override def typeId: TypeCode = 106: Byte
 

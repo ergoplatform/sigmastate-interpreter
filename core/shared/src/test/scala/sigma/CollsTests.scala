@@ -64,8 +64,7 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
         }
       }
       VersionContext.withVersions(VersionContext.JitActivationVersion, VersionContext.JitActivationVersion) {
-// TODO v5.0: make it work
-//        equalLengthMapped(pairs, squared(inc))  // problem fixed in v5.0
+        equalLengthMapped(pairs, squared(inc))  // problem fixed in v5.0
       }
 
       equalLength(pairs.append(pairs))
@@ -76,8 +75,7 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
         }
       }
       VersionContext.withVersions(VersionContext.JitActivationVersion, VersionContext.JitActivationVersion) {
-// TODO v5.0: make it work
-//        equalLengthMapped(pairs.append(pairs), squared(inc)) // problem fixed in v5.0
+        equalLengthMapped(pairs.append(pairs), squared(inc)) // problem fixed in v5.0
       }
     }
   }
