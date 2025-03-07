@@ -173,13 +173,20 @@ class DataSerializerSpecification extends SerializationSpecification {
         t.getMessage.contains(s"Length of tuple $len exceeds ${0xFFFF} limit.")
       })
 
-    val tooBig = SigmaDsl.BigInt(new BigInteger(Helpers.decodeBytes(
-      "80e0ff7f02807fff72807f0a00ff7fb7c57f75c11ba2802970fd250052807fc37f6480ffff007fff18eeba44").toArray))
+    val tooBigBytes  = Helpers.decodeBytes(
+      "80e0ff7f02807fff72807f0a00ff7fb7c57f75c11ba2802970fd250052807fc37f6480ffff007fff18eeba44").toArray
+    val tooBig = SigmaDsl.BigInt(new BigInteger(tooBigBytes))
 
     assertExceptionThrown({
-      val w = SigmaSerializer.startWriter()
-      DataSerializer.serialize(tooBig.asWrappedType, SBigInt, w)
-      val r = SigmaSerializer.startReader(w.toBytes)
+        val w = SigmaSerializer.startWriter()
+        DataSerializer.serialize(tooBig.asWrappedType, SBigInt, w)
+      },
+      exceptionLike[IllegalArgumentException]("doesn't fit into 256 bits")
+    )
+
+    assertExceptionThrown({
+      val bytes = SigmaSerializer.startWriter().putUShort(tooBigBytes.length).toBytes ++ tooBigBytes
+      val r = SigmaSerializer.startReader(bytes)
       DataSerializer.deserialize(SBigInt, r)
     },
     { t =>

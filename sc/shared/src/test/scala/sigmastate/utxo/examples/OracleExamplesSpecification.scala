@@ -71,7 +71,12 @@ class OracleExamplesSpecification extends CompilerTestingCommons
     *
     *
     */
-  property("oracle example") {
+  // TODO v6.0: re-implement this example using UBigInt type
+  // Note, the value `z` computed in the test doesn't fit into BigInt type.
+  // This makes the oracleBox.bytes fail deserialization and thus, such box cannot be
+  // accepted by the blockchain (see assertExceptionThrown in the test).
+  // This test is `ignored` after fitsIn256Bits check is added to SBigInt serialization.
+  ignore("oracle example") {
     val oracle = new ContextEnrichingTestProvingInterpreter
     val aliceTemplate = new ContextEnrichingTestProvingInterpreter
     val bob = new ContextEnrichingTestProvingInterpreter
@@ -111,6 +116,11 @@ class OracleExamplesSpecification extends CompilerTestingCommons
         reg3 -> BigIntConstant(z),
         reg4 -> LongConstant(ts)),
       boxIndex = 1
+    )
+
+    assertExceptionThrown(
+      oracleBox.bytes,
+      exceptionLike[IllegalArgumentException]("doesn't fit into 256 bits")
     )
 
     val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
