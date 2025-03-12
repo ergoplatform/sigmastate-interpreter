@@ -3139,11 +3139,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
   }
 
   property("Unit register") {
-    // TODO frontend: implement missing Unit support in compiler
-    //  https://github.com/ScorexFoundation/sigmastate-interpreter/issues/820
     test("R1", env, ext,
-      script = "", /* means cannot be compiled
-                     the corresponding script is { SELF.R4[Unit].isDefined } */
+      script = "{ SELF.R4[Unit].isDefined }",
       ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).isDefined.toSigmaProp,
       additionalRegistersOpt = Some(Map(
         reg1 -> UnitConstant.instance
@@ -3151,8 +3148,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     )
 
     test("R2", env, ext,
-      script = "", /* means cannot be compiled
-                   the corresponding script is "{ SELF.R4[Unit].get == () }" */
+      script = "{ SELF.R4[Unit].get == () }",
       EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).get, UnitConstant.instance).toSigmaProp,
       additionalRegistersOpt = Some(Map(
         reg1 -> UnitConstant.instance
