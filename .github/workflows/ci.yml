@@ -21,12 +21,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.11, 2.12.18, 2.11.12]
+        scala: [2.13.16, 2.12.20, 2.11.12]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -36,7 +36,7 @@ jobs:
           java-version: ${{ matrix.java }}
 
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.sbt
@@ -45,7 +45,7 @@ jobs:
             ~/.cache/coursier/v1
             ~/AppData/Local/Coursier/Cache/v1
             ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+          key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests
         run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} test
@@ -64,18 +64,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.11]
+        scala: [2.13.16]
         java: [adopt@1.8]
         node-version: [20]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup NPM
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: https://registry.npmjs.org/
@@ -91,7 +91,7 @@ jobs:
           java-version: ${{ matrix.java }}
 
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.sbt
@@ -100,7 +100,7 @@ jobs:
             ~/.cache/coursier/v1
             ~/AppData/Local/Coursier/Cache/v1
             ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+          key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests and collect coverage
         run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
