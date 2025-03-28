@@ -370,6 +370,24 @@ class BasicOpsSpecification extends CompilerTestingCommons
     )
   }
 
+  property("debug") {
+    val valueBytes = ValueSerializer.serialize(Plus(IntConstant(2), IntConstant(3)))
+    val customExt = Seq(21.toByte -> ByteArrayConstant(valueBytes))
+    test("debug", env, ext,
+      """debug({
+        |    val r = SELF.R8[SigmaProp].get.propBytes != getVar[SigmaProp](proofVar1).get.propBytes
+        |    val c = OUTPUTS(0).R4[Int].get
+        |    val d = OUTPUTS(0).R5[Int].get
+        |
+        |    OUTPUTS.size == 2 &&
+        |    OUTPUTS(0).value == SELF.value &&
+        |    OUTPUTS(1).value == SELF.value
+        |}, \"Nested Logic\") == false""".stripMargin,
+      null,
+      true
+    )
+  }
+
   property("Relation operations") {
     test("R1", env, ext,
       "{ allOf(Coll(getVar[Boolean](trueVar).get, true, true)) }",
