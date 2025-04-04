@@ -13,8 +13,9 @@ case class CGroupElement(override val wrappedValue: Ecp) extends GroupElement wi
 
   override def toString: String = s"GroupElement(${wrappedValue.showECPoint})"
 
-  override def getEncoded: Coll[Byte] =
+  override def getEncoded: Coll[Byte] = {
     Colls.fromArray(GroupElementSerializer.toBytes(wrappedValue))
+  }
 
   override def isIdentity: Boolean = CryptoFacade.isInfinityPoint(wrappedValue)
 

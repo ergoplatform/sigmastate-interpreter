@@ -91,7 +91,12 @@ object Extensions {
         val bv = CAvlTreeVerifier(tree, proof)
         entries.forall { case (key, value) =>
           val insertRes = bv.performOneOperation(Insert(ADKey @@ key.toArray, ADValue @@ value.toArray))
-          if (insertRes.isFailure && !VersionContext.current.isV6SoftForkActivated) {
+          // For versioned change details, see see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908
+          // Tree-versioned condition added in 6.0 interpreter code, so after 6.0 activation:
+          //  * 5.0 interpreter will skip v3 tree validation at all
+          //  * 6.0 won't throw exception
+          //  so both clients wont throw exception
+          if (insertRes.isFailure && !VersionContext.current.isV3OrLaterErgoTreeVersion) {
             syntax.error(s"Incorrect insert for $tree (key: $key, value: $value, digest: ${tree.digest}): ${insertRes.failed.get}}")
           }
           insertRes.isSuccess

@@ -24,7 +24,7 @@ trait TypeGenerators {
     Gen.oneOf[SPrimType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit)
   implicit val arbPrimType: Arbitrary[SPrimType] = Arbitrary(primTypeGen)
   implicit val predefTypeGen: Gen[SPredefType] = {
-    if(VersionContext.current.isV6SoftForkActivated){
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion){
       Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SUnsignedBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree, SHeader)
     } else {
       Gen.oneOf[SPredefType](SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnit, SBox, SAvlTree)
@@ -42,7 +42,7 @@ trait TypeGenerators {
       intTypeGen,
       longTypeGen,
       bigIntTypeGen,
-      if(VersionContext.current.isV6SoftForkActivated) {
+      if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
         unsignedBigIntTypeGen
       } else {
         bigIntTypeGen

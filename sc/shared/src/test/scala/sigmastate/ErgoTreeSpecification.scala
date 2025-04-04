@@ -23,7 +23,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.{CostLimitException, InterpreterException}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.{CrossVersionProps, Plus}
-import sigmastate.utils.Helpers.TryOps
+import sigmastate.utils.Helpers.{TryOps, decodeGroupElement}
 
 
 /** Regression tests with ErgoTree related test vectors.
@@ -315,7 +315,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     */
   case class MInfo(methodId: Byte, method: SMethod, isResolvableFromIds: Boolean = true)
 
-  def isV6Activated = VersionContext.current.isV6SoftForkActivated
+  def isV6Activated = VersionContext.current.isV3OrLaterErgoTreeVersion
 
   // NOTE, the type code constants are checked above
   // The methodId codes as checked here, they MUST be PRESERVED.
@@ -475,7 +475,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(4, MultiplyMethod),
         MInfo(5, NegateMethod)
       ) ++ {
-        if(VersionContext.current.isV6SoftForkActivated) {
+        if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
           Seq(MInfo(6, ExponentiateUnsignedMethod))
         } else {
           Seq.empty
@@ -496,11 +496,12 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(4, BytesWithoutRefMethod),
         MInfo(5, IdMethod),
         MInfo(6, creationInfoMethod),
+        MInfo(7, getRegMethodV5),
         MInfo(8, tokensMethod)
       ) ++ (if (isV6Activated) {
-        Seq(MInfo(7, getRegMethodV6))
+        Seq(MInfo(19, getRegMethodV6))
       } else {
-        Seq(MInfo(7, getRegMethodV5))
+        Seq()
       }) ++ registers(idOfs = 8)
         .zipWithIndex
         .map { case (m,i) => MInfo((8 + i + 1).toByte, m) }, true)
@@ -553,7 +554,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(1, dataInputsMethod), MInfo(2, headersMethod), MInfo(3, preHeaderMethod),
         MInfo(4, inputsMethod), MInfo(5, outputsMethod), MInfo(6, heightMethod),
         MInfo(7, selfMethod), MInfo(8, selfBoxIndexMethod), MInfo(9, lastBlockUtxoRootHashMethod),
-        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV6SoftForkActivated){
+        MInfo(10, minerPubKeyMethod)) ++ (if(VersionContext.current.isV3OrLaterErgoTreeVersion){
           Seq(MInfo(11, getVarV6Method), MInfo(12, getVarFromInputMethod))
         } else {
           Seq(MInfo(11, getVarV5Method))
@@ -588,7 +589,7 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
         MInfo(26, IndexOfMethod),
         MInfo(29, ZipMethod)
       ) ++ (if (isV6Activated) {
-        Seq(MInfo(30, ReverseMethod), MInfo(31, DistinctMethod), MInfo(32, StartsWithMethod), MInfo(33, EndsWithMethod), MInfo(34, GetMethod))
+        Seq(MInfo(30, ReverseMethod), MInfo(31, StartsWithMethod), MInfo(32, EndsWithMethod), MInfo(33, GetMethod))
       } else Seq.empty), true)
     },
     { import SOptionMethods._

@@ -1,5 +1,7 @@
 package sigma.validation
 
+import sigma.VersionContext
+
 /**
   * Configuration of validation. Each `ValidationRule` instance should be
   * implemented as an `object` to facilitate type-safe usage. It then should be
@@ -42,22 +44,37 @@ package sigma.validation
   */
 abstract class SigmaValidationSettings extends Iterable[(Short, (ValidationRule, RuleStatus))] {
   def get(id: Short): Option[(ValidationRule, RuleStatus)]
+
   def getStatus(id: Short): Option[RuleStatus]
+
   def updated(id: Short, newStatus: RuleStatus): SigmaValidationSettings
-  def isSoftFork(ve: ValidationException): Boolean = isSoftFork(ve.rule.id, ve)
-  def isSoftFork(ruleId: Short, ve: ValidationException): Boolean = {
+
+  /**
+    * Check if validation exception is a subject to soft-fork, and so can be skipped
+    * @param ve - exception with a validation rule embedded into
+    * @return true if exception can be tolerated, false if not
+    */
+  def isSoftFork(ve: ValidationException): Boolean = {
+    val ruleId = ve.rule.id
     val infoOpt = get(ruleId)
     infoOpt match {
-      case Some((_, ReplacedRule(_))) => true
+      // we do not consider replaced 5.0 rules after 6.0 activation as ones which can be tolerated
+      case Some((vr, ReplacedRule(_))) => if ((vr.id == 1011 || vr.id == 1007 || vr.id == 1008) && VersionContext.current.isV6Activated) {
+        false
+      } else {
+        true
+      }
       case Some((rule, status)) => rule.isSoftFork(this, rule.id, status, ve.args)
       case None => false
     }
   }
+
 }
 
 /** Default representation of validation settings. */
 sealed class MapSigmaValidationSettings(private val map: Map[Short, (ValidationRule, RuleStatus)]) extends SigmaValidationSettings {
   override def iterator: Iterator[(Short, (ValidationRule, RuleStatus))] = map.iterator
+
   override def get(id: Short): Option[(ValidationRule, RuleStatus)] = map.get(id)
 
   /** HOTSPOT: don't beautify this code */
@@ -66,8 +83,9 @@ sealed class MapSigmaValidationSettings(private val map: Map[Short, (ValidationR
     val res = if (statusOpt.isDefined) Some(statusOpt.get._2) else None
     res
   }
+
   override def updated(id: Short, newStatus: RuleStatus): MapSigmaValidationSettings = {
-    val (rule,_) = map(id)
+    val (rule, _) = map(id)
     new MapSigmaValidationSettings(map.updated(id, (rule, newStatus)))
   }
 

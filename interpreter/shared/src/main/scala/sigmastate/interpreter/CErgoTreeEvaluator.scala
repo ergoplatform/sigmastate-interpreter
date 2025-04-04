@@ -10,12 +10,10 @@ import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey
 import sigma.ast.SAvlTreeMethods._
-import sigma.ast.SHeaderMethods.checkPowMethod
 import sigma.ast.SType
 import sigma.data.{CSigmaProp, KeyValueColl, SigmaBoolean}
 import sigma.eval.{AvlTreeVerifier, ErgoTreeEvaluator, EvalSettings, Profiler}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
-import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
 
 import scala.collection.compat.immutable.ArraySeq
 import scala.util.{DynamicVariable, Failure, Success}
@@ -145,7 +143,11 @@ class CErgoTreeEvaluator(
         addSeqCost(InsertIntoAvlTree_Info, nItems) { () =>
           val insertRes = bv.performInsert(key.toArray, value.toArray)
           // For versioned change details, see see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908
-          if (insertRes.isFailure && !VersionContext.current.isV6SoftForkActivated) {
+          // Tree-versioned condition added in 6.0 interpreter code, so after 6.0 activation:
+          //  * 5.0 interpreter will skip v3 tree validation at all
+          //  * 6.0 won't throw exception
+          //  so both clients wont throw exception
+          if (insertRes.isFailure && !VersionContext.current.isV3OrLaterErgoTreeVersion) {
             syntax.error(s"Incorrect insert for $tree (key: $key, value: $value, digest: ${tree.digest}): ${insertRes.failed.get}}")
           }
           res = insertRes.isSuccess

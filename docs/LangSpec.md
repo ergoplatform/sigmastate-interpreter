@@ -359,13 +359,7 @@ class Context {
     *  @return A new $coll with all elements of this $coll in reversed order.
     */
   def reverse: Coll[T]
-
-  /** Builds a new $coll from this $coll without any duplicate elements.
-    *
-    *  @return  A new $coll which contains the first occurrence of every element of this $coll.
-    */
-  def distinct: Coll[T]
-  
+ 
 }
 
 /** Represents data of the block headers available in scripts. */
@@ -1064,7 +1058,7 @@ There are some functions which do not belong to other types, thus they put under
     * @param nonce - used to pad the message to get Proof-of-Work hash function output with desirable properties
     * @param h - PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)
     */
-  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): BigInt
+  def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): UnsignedBigInt
 
   /** Deserializes provided `bytes` into a value of type `T`. **/
   def deserializeTo[T](bytes: Coll[Byte])(implicit cT: RType[T]): T

@@ -22,7 +22,7 @@ By default SBT uses Scala 2.12 for compilation and running tests. To compile for
 
 ```shell
 $ sbt
-sbt:sigma-state> ++2.13.11
+sbt:sigma-state> ++2.13.16
 sbt:sigma-state> compile
 sbt:sigma-state> test
 ```

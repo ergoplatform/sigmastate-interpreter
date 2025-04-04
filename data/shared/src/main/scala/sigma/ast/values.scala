@@ -572,6 +572,7 @@ object HeaderConstant {
   }
 }
 
+
 trait NotReadyValueInt extends NotReadyValue[SInt.type] {
   override def tpe = SInt
 }

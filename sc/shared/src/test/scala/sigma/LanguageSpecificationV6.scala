@@ -2,7 +2,7 @@ package sigma
 
 import org.ergoplatform.{ErgoBox, ErgoHeader, ErgoLikeTransaction, Input}
 import scorex.util.encode.Base16
-import sigma.VersionContext.V6SoftForkVersion
+import sigma.VersionContext.{JitActivationVersion, V6SoftForkVersion}
 import org.ergoplatform.ErgoBox.Token
 import org.ergoplatform.settings.ErgoAlgos
 import scorex.crypto.authds.{ADKey, ADValue}
@@ -17,27 +17,17 @@ import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.CSigmaDslBuilder
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, ExactNumeric, PairOfCols, ProveDHTuple, RType}
+import sigma.data.{CGroupElement, CUnsignedBigInt}
 import sigma.crypto.SecP256K1Group
-import sigma.data.{CBigInt, CBox, CGroupElement, CHeader, CSigmaDslBuilder, ExactNumeric, RType}
-import sigma.data.{CBigInt, CBox, CHeader, CSigmaDslBuilder, ExactNumeric, PairOfCols, RType}
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
-import sigma.util.Extensions.{BooleanOps, IntOps}
-import sigma.serialization.ValueCodes.OpCode
-import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
-import sigma.util.Extensions.{BooleanOps, IntOps}
-import sigma.data.RType
-import sigma.serialization.ValueCodes.OpCode
-import sigma.util.Extensions.{BooleanOps, ByteOps, IntOps, LongOps}
 import sigma.pow.Autolykos2PowValidation
 import sigmastate.exceptions.MethodNotFound
 import sigmastate.utils.Extensions.ByteOpsForSigma
 import sigmastate.utils.Helpers
 import sigma.Extensions.ArrayOps
-import sigma.Extensions.{ArrayOps, CollOps}
 import sigma.crypto.CryptoConstants
 import sigma.data.CSigmaDslBuilder.Colls
 import sigma.exceptions.InterpreterException
@@ -943,7 +933,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   property("BigInt - 6.0 features") {
     import sigma.data.OrderingOps.BigIntOrdering
 
-    if (activatedVersionInTests < VersionContext.V6SoftForkVersion) {
+    if (ergoTreeVersionInTests < VersionContext.V6SoftForkVersion) {
       // The `Upcast(bigInt, SBigInt)` node is never produced by ErgoScript compiler, but is still valid ErgoTree.
       // Fixed in 6.0
       assertExceptionThrown(
@@ -1395,18 +1385,24 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         // for tree v0, the result is the same for all versions
         (Coll(t1.bytes: _*), 0) -> Expected(
           Success(Helpers.decodeBytes("100108d27300")),
-          cost = 1793,
+          costOpt = None,
           expectedDetails = CostDetails.ZeroCost,
-          newCost = 2065,
+          newCostOpt = None,
           newVersionedResults = expectedSuccessForAllTreeVersions(Helpers.decodeBytes("100108d27300"), 2065, costDetails(1))
         ),
         // for tree version > 0, the result depend on activated version
         (Coll(t2.bytes: _*), 0) -> Expected(
           Success(expectedTreeBytes_beforeV6),
-          cost = 1793,
+          costOpt = None,
           expectedDetails = CostDetails.ZeroCost,
-          newCost = 2065,
-          newVersionedResults = expectedSuccessForAllTreeVersions(expectedTreeBytes_V6, 2065, costDetails(1)))
+          newCostOpt = None,
+          newVersionedResults = Seq(
+            0 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
+            1 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
+            2 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
+            3 -> (ExpectedResult(Success(expectedTreeBytes_V6), Some(2065)) -> Some(costDetails(1)))
+          )
+        )
       ),
       changedFeature(
         changedInVersion = VersionContext.V6SoftForkVersion,
@@ -1427,19 +1423,24 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
             ),
             ConcreteCollection(Array(BoolToSigmaProp(FalseLeaf)), SSigmaProp)
           )
-        )
+        ),
+        activationType = ActivationByTreeVersion
       )
     )
 
     // before v6.0 the expected tree is not parsable
-    ErgoTree.fromBytes(expectedTreeBytes_beforeV6.toArray).isRightParsed shouldBe false
+    VersionContext.withVersions(JitActivationVersion, 0) {
+      Try(ErgoTree.fromBytes(expectedTreeBytes_beforeV6.toArray)).isSuccess shouldBe false
+    }
 
-    // in v6.0 the expected tree should be parsable and similar to the original tree
-    val tree = ErgoTree.fromBytes(expectedTreeBytes_V6.toArray)
-    tree.isRightParsed shouldBe true
-    tree.header shouldBe t2.header
-    tree.constants.length shouldBe t2.constants.length
-    tree.root shouldBe t2.root
+    VersionContext.withVersions(V6SoftForkVersion, 0) {
+      // in v6.0 the expected tree should be parsable and similar to the original tree
+      val tree = ErgoTree.fromBytes(expectedTreeBytes_V6.toArray)
+      tree.isRightParsed shouldBe true
+      tree.header shouldBe t2.header
+      tree.constants.length shouldBe t2.constants.length
+      tree.root shouldBe t2.root
+    }
   }
 
   property("Header new methods") {
@@ -1474,12 +1475,12 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   property("Global.powHit") {
-    def powHit: Feature[Coll[Byte], sigma.BigInt] = newFeature(
+    def powHit: Feature[Coll[Byte], sigma.UnsignedBigInt] = newFeature(
       { (x: Coll[Byte]) =>
         val msg = x.slice(0, 7).toArray
         val nonce = x.slice(7, 15).toArray
         val h = x.slice(15, 19).toArray
-        CBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
+        CUnsignedBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(32, msg, nonce, h, 1024 * 1024).bigInteger)
       },
       "{ (x: Coll[Byte]) => val msg = x.slice(0,7); val nonce = x.slice(7,15); val h = x.slice(15,19); " +
         "Global.powHit(32, msg, nonce, h, 1024 * 1024) }",
@@ -1505,7 +1506,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val nonce = Base16.decode("000000000000002c").get
     val h = Base16.decode("00000000").get
     val x = Colls.fromArray(msg ++ nonce ++ h)
-    val hit = CBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+    val hit = CUnsignedBigInt(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
 
     verifyCases(
       Seq(
@@ -1874,14 +1875,19 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       Seq(
         Some(2L) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
           newVersionedResults = {
-            expectedSuccessForAllTreeVersions(2L, 2015, trace)
+            Seq(
+              0 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              1 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              2 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              3 -> (ExpectedResult(Success(2L), Some(2015)) -> Some(trace))
+            )
           } ),
         None -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
       ),
       changedFeature(
         changedInVersion = VersionContext.V6SoftForkVersion,
         { (x: Option[Long]) => val default = 1 / 0L; x.getOrElse(default) },
-        { (x: Option[Long]) => if (VersionContext.current.isV6SoftForkActivated) {x.getOrElse(1 / 0L)} else {val default = 1 / 0L; x.getOrElse(default)} },
+        { (x: Option[Long]) => if (VersionContext.current.isV3OrLaterErgoTreeVersion) {x.getOrElse(1 / 0L)} else {val default = 1 / 0L; x.getOrElse(default)} },
         "{ (x: Option[Long]) => x.getOrElse(1 / 0L) }",
         FuncValue(
           Array((1, SOption(SLong))),
@@ -1911,7 +1917,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
 
     def scalaFuncNew(x: Coll[Int]) = {
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         x.toArray.toIndexedSeq.headOption.getOrElse(1 / 0)
       } else scalaFuncOld(x)
     }
@@ -1924,7 +1930,12 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       Seq(
         Coll(1) -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793,
           newVersionedResults = {
-            expectedSuccessForAllTreeVersions(1, 2029, trace)
+            Seq(
+              0 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              1 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              2 -> (ExpectedResult(Failure(new java.lang.ArithmeticException("/ by zero")), Some(2029)) -> Some(trace)),
+              3 -> (ExpectedResult(Success(1), Some(2029)) -> Some(trace))
+            )
           } ),
         Coll[Int]() -> Expected(Failure(new java.lang.ArithmeticException("/ by zero")), 6, trace, 1793)
       ),
@@ -2192,35 +2203,6 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll.distinct") {
-    val f = newFeature[Coll[Int], Coll[Int]](
-      { (xs: Coll[Int]) => xs.distinct },
-      """{(xs: Coll[Int]) => xs.distinct }""".stripMargin,
-      FuncValue(
-        Array((1, SCollectionType(SInt))),
-        MethodCall.typed[Value[SCollection[SInt.type]]](
-          ValUse(1, SCollectionType(SInt)),
-          SCollectionMethods.DistinctMethod.withConcreteTypes(Map(STypeVar("IV") -> SInt)),
-          IndexedSeq(),
-          Map()
-        )
-      ),
-      sinceVersion = VersionContext.V6SoftForkVersion
-    )
-
-    verifyCases(
-      Seq(
-        Coll(1, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(1, 1, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(1, 2, 2) -> Expected(ExpectedResult(Success(Coll(1, 2)), None)),
-        Coll(2, 2, 2) -> Expected(ExpectedResult(Success(Coll(2)), None)),
-        Coll(3, 1, 2, 2, 2, 4, 4, 1) -> Expected(ExpectedResult(Success(Coll(3, 1, 2, 4)), None)),
-        Coll[Int]() -> Expected(ExpectedResult(Success(Coll[Int]()), None))
-      ),
-      f
-    )
-  }
-
   property("Coll.startsWith") {
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) },
@@ -2454,7 +2436,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     lazy val bitOr = newFeature[(UnsignedBigInt, UnsignedBigInt), UnsignedBigInt](
       { (x: (UnsignedBigInt, UnsignedBigInt)) => (x._1 | x._2) },
       "{ (x: (UnsignedBigInt, UnsignedBigInt)) => x._1.bitwiseOr(x._2) }",
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         FuncValue(
           Array((1, SPair(SUnsignedBigInt, SUnsignedBigInt))),
           MethodCall.typed[Value[SUnsignedBigInt.type]](
@@ -2489,7 +2471,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     lazy val bitNot = newFeature[UnsignedBigInt, UnsignedBigInt](
       { (x: UnsignedBigInt) => x.bitwiseInverse() },
       "{ (x: UnsignedBigInt) => x.bitwiseInverse }",
-      if (VersionContext.current.isV6SoftForkActivated) {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         FuncValue(
           Array((1, SUnsignedBigInt)),
           MethodCall.typed[Value[SUnsignedBigInt.type]](
@@ -2855,7 +2837,16 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     lazy val some = newFeature(
       { (x: Byte) => CSigmaDslBuilder.none[Byte]() },
       "{ (x: Byte) => Global.none[Byte]() }",
-      sinceVersion = V6SoftForkVersion)
+      FuncValue(
+        Array((1, SByte)),
+        MethodCall.typed[Value[SOption[SByte.type]]](
+          Global,
+          SGlobalMethods.noneMethod.withConcreteTypes(Map(STypeVar("T") -> SByte)),
+          IndexedSeq(),
+          Map(STypeVar("T") -> SByte)
+        )
+      ),
+        sinceVersion = V6SoftForkVersion)
     val cases = Seq(
       (0.toByte, Success(None)),
       (1.toByte, Success(None))
@@ -3024,7 +3015,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         val tree = createTree(preInsertDigest, insertAllowed = true)
         val invalidKvs = Colls.fromItems((key -> value), (key -> value))
         val input = (tree, (invalidKvs, insertProof))
-        if (VersionContext.current.isV6SoftForkActivated) {
+        if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
           insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
         } else {
           val res = insert.checkEquality(input)
@@ -3037,7 +3028,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         val tree = createTree(preInsertDigest, insertAllowed = true)
         val invalidProof = insertProof.map(x => (-x).toByte) // any other different from proof
         val input = (tree, (kvs, invalidProof))
-        if (VersionContext.current.isV6SoftForkActivated) {
+        if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
           insert.verifyCase(input, new Expected(ExpectedResult(Success(None), Some(2103))))
         } else {
           val res = insert.checkEquality(input)
@@ -3053,6 +3044,45 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     lazy val iou = newFeature(
       (t: (AvlTree, (Coll[KV], Coll[Byte]))) => t._1.insertOrUpdate(t._2._1, t._2._2),
       "{ (t: (AvlTree, (Coll[(Coll[Byte], Coll[Byte])], Coll[Byte]))) => t._1.insertOrUpdate(t._2._1, t._2._2) }",
+      FuncValue(
+        Array((1, SPair(SAvlTree, SPair(SCollectionType(SPair(SByteArray, SByteArray)), SByteArray)))),
+        BlockValue(
+          Array(
+            ValDef(
+              3,
+              List(),
+              SelectField.typed[Value[STuple]](
+                ValUse(
+                  1,
+                  SPair(SAvlTree, SPair(SCollectionType(SPair(SByteArray, SByteArray)), SByteArray))
+                ),
+                2.toByte
+              )
+            )
+          ),
+          MethodCall.typed[Value[SOption[SAvlTree.type]]](
+            SelectField.typed[Value[SAvlTree.type]](
+              ValUse(
+                1,
+                SPair(SAvlTree, SPair(SCollectionType(SPair(SByteArray, SByteArray)), SByteArray))
+              ),
+              1.toByte
+            ),
+            SAvlTreeMethods.insertOrUpdateMethod,
+            Array(
+              SelectField.typed[Value[SCollection[STuple]]](
+                ValUse(3, SPair(SCollectionType(SPair(SByteArray, SByteArray)), SByteArray)),
+                1.toByte
+              ),
+              SelectField.typed[Value[SCollection[SByte.type]]](
+                ValUse(3, SPair(SCollectionType(SPair(SByteArray, SByteArray)), SByteArray)),
+                2.toByte
+              )
+            ),
+            Map()
+          )
+        )
+      ),
       sinceVersion = V6SoftForkVersion)
 
     val key = keyCollGen.sample.get

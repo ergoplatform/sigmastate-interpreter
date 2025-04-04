@@ -248,7 +248,7 @@ trait Interpreter {
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
       val (propTree, context2) = trySoftForkable[(SigmaPropValue, CTX)](whenSoftFork = (TrueSigmaProp, context1)) {
         // Before ErgoTree V3 the deserialization cost was not added to the total cost
-        applyDeserializeContextJITC(if (VersionContext.current.activatedVersion >= VersionContext.V6SoftForkVersion) {
+        applyDeserializeContextJITC(if (VersionContext.current.isV6Activated) {
           context1
         } else {
           context
@@ -360,7 +360,6 @@ trait Interpreter {
         case None => // proceed normally
       }
       VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
-        // NOTE, ergoTree.complexity is not acrued to the cost in v5.0
         val reduced = fullReduction(ergoTree, context, env)
         reduced.value match {
           case TrivialProp.TrueProp => (true, reduced.cost)

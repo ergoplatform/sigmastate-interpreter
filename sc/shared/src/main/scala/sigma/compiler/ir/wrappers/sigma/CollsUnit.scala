@@ -31,7 +31,6 @@ import sigma.compiler.ir.{Base, IRContext}
       def slice(from: Ref[Int], until: Ref[Int]): Ref[Coll[A]];
       def append(other: Ref[Coll[A]]): Ref[Coll[A]];
       def reverse: Ref[Coll[A]]
-      def distinct: Ref[Coll[A]]
       def startsWith(ys: Ref[Coll[A]]): Ref[Boolean];
       def endsWith(ys: Ref[Coll[A]]): Ref[Boolean];
     };

@@ -180,13 +180,6 @@ class CollCls extends EntityObject("Coll") {
         true, false, element[Coll[A]]))
     }
 
-    override def distinct: Ref[Coll[A]] = {
-      asRep[Coll[A]](mkMethodCall(self,
-        CollClass.getMethod("distinct"),
-        Array[AnyRef](),
-        true, false, element[Coll[A]]))
-    }
-
     def startsWith(ys: Ref[Coll[A]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(self,
         CollClass.getMethod("startsWith", classOf[Sym]),
@@ -358,13 +351,6 @@ class CollCls extends EntityObject("Coll") {
     def reverse: Ref[Coll[A]] = {
       asRep[Coll[A]](mkMethodCall(source,
         CollClass.getMethod("reverse"),
-        Array[AnyRef](),
-        true, true, element[Coll[A]]))
-    }
-
-    def distinct: Ref[Coll[A]] = {
-      asRep[Coll[A]](mkMethodCall(source,
-        CollClass.getMethod("distinct"),
         Array[AnyRef](),
         true, true, element[Coll[A]]))
     }

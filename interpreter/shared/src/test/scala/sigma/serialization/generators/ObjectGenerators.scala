@@ -329,7 +329,7 @@ trait ObjectGenerators extends TypeGenerators
       longConstGen,
       booleanConstGen,
       bigIntConstGen,
-      if(VersionContext.current.isV6SoftForkActivated) {
+      if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
         unsignedBigIntConstGen
       } else {
         bigIntConstGen
