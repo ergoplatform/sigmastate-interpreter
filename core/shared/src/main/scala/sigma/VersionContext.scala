@@ -15,7 +15,7 @@ import scala.util.DynamicVariable
   * @see
   */
 case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
-  require(ergoTreeVersion < VersionContext.JitActivationVersion || ergoTreeVersion <= activatedVersion,
+  require(activatedVersion < VersionContext.JitActivationVersion || ergoTreeVersion <= activatedVersion,
     s"In a valid VersionContext ergoTreeVersion must never exceed activatedVersion: $this")
 
   /** @return true, if the activated script version of Ergo protocol on the network is
