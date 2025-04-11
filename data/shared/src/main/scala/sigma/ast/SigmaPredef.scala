@@ -446,6 +446,70 @@ object SigmaPredef {
         Seq(ArgInfo("id", "identifier of the register")))
     )
 
+    val DebugFunc = PredefinedFunc("debug",
+      Lambda(
+        Seq(paramT),
+        Array("obj" -> SAny, "label" -> SString),
+        SBoolean, None
+      ),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(obj, label: EvaluatedValue[SString.type]@unchecked)) =>
+          def formatString(input: String): String = {
+            def indent(depth: Int): String = " " * (depth * 2) // Helper for consistent indentation
+
+            var depth = 0 // Tracks the indentation level
+            val formatted = new StringBuilder // Store the formatted string
+
+            var i = 0
+            while (i < input.length) {
+              val char = input(i)
+
+              char match {
+                case '(' =>
+                  // Handle single-value or small-value blocks inline
+                  val closingParenIndex = input.indexOf(")", i)
+                  if (closingParenIndex != -1) {
+                    val content = input.substring(i + 1, closingParenIndex)
+                    val commaCount = content.count(_ == ',')
+
+                    if (commaCount <= 1 && !content.contains("(")) {
+                      formatted.append(char).append(content).append(")")
+                      i = closingParenIndex // Skip to closing parenthesis
+                    } else {
+                      formatted.append(char).append("\n").append(indent(depth + 1))
+                      depth += 1
+                    }
+                  } else {
+                    formatted.append(char).append("\n").append(indent(depth + 1))
+                    depth += 1
+                  }
+
+                case ')' =>
+                  depth -= 1
+                  formatted.append("\n").append(indent(depth)).append(char)
+
+                case ',' => formatted.append(",\n").append(indent(depth))
+                case _ => formatted.append(char)
+              }
+
+              i += 1
+            }
+
+            formatted.toString()
+          }
+
+          println(s"${label.value.replace("\\\"", "")}:\n${formatString(obj.toString)}")
+          BooleanConstant(false).asValue
+        }),
+      OperationInfo(None,
+        """Dumps tree of obj""".stripMargin,
+        Seq(
+          ArgInfo("obj", "identifier of the register"),
+          ArgInfo("label", "label the output with this string")
+        ))
+    )
+
+
     val globalFuncs: Map[String, PredefinedFunc] = Seq(
       AllOfFunc,
       AnyOfFunc,
@@ -474,7 +538,8 @@ object SigmaPredef {
       SubstConstantsFunc,
       ExecuteFromVarFunc,
       ExecuteFromSelfRegWithDefaultFunc,
-      ExecuteFromSelfRegFunc
+      ExecuteFromSelfRegFunc,
+      DebugFunc
     ).map(f => f.name -> f).toMap
 
     def comparisonOp(symbolName: String, opDesc: ValueCompanion, desc: String, args: Seq[ArgInfo]) = {
