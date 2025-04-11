@@ -8,8 +8,8 @@ import sigma.rtypeToClassTag
 
 class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuilder)
                                    (implicit tA: RType[A]) extends Coll[A] {
-  require(toArray.length <= MaxArrayLength,
-    s"Cannot create collection with size ${toArray.length} greater than $MaxArrayLength")
+  require(length <= MaxArrayLength,
+    s"Cannot create collection with size $length greater than $MaxArrayLength")
 
   override def tItem: RType[A] = tA
   @inline def length: Int = toArray.length

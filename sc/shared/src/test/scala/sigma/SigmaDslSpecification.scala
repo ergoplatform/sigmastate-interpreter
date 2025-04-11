@@ -94,7 +94,11 @@ class SigmaDslSpecification extends SigmaDslTesting
 
     profilerOpt = Some(CErgoTreeEvaluator.DefaultProfiler),
     isTestRun = true
+    // isDebug = true  uncomment to enable debug mode
   )
+
+  /** Set this to true to enable debug console output in tests */
+  override val printDebugInfo: Boolean = false
 
   def warmupSettings(p: Profiler) = evalSettingsInTests.copy(
     isLogEnabled = false,
@@ -7213,15 +7217,6 @@ class SigmaDslSpecification extends SigmaDslTesting
         ast.SeqCostItem(MethodDesc(SCollectionMethods.FlatMapMethod), PerItemCost(JitCost(60), JitCost(10), 8), 0)
       )
     )
-    val costDetails1 = TracedCost(
-      traceBase ++ Array(
-        FixedCostItem(MethodCall),
-        FixedCostItem(FuncValue),
-        FixedCostItem(NamedDesc("MatchSingleArgMethodCall"), FixedCost(JitCost(30))),
-        ast.SeqCostItem(NamedDesc("CheckFlatmapBody"), PerItemCost(JitCost(20), JitCost(20), 1), 1),
-        ast.SeqCostItem(MethodDesc(SCollectionMethods.FlatMapMethod), PerItemCost(JitCost(60), JitCost(10), 8), 0)
-      )
-    )
     val costDetails2 = TracedCost(
       traceBase ++ Array(
         FixedCostItem(MethodCall),
@@ -10021,9 +10016,18 @@ class SigmaDslSpecification extends SigmaDslTesting
   }
 
   override protected def afterAll(): Unit = {
-    printDebug(CErgoTreeEvaluator.DefaultProfiler.generateReport)
+    printDebug(CErgoTreeEvaluator.DefaultProfiler.generateReport())
     printDebug("==========================================================")
-    printDebug(Interpreter.verifySignatureProfiler.generateReport)
+    printDebug(Interpreter.verifySignatureProfiler.generateReport())
     printDebug("==========================================================")
+
+// Uncomment to print reflection metadata for missing classes and methods.
+// Make sure also:
+// - this.printDebugInfo is set to true
+// - Debug code in Platform.resolveClass is also uncommented
+// Note, ReflectionGenerator is only available on JVM, so the line below should be
+// commented back to run tests on JS.
+//    printDebug(ReflectionGenerator.generateReport())
+//    printDebug("==========================================================")
   }
 }

@@ -1,11 +1,12 @@
 package scalan
 
+import sigma.compiler.ir.{GraphIRReflection, IRContext}
 import sigma.reflection.RMethod
 import sigma.{BaseNestedTests, BaseShouldTests, BaseTests, TestUtils}
 
 trait TestContexts extends TestUtils {
 
-  trait TestContextApi { scalan: Scalan =>
+  trait TestContextApi { ctx: IRContext =>
     def invokeAll: Boolean
     def isInvokeEnabled(d: Def[_], m: RMethod): Boolean
     def shouldUnpack(e: Elem[_]): Boolean
@@ -19,7 +20,7 @@ trait TestContexts extends TestUtils {
       emitF(testName, Seq(() => s1) ++ s2.map((s: Ref[_]) => () => s): _*)
     }
   }
-  abstract class TestContext(val testName: String) extends Scalan with TestContextApi {
+  abstract class TestContext(val testName: String) extends IRContext with TestContextApi {
     def this() = this(currentTestNameAsFileName)
 
     override val invokeAll = true

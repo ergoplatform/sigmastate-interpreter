@@ -61,7 +61,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
   }
 
   property("Constant serialization round trip") {
-    forAll { x: Unit => roundTripTest(UnitConstant()) }
+    forAll { _: Unit => roundTripTest(UnitConstant()) }
     forAll { x: Byte => roundTripTest(Constant[SByte.type](x, SByte)) }
     forAll { x: Boolean => roundTripTest(BooleanConstant.fromBoolean(x)) }
     forAll { x: Long => roundTripTest(Constant[SLong.type](x, SLong)) }

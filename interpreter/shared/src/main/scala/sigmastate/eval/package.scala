@@ -47,8 +47,8 @@ package object eval {
         message = {
           val suffix = if (msgSuffix.isEmpty) "" else s": $msgSuffix"
           msgCostLimitError(newCost, limit) + suffix
-        },
-        cause = None)
+        }
+      )
     }
     newCost
   }

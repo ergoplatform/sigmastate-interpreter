@@ -19,6 +19,7 @@ import sigmastate.lang.parsers.ParserException
 import sigma.serialization.ErgoTreeSerializer
 import sigma.serialization.generators.ObjectGenerators
 import sigma.ast.Select
+import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
 import sigma.exceptions.TyperException
 
 class SigmaTyperTest extends AnyPropSpec
@@ -34,7 +35,8 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       val typed = typer.typecheck(bound)
       assertSrcCtxForAllNodes(typed)
       if (expected != null) typed shouldBe expected
@@ -51,7 +53,8 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       typer.typecheck(bound)
     }, {
       case te: TyperException =>
@@ -113,6 +116,7 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "min(HEIGHT, INPUTS.size)") shouldBe SInt
     typecheck(env, "max(1, 2)") shouldBe SInt
     typecheck(env, "max(1L, 2)") shouldBe SLong
+    typecheck(env, """bigInt("1111")""") shouldBe SBigInt
     typecheck(env, """fromBase16("1111")""") shouldBe SByteArray
     typecheck(env, """fromBase58("111")""") shouldBe SByteArray
     typecheck(env, """fromBase64("111")""") shouldBe SByteArray
@@ -557,6 +561,14 @@ class SigmaTyperTest extends AnyPropSpec
 
   property("executeFromVar") {
     typecheck(env, "executeFromVar[Boolean](1)") shouldBe SBoolean
+  }
+
+  property("executeFromSelfRegWithDefault") {
+    typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Boolean](1).get)") shouldBe SBoolean
+
+    an[TyperException] should be thrownBy {
+      typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Int](1).get)")
+    }
   }
 
   property("LogicalNot") {

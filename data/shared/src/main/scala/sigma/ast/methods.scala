@@ -15,7 +15,6 @@ import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.utils.SparseArrayContainer
 
 import scala.annotation.unused
-import scala.language.implicitConversions
 
 /** Base type for all companions of AST nodes of sigma lang. */
 trait SigmaNodeCompanion
@@ -235,7 +234,7 @@ object SNumericTypeMethods extends MethodsContainer {
          |  Each boolean corresponds to one bit.
           """.stripMargin)
 
-  protected override def getMethods: Seq[SMethod] = Array(
+  protected override def getMethods(): Seq[SMethod] = Array(
     ToByteMethod, // see Downcast
     ToShortMethod, // see Downcast
     ToIntMethod, // see Downcast
@@ -704,94 +703,9 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
       .withInfo(MethodCall,
         """ Builds a new collection by applying a function to all elements of this collection
          | and using the elements of the resulting collections.
-         | Function \lst{f} is constrained to be of the form \lst{x => x.someProperty}, otherwise
-         | it is illegal.
          | Returns a new collection of type \lst{Coll[B]} resulting from applying the given collection-valued function
          | \lst{f} to each element of this collection and concatenating the results.
         """.stripMargin, ArgInfo("f", "the function to apply to each element."))
-
-  /** We assume all flatMap body patterns have similar executon cost. */
-  final val CheckFlatmapBody_Info = OperationCostInfo(
-    PerItemCost(baseCost = JitCost(20), perChunkCost = JitCost(20), chunkSize = 1),
-    NamedDesc("CheckFlatmapBody"))
-
-
-  /** This patterns recognize all expressions, which are allowed as lambda body
-    * of flatMap. Other bodies are rejected with throwing exception.
-    */
-  val flatMap_BodyPatterns = Array[PartialFunction[SValue, Int]](
-    { case MethodCall(ValUse(id, tpe), m, args, _) if args.isEmpty => id },
-    { case ExtractScriptBytes(ValUse(id, _)) => id },
-    { case ExtractId(ValUse(id, _)) => id },
-    { case SigmaPropBytes(ValUse(id, _)) => id },
-    { case ExtractBytes(ValUse(id, _)) => id },
-    { case ExtractBytesWithNoRef(ValUse(id, _)) => id }
-  )
-
-  /** Check the given expression is valid body of flatMap argument lambda.
-    * @param varId id of lambda variable (see [[FuncValue]].args)
-    * @param expr expression with is expected to use varId in ValUse node.
-    * @return true if the body is allowed
-    */
-  def isValidPropertyAccess(varId: Int, expr: SValue)
-                           (implicit E: ErgoTreeEvaluator): Boolean = {
-    var found = false
-    // NOTE: the cost depends on the position of the pattern since
-    // we are checking until the first matching pattern found.
-    E.addSeqCost(CheckFlatmapBody_Info) { () =>
-      // the loop is bounded because flatMap_BodyPatterns is fixed
-      var i = 0
-      val nPatterns = flatMap_BodyPatterns.length
-      while (i < nPatterns && !found) {
-        val p = flatMap_BodyPatterns(i)
-        found = p.lift(expr) match {
-          case Some(id) => id == varId  // `id` in the pattern is equal to lambda `varId`
-          case None => false
-        }
-        i += 1
-      }
-      i // how many patterns checked
-    }
-    found
-  }
-
-  /** Operation descriptor for matching `flatMap` method calls with valid lambdas. */
-  final val MatchSingleArgMethodCall_Info = OperationCostInfo(
-    FixedCost(JitCost(30)), NamedDesc("MatchSingleArgMethodCall"))
-
-  /** Recognizer of `flatMap` method calls with valid lambdas. */
-  object IsSingleArgMethodCall {
-    def unapply(mc:MethodCall)
-               (implicit E: ErgoTreeEvaluator): Nullable[(Int, SValue)] = {
-      var res: Nullable[(Int, SValue)] = Nullable.None
-      E.addFixedCost(MatchSingleArgMethodCall_Info) {
-        res = mc match {
-          case MethodCall(_, m, Seq(FuncValue(args, body)), _) if args.length == 1 =>
-            val id = args(0)._1
-            Nullable((id, body))
-          case _ =>
-            Nullable.None
-        }
-      }
-      res
-    }
-  }
-
-  /** Checks that the given [[MethodCall]] operation is valid flatMap. */
-  def checkValidFlatmap(mc: MethodCall)(implicit E: ErgoTreeEvaluator) = {
-    mc match {
-      case IsSingleArgMethodCall(varId, lambdaBody)
-            if isValidPropertyAccess(varId, lambdaBody) =>
-        // ok, do nothing
-      case _ =>
-        throwInvalidFlatmap(mc)
-    }
-  }
-
-  def throwInvalidFlatmap(mc: MethodCall) = {
-    sys.error(
-      s"Unsupported lambda in flatMap: allowed usage `xs.flatMap(x => x.property)`: $mc")
-  }
 
   /** Implements evaluation of Coll.flatMap method call ErgoTree node.
     * Called via reflection based on naming convention.
@@ -1480,7 +1394,7 @@ case object SGlobalMethods extends MonoTypeMethods {
 
   lazy val groupGeneratorMethod = SMethod(
     this, "groupGenerator", SFunc(SGlobal, SGroupElement), 1, GroupGenerator.costKind)
-    .withIRInfo({ case (builder, obj, method, args, tparamSubst) => GroupGenerator })
+    .withIRInfo({ case (_, _, _, _, _) => GroupGenerator })
     .withInfo(GroupGenerator, "")
 
   lazy val xorMethod = SMethod(

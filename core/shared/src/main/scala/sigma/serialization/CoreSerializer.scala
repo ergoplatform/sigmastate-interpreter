@@ -6,25 +6,31 @@ import sigma.data.SigmaConstants
 
 import java.nio.ByteBuffer
 
+/** Implementation of [[Serializer]] provided by `sigma-core` module. */
 abstract class CoreSerializer[TFamily, T <: TFamily] extends Serializer[TFamily, T, CoreByteReader, CoreByteWriter] {
 
-  def error(msg: String) = throw new SerializerException(msg, None)
+  def error(msg: String) = throw SerializerException(msg)
 
+  /** Serializes the given 'obj' to a new array of bytes using this serializer. */
   final def toBytes(obj: T): Array[Byte] = {
     val w = CoreSerializer.startWriter()
     serialize(obj, w)
     w.toBytes
   }
 
+  /** Deserializes `bytes` to an object of this [[TFamily]] using this serializer.
+    * The actual class of the returned object is expected to be descendant of [[TFamily]].
+    */
   final def fromBytes(bytes: Array[Byte]): TFamily = {
     parse(CoreSerializer.startReader(bytes))
   }
 }
 
 object CoreSerializer {
-  type Position = Int
-
+  /** Max length of Box.propositionBytes collection */
   val MaxPropositionSize: Int = SigmaConstants.MaxPropositionBytes.value
+
+  /** Max tree depth should not be greater then provided value */
   val MaxTreeDepth: Int = SigmaConstants.MaxTreeDepth.value
 
   /** Helper function to be use in serializers.

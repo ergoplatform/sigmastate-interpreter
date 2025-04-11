@@ -195,7 +195,19 @@ object Extensions {
       throw new ArithmeticException("BigInteger out of byte range")
     }
 
-    /** Checks this {@code BigInteger} can be cust to 256 bit two's-compliment representation,
+    /** Checks this {@code BigInteger} can be cast to 256 bit two's-compliment representation. */
+    @inline def fitsIn256Bits: Boolean = {
+      // Comparing with 255 is correct because bitLength() method excludes the sign bit.
+      // For example, these are the boundary values:
+      // (new BigInteger("80" + "00" * 31, 16)).bitLength() = 256
+      // (new BigInteger("7F" + "ff" * 31, 16)).bitLength() = 255
+      // (new BigInteger("-7F" + "ff" * 31, 16)).bitLength() = 255
+      // (new BigInteger("-80" + "00" * 31, 16)).bitLength() = 255
+      // (new BigInteger("-80" + "00" * 30 + "01", 16)).bitLength() = 256
+      x.bitLength() <= 255
+    }
+
+    /** Checks this {@code BigInteger} can be cast to 256 bit two's-compliment representation,
       * checking for lost information. If the value of this {@code BigInteger}
       * is out of the range of the 256 bits, then an {@code ArithmeticException} is thrown.
       *
@@ -205,14 +217,7 @@ object Extensions {
       * @see BigInteger#longValueExact
       */
     @inline final def to256BitValueExact: BigInteger = {
-      // Comparing with 255 is correct because bitLength() method excludes the sign bit.
-      // For example, these are the boundary values:
-      // (new BigInteger("80" + "00" * 31, 16)).bitLength() = 256
-      // (new BigInteger("7F" + "ff" * 31, 16)).bitLength() = 255
-      // (new BigInteger("-7F" + "ff" * 31, 16)).bitLength() = 255
-      // (new BigInteger("-80" + "00" * 31, 16)).bitLength() = 255
-      // (new BigInteger("-80" + "00" * 30 + "01", 16)).bitLength() = 256
-      if (x.bitLength() <= 255) x
+      if (fitsIn256Bits) x
       else
         throw new ArithmeticException("BigInteger out of 256 bit range");
     }

@@ -548,7 +548,7 @@ object DeserializeContext extends ValueCompanion {
 }
 
 /** Extract register of SELF box as Coll[Byte], deserialize it into Value and inline into executing script.
-  * NOTE: it only applicable to SELF box
+  * NOTE: it's only applicable to SELF box
   */
 case class DeserializeRegister[V <: SType](reg: RegisterId, tpe: V, default: Option[Value[V]] = None) extends Deserialize[V] {
   override def companion = DeserializeRegister

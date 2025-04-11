@@ -1,6 +1,6 @@
 package sigma.js
 
-import sigma.Extensions.CoreArrayByteOps
+import scorex.util.encode.Base16
 import sigma.crypto.{CryptoFacade, CryptoFacadeJs, Ecp, Platform}
 
 import scala.scalajs.js
@@ -13,7 +13,7 @@ class GroupElement(val point: Ecp) extends js.Object {
     * @see CryptoFacade.getASN1Encoding
     */
   def toPointHex(): String = {
-    CryptoFacade.getASN1Encoding(point, true).toHex
+    Base16.encode(CryptoFacade.getASN1Encoding(point, true))
   }
 }
 

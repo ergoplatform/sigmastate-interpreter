@@ -5,6 +5,9 @@ import scorex.util.serialization.{VLQByteBufferWriter, Writer}
 import sigma.ast.SType
 import sigma.serialization.CoreByteWriter.{Bits, DataInfo, U, Vlq, ZigZag}
 
+/** Implementation of [[Writer]] provided by `sigma-core` module.
+  * @param w destination [[Writer]] to which all the call got delegated.
+  */
 class CoreByteWriter(val w: Writer) extends Writer {
   type CH = w.CH
 

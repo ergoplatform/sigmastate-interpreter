@@ -615,6 +615,11 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
       MethodCallLike(StringConstant("hello"), "+", IndexedSeq(StringConstant("hello")))
   }
 
+  property("bigInt string decoding") {
+    parse("""bigInt("32667486267383620946248345338628674027033885928301927616853987602485119134400")""") shouldBe
+      Apply(BigIntFromStringFunc.symNoType, IndexedSeq(StringConstant("32667486267383620946248345338628674027033885928301927616853987602485119134400")))
+  }
+
   property("fromBaseX string decoding") {
     parse("""fromBase16("1111")""") shouldBe Apply(FromBase16Func.symNoType, IndexedSeq(StringConstant("1111")))
     parse("""fromBase58("111")""") shouldBe Apply(FromBase58Func.symNoType, IndexedSeq(StringConstant("111")))

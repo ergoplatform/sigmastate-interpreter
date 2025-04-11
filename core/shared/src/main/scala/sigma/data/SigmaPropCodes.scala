@@ -3,7 +3,7 @@ package sigma.data
 import sigma.ast.TypeCodes.LastConstantCode
 import supertagged.TaggedType
 
-/** Encoding of sigma proposition nodes.
+/** Opcodes of sigma proposition nodes.
   *
   * @see SigmaBoolean.opCode
   */

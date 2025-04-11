@@ -76,8 +76,7 @@ object Evaluation {
     case HeaderRType => SHeader
     case PreHeaderRType => SPreHeader
     case SigmaPropRType => SSigmaProp
-    // TODO remove commented code below after full sync test
-    // case SigmaBooleanRType => SSigmaProp  // this is not used in consensus code
+    case SigmaBooleanRType => SSigmaProp  // TODO remove: this is not used in consensus code
     case tup: TupleType => STuple(tup.items.map(t => rtypeToSType(t)))
     case at: ArrayType[_] => SCollection(rtypeToSType(at.tA))
     case ct: CollType[_] => SCollection(rtypeToSType(ct.tItem))

@@ -4,7 +4,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import sigma.{Coll, CollGens}
-import org.ergoplatform.sdk.Extensions.{CollBuilderOps, CollOps, GenIterableOps, PairCollOps}
+import org.ergoplatform.sdk.Extensions.{CollBuilderOps, CollOps, PairCollOps}
+import sigma.Extensions.ArrayOps
 import sigma.data.{CSigmaDslBuilder, RType}
 
 class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with CollGens {
@@ -13,10 +14,6 @@ class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matc
 
   val items: Iterable[(Int, String)] = Array((1, "a"), (2, "b"), (1, "c"))
 
-  property("Traversable.mapReduce") {
-    val res = items.mapReduce(p => (p._1, p._2))((v1, v2) => v1 + v2)
-    assertResult(List((1, "ac"), (2, "b")))(res)
-  }
 
   property("Coll.partition") {
     forAll(collGen) { col: Coll[Int] =>
@@ -28,14 +25,14 @@ class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matc
   }
 
   property("Coll.mapReduce") {
-    def m(x: Int) = (math.abs(x) % 10, x)
+    def m(x: Int): (Int, Int) = (math.abs(x) % 10, x)
 
     forAll(collGen) { col =>
       val res = col.mapReduce(m, plusF)
       val (ks, vs) = builder.unzip(res)
       vs.toArray.sum shouldBe col.toArray.sum
       ks.length <= 10 shouldBe true
-      res.toArray shouldBe col.toArray.toIterable.mapReduce(m)(plus).toArray
+      res.toArray shouldBe col.toArray.toColl.mapReduce[Int, Int](m, plusF).toArray
     }
   }
 

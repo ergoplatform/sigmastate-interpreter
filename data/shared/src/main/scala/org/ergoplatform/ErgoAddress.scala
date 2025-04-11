@@ -165,11 +165,7 @@ class Pay2SHAddress(val scriptHash: Array[Byte])(implicit val encoder: ErgoAddre
       ByteArrayConstant(scriptHash)
     )
     val scriptIsCorrect = DeserializeContext(scriptId, SSigmaProp)
-    // Get script version either from the default context or from a context provided by an application
-    // This is never part of the consensus and can be controlled by applications
-    val treeVersion = VersionContext.current.ergoTreeVersion
-    val header = setVersionBits(ZeroHeader, treeVersion)
-    ErgoTree.withoutSegregation(header, SigmaAnd(hashEquals.toSigmaProp, scriptIsCorrect))
+    ErgoTree.withoutSegregation(ZeroHeader, SigmaAnd(hashEquals.toSigmaProp, scriptIsCorrect))
   }
 
   override def equals(obj: Any): Boolean = obj match {

@@ -4,8 +4,9 @@ import debox.cfor
 import sigma.Extensions.ArrayOps
 import sigma.ast.SType.TypeCode
 import sigma.ast._
-import sigma.data.{AvlTreeData, CAvlTree, SigmaConstants}
 import sigma.exceptions.InterpreterException
+import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
+import sigma.eval.Extensions.toAnyValue
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
 import sigma.{Coll, Header, PreHeader}

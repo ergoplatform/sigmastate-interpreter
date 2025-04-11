@@ -8,6 +8,10 @@ import sigmastate.crypto.GF2_192_Poly
 import sigmastate.crypto.VerifierMessage.Challenge
 
 /** Reflection metadata for `interpreter` module.
+  * Such metadata is only used on JS platform to support reflection-like interfaces of
+  * RClass, RMethod, RConstructor. These interfaces implemented on JVM using Java
+  * reflection.
+  *
   * For each class of this module that needs reflection metadata,
   * we register a class entry with the necessary information.
   * Only information that is needed at runtime is registered.

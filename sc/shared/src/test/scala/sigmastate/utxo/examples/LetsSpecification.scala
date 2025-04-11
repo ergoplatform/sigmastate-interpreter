@@ -10,12 +10,12 @@ import sigma.data.{AvlTreeData, AvlTreeFlags, Digest32Coll, TrivialProp}
 import sigmastate.CompilerCrossVersionProps
 import sigma.ast.{AvlTreeConstant, ByteArrayConstant, LongConstant, SigmaPropConstant}
 import sigma.Extensions.ArrayOps
-import sigmastate.eval.IRContext
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 import sigma.serialization.ErgoTreeSerializer
 import sigma.ast.syntax._
+import sigma.compiler.ir.IRContext
 import sigma.eval.SigmaDsl
 
 import scala.util.Random

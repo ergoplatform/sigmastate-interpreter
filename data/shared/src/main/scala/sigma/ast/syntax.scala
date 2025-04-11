@@ -118,8 +118,6 @@ object syntax {
   @nowarn private def rtypeToClassTag = ???
 
   /** RType descriptors for predefined types used in AOTC-based interpreter. */
-  implicit val SigmaBooleanRType: RType[SigmaBoolean] = RType.fromClassTag(classTag[SigmaBoolean])
-
   implicit val ErgoBoxRType: RType[ErgoBox] = RType.fromClassTag(classTag[ErgoBox])
 
   implicit val ErgoBoxCandidateRType: RType[ErgoBoxCandidate] = RType.fromClassTag(classTag[ErgoBoxCandidate])

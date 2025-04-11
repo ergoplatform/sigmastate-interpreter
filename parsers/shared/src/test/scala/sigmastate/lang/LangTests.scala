@@ -1,17 +1,15 @@
 package sigmastate.lang
 
 import org.scalatest.matchers.should.Matchers
-import sigma.{Coll, _}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.ast._
 import sigma.crypto.CryptoConstants
 import sigma.data.{CAnyValue, CSigmaDslBuilder, ProveDHTuple, ProveDlog, SigmaBoolean}
 import sigma.util.Extensions.BigIntegerOps
-import sigmastate.eval._
+import sigma._
 import sigmastate.helpers.NegativeTesting
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigma.ast.{Ident, MethodCallLike}
 
 import java.math.BigInteger
 

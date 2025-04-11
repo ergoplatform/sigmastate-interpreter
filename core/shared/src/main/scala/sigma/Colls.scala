@@ -123,9 +123,6 @@ trait Coll[@specialized A] {
     * Builds a new collection by applying a function to all elements of this $coll
     * and using the elements of the resulting collections.
     *
-    * Function `f` is constrained to be of the form `x => x.someProperty`, otherwise
-    * it is illegal.
-    *
     * @param f the function to apply to each element.
     * @tparam B the element type of the returned collection.
     * @return a new collection of type `Coll[B]` resulting from applying the given collection-valued function

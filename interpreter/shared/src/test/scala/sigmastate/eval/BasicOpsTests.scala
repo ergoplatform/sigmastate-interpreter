@@ -3,16 +3,15 @@ package sigmastate.eval
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import sigma.crypto.SecP256K1Group
-import sigma.data.{CSigmaDslBuilder, TrivialProp}
+import sigma.data.{CSigmaDslBuilder => SigmaDsl, TrivialProp}
 import sigma.util.Extensions.SigmaBooleanOps
 
 import java.math.BigInteger
-import sigma.{ContractsTestkit, SigmaDslBuilder, SigmaProp}
+import sigma.{ContractsTestkit, SigmaProp}
 
 import scala.language.implicitConversions
 
 class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
-  override val SigmaDsl: SigmaDslBuilder = CSigmaDslBuilder
 
   implicit def boolToSigma(b: Boolean): SigmaProp = TrivialProp(b).toSigmaProp
 
@@ -60,7 +59,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
   }
 
   test("box.creationInfo._1 is Int") {
-    val box = newAliceBox(1, 100)
+    val box = newAliceBox(100)
     box.creationInfo._1 shouldBe a [Integer]
   }
 

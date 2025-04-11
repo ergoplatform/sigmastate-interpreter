@@ -22,15 +22,12 @@ import scala.util.Random
 
 class TestingInterpreterSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps with BeforeAndAfterAll {
-  implicit lazy val IR: TestingIRContext = new TestingIRContext
 
-  lazy val prover = new ErgoLikeTestProvingInterpreter() {
-  }
+  val IR: TestingIRContext = new TestingIRContext
 
-  lazy val verifier = new ErgoLikeTestInterpreter {
-  }
+  lazy val prover = new ErgoLikeTestProvingInterpreter()
 
-  implicit val soundness: Int = CryptoConstants.soundnessBits
+  lazy val verifier = new ErgoLikeTestInterpreter
   
   def testingContext(h: Int) =
     ErgoLikeContextTesting(h,
@@ -128,7 +125,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
           reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
           reg2 -> BoolArrayConstant(Array[Boolean](true, false, true)))))
-    val prop = mkTestErgoTree(compile(env, code).asBoolValue.toSigmaProp)
+    val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
     val challenge = Array.fill(32)(Random.nextInt(100).toByte)
     val proof1 = prover.prove(prop, ctx, challenge).get.proof
     verifier.verify(Interpreter.emptyEnv, prop, ctx, proof1, challenge)

@@ -13,29 +13,6 @@ import scala.reflect.ClassTag
 
 object Extensions {
 
-  implicit class GenIterableOps[A, Source[X] <: GenIterable[X]](val xs: Source[A]) extends AnyVal {
-
-    /** Apply m for each element of this collection, group by key and reduce each group
-      * using r.
-      * Note, the ordering of the resulting keys is deterministic and the keys appear in
-      * the order they first produced by `map`.
-      *
-      * @returns one item for each group in a new collection of (K,V) pairs. */
-    def mapReduce[K, V](map: A => (K, V))(reduce: (V, V) => V)
-        (implicit cbf: BuildFrom[Source[A], (K, V), Source[(K, V)]]): Source[(K, V)] = {
-      val result = scala.collection.mutable.LinkedHashMap.empty[K, V]
-      xs.foreach { x =>
-        val (key, value) = map(x)
-        val reduced = if (result.contains(key)) reduce(result(key), value) else value
-        result.update(key, reduced)
-      }
-
-      val b = cbf.newBuilder(xs)
-      for ( kv <- result ) b += kv
-      b.result()
-    }
-  }
-
   implicit class CollOps[A](val coll: Coll[A]) extends AnyVal {
 
     /** Partitions this $coll in two $colls according to a predicate.
@@ -205,7 +182,4 @@ object Extensions {
     }
   }
 
-  implicit class DoubleOps(val i: Double) extends AnyVal {
-    def erg: Long = (i * 1000000000L).toLong
-  }
 }

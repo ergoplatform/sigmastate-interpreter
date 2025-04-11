@@ -18,10 +18,9 @@ class InterpreterException(message: String, cause: Option[Throwable] = None)
   * @param cause an optional cause for the exception
   */
 class CostLimitException(
-    val estimatedCost: Long,
-    message: String,
-    cause: Option[Throwable] = None)
-    extends SigmaException(message, cause)
+  val estimatedCost: Long,
+  message: String
+) extends SigmaException(message, None)
 
 object CostLimitException {
   /** Generates a cost limit error message.

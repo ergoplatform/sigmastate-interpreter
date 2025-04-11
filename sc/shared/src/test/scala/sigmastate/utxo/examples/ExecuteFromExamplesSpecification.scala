@@ -9,8 +9,6 @@ import sigma.ast.ByteArrayConstant
 class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
   implicit lazy val IR = new TestingIRContext
 
-  private val reg1 = ErgoBox.nonMandatoryRegisters(0)
-
   case class OracleContract[Spec <: ContractSpec]
       (alice: Spec#ProvingParty)
       (implicit val spec: Spec) extends SigmaContractSyntax with StdContracts
@@ -40,8 +38,7 @@ class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
 
   lazy val alice = spec.ProvingParty("Alice")
 
-  // TODO soft-fork: related to https://github.com/ScorexFoundation/sigmastate-interpreter/issues/443
-  ignore("Execute from var example (ErgoDsl)") {
+  property("Execute from var example (ErgoDsl)") {
     val contract = OracleContract[spec.type](alice)(spec)
     import contract.spec._
 

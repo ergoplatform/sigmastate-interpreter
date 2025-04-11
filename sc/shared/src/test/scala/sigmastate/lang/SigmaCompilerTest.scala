@@ -12,6 +12,8 @@ import sigma.ast.{Apply, MethodCall, ZKProofBlock}
 import sigma.exceptions.{GraphBuildingException, InvalidArguments, TyperException}
 import sigma.serialization.ValueSerializer
 import sigma.serialization.generators.ObjectGenerators
+
+import java.math.BigInteger
 import scala.annotation.unused
 
 class SigmaCompilerTest extends CompilerTestingCommons with LangTests with ObjectGenerators {
@@ -125,6 +127,13 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     val code = s"""PK("$encodedP2PK")"""
     val res = comp(code)
     res shouldEqual SigmaPropConstant(dk1)
+  }
+
+  property("bigInt") {
+    comp(""" bigInt("326674862673836209462483453386286740270338859283019276168539876024851191344") """) shouldBe
+      BigIntConstant(new BigInteger("326674862673836209462483453386286740270338859283019276168539876024851191344"))
+    comp(""" bigInt("-10") """) shouldBe
+      BigIntConstant(-10L)
   }
 
   property("fromBaseX") {

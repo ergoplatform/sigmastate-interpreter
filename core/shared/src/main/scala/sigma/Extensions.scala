@@ -5,13 +5,14 @@ import scorex.util.encode.Base16
 import scorex.util.{ModifierId, bytesToId}
 import sigma.data.RType
 
+/** Declaration of extension methods introduced in `sigma-core` module.
+  * See `implicit class ...` wrappers below.
+  */
 object Extensions {
-  /** Extension methods for `Array[Byte]` not available for generic `Array[T]`. */
-  implicit class CoreArrayByteOps(val arr: Array[Byte]) extends AnyVal {
-    /** Encodes array into hex string */
-    @inline def toHex: String = Base16.encode(arr)
-  }
 
+  /** Extension methods for `Array[T]` where implicit descriptor `RType[T]` is also
+    * required.
+    */
   implicit class ArrayOps[T: RType](arr: Array[T]) {
     /** Wraps array into Coll instance. The source array in not cloned. */
     @inline def toColl: Coll[T] = Colls.fromArray(arr)

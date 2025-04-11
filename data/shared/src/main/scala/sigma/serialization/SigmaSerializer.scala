@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import scorex.util.ByteArrayBuilder
 import scorex.util.serialization._
 import sigma.data.SigmaConstants
-import sigma.validation.SigmaValidationSettings
 import sigma.serialization.ValueCodes.OpCode
 
 object SigmaSerializer {
@@ -35,8 +34,7 @@ object SigmaSerializer {
   /** Helper function to be use in serializers. */
   def startReader(bytes: Array[Byte],
                   constantStore: ConstantStore,
-                  resolvePlaceholdersToConstants: Boolean)
-                 (implicit vs: SigmaValidationSettings): SigmaByteReader = {
+                  resolvePlaceholdersToConstants: Boolean): SigmaByteReader = {
     val buf = ByteBuffer.wrap(bytes)
     val r = new SigmaByteReader(new VLQByteBufferReader(buf),
       constantStore,
@@ -67,7 +65,7 @@ object SigmaSerializer {
 
 abstract class SigmaSerializer[TFamily, T <: TFamily] extends Serializer[TFamily, T, SigmaByteReader, SigmaByteWriter] {
 
-  def error(msg: String) = throw new SerializerException(msg, None)
+  def error(msg: String) = throw new SerializerException(msg)
 
   final def toBytes(obj: T): Array[Byte] = {
     val w = SigmaSerializer.startWriter()

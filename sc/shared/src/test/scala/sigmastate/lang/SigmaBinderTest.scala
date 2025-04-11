@@ -11,6 +11,7 @@ import sigmastate._
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import SigmaPredef.PredefinedFuncRegistry
 import sigma.ast.syntax._
+import sigma.compiler.phases.SigmaBinder
 import sigma.eval.SigmaDsl
 import sigma.exceptions.BinderException
 

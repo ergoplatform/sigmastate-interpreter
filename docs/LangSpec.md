@@ -785,9 +785,6 @@ class Coll[A] {
     * Builds a new collection by applying a function to all elements of this collection
     * and using the elements of the resulting collections.
     *
-    * Function `f` is constrained to be of the form `x => x.someProperty`, otherwise
-    * it is illegal.
-    * 
     * @param f the function to apply to each element.
     * @tparam B the element type of the returned collection.
     * @return a new collection of type `Coll[B]` resulting from applying the given collection-valued function
@@ -985,6 +982,12 @@ def proveDHTuple(g: GroupElement, h: GroupElement,
   */
 def proveDlog(value: GroupElement): SigmaProp
 
+/** Transforms Base16 encoded string literal into constant of type BigInt.
+  * It is a compile-time operation and only string literal (constant) can be its
+  * argument.
+  */
+def bigInt(input: String): BigInt
+
 /** Transforms Base16 encoded string literal into constant of type Coll[Byte].
   * It is a compile-time operation and only string literal (constant) can be its
   * argument.
@@ -1013,6 +1016,55 @@ def PK(input: String): SigmaProp
   * value of type T.
   */
 def deserialize[T](string: String): T
+
+/**  
+ *
+ * Extracts, deserializes and executes a script contained in the context variable specified
+ * by id. Returns the result of the script execution in the current context.
+ * Throws an exception if the result type of the execution doesn't conform to the return
+ * type specified.
+ * 
+ * @param id context variable holding the serialized script to execute
+ * @tparam T expected type of the variable and return type.
+ * @return result of the executed script
+ * @throws InvalidType exception when the result type of the execution value is 
+ *                     different from T. 
+ */
+def executeFromVar[T](id: Byte): T
+
+/**
+ * 
+ * Extracts, deserializes and executes a script contained in the SELF register 
+ * indicated by id. Returns the result of the script execution in the current context
+ * An exception is thrown if the result type of the execution doesn't conform to the
+ * return type specified and if an invalid register is specified.
+ * 
+ * @param id register id holding the serialized script to execute
+ * @tparam T expected type of the register and return type.
+ * @return result of the executed script or default value
+ * @throws InterpreterException when a script reduces to false
+ * @throws InvalidType exception when the result type of the execution value is 
+ *                     different from T.
+ */
+def executeFromSelfReg[T](id: Int): T
+
+/**
+ * 
+ * Extracts, deserializes and executes a script contained in the SELF register 
+ * indicated by id. Returns the result of the script execution in the current context
+ * or default value, if the register is unavailable. An exception is thrown if the result 
+ * type of the execution doesn't conform to the return type specified and if an invalid 
+ * register is specified.
+ * 
+ * @param id register id holding the serialized script to execute
+ * @param default value returned if the register is unavailable
+ * @tparam T expected type of the register and return type.
+ * @return result of the executed script or default value
+ * @throws InterpreterException when a script reduces to false
+ * @throws InvalidType exception when the result type of the execution value is 
+ *                     different from T.
+ */
+def executeFromSelfRegWithDefault[T](id: Int, default: T): T
 
 /**
   * Transforms serialized bytes of ErgoTree with segregated constants by

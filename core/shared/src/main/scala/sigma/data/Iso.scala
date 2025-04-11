@@ -7,14 +7,20 @@ import sigma.{Coll, Colls}
 /** Type-class of isomorphisms between types.
   * Isomorphism between two types `A` and `B` essentially say that both types
   * represents the same information (entity) but in a different way.
+  *
+  * Each isomorphism defined by two functions:
+  * - `to: A => B` - conversion from `A` to `B`
+  * - `from: B => A` - conversion from `B` to `A`
+  *
   * <p>
-  * The information is not lost so that both are true:
+  * such that the information is not lost during conversion, so that both are true:
   * 1) a == from(to(a))
   * 2) b == to(from(b))
   * <p>
   * It is used to define type-full conversions:
   * - different conversions between Java and Scala data types.
-  * - conversion between Ergo representations and generated API representations
+  * - conversion between internal Ergo representations and API representations
+  * - conversions between exported JS classes and internal Ergo representations
   */
 abstract class Iso[A, B] {
   def to(a: A): B

@@ -30,13 +30,6 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
   def Coll[T](items: T*)(implicit cT: RType[T]): Coll[T] =
     CSigmaDslBuilder.Colls.fromItems(items: _*)
 
-  /** Generator of random collection with `n` elements. */
-  def collOfN[T: RType : Arbitrary](n: Int)
-      (implicit b: Buildable[T, Array[T]]): Gen[Coll[T]] = {
-    implicit val g: Gen[T] = Arbitrary.arbitrary[T]
-    containerOfN[Array, T](n, g).map(Colls.fromArray(_))
-  }
-
   val bytesGen: Gen[Array[Byte]] = for {
     len <- Gen.choose(0, 100)
     arr <- containerOfN[Array, Byte](len, Arbitrary.arbByte.arbitrary)
@@ -54,63 +47,9 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
     res
   }
 
-  protected def sampleAvlProver = {
-    val keys = arrayOfN(100, keyCollGen).sample.get
-    val values = arrayOfN(100, bytesCollGen).sample.get
-    val (tree, prover) = createAvlTreeAndProver(keys.zip(values): _*)
-    (keys, values, tree, prover)
-  }
-
-  protected def sampleAvlTree: AvlTree = {
-    val (_, _, _, avlProver) = sampleAvlProver
-    val digest = avlProver.digest.toColl
-    val tree = SigmaDsl.avlTree(AvlTreeFlags.ReadOnly.serializeToByte, digest, 32, None)
-    tree
-  }
-
   val tokenId1: Digest32 = Blake2b256("id1")
   val tokenId2: Digest32 = Blake2b256("id2")
-  val header1: Header = CHeader(Blake2b256("Header.id").toColl,
-    0,
-    Blake2b256("Header.parentId").toColl,
-    Blake2b256("ADProofsRoot").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot").toColl,
-    timestamp = 0,
-    nBits = 0,
-    height = 0,
-    extensionRoot = Blake2b256("transactionsRoot").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7)),
-    powDistance = SigmaDsl.BigInt(BigInt("1405498250268750867257727119510201256371618473728619086008183115260323").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 2))
-  )
-  val header2: Header = CHeader(Blake2b256("Header2.id").toColl,
-    0,
-    header1.id,
-    Blake2b256("ADProofsRoot2").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot2").toColl,
-    timestamp = 2,
-    nBits = 0,
-    height = 1,
-    extensionRoot = Blake2b256("transactionsRoot2").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array.fill(0.toByte)(8)),
-    powDistance = SigmaDsl.BigInt(BigInt("19306206489815517413186395405558417825367537880571815686937307203793939").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 0))
-  )
-  val headers = Colls.fromItems(header2, header1)
-  val preHeader: PreHeader = CPreHeader(0,
-    header2.id,
-    timestamp = 3,
-    nBits = 0,
-    height = 2,
-    minerPk = SigmaDsl.groupGenerator,
-    votes = Colls.emptyColl[Byte]
-  )
+
 
   object TestData {
     val BigIntZero: BigInt = CBigInt(new BigInteger("0", 16))

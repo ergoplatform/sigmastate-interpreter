@@ -14,6 +14,7 @@ import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
 import sigma.eval.EvalSettings.EvaluationMode
 import sigmastate.interpreter._
 import sigma.ast.syntax.ValueOps
+import sigma.compiler.ir.IRContext
 import sigma.data.CBox
 import sigma.eval.EvalSettings
 import sigma.exceptions.InterpreterException

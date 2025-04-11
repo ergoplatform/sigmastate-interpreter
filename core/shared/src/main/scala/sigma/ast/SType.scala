@@ -94,7 +94,6 @@ object SType {
   val paramOV = STypeParam(tOV)
   val paramIVSeq: Seq[STypeParam] = Array(paramIV)
 
-  val IndexedSeqOfT1: IndexedSeq[SType] = Array(SType.tT)
   val IndexedSeqOfT2: IndexedSeq[SType] = Array(SType.tT, SType.tT)
 
   /** Immutable empty array, can be used to avoid repeated allocations. */
@@ -146,7 +145,7 @@ object SType {
     * 2) `isValueOfType == true` for each tree leaf
     * 3) `isValueOfType == true` for each sub-expression
     *
-    * @param value value to check type
+    * @param x value to check type
     * @param tpe   type descriptor to check value against
     * @return true if the given `value` is of type tpe`
     */

@@ -3,7 +3,7 @@ package sigma.serialization
 import debox.cfor
 import sigma.ast._
 import sigma.data._
-import sigma.util.Extensions.{CoreAvlTreeOps, BigIntOps, GroupElementOps, SigmaPropOps}
+import sigma.util.Extensions.{BigIntOps, BigIntegerOps, CoreAvlTreeOps, GroupElementOps, SigmaPropOps}
 import sigma.validation.ValidationRules.CheckSerializableTypeCode
 import sigma.{Evaluation, _}
 
@@ -30,7 +30,9 @@ class CoreDataSerializer {
       w.putUInt(bytes.length)
       w.putBytes(bytes)
     case SBigInt =>
-      val data = v.asInstanceOf[BigInt].toBigInteger.toByteArray
+      val bi = v.asInstanceOf[BigInt].toBigInteger
+      require(bi.fitsIn256Bits, s"BigInt value $bi doesn't fit into 256 bits")
+      val data = bi.toByteArray
       w.putUShort(data.length)
       w.putBytes(data)
     case SGroupElement =>

@@ -25,9 +25,12 @@ package object sigma {
 
   implicit val StringType : RType[String]  = GeneralType(StringClassTag)
 
-  implicit val BigIntRType: RType[BigInt] = GeneralType(BigIntClassTag)
+  implicit val BigIntRType      : RType[BigInt]       = GeneralType(BigIntClassTag)
   implicit val GroupElementRType: RType[GroupElement] = GeneralType(GroupElementClassTag)
-  implicit val SigmaPropRType: RType[SigmaProp] = GeneralType(SigmaPropClassTag)
+  implicit val SigmaPropRType   : RType[SigmaProp]    = GeneralType(SigmaPropClassTag)
+  implicit val SigmaBooleanRType: RType[SigmaBoolean] = GeneralType(SigmaBooleanClassTag)
+
+
   implicit val AvlTreeRType:   RType[AvlTree]   = GeneralType(AvlTreeClassTag)
 
   implicit val BoxRType:       RType[Box]       = GeneralType(BoxClassTag)
