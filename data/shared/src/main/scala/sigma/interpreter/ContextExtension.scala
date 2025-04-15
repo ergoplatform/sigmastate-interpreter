@@ -1,5 +1,6 @@
 package sigma.interpreter
 
+import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import sigma.ast.{EvaluatedValue, SType}
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
@@ -49,7 +50,12 @@ object ContextExtension {
       if (extSize < 0)
         error(s"Negative amount of context extension values: $extSize")
       val values = (0 until extSize)
-          .map(_ => (r.getByte(), r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]))
+          .map{_ =>
+            val k = r.getByte()
+            val v = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
+            CheckV6Type(v)
+            (k, v)
+          }
       ContextExtension(values.toMap)
     }
   }

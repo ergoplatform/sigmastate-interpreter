@@ -3,6 +3,7 @@ package sigma.serialization
 import java.nio.ByteBuffer
 import scorex.util.ByteArrayBuilder
 import scorex.util.serialization._
+import sigma.ast.{Constant, EvaluatedCollection, EvaluatedValue, GroupGenerator, SHeader, SType, SUnsignedBigInt}
 import sigma.data.SigmaConstants
 import sigma.serialization.SigmaByteWriter.{FixedCostCallback, PerItemCostCallback}
 import sigma.serialization.ValueCodes.OpCode

@@ -432,7 +432,7 @@ trait ObjectGenerators extends TypeGenerators
 
   import ValidationRules._
 
-  val numRules = currentSettings.size
+  def numRules = currentSettings.size
 
   val replacedRuleIdGen = Gen.chooseNum((FirstRuleId + numRules).toShort, Short.MaxValue)
 

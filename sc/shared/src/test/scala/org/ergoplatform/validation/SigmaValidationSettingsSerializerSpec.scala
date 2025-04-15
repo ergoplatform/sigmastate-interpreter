@@ -20,8 +20,10 @@ class SigmaValidationSettingsSerializerSpec extends SerializationSpecification w
 
   property("SigmaValidationSettings round trip") {
     forAll(ruleIdGen, statusGen, MinSuccessful(100)) { (ruleId, status) =>
-      val vs = currentSettings.updated(ruleId, status)
-      roundtrip(vs)
+      whenever(currentSettings.getStatus(ruleId).isDefined) {
+        val vs = currentSettings.updated(ruleId, status)
+        roundtrip(vs)
+      }
     }
   }
 

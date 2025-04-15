@@ -1,7 +1,7 @@
 package org.ergoplatform.validation
 
 import sigma.{SigmaException, VersionContext}
-import sigma.ast.{DeserializeContext, ErgoTree, MethodsContainer, SMethod}
+import sigma.ast._
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.serialization.{InvalidOpCode, SerializerException}
 import sigma.util.Extensions.toUByte
@@ -12,6 +12,8 @@ import sigma.ast.syntax._
 import sigma.exceptions.InterpreterException
 import sigma.serialization.ValueCodes.OpCode
 import sigma.serialization.ValueSerializer
+
+import scala.annotation.tailrec
 
 /** All validation rules which are used to check soft-forkable conditions. Each validation
   * rule throws a [[org.ergoplatform.validation.ValidationException]]. Each
@@ -162,6 +164,48 @@ object ValidationRules {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
 
+  object CheckV6Type extends ValidationRule(1019,
+    "Check the type has the declared method.") {
+    override protected lazy val settings: SigmaValidationSettings = currentSettings
+
+    final def apply[T](v: EvaluatedValue[_]): Unit = {
+      checkRule()
+
+      def v6TypeCheck(tpe: SType) = {
+        if (tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode) {
+          throwValidationException(
+            SerializerException(s"V6 type used in register or context var extension: $tpe"),
+            Array[Any](tpe))
+        }
+      }
+
+      def step(s: SType): Unit = {
+        s match {
+          case st: STuple => st.items.foreach(step)
+          case sc: SCollection[_] => step(sc.elemType)  // this case should be after STuple as STuple deriving from SCollection
+          case s: SType => v6TypeCheck(s)
+        }
+      }
+
+      v match {
+        case c: Constant[_] => step(c.tpe)
+        case t: Tuple => t.items.foreach(i => step(i.tpe))
+        case c: EvaluatedCollection[_, _] =>  step(c.elementType)
+        case GroupGenerator =>
+      }
+    }
+
+    override def isSoftFork(vs: SigmaValidationSettings,
+                            ruleId: Short,
+                            status: RuleStatus,
+                            args: Seq[Any]): Boolean = (status, args) match {
+      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
+        val key = Array(objType.ownerType.typeId, methodId)
+        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+      case _ => false
+    }
+  }
+
   private val ruleSpecsV5: Seq[ValidationRule] = Seq(
     CheckDeserializedScriptType,
     CheckDeserializedScriptIsSigmaProp,
@@ -178,7 +222,8 @@ object ValidationRules {
     CheckHeaderSizeBit,
     CheckCostFuncOperation,
     CheckPositionLimit,
-    CheckLoopLevelInCostFunction
+    CheckLoopLevelInCostFunction,
+    CheckV6Type
   )
 
   // v6 validation rules below
