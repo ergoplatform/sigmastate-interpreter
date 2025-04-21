@@ -222,21 +222,22 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
       )
     )
 
-    val preH1_instances = new CloneSet(1000, CPreHeader(
+    val preH1_instances = new CloneSet(1000, new CPreHeader(
       0.toByte,
       Helpers.decodeBytes("7fff7fdd6f62018bae0001006d9ca888ff7f56ff8006573700a167f17f2c9f40"),
       6306290372572472443L,
       -3683306095029417063L,
       1,
       Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b"),
-      Helpers.decodeBytes("ff8087")
+      Helpers.decodeBytes("ff8087"),
+      true
     ))
 
     def create_preH1(): PreHeader = preH1_instances.getNext
 
     val preH1: PreHeader = create_preH1()
 
-    val preH2: PreHeader = create_preH1().asInstanceOf[CPreHeader].copy(height = 2)
+    val preH2: PreHeader = create_preH1().asInstanceOf[CPreHeader].withHeight(2)
 
     def createAvlTreeData() = AvlTreeData(
       ErgoAlgos.decodeUnsafe("010180017f7f7b7f720c00007f7f7f0f01e857a626f37f1483d06af8077a008080").toColl,

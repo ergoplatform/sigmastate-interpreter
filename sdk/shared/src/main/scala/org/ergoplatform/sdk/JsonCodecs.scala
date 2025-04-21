@@ -171,7 +171,7 @@ trait JsonCodecs {
       height <- cursor.downField("height").as[Int]
       minerPk <- cursor.downField("minerPk").as[Coll[Byte]]
       votes <- cursor.downField("votes").as[Coll[Byte]]
-    } yield CPreHeader(version, parentId, timestamp, nBits, height, SigmaDsl.decodePoint(minerPk), votes)
+    } yield new CPreHeader(version, parentId, timestamp, nBits, height, SigmaDsl.decodePoint(minerPk), votes, true)
   })
 
   implicit val evaluatedValueEncoder: Encoder[EvaluatedValue[_ <: SType]] = Encoder.instance({ value =>

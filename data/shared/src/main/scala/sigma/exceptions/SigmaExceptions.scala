@@ -32,3 +32,6 @@ object CostLimitException {
       cost: JitCost,
       limit: JitCost) = s"Estimated execution cost $cost exceeds the limit $limit"
 }
+
+class SoftFieldAccessException(fieldName: String)
+  extends SigmaException(s"Soft field $fieldName accessed when disallowed", None)

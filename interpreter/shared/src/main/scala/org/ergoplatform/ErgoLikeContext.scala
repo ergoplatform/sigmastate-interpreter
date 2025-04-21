@@ -56,7 +56,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
                       val validationSettings: SigmaValidationSettings,
                       val costLimit: Long,
                       val initCost: Long,
-                      val activatedScriptVersion: Byte
+                      val activatedScriptVersion: Byte,
+                      val softFieldsAllowed: Boolean = true
                  ) extends InterpreterContext {
   // TODO lastBlockUtxoRoot should be calculated from headers if it is nonEmpty
 
@@ -168,7 +169,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         syntax.error(s"Undefined context property: currentErgoTreeVersion"))
     CContext(
       dataInputs, headers, preHeader, inputs, outputs, preHeader.height, selfBox, selfIndex, avlTree,
-      preHeader.minerPk.getEncoded, vars, activatedScriptVersion, ergoTreeVersion)
+      preHeader.minerPk.getEncoded, vars, activatedScriptVersion, ergoTreeVersion, softFieldsAllowed)
   }
 
 
@@ -186,7 +187,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         validationSettings == that.validationSettings &&
         costLimit == that.costLimit &&
         initCost == that.initCost &&
-        activatedScriptVersion == that.activatedScriptVersion
+        activatedScriptVersion == that.activatedScriptVersion &&
+        softFieldsAllowed == that.softFieldsAllowed
     case _ => false
   }
 
@@ -231,11 +233,12 @@ object ErgoLikeContext {
       costLimit: Long = ctx.costLimit,
       initCost: Long = ctx.initCost,
       activatedScriptVersion: Byte = ctx.activatedScriptVersion,
-      currErgoTreeVersion: Option[Byte] = ctx.currentErgoTreeVersion): ErgoLikeContext = {
+      currErgoTreeVersion: Option[Byte] = ctx.currentErgoTreeVersion,
+      softFieldsAllowed: Boolean = ctx.softFieldsAllowed): ErgoLikeContext = {
     new ErgoLikeContext(
       lastBlockUtxoRoot, headers, preHeader, dataBoxes, boxesToSpend,
       spendingTransaction, selfIndex, extension, validationSettings, costLimit, initCost,
-      activatedScriptVersion) {
+      activatedScriptVersion, softFieldsAllowed) {
       override val currentErgoTreeVersion: Option[TypeCode] = currErgoTreeVersion
     }
   }

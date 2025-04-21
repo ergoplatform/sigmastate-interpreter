@@ -408,6 +408,8 @@ trait PreHeader {
 
   /** Miner votes for changing system parameters. */
   def votes: Coll[Byte]
+
+  def softFieldsAllowed: Boolean
 }
 
 /** Represents data of the block header available in Sigma propositions. */
@@ -566,6 +568,12 @@ trait Context {
   /** The version of ErgoTree currently executed by interpreter.
     * See [[ErgoLikeContext]] class for details. */
   def currentErgoTreeVersion: Byte
+
+  /**
+    * @return whether pre-header fields which may vary from pre-header to pre-header (i.e. not derived
+    *         deterministically from previous header but set by miner). There are
+    */
+  def softFieldsAllowed: Boolean
 }
 
 /** Shortcut declarations for methods of global object (aka [[SigmaDslBuilder]]).

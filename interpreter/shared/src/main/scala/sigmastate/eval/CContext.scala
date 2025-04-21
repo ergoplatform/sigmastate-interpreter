@@ -4,7 +4,7 @@ import debox.cfor
 import sigma.Extensions.ArrayOps
 import sigma._
 import sigma.data._
-import sigma.exceptions.InvalidType
+import sigma.exceptions.{InvalidType, SoftFieldAccessException}
 
 import scala.annotation.unused
 import scala.reflect.ClassTag
@@ -25,7 +25,8 @@ case class CContext(
     _minerPubKey: Coll[Byte],
     vars: Coll[AnyValue],
     override val activatedScriptVersion: Byte,
-    override val currentErgoTreeVersion: Byte
+    override val currentErgoTreeVersion: Byte,
+    override val softFieldsAllowed: Boolean
 ) extends Context {
   @inline override def builder: SigmaDslBuilder = CSigmaDslBuilder
 
@@ -41,7 +42,13 @@ case class CContext(
 
   @inline override def LastBlockUtxoRootHash = lastBlockUtxoRootHash
 
-  @inline override def minerPubKey = _minerPubKey
+  @inline override def minerPubKey: Coll[Byte] = {
+    if(softFieldsAllowed) {
+      _minerPubKey
+    } else {
+      throw new SoftFieldAccessException("minerPubKey")
+    }
+  }
 
   override def selfBoxIndex: Int = {
     if (VersionContext.current.isJitActivated) {

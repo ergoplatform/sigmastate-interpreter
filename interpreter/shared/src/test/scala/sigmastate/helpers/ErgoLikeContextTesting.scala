@@ -27,13 +27,14 @@ object ErgoLikeContextTesting {
   val noBoxes: IndexedSeq[ErgoBox] = IndexedSeq.empty[ErgoBox]
   val noHeaders: Coll[Header] = CSigmaDslBuilder.Colls.emptyColl[Header]
 
-  def dummyPreHeader(currentHeight: Height, minerPk: Array[Byte]): PreHeader = CPreHeader(0,
+  def dummyPreHeader(currentHeight: Height, minerPk: Array[Byte]): PreHeader = new CPreHeader(0,
     parentId = Colls.emptyColl[Byte],
-    timestamp = 3,
+    _timestamp = 3,
     nBits = 0,
     height = currentHeight,
-    minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(minerPk)).toGroupElement,
-    votes = Colls.emptyColl[Byte]
+    _minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(minerPk)).toGroupElement,
+    _votes = Colls.emptyColl[Byte],
+    softFieldsAllowed = true
   )
 
   def apply(currentHeight: Height,
