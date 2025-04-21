@@ -112,7 +112,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     * interpreter via [[sigma.Context]].
     * The value cannot be assigned on [[ErgoLikeContext]] construction and must be
     * attached using [[withErgoTreeVersion()]] method.
-    * When the value is None, the [[InterpreterException]] is thrown by the interpreter.
+    * When the value is None, the [[sigma.exceptions.InterpreterException]] is thrown by the interpreter.
     */
   val currentErgoTreeVersion: Option[Byte] = None
 
