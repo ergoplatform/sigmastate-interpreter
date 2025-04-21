@@ -178,7 +178,7 @@ object Extensions {
 
   implicit class HeaderOps(val h: Header) extends AnyVal {
     def toPreHeader: PreHeader = {
-      new CPreHeader(h.version, h.parentId, h.timestamp, h.nBits, h.height, h.minerPk, h.votes, true)
+      CPreHeader(h.version, h.parentId, h.timestamp, h.nBits, h.height, h.minerPk, h.votes)
     }
   }
 

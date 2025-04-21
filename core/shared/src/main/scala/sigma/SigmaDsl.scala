@@ -408,8 +408,6 @@ trait PreHeader {
 
   /** Miner votes for changing system parameters. */
   def votes: Coll[Byte]
-
-  def softFieldsAllowed: Boolean
 }
 
 /** Represents data of the block header available in Sigma propositions. */

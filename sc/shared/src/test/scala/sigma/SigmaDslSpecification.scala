@@ -2347,7 +2347,7 @@ class SigmaDslSpecification extends SigmaDslTesting
     verifyNeq(ge1, ge2, 1783, Array[CostItem](FixedCostItem(NamedDesc("EQ_GroupElement"), FixedCost(JitCost(172)))), 1783)(_.asInstanceOf[CGroupElement].copy())
     verifyNeq(t1, t2, 1767, Array[CostItem](FixedCostItem(NamedDesc("EQ_AvlTree"), FixedCost(JitCost(6)))), 1767)(_.asInstanceOf[CAvlTree].copy())
     verifyNeq(b1, b2, 1767, Array[CostItem](), 1767)(_.asInstanceOf[CBox].copy())
-    verifyNeq(preH1, preH2, 1766, Array[CostItem](FixedCostItem(NamedDesc("EQ_PreHeader"), FixedCost(JitCost(4)))), 1766){ph => val cph = ph.asInstanceOf[CPreHeader]; cph.withHeight(cph.height)}
+    verifyNeq(preH1, preH2, 1766, Array[CostItem](FixedCostItem(NamedDesc("EQ_PreHeader"), FixedCost(JitCost(4)))), 1766)(_.asInstanceOf[CPreHeader].copy())
     verifyNeq(h1, h2, 1767, Array[CostItem](FixedCostItem(NamedDesc("EQ_Header"), FixedCost(JitCost(6)))), 1767)(_.asInstanceOf[CHeader].copy())
   }
 
@@ -4685,15 +4685,14 @@ class SigmaDslSpecification extends SigmaDslTesting
     val ctx = CContext(
       _dataInputs = Coll[Box](dataBox),
       headers = Coll[Header](header),
-      preHeader = new CPreHeader(
+      preHeader = CPreHeader(
         0.toByte,
         Helpers.decodeBytes("1c597f88969600d2fffffdc47f00d8ffc555a9e85001000001c505ff80ff8f7f"),
         -755484979487531112L,
         9223372036854775807L,
         11,
         Helpers.decodeGroupElement("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-        Helpers.decodeBytes("007f00"),
-        true
+        Helpers.decodeBytes("007f00")
       ),
       inputs = Coll[Box](input),
       outputs = Coll[Box](

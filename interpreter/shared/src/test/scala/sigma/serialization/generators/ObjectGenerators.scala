@@ -738,7 +738,7 @@ trait ObjectGenerators extends TypeGenerators
     height <- heightGen
     minerPk <- groupElementGen
     votes <- minerVotesGen
-  } yield new CPreHeader(version, parentId, timestamp, nBits, height, minerPk.toGroupElement, votes, true)
+  } yield CPreHeader(version, parentId, timestamp, nBits, height, minerPk.toGroupElement, votes)
 
   lazy val preHeaderGen: Gen[PreHeader] = for {
     parentId <- modifierIdBytesGen

@@ -11,7 +11,7 @@ import sigma.data.OverloadHack.Overloaded1
 import sigma.data.{CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
-import sigma.exceptions.InterpreterException
+import sigma.exceptions.{InterpreterException, SoftFieldAccessException}
 import sigma.kiama.rewriting.Rewriter.count
 import sigma.serialization.OpCodes._
 import sigma.serialization.ValueCodes.OpCode
@@ -1324,6 +1324,12 @@ case class MethodCall(
           argsBuf(len + i) = extra(i)
         }
         var res: Any = null
+        if(method.objType.typeId == SPreHeader.typeId && !E.context.softFieldsAllowed) {
+          if(method.methodId == SPreHeaderMethods.timestampMethod ||
+              method.methodId == SPreHeaderMethods.minerPkMethod ||
+              method.methodId == SPreHeaderMethods.votesMethod)
+          throw new SoftFieldAccessException(method.name)
+        }
         E.addFixedCost(fixed, method.opDesc) {
           res = method.invokeFixed(objV, argsBuf)
         }
