@@ -10,7 +10,6 @@ import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
 import sigma.serialization.{GroupElementSerializer, SigmaSerializer}
 import sigma.util.Extensions.BigIntegerOps
-import sigma.validation.SigmaValidationSettings
 import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
 
 import java.math.BigInteger
@@ -20,8 +19,6 @@ import java.math.BigInteger
   * @see [[SigmaDslBuilder]] for detailed descriptions
   */
 class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
-  implicit val validationSettings: SigmaValidationSettings = ValidationRules.currentSettings
-
   override val Colls: CollBuilder = sigma.Colls
 
   override def BigInt(n: BigInteger): BigInt = CBigInt(n)
@@ -191,7 +188,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
       case e: Throwable =>
         throw new RuntimeException(s"Cannot evaluate substConstants($scriptBytes, $positions, $newValues)", e)
     }
-    val (res, _)  = SubstConstants.eval(scriptBytes.toArray, positions.toArray, constants)(validationSettings)
+    val (res, _)  = SubstConstants.eval(scriptBytes.toArray, positions.toArray, constants)(ValidationRules.currentSettings)
     Colls.fromArray(res)
   }
 

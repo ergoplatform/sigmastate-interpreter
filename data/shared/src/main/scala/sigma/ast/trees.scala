@@ -15,6 +15,7 @@ import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.validation.SigmaValidationSettings
 import sigma.{Coll, Colls, GroupElement, SigmaProp, VersionContext}
 import NumericOps.{BigIntIsExactIntegral, BigIntIsExactOrdering}
+import org.ergoplatform.validation.ValidationRules
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.Extensions.EvalCollOps
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
@@ -652,7 +653,7 @@ case class SubstConstants[T <: SType](scriptBytes: Value[SByteArray], positions:
       val (newBytes, nConstants) = SubstConstants.eval(
         scriptBytes = scriptBytesV.toArray,
         positions = positionsV.toArray,
-        newVals = typedNewVals)(SigmaDsl.validationSettings)
+        newVals = typedNewVals)(ValidationRules.currentSettings)
 
       res = Colls.fromArray(newBytes)
       nConstants
