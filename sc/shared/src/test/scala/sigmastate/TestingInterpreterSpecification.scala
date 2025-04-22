@@ -30,7 +30,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   lazy val verifier = new ErgoLikeTestInterpreter
   
-  private def testingContext(h: Int, softFieldsAllowed: Boolean) = {
+  private def testingContext(h: Int, softFieldsAllowed: Boolean = true) = {
     val ctx = ErgoLikeContextTesting(h,
       AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, IndexedSeq(fakeSelf),
       ErgoLikeTransaction(IndexedSeq.empty, IndexedSeq.empty),
