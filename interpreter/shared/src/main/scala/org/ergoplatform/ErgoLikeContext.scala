@@ -135,7 +135,10 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
   def withTransaction(newSpendingTransaction: ErgoLikeTransactionTemplate[_ <: UnsignedInput]): ErgoLikeContext =
     ErgoLikeContext.copy(this)(spendingTransaction = newSpendingTransaction)
 
-  override def toSigmaContext(): sigma.Context = {
+  def withSoftFieldsAllowed(newSoftFieldsAllowed: Boolean): ErgoLikeContext =
+    ErgoLikeContext.copy(this)(softFieldsAllowed = newSoftFieldsAllowed)
+
+  override def toSigmaContext: sigma.Context = {
     import sigma.Evaluation._
 
     def contextVars(m: Map[Byte, AnyValue]): Coll[AnyValue] = {

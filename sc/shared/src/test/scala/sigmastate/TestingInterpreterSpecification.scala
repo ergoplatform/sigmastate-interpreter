@@ -12,6 +12,7 @@ import org.scalatest.BeforeAndAfterAll
 import scorex.util.encode.Base58
 import sigma.crypto.CryptoConstants
 import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.exceptions.SoftFieldAccessException
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
@@ -29,12 +30,42 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   lazy val verifier = new ErgoLikeTestInterpreter
   
-  def testingContext(h: Int) =
-    ErgoLikeContextTesting(h,
+  private def testingContext(h: Int, softFieldsAllowed: Boolean) = {
+    val ctx = ErgoLikeContextTesting(h,
       AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, IndexedSeq(fakeSelf),
       ErgoLikeTransaction(IndexedSeq.empty, IndexedSeq.empty),
       fakeSelf, activatedVersionInTests)
         .withErgoTreeVersion(ergoTreeVersionInTests)
+
+    if(!softFieldsAllowed) {
+      ctx.withSoftFieldsAllowed(false)
+    } else {
+      ctx
+    }
+  }
+
+  def testEval(code: String, softFieldsAllowed: Boolean = true) = {
+    val reg1 = ErgoBox.nonMandatoryRegisters.head
+    val reg2 = ErgoBox.nonMandatoryRegisters(1)
+
+    val dk1 = prover.dlogSecrets(0).publicImage
+    val dk2 = prover.dlogSecrets(1).publicImage
+    val ctx = testingContext(99, softFieldsAllowed)
+    val env = Map(
+      "dk1" -> dk1,
+      "dk2" -> dk2,
+      "bytes1" -> Array[Byte](1, 2, 3),
+      "bytes2" -> Array[Byte](4, 5, 6),
+      "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
+        reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+        reg2 -> BoolArrayConstant(Array[Boolean](true, false, true)))))
+    val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
+    val challenge = Array.fill(32)(Random.nextInt(100).toByte)
+    val proof1 = prover.prove(prop, ctx, challenge).get.proof
+    verifier.verify(Interpreter.emptyEnv, prop, ctx, proof1, challenge)
+      .map(_._1)
+      .getOrElse(false) shouldBe true
+  }
 
   property("Reduction to crypto #1") {
     forAll() { i: Int =>
@@ -108,29 +139,6 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
       }
     }
-  }
-
-  def testEval(code: String) = {
-    val reg1 = ErgoBox.nonMandatoryRegisters.head
-    val reg2 = ErgoBox.nonMandatoryRegisters(1)
-
-    val dk1 = prover.dlogSecrets(0).publicImage
-    val dk2 = prover.dlogSecrets(1).publicImage
-    val ctx = testingContext(99)
-    val env = Map(
-      "dk1" -> dk1,
-      "dk2" -> dk2,
-      "bytes1" -> Array[Byte](1, 2, 3),
-      "bytes2" -> Array[Byte](4, 5, 6),
-      "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
-          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
-          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true)))))
-    val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
-    val challenge = Array.fill(32)(Random.nextInt(100).toByte)
-    val proof1 = prover.prove(prop, ctx, challenge).get.proof
-    verifier.verify(Interpreter.emptyEnv, prop, ctx, proof1, challenge)
-      .map(_._1)
-      .getOrElse(false) shouldBe true
   }
 
   property("Evaluate array ops") {
@@ -369,6 +377,32 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   property("deserialize") {
     val str = Base58.encode(ValueSerializer.serialize(ByteArrayConstant(Array[Byte](2))))
     testEval(s"""deserialize[Coll[Byte]]("$str")(0) == 2""")
+  }
+
+  property("preheader soft fields access") {
+    testEval(s"""CONTEXT.preHeader.votes.size == 3""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.votes.size == 3""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+
+    testEval(s"""CONTEXT.preHeader.timestamp >= 0""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.timestamp >= 0""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+
+    testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+
+    testEval(s"""CONTEXT.minerPubKey.size == 33""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.minerPubKey.size == 33""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
   }
 
   override protected def afterAll(): Unit = {

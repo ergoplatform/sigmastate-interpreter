@@ -33,7 +33,7 @@ object ErgoLikeContextTesting {
     nBits = 0,
     height = currentHeight,
     minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(minerPk)).toGroupElement,
-    votes = Colls.emptyColl[Byte]
+    votes = Colls.fromArray(Array.fill(3)(0.toByte))
   )
 
   def apply(currentHeight: Height,

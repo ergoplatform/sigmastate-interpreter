@@ -1325,10 +1325,11 @@ case class MethodCall(
         }
         var res: Any = null
         if(method.objType.typeId == SPreHeader.typeId && !E.context.softFieldsAllowed) {
-          if(method.methodId == SPreHeaderMethods.timestampMethod ||
-              method.methodId == SPreHeaderMethods.minerPkMethod ||
-              method.methodId == SPreHeaderMethods.votesMethod)
-          throw new SoftFieldAccessException(method.name)
+          if(method.methodId == SPreHeaderMethods.timestampMethod.methodId ||
+              method.methodId == SPreHeaderMethods.minerPkMethod.methodId ||
+              method.methodId == SPreHeaderMethods.votesMethod.methodId) {
+            throw new SoftFieldAccessException(method.name)
+          }
         }
         E.addFixedCost(fixed, method.opDesc) {
           res = method.invokeFixed(objV, argsBuf)

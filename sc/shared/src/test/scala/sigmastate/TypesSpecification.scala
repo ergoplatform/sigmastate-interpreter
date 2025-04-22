@@ -90,7 +90,7 @@ class TypesSpecification extends SigmaTestingData {
     assertInvalidType(None, SShort)
     assertInvalidType(Some(10), SShort)
 
-    val ctx = fakeContext.toSigmaContext()
+    val ctx = fakeContext.toSigmaContext
     assertValidType(ctx, SContext)
     assertInvalidType(ctx, SShort)
 
