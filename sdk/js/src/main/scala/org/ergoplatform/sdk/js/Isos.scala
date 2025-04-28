@@ -9,6 +9,11 @@ import sigma.data.Iso.{isoStringToArray, isoStringToColl}
 import sigma.data.js.{Isos => DataIsos}
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.js.AvlTree
+import sigma.data.{CBigInt, CGroupElement, Digest32Coll, Digest32CollRType, Iso}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
+import sigma.js.{AvlTree, GroupElement}
+import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
+import sigma.{Coll, Colls}
 import sigmastate.eval.{CHeader, CPreHeader}
 import sigmastate.fleetSdkCommon.distEsmTypesBoxesMod.Box
 import sigmastate.fleetSdkCommon.distEsmTypesRegistersMod.NonMandatoryRegisters
@@ -152,14 +157,14 @@ object Isos {
         val c = DataIsos.isoHexStringToConstant.to(x.apply(id).get.get)
         map = map + (id -> c)
       }
-      ContextExtension(map)
+      ContextExtension(SigmaMap(map))
     }
 
     override def from(x: ContextExtension): contextExtensionMod.ContextExtension = {
       val res = new Object().asInstanceOf[contextExtensionMod.ContextExtension]
-      x.values.foreach { case (k, v: Constant[_]) =>
+      x.values.iterator.foreach { case (k, v: Constant[_]) =>
         val hex = DataIsos.isoHexStringToConstant.from(v)
-        res.update(k, hex)
+        res.update(k, hex) // todo: will be order respected after?
       }
       res
     }

@@ -21,7 +21,7 @@ import sigma.ast.syntax.{GetVarByteArray, OptionValueOps}
 import sigma.compiler.ir.IRContext
 import sigma.data.{AvlTreeData, AvlTreeFlags, CSigmaProp, TrivialProp}
 import sigma.eval.SigmaDsl
-import sigma.interpreter.ProverResult
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.{AvlTree, Context}
 import sigmastate.eval.Extensions.AvlTreeOps
 
@@ -279,7 +279,9 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
     val invalidProof = SerializedAdProof @@ Array[Byte](1, 2, 3)
     val invalidProofResult = new ProverResult(
       proof = proof.proof,
-      extension = proof.extension.add(proofId -> ByteArrayConstant(invalidProof))
+      extension = ContextExtension(
+        SigmaMap(proof.extension.values.iterator.toMap ++ Map(proofId -> ByteArrayConstant(invalidProof)))
+      )
     )
     verifier.verify(prop, ctx, invalidProofResult, fakeMessage).get._1 shouldBe false
 

@@ -15,7 +15,7 @@ import ErgoTree.{EmptyConstants, HeaderType, ZeroHeader, setSizeBit}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.interpreter.Interpreter.{ScriptNameProp, emptyEnv}
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.ast.syntax._
 import sigma.eval.ErgoTreeEvaluator
 import sigma.eval.ErgoTreeEvaluator.DataEnv
@@ -277,7 +277,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
 
     val tx = createTransaction(createBox(boxAmt, mainTree, 1))
     val bindings = Map(1.toByte -> ByteArrayConstant(Colls.fromArray(propBytes)))
-    val proof = new ProverResult(Array.emptyByteArray, ContextExtension(bindings))
+    val proof = new ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(bindings)))
 
     // verify transaction on v1 node using v2 validation settings
     verifyTx("deserialize", tx, proof, v2vs)

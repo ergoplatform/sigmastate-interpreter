@@ -7,7 +7,7 @@ import sigma.ast.ShortConstant
 import sigmastate._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigma.interpreter.ContextExtension
+import sigma.interpreter.{ContextExtension, SigmaMap}
 import sigma.ast.syntax._
 
 class DemurrageExampleSpecification extends CompilerTestingCommons
@@ -81,7 +81,7 @@ class DemurrageExampleSpecification extends CompilerTestingCommons
     val approxSize = createBox(outValue, propTree, inHeight).bytes.length + 2
     val inValue: Int = (outValue + demurrageCoeff * demurragePeriod * approxSize).toInt
 
-    val ce = ContextExtension(Map(outIdxVarId -> ShortConstant(0)))
+    val ce = ContextExtension(SigmaMap(Map(outIdxVarId -> ShortConstant(0))))
 
     //case 1: demurrage time hasn't come yet
     val currentHeight1 = inHeight + demurragePeriod - 1

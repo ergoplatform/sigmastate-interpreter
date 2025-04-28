@@ -13,19 +13,19 @@ import scala.reflect.ClassTag
   * @see [[Context]] for detailed descriptions
   */
 case class CContext(
-    _dataInputs: Coll[Box],
-    override val headers: Coll[Header],
-    override val preHeader: PreHeader,
-    inputs: Coll[Box],
-    outputs: Coll[Box],
-    height: Int,
-    selfBox: Box,
-    private val selfIndex: Int,
-    lastBlockUtxoRootHash: AvlTree,
-    _minerPubKey: Coll[Byte],
-    vars: Coll[AnyValue],
-    override val activatedScriptVersion: Byte,
-    override val currentErgoTreeVersion: Byte
+                     _dataInputs: Coll[Box],
+                     override val headers: Coll[Header],
+                     override val preHeader: PreHeader,
+                     inputs: Coll[Box],
+                     outputs: Coll[Box],
+                     height: Int,
+                     selfBox: Box,
+                     private val selfIndex: Int,
+                     lastBlockUtxoRootHash: AvlTree,
+                     _minerPubKey: Coll[Byte],
+                     vars: ContextVarsMap,
+                     override val activatedScriptVersion: Byte,
+                     override val currentErgoTreeVersion: Byte
 ) extends Context {
   @inline override def builder: SigmaDslBuilder = CSigmaDslBuilder
 
@@ -56,8 +56,8 @@ case class CContext(
   override def getVar[T](id: Byte)(implicit tT: RType[T]): Option[T] = {
     @unused // avoid warning about unused ctA
     implicit val tag: ClassTag[T] = tT.classTag
-    if (id < 0 || id >= vars.length) return None
-    val value = vars(id)
+    if (id < 0 || id > vars.maxKey) return None
+    val value = vars.getNullable(id)
     if (value != null) {
       // once the value is not null it should be of the right type
       value match {
@@ -69,33 +69,5 @@ case class CContext(
     } else None
   }
 
-  /** Return a new context instance with variables collection updated.
-    * @param bindings  a new binding of the context variables with new values.
-    * @return a new instance (if `bindings` non-empty) with the specified bindings.
-    *         other existing bindings are copied to the new instance
-    */
-  def withUpdatedVars(bindings: (Int, AnyValue)*): CContext = {
-    if (bindings.isEmpty) return this
-
-    val ids = bindings.map(_._1).toArray
-    val values = bindings.map(_._2).toArray
-    val maxVarId = ids.max  // INV: ids is not empty
-    val requiredNewLength = maxVarId + 1
-
-    val newVars = if (vars.length < requiredNewLength) {
-      // grow vars collection
-      val currVars = vars.toArray
-      val buf = new Array[AnyValue](requiredNewLength)
-      Array.copy(currVars, 0, buf, 0, currVars.length)
-      cfor(0)(_ < ids.length, _ + 1) { i =>
-        buf(ids(i)) = values(i)
-      }
-      buf.toColl
-    } else {
-      vars.updateMany(ids.toColl, values.toColl)
-    }
-
-    this.copy(vars = newVars)
-  }
 }
 

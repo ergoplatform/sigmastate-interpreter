@@ -19,19 +19,19 @@ class SigmaCompiler(_compiler: sigma.compiler.SigmaCompiler) extends js.Object {
 
   /** Compiles ErgoScript code to ErgoTree.
     *
-    * @param namedConstants       named constants to be used in the script
-    * @param segregateConstants   if true, then constants will be segregated from the tree
+    * @param namedConstants        named constants to be used in the script
+    * @param segregateConstants    if true, then constants will be segregated from the tree
     * @param additionalHeaderFlags additional header flags to be set in the tree
-    * @param ergoScript           ErgoScript code to be compiled
+    * @param ergoScript            ErgoScript code to be compiled
     * @return ErgoTree instance
     */
   def compile(
-      namedConstants: StringDictionary[Value],
-      segregateConstants: Boolean,
-      treeHeader: Byte, ergoScript: String): ErgoTree = {
+               namedConstants: StringDictionary[Value],
+               segregateConstants: Boolean,
+               treeHeader: Byte, ergoScript: String): ErgoTree = {
     val env = StringDictionary
-        .wrapStringDictionary(namedConstants)
-        .view.mapValues(v => isoValueToConstant.to(v)).toMap
+      .wrapStringDictionary(namedConstants)
+      .view.mapValues(v => isoValueToConstant.to(v)).toMap
     val IR = new CompiletimeIRContext
     val prop = _compiler.compile(env, ergoScript)(IR).buildTree
     require(prop.tpe.isSigmaProp, s"Expected SigmaProp expression type bue got ${prop.tpe}: $prop")

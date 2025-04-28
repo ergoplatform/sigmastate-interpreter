@@ -18,7 +18,7 @@ import sigmastate._
 import sigma.Extensions.ArrayOps
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigma.eval.SigmaDsl
-import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, SigmaMap}
 import sigma.eval.Extensions.EvalIterableOps
 import sigmastate.eval._
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -313,8 +313,10 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   property("recursion caught during verify") {
     assertExceptionThrown({
       val verifier = new ErgoLikeTestInterpreter
-      val pr = CostedProverResult(Array[Byte](),
-        ContextExtension(Map(4.toByte -> IntConstant(1), 5.toByte -> IntConstant(2))), 0L)
+      val pr = CostedProverResult(
+        Array[Byte](),
+        ContextExtension(SigmaMap(Map(4.toByte -> IntConstant(1), 5.toByte -> IntConstant(2)))),
+        0L)
       val ctx = ErgoLikeContextTesting.dummy(fakeSelf, activatedVersionInTests)
       val (res, _) = BenchmarkUtil.measureTime {
         verifier.verify(mkTestErgoTree(recursiveScript), ctx, pr, fakeMessage)
