@@ -21,7 +21,7 @@ import sigma.util.StringUtil.StringUtilExtensions
 import sigma.ast.ErgoTree.ZeroHeader
 import sigma.ast.SType.AnyOps
 import sigma.ast.syntax.{SValue, ValueOps}
-import sigma.ast._
+import sigma.ast.{Apply, SContext, _}
 import sigma.eval.{CostDetails, EvalSettings, SigmaDsl}
 import sigmastate.crypto.DLogProtocol.DLogProverInput
 import sigmastate.crypto.SigmaProtocolPrivateInput
@@ -33,7 +33,7 @@ import sigmastate.interpreter._
 import sigma.ast.Apply
 import sigma.compiler.ir.{CompiletimeIRContext, IRContext}
 import sigma.eval.Extensions.SigmaBooleanOps
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.serialization.ValueSerializer
 import sigma.serialization.generators.ObjectGenerators
 import sigmastate.utils.Helpers._
@@ -279,11 +279,13 @@ class SigmaDslTesting extends AnyPropSpec
       val selfIndex = boxesToSpend.indexWhere(b => java.util.Arrays.equals(b.id, ctx.selfBox.id.toArray))
 
       val extension = ContextExtension(
-        values = ctx.vars.toArray.zipWithIndex.collect {
-          case (v, i) if v != null =>
-            val tpe = Evaluation.rtypeToSType(v.tVal)
-            i.toByte -> ConstantNode(v.value.asWrappedType, tpe)
-        }.toMap
+        SigmaMap(
+          ctx.vars.anyIterator.toArray.map {
+            case (k, v) =>
+              val tpe = Evaluation.rtypeToSType(v.tVal)
+              k -> ConstantNode(v.value.asWrappedType, tpe)
+          }.toMap
+        )
       )
       new ErgoLikeContext(
         treeData, ctx.headers, ctx.preHeader,
@@ -353,11 +355,12 @@ class SigmaDslTesting extends AnyPropSpec
             )
 
             // We add ctx as it's own variable with id = 1
-            val ctxVar = sigma.eval.Extensions.toAnyValue[sigma.Context](ctx)(sigma.ContextRType)
-            val carolVar = sigma.eval.Extensions.toAnyValue[Coll[Byte]](pkCarolBytes.toColl)(RType[Coll[Byte]])
+            val ctxVar = Constant[SContext.type](ctx, SContext) //  sigma.eval.Extensions.toAnyValue[sigma.Context](ctx)(sigma.ContextRType)
+            val carolVar = ByteArrayConstant(pkCarolBytes.toColl)
             val newCtx = ctx
-                .withUpdatedVars(1 -> ctxVar, 2 -> carolVar)
+                // .withUpdatedVars( 1 -> ctxVar, 2 -> carolVar)
                 .copy(
+                  vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap ++ Map(1.toByte -> ctxVar, 2.toByte -> carolVar)),
                   selfBox = newSelf,
                   inputs = {
                     val selfIndex = ctx.inputs.indexWhere(b => b.id == ctx.selfBox.id, 0)

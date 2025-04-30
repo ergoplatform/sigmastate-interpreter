@@ -29,6 +29,7 @@ import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter._
 import sigma.ast.{Apply, MethodCall, PropertyCall}
 import sigma.exceptions.InvalidType
+import sigma.interpreter.SigmaMap
 import sigma.serialization.ValueCodes.OpCode
 import sigmastate.utils.Extensions._
 import sigmastate.utils.Helpers
@@ -4761,16 +4762,12 @@ class SigmaDslSpecification extends SigmaDslTesting
         )
       ),
       _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-      vars = Colls
-          .replicate[AnyValue](10, null) // reserve 10 vars
-          .append(Coll[AnyValue](
-            CAnyValue(Helpers.decodeBytes("00")),
-            CAnyValue(true))),
+      vars = SigmaMap(Map(10.toByte -> ByteArrayConstant(Helpers.decodeBytes("00")), 11.toByte -> BooleanConstant(true))),
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
-    val ctx2 = ctx.copy(vars = Coll[AnyValue](null, null, null))
-    val ctx3 = ctx.copy(vars = Coll[AnyValue]())
+    val ctx2 = ctx.copy(vars = SigmaMap(Map.empty))
+    val ctx3 = ctx.copy(vars = SigmaMap(Map.empty))
 
     (input, dataBox, header, ctx, ctx2, ctx3)
   }

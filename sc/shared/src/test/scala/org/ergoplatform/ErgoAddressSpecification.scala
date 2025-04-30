@@ -22,7 +22,7 @@ import sigma.ast.ErgoTree.{ZeroHeader, setConstantSegregation}
 import sigma.ast.SType
 import sigma.data.ProveDlog
 import sigma.exceptions.{CostLimitException, InvalidType}
-import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, SigmaMap}
 import sigma.serialization.GroupElementSerializer
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckTypeCode
@@ -240,9 +240,9 @@ class ErgoAddressSpecification extends SigmaDslTesting
     val scriptId = Pay2SHAddress.scriptId
     val boxToSpend = testBox(10, address.script, creationHeight = 5)
     val ctx = ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
-        .withExtension(ContextExtension(Seq(
+        .withExtension(ContextExtension(SigmaMap(Seq(
           scriptId -> ByteArrayConstant(scriptBytes)  // provide script bytes in context variable
-        ).toMap))
+        ).toMap)))
 
     val env: ScriptEnv = Map()
     val prover = new ErgoLikeTestProvingInterpreter()
@@ -291,9 +291,9 @@ class ErgoAddressSpecification extends SigmaDslTesting
     def testPay2SHAddress(address: Pay2SHAddress, script: VarBinding, costLimit: Int = scriptCostLimitInTests): CostedProverResult = {
       val boxToSpend = testBox(10, address.script, creationHeight = 5)
       val ctx = copyContext(ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
-          .withExtension(ContextExtension(Seq(
+          .withExtension(ContextExtension(SigmaMap(Seq(
             script // provide script bytes in context variable
-          ).toMap)))(costLimit = costLimit)
+          ).toMap))))(costLimit = costLimit)
 
       val prover = new ErgoLikeTestProvingInterpreter()
       val res = prover.prove(address.script, ctx, fakeMessage).getOrThrow
