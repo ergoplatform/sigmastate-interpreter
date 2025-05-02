@@ -15,7 +15,7 @@ import SCollectionMethods.{ExistsMethod, ForallMethod, MapMethod}
 import sigma.compiler.ir.{GraphIRReflection, IRContext}
 import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
 import sigmastate.InterpreterReflection
-import sigmastate.lang.SigmaParser
+import sigmastate.lang.{DirectCompiler, SigmaParser}
 
 /**
   * @param networkPrefix    network prefix to decode an ergo address from string (PK op)
@@ -26,11 +26,13 @@ import sigmastate.lang.SigmaParser
   *                         call can be lowered to MapCollection node.
   *                         The lowering if preferable, because it is more compact (1 byte
   *                         for MapCollection instead of 3 bytes for MethodCall).
+  * @param enableOptimizations if true, then optimizations are applied to the compiled ErgoTree
   */
 case class CompilerSettings(
     networkPrefix: NetworkPrefix,
     builder: SigmaBuilder,
-    lowerMethodCalls: Boolean
+    lowerMethodCalls: Boolean,
+    enableOptimizations: Boolean = true
 )
 
 /** Result of ErgoScript source code compilation.
@@ -42,7 +44,7 @@ case class CompilerSettings(
 case class CompilerResult[Ctx <: IRContext](
   env: ScriptEnv,
   code: String,
-  compiledGraph: Ctx#Ref[Ctx#Context => Any],
+  compiledGraph: Option[Ctx#Ref[Ctx#Context => Any]],
   /** Tree obtained from graph created by GraphBuilding */
   buildTree: SValue
 )
@@ -98,9 +100,15 @@ class SigmaCompiler private(settings: CompilerSettings) {
         .zipWithIndex
         .map { case ((name, t), index) => name -> ConstantPlaceholder(index, t) }
         .toMap
-    val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
-    val compiledTree = IR.buildTree(compiledGraph)
-    CompilerResult(env, "<no source code>", compiledGraph, compiledTree)
+    if (settings.enableOptimizations) {
+      val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
+      val compiledTree = IR.buildTree(compiledGraph)
+      CompilerResult(env, "<no source code>", Some(compiledGraph), compiledTree)
+    } else {
+      val dc = new DirectCompiler(settings)
+      val compiledTree = dc.compileTyped(typedExpr)
+      CompilerResult(env, "<no source code>", None, compiledTree)
+    }
   }
 
   /** Compiles the given parsed contract source. */

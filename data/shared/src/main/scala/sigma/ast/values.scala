@@ -3,6 +3,7 @@ package sigma.ast
 import debox.cfor
 import sigma.Extensions.ArrayOps
 import sigma._
+import sigma.ast.FuncValue.{AddToEnvironmentDesc, AddToEnvironmentDesc_CostKind}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.TypeCodes.ConstantCode
 import sigma.ast.syntax._
@@ -1387,6 +1388,28 @@ case class Lambda(
 
   /** This is not used as operation, but rather to form a program structure */
   override def opType: SFunc = SFunc(Vector(), tpe)
+
+  protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
+    addCost(FuncValue.costKind)
+    if (args.length == 1) {
+      val arg0 = args(0)
+      (vArg: Any) => {
+        Value.checkType(arg0._2, vArg)
+        var env1: DataEnv = null
+        E.addFixedCost(AddToEnvironmentDesc_CostKind, AddToEnvironmentDesc) {
+          env1 = env + (arg0._1 -> vArg)
+        }
+        body.map { b =>
+          val res = b.evalTo[Any](env1)
+          Value.checkType(b, res)
+          res
+        }.getOrElse(error(s"Lambda body is missing: $this"))
+      }
+    } else {
+      error(s"Function must have 1 argument, but was: $this")
+    }
+  }
+
 }
 
 object Lambda extends ValueCompanion {

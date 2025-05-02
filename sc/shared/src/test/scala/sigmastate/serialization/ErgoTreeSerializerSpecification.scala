@@ -30,7 +30,7 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
     val env = Map[String, Any]()
     val res = compiler.compileTyped(env, prop)
     checkCompilerResult(res)
-    val calcF = res.compiledGraph
+    val calcF = res.compiledGraph.get
     val constantsStore = new ConstantStore()
     val outExpr = IR.buildTree(calcF, Some(constantsStore))
     val constants = constantsStore.getAll

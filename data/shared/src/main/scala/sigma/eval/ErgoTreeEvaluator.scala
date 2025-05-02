@@ -142,5 +142,5 @@ abstract class ErgoTreeEvaluator {
 
 object ErgoTreeEvaluator {
   /** Immutable data environment used to assign data values to graph nodes. */
-  type DataEnv = Map[Int, Any]
+  type DataEnv = Map[Any, Any]
 }

@@ -80,7 +80,7 @@ class SigmaDslSpecification extends SigmaDslTesting
 
   implicit override val generatorDrivenConfig = PropertyCheckConfiguration(minSuccessful = 30)
 
-  val evalSettingsInTests = CErgoTreeEvaluator.DefaultEvalSettings.copy(
+  def evalSettingsInTests = CErgoTreeEvaluator.DefaultEvalSettings.copy(
     isMeasureOperationTime = true,
     isMeasureScriptTime = true,
     isLogEnabled = false, // don't commit the `true` value (travis log is too high)
@@ -92,12 +92,15 @@ class SigmaDslSpecification extends SigmaDslTesting
     costTracingEnabled = true,
 
     profilerOpt = Some(CErgoTreeEvaluator.DefaultProfiler),
-    isTestRun = true
+    isTestRun = true,
+    isCheckTestVectors = enableCompilerOptimizationInTests
     // isDebug = true  uncomment to enable debug mode
   )
 
   /** Set this to true to enable debug console output in tests */
   override val printDebugInfo: Boolean = false
+
+  override protected val testCompilerWithoutOptimizations: Boolean = true
 
   def warmupSettings(p: Profiler) = evalSettingsInTests.copy(
     isLogEnabled = false,

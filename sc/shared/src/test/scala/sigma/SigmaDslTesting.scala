@@ -165,10 +165,15 @@ class SigmaDslTesting extends AnyPropSpec
       expectedExpr match {
         case Some(e) =>
           if (cf.expr != null && cf.expr != e) {
-            printSuggestion("Unexpected expression for ", cf)
-            println("Expected:")
-            SigmaPPrint.pprintln(e, height = 150)
-            cf.expr shouldBe e
+            if (evalSettings.printTestVectors) {
+              printSuggestion("Unexpected expression for ", cf)
+              println("Expected:")
+              SigmaPPrint.pprintln(e, height = 150)
+            }
+
+            if (evalSettings.isCheckTestVectors) {
+              cf.expr shouldBe e
+            }
           }
         case None if printExpectedExpr =>
           printSuggestion("No expectedExpr for ", cf)
@@ -451,7 +456,7 @@ class SigmaDslTesting extends AnyPropSpec
         case Success((ok, cost)) =>
           ok shouldBe true
           val verificationCost = cost.toIntExact
-          if (expectedCost.isDefined) {
+          if (expectedCost.isDefined && evalSettings.isCheckTestVectors) {
             assertResult(expectedCost.get,
               s"Actual verify() cost $cost != expected ${expectedCost.get}")(verificationCost)
           }
@@ -586,8 +591,12 @@ class SigmaDslTesting extends AnyPropSpec
       newRes shouldBe expected.value.get
       expected.newResults(ergoTreeVersionInTests)._2.foreach { expDetails =>
         if (newDetails.trace != expDetails.trace) {
-          printCostDetails(script, newDetails)
-          newDetails.trace shouldBe expDetails.trace
+          if (evalSettings.printTestVectors) {
+            printCostDetails(script, newDetails)
+          }
+          if (evalSettings.isCheckTestVectors) {
+            newDetails.trace shouldBe expDetails.trace
+          }
         }
       }
 
@@ -625,8 +634,12 @@ class SigmaDslTesting extends AnyPropSpec
         // new cost expectation is specified, compare it with the actual result
         funcRes.foreach { case (_, newDetails) =>
           if (newDetails.trace != expectedTrace) {
-            printCostDetails(script, newDetails)
-            newDetails.trace shouldBe expectedTrace
+            if (evalSettings.printTestVectors) {
+              printCostDetails(script, newDetails)
+            }
+            if (evalSettings.isCheckTestVectors) {
+              newDetails.trace shouldBe expectedTrace
+            }
           }
         }
       }
@@ -798,8 +811,12 @@ class SigmaDslTesting extends AnyPropSpec
             newValue shouldBe newExpectedRes.value.get
             newExpectedDetailsOpt.foreach { expDetails =>
               if (newDetails.trace != expDetails.trace) {
-                printCostDetails(script, newDetails)
-                newDetails.trace shouldBe expDetails.trace
+                if (evalSettings.printTestVectors) {
+                  printCostDetails(script, newDetails)
+                }
+                if (evalSettings.isCheckTestVectors) {
+                  newDetails.trace shouldBe expDetails.trace
+                }
               }
             }
           case _ =>

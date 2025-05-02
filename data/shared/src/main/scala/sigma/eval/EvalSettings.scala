@@ -44,7 +44,10 @@ case class EvalSettings(
       *
       * @see ErgoTreeEvaluator
       */
-    scriptCostLimitInEvaluator: Int = 1000000
+    scriptCostLimitInEvaluator: Int = 1000000,
+
+    /** If true, then test vectors are checked against the expected values. */
+    isCheckTestVectors: Boolean = true
 )
 
 object EvalSettings {
