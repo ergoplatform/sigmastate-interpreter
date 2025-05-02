@@ -55,7 +55,10 @@ object SigmaPPrint extends PPrinter {
     case _: STuple =>
       "STuple"
     case _ =>
-      sys.error(s"Cannot get typeName($tpe)")
+      sys.error(s"We encountered an issue while retrieving the type name for $tpe. " +
+        "Please ensure the type is correctly specified and supported. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>."
+      )
   }
 
   /** Valid Scala type of the Value with the given underlying SType. */

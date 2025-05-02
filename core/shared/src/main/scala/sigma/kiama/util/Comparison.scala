@@ -42,7 +42,9 @@ object Comparison {
         case (r1 : AnyRef, r2 : AnyRef) =>
           r1 eq r2
         case _ =>
-          sys.error(s"same: comparison of $v1 and $v2, should not be reached")
+          sys.error(s"An unexpected issue occurred with the values $v1 and $v2. " +
+            "This should not happen during regular use. " +
+            "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
       }
 
   /**

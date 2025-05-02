@@ -289,7 +289,9 @@ case class SelectField(input: Value[STuple], fieldIndex: Byte)
       case p: Tuple2[_,_] =>
         if (fieldIndex == 1) p._1
         else if (fieldIndex == 2) p._2
-        else sys.error(s"Unknown fieldIndex $fieldIndex to select from $p: evaluating tree $this")
+        else sys.error(s"We found an unknown field index ($fieldIndex) while trying to select from $p in the structure evaluation. " +
+          "Please check that the field index is correct. " +
+          "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
       case _ =>
         Value.typeError(input, inputV)
     }

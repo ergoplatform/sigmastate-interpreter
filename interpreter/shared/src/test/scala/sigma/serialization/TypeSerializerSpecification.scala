@@ -104,7 +104,7 @@ class TypeSerializerSpecification extends SerializationSpecification {
       SigmaSerializer.startWriter().putType(STuple(SInt)),
       { t =>
         t.isInstanceOf[RuntimeException] &&
-        t.getMessage.contains("Invalid Tuple type with less than 2 items")
+        t.getMessage.contains("The Tuple with fewer than 2 items (ArraySeq(SInt$)) is invalid.")
       })
   }
 }

@@ -58,7 +58,9 @@ object syntax {
     def length: Int = matchCase(_.items.length, _.value.length, _.items.length)
 
     /** Returns a sequence of items in the collection expression. */
-    def items: Seq[Value[SType]] = matchCase(_.items, _ => sys.error(s"Cannot get 'items' property of node $coll"), _.items)
+    def items: Seq[Value[SType]] = matchCase(_.items, _ => sys.error(s"Cannot access the 'items' property of node $coll. " +
+      "Please ensure the node is properly initialized and includes the 'items' property. " +
+      "If the issue keeps happening, contact <a href=\"#\">Customer care</a>."), _.items)
 
     /** Abstracts from details of pattern matching collection expressions.
       * Folds over given `coll` structure.
@@ -71,7 +73,9 @@ object syntax {
       case cc: ConcreteCollection[T]@unchecked => whenConcrete(cc)
       case const: CollectionConstant[T]@unchecked => whenConstant(const)
       case tuple: Tuple => whenTuple(tuple)
-      case _ => sys.error(s"Unexpected node $coll")
+      case _ => sys.error(s"We found an unexpected element: $coll. " +
+        "Please review your input for errors or unsupported elements. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     }
   }
 

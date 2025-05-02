@@ -2274,7 +2274,7 @@ class SigmaDslSpecification extends SigmaDslTesting
     // It makes sense to fix this inconsistency as part of upcoming forks
     assertExceptionThrown(
       SBigInt.upcast(CBigInt(new BigInteger("0", 16)).asInstanceOf[AnyVal]),
-      _.getMessage.contains("Cannot upcast value")
+      _.getMessage.contains("We cannot convert value")
     )
 
     // TODO v6.0: the behavior of `downcast` for BigInt is different from all other Numeric types (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/877)
@@ -2282,7 +2282,7 @@ class SigmaDslSpecification extends SigmaDslTesting
     // It makes sense to fix this inconsistency as part of HF
     assertExceptionThrown(
       SBigInt.downcast(CBigInt(new BigInteger("0", 16)).asInstanceOf[AnyVal]),
-      _.getMessage.contains("Cannot downcast value")
+      _.getMessage.contains("We cannot convert value")
     )
 
     val toByte = newFeature((x: BigInt) => x.toByte,

@@ -151,7 +151,9 @@ object ErgoBoxCandidate {
         val amount = amounts(i)
         if (tokensInTx.isDefined) {
           val tokenIndex = tokensInTx.get.indexWhere(_ == id, 0) // using equality on Coll
-          if (tokenIndex == -1) sys.error(s"failed to find token id ($id) in tx's digest index")
+          if (tokenIndex == -1) sys.error(s"Token ID ($id) not found in the transaction's digest index. " +
+            "Please check the token ID and try again. " +
+            "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
           w.putUInt(tokenIndex)
         } else {
           w.putBytes(id.toArray)
@@ -161,7 +163,9 @@ object ErgoBoxCandidate {
 
       val nRegs = box.additionalRegisters.keys.size
       if (nRegs + ErgoBox.startingNonMandatoryIndex > 255)
-        sys.error(s"The number of non-mandatory indexes $nRegs exceeds ${255 - ErgoBox.startingNonMandatoryIndex} limit.")
+        sys.error(s"The number of non-mandatory indexes ($nRegs) exceeds the maximum limit (${255 - ErgoBox.startingNonMandatoryIndex}). " +
+          "Please decrease the number of non-mandatory indexes to stay within the limit. " +
+          "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
       w.putUByte(nRegs)
       // we assume non-mandatory indexes are densely packed from startingNonMandatoryIndex
       // this convention allows to save 1 bite for each register
@@ -173,8 +177,9 @@ object ErgoBoxCandidate {
           case Some(v) =>
             w.putValue(v)
           case None =>
-            sys.error(s"Set of non-mandatory indexes is not densely packed: " +
-              s"register R$regId is missing in the range [$startReg .. $endReg]")
+            sys.error(s"The non-mandatory indexes are not densely packed: register R$regId is missing in the range [$startReg .. $endReg]. " +
+              "Please fill all registers in this range sequentially. " +
+              "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
         }
       }
     }
@@ -207,7 +212,9 @@ object ErgoBoxCandidate {
           // in v4.x r.getUInt().toInt is used and may return negative Int in which case
           // the error below is thrown
           if (digestIndex < 0 || digestIndex >= nDigests)
-            sys.error(s"failed to find token id with index $digestIndex")
+            sys.error(s"We couldn't find the token ID linked to the index $digestIndex. " +
+              "Please make sure the index value is correct. " +
+              "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
           val amount = r.getULong()           // READ
           tokenIds(i) = digestsInTx(digestIndex)
           tokenAmounts(i) = amount

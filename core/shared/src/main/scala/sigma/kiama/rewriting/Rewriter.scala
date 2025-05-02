@@ -248,7 +248,9 @@ trait Rewriter {
           case _ : NoSuchFieldException =>
             val ctors = clazz.getConstructors
             if (ctors.length == 0)
-              sys.error(s"dup no constructors for ${clazz.getName}")
+              sys.error(s"No constructors found for ${clazz.getName}. " +
+                "Please ensure the class has accessible constructors. " +
+                "If the problem persists, reach out to <a href=\"#\">Customer Care</a> for assistance.")
             else
               (_ : Any, children : Array[AnyRef]) =>
                 makeInstance(ctors(0), children)
@@ -260,8 +262,10 @@ trait Rewriter {
           ctor.newInstance(unboxPrimitives(ctor, children) : _*)
         } catch {
           case _ : IllegalArgumentException =>
-            sys.error(s"""dup illegal arguments: $ctor got (${children.mkString(",")})
-                        |Common cause: term classes are nested in another class, move them to the top level""".stripMargin)
+            sys.error(s"The function $ctor received the same arguments more than once: ${children.mkString(", ")}. " +
+              "This usually happens when functions or methods are inside another class. " +
+              "Try moving them outside the class to fix the problem. " +
+              "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
         }
 
       /** Unbox primitive values in the given array of children using type information of
@@ -620,7 +624,9 @@ trait Rewriter {
                 b += ti
                 false
               case Some(ti) =>
-                sys.error(s"oneMap: got non-pair $ti")
+                sys.error(s"We received a non-key-value pair ($ti) in the oneMap function. " +
+                  "Please ensure all inputs to oneMap are in key-value pair format. " +
+                  "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
               case None =>
                 b += ct
                 true

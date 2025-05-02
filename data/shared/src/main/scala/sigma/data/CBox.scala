@@ -49,7 +49,9 @@ case class CBox(ebox: ErgoBox) extends Box with WrapperOf[ErgoBox] {
       case ConstantNode(arr: Array[Any], STuple(IndexedSeq(SInt, SByteArray))) if arr.length == 2 =>
         (arr(0).asInstanceOf[Int], builder.Colls.fromArray(arr(1).asInstanceOf[Array[Byte]]))
       case v =>
-        sys.error(s"Invalid value $v of creationInfo register R3")
+        sys.error(s"The value $v assigned to creationInfo register R3 is not valid. " +
+          "Please check that the value meets the required format and type. " +
+          "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     }
   }
 

@@ -85,7 +85,9 @@ class TypeSerializer {
         serialize(t2, w)
     }
     case STuple(items) if items.length < 2 =>
-      sys.error(s"Invalid Tuple type with less than 2 items $items")
+      sys.error(s"The Tuple with fewer than 2 items ($items) is invalid. " +
+        "Please ensure tuples contain at least 2 items for proper functionality. " +
+        "If the issue keeps happening, contact <a href=\"#\">Customer care</a>.")
     case tup: STuple => tup.items.length match {
       case 3 =>
         // Triple of types
