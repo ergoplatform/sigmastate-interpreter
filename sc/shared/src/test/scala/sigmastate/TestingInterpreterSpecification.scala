@@ -52,7 +52,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       nBits = 0,
       height = h,
       minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(ErgoLikeContextTesting.dummyPubkey)).toGroupElement,
-      votes = Colls.emptyColl[Byte]
+      votes = Colls.fromArray(Array.fill(3)(0.toByte))
     )
 
     val ctx = new ErgoLikeContext(
@@ -75,15 +75,23 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
     val dk1 = prover.dlogSecrets(0).publicImage
     val dk2 = prover.dlogSecrets(1).publicImage
-    val ctx = testingContext(99, softFieldsAllowed)
+    val ctx = testingContext(614401, softFieldsAllowed)
     val env = Map(
       "dk1" -> dk1,
       "dk2" -> dk2,
-      "bytes1" -> Array[Byte](1, 2, 3),
-      "bytes2" -> Array[Byte](4, 5, 6),
-      "box1" -> testBox(10, TrueTree, 0, Seq(), Map(
-        reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
-        reg2 -> BoolArrayConstant(Array[Boolean](true, false, true)))))
+      "bytes1" -> Colls.fromArray(Array[Byte](1, 2, 3)),
+      "bytes2" -> Colls.fromArray(Array[Byte](4, 5, 6)),
+      "box1" -> (if(VersionContext.current.isJitActivated) {
+        CBox(testBox(10, TrueTree, 0, Seq(), Map(
+          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+        )))} else {
+        testBox(10, TrueTree, 0, Seq(), Map(
+          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+        ))
+      })
+    )
     val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
     val challenge = Array.fill(32)(Random.nextInt(100).toByte)
     val proof1 = prover.prove(prop, ctx, challenge).get.proof
@@ -165,6 +173,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       }
     }
   }
+
 
   property("Evaluate array ops") {
     testEval(
@@ -498,25 +507,31 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     testEval(s"""deserialize[Coll[Byte]]("$str")(0) == 2""")
   }
 
-  property("preheader soft fields access") {
+  property("preheader soft fields access - CONTEXT.preHeader.votes") {
     testEval(s"""CONTEXT.preHeader.votes.size == 3""", true)
     assertExceptionThrown(
       testEval(s"""CONTEXT.preHeader.votes.size == 3""", false),
       rootCause(_).isInstanceOf[SoftFieldAccessException]
     )
+  }
 
+  property("preheader soft fields access - CONTEXT.preHeader.timestamp") {
     testEval(s"""CONTEXT.preHeader.timestamp >= 0""", true)
     assertExceptionThrown(
       testEval(s"""CONTEXT.preHeader.timestamp >= 0""", false),
       rootCause(_).isInstanceOf[SoftFieldAccessException]
     )
+  }
 
+  property("preheader soft fields access - CONTEXT.preHeader.minerPk") {
     testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", true)
     assertExceptionThrown(
       testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", false),
       rootCause(_).isInstanceOf[SoftFieldAccessException]
     )
+  }
 
+  property("preheader soft fields access - CONTEXT.minerPubKey") {
     testEval(s"""CONTEXT.minerPubKey.size == 33""", true)
     assertExceptionThrown(
       testEval(s"""CONTEXT.minerPubKey.size == 33""", false),
