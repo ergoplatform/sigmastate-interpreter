@@ -6,18 +6,27 @@ import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate.interpreter._
 import Interpreter._
-import sigma.ast.syntax._
 import org.ergoplatform._
 import org.scalatest.BeforeAndAfterAll
 import scorex.util.encode.Base58
 import sigma.crypto.CryptoConstants
 import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.exceptions.SoftFieldAccessException
+import scorex.util.encode.{Base16, Base58}
+import sigma.Colls
+import sigma.VersionContext.{V6SoftForkVersion, withVersions}
+import sigma.data.{CAND, CAvlTree, CBox, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.interpreter.ContextExtension
+import sigma.VersionContext
 import sigma.util.Extensions.IntOps
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigma.serialization.ValueSerializer
+import sigma.serialization.{GroupElementSerializer, SigmaSerializer, ValueSerializer}
+import sigmastate.eval.CPreHeader
+import sigmastate.helpers.ErgoLikeContextTesting.noBoxes
+import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
 import sigmastate.utils.Helpers._
+import sigma.util.Extensions._
 
 import scala.util.Random
 
@@ -30,12 +39,28 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   lazy val verifier = new ErgoLikeTestInterpreter
   
-  private def testingContext(h: Int, softFieldsAllowed: Boolean = true) = {
-    val ctx = ErgoLikeContextTesting(h,
-      AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, IndexedSeq(fakeSelf),
-      ErgoLikeTransaction(IndexedSeq.empty, IndexedSeq.empty),
-      fakeSelf, activatedVersionInTests)
-        .withErgoTreeVersion(ergoTreeVersionInTests)
+  private def testingContext(h: Int = 614401, softFieldsAllowed: Boolean = true) = {
+    // bytes of real mainnet block header at height 614,440
+    val headerBytes = "02ac2101807f0000ca01ff0119db227f202201007f62000177a080005d440896d05d3f80dcff7f5e7f59007294c180808d0158d1ff6ba10000f901c7f0ef87dcfff17fffacb6ff7f7f1180d2ff7f1e24ffffe1ff937f807f0797b9ff6ebdae007e5c8c00b8403d3701557181c8df800001b6d5009e2201c6ff807d71808c00019780f087adb3fcdbc0b3441480887f80007f4b01cf7f013ff1ffff564a0000b9a54f00770e807f41ff88c00240000080c0250000000003bedaee069ff4829500b3c07c4d5fe6b3ea3d3bf76c5c28c1d4dcdb1bed0ade0c0000000000003105"
+    val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
+
+    val boxesToSpend = IndexedSeq(fakeSelf)
+
+    val preHeader = CPreHeader(activatedVersionInTests,
+      parentId = header1.id,
+      timestamp = 3,
+      nBits = 0,
+      height = h,
+      minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(ErgoLikeContextTesting.dummyPubkey)).toGroupElement,
+      votes = Colls.emptyColl[Byte]
+    )
+
+    val ctx = new ErgoLikeContext(
+      header1.stateRoot.asInstanceOf[CAvlTree].treeData, Colls.fromArray(Array(header1)),
+      preHeader, noBoxes,
+      boxesToSpend, ErgoLikeTransaction(IndexedSeq.empty, IndexedSeq.empty),
+      boxesToSpend.indexOf(fakeSelf), ContextExtension.empty, vs, DefaultEvalSettings.scriptCostLimitInEvaluator,
+      initCost = 0L, activatedVersionInTests).withErgoTreeVersion(ergoTreeVersionInTests)
 
     if(!softFieldsAllowed) {
       ctx.withSoftFieldsAllowed(false)
@@ -209,6 +234,21 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         |}""".stripMargin)
   }
 
+  property("Evaluate BigInt to nbits conversion") {
+    val source =
+      """
+        |{
+        | val b: BigInt = 11999.toBigInt
+        | Global.encodeNbits(b) == 36626176
+        |}
+        |""".stripMargin
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
+      testEval(source)
+    } else {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    }
+  }
+
   property("Evaluate numeric casting ops") {
     def testWithCasting(castSuffix: String): Unit = {
       testEval(s"OUTPUTS.size.toByte.$castSuffix == 0.$castSuffix")
@@ -221,6 +261,46 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     testWithCasting("toInt")
     testWithCasting("toLong")
     testWithCasting("toBigInt")
+  }
+
+  property("BigInt downcasting to byte") {
+    def test() = testEval("{ sigmaProp(0L.toBigInt.toByte <= CONTEXT.preHeader.version) }")
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      test()
+    } else {
+      an[Exception] shouldBe thrownBy(test())
+    }
+  }
+
+  property("BigInt downcasting to short") {
+    def test() = testEval("{ sigmaProp(0L.toBigInt.toShort <= CONTEXT.preHeader.version.toShort) }")
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      test()
+    } else {
+      an[Exception] shouldBe thrownBy(test())
+    }
+  }
+
+  property("BigInt downcasting to int") {
+    def test() = testEval("{ sigmaProp(1L.toBigInt.toInt < CONTEXT.preHeader.timestamp.toInt) }")
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      test()
+    } else {
+      an[Exception] shouldBe thrownBy(test())
+    }
+  }
+
+  property("BigInt downcasting to long") {
+    def test() = testEval("{ sigmaProp(1L.toBigInt.toLong < CONTEXT.preHeader.timestamp) }")
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      test()
+    } else {
+      an[Exception] shouldBe thrownBy(test())
+    }
+  }
+
+  property("upcasting to bigint") {
+    testEval("{ sigmaProp(1L.toBigInt < bigInt(\"2\")) }")
   }
 
   property("Evaluate arithmetic ops") {
@@ -257,6 +337,27 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   property("Coll indexing (out of bounds with evaluated default value)") {
     testEval("Coll(1, 1).getOrElse(3, 1 + 1) == 2")
+  }
+
+  property("Evaluate powHit") {
+    val source =
+      """
+        |{
+        | val b = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
+        | val k = 32
+        | val N = 1024 * 1024
+        | val msg = fromBase16("0a101b8c6a4f2e")
+        | val nonce = fromBase16("000000000000002c")
+        | val h = fromBase16("00000000")
+        |
+        | Global.powHit(k, msg, nonce, h, N) <= b // hit == b in this example
+        |}
+        |""".stripMargin
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
+      testEval(source)
+    } else {
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+    }
   }
 
   property("Evaluation example #1") {
@@ -345,6 +446,24 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     verifier.verify(prop3, env, proof, challenge).map(_._1).getOrElse(false) shouldBe false
   }
 
+  property("blake2b - test vector") {
+    testEval(
+      """ {
+        |     val input = fromBase16("68656c6c6f20776f726c64")
+        |     val output = fromBase16("256c83b297114d201b30179f3f0ef0cace9783622da5974326b436178aeef610")
+        |     blake2b256(input) == output
+        | }""".stripMargin)
+  }
+
+  property("blake2b - test vector #2") {
+    testEval(
+      """ {
+        |     val input = fromBase16("02ac2101807f0000ca01ff0119db227f202201007f62000177a080005d440896d05d3f80dcff7f5e7f59007294c180808d0158d1ff6ba10000f901c7f0ef87dcfff17fffacb6ff7f7f1180d2ff7f1e24ffffe1ff937f807f0797b9ff6ebdae007e5c8c00b8403d3701557181c8df800001b6d5009e2201c6ff807d71808c00019780d085adb3fcdbc0b3441480887f80007f4b01cf7f013ff1ffff564a0000b9a54f00770e807f41ff88c00240000080c02500000000")
+        |     val output = fromBase16("bdb84cda5b105c3eb522857b50a0882f88ed5bb3cc8cf3325a1edf7eeb6a0954")
+        |     blake2b256(input) == output
+        | }""".stripMargin)
+  }
+
   property("passing a lambda argument") {
     // single expression
     testEval(
@@ -403,6 +522,29 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       testEval(s"""CONTEXT.minerPubKey.size == 33""", false),
       rootCause(_).isInstanceOf[SoftFieldAccessException]
     )
+  }
+
+  property("header.id") {
+    testEval(
+      """ {
+        |     val h = CONTEXT.headers(0)
+        |     val id = h.id
+        |     id.size == 32
+        | }""".stripMargin)
+  }
+
+  property("checkPow") {
+    val source = """ {
+                   |     val h = CONTEXT.headers(0)
+                   |     h.checkPow
+                   | }
+                   | """.stripMargin
+
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
+      testEval(source)
+    } else {
+      an [Exception] should be thrownBy testEval(source)
+    }
   }
 
   override protected def afterAll(): Unit = {

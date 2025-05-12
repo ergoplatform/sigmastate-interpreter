@@ -75,8 +75,9 @@ trait VersionTesting {
   protected def testFun_Run(testName: String, testFun: => Any): Unit = {
     def msg = s"""property("$testName")(ActivatedVersion = $activatedVersionInTests; ErgoTree version = $ergoTreeVersionInTests)"""
     if (printVersions) println(msg)
-    try testFun
-    catch {
+    try {
+      testFun
+    } catch {
       case t: Throwable =>
         if (!printVersions) {
           // wasn't printed, print it now

@@ -1,7 +1,7 @@
 package org.ergoplatform.sdk.utils
 
 import org.ergoplatform.ErgoBox
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAvlTree, CBigInt, CGroupElement, CSigmaProp, CollType, FuncType, OptionType, PairType, RType, TrivialProp, TupleType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAvlTree, CBigInt, CGroupElement, CSigmaProp, CUnsignedBigInt, CollType, FuncType, OptionType, PairType, RType, TrivialProp, TupleType}
 import sigma.data.RType._
 import scorex.crypto.authds.avltree.batch.BatchAVLProver
 import scorex.crypto.hash.{Blake2b256, Digest32}
@@ -11,6 +11,7 @@ import sigma._
 import sigma.ast.ErgoTree
 import ErgoTree.HeaderType
 import sigma.crypto.CryptoConstants
+
 import java.math.BigInteger
 import scala.language.implicitConversions
 
@@ -48,6 +49,7 @@ object Zero extends ZeroLowPriority {
   implicit val IntIsZero: Zero[Int] = CZero(0)
   implicit val LongIsZero: Zero[Long] = CZero(0L)
   implicit val BigIntIsZero: Zero[BigInt] = CZero(CBigInt(BigInteger.ZERO))
+  implicit val UnsignedBigIntIsZero: Zero[UnsignedBigInt] = CZero(CUnsignedBigInt(BigInteger.ZERO))
   implicit val GroupElementIsZero: Zero[GroupElement] = CZero(CGroupElement(CryptoConstants.dlogGroup.identity))
   implicit val AvlTreeIsZero: Zero[AvlTree] = CZero({
     val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
@@ -88,6 +90,7 @@ object Zero extends ZeroLowPriority {
     case LongType => Zero[Long]
     case UnitType => Zero[Unit]
     case BigIntRType => Zero[BigInt]
+    case UnsignedBigIntRType => Zero[UnsignedBigInt]
     case BoxRType => Zero[Box]
     case GroupElementRType => Zero[GroupElement]
     case AvlTreeRType => Zero[AvlTree]

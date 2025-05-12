@@ -11,6 +11,7 @@ import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.js.AvlTree
 import sigma.{Coll, GroupElement}
 import sigma.data.js.{Isos => DataIsos}
+
 import scala.scalajs.js
 
 class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {

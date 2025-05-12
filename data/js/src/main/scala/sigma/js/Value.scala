@@ -81,6 +81,9 @@ object Value extends js.Object {
     case sigma.BigIntRType =>
       val v = data.asInstanceOf[js.BigInt]
       CBigInt(new BigInteger(v.toString(16), 16))
+    case sigma.UnsignedBigIntRType =>
+      val v = data.asInstanceOf[js.BigInt]
+      CUnsignedBigInt(new BigInteger(v.toString(16), 16))
     case sigma.GroupElementRType =>
       val ge = data.asInstanceOf[GroupElement]
       CGroupElement(ge.point)
@@ -121,6 +124,9 @@ object Value extends js.Object {
     case sigma.BigIntRType =>
       val hex = value.asInstanceOf[sigma.BigInt].toBigInteger.toString(10)
       js.BigInt(hex)
+    case sigma.UnsignedBigIntRType =>
+      val hex = value.asInstanceOf[sigma.BigInt].toBigInteger.toString(10)
+      js.BigInt(hex)
     case sigma.GroupElementRType =>
       val point = value.asInstanceOf[CGroupElement].wrappedValue.asInstanceOf[Platform.Ecp]
       new GroupElement(point)
@@ -157,6 +163,8 @@ object Value extends js.Object {
         throw new ArithmeticException(s"value $n is out of long range")
       n
     case sigma.BigIntRType =>
+      data.asInstanceOf[js.BigInt]
+    case sigma.UnsignedBigIntRType =>
       data.asInstanceOf[js.BigInt]
     case sigma.GroupElementRType =>
       data.asInstanceOf[GroupElement]

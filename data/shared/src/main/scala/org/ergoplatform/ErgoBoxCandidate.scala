@@ -2,6 +2,7 @@ package org.ergoplatform
 
 import debox.cfor
 import org.ergoplatform.ErgoBox._
+import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import scorex.util.encode.Base16
 import scorex.util.{ModifierId, bytesToId}
 import sigma.Extensions.{ArrayOps, CollOps}
@@ -228,6 +229,7 @@ object ErgoBoxCandidate {
       cfor(0)(_ < nRegs, _ + 1) { iReg =>
         val reg = ErgoBox.nonMandatoryRegisters(iReg)
         val v = r.getValue().asInstanceOf[EvaluatedValue[SType]]  // READ
+        CheckV6Type(v)
         b += ((reg, v))  // don't use `->` since it incur additional wrapper overhead
       }
       r.positionLimit = previousPositionLimit

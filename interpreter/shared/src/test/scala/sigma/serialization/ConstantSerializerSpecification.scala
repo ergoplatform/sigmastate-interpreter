@@ -9,7 +9,7 @@ import sigma.ast.{BigIntConstant, ByteArrayConstant, Constant, DeserializationSi
 import sigmastate.eval._
 import sigma.Extensions.ArrayOps
 import sigma.ast._
-import sigma.{AvlTree, Colls, Evaluation}
+import sigma.{AvlTree, Colls, Evaluation, Header, VersionContext}
 import sigma.ast.SType.AnyOps
 import scorex.util.encode.Base16
 import sigma.ast.BoolArrayConstant.BoolArrayTypeCode
@@ -17,6 +17,7 @@ import sigma.ast.ByteArrayConstant.ByteArrayTypeCode
 import sigma.ast.syntax.{BoolValue, SValue}
 import sigma.crypto.EcPointType
 import sigma.util.Extensions.{BigIntegerOps, EcpOps, SigmaBooleanOps}
+
 import scala.annotation.nowarn
 
 class ConstantSerializerSpecification extends TableSerializationSpecification {
@@ -25,22 +26,29 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     implicit val wWrapped = wrappedTypeGen(tpe)
     implicit val tT = Evaluation.stypeToRType(tpe)
     implicit val tag = tT.classTag
+
+    val withVersion = if (tpe == SHeader) {
+      Some(VersionContext.V6SoftForkVersion)
+    } else {
+      None
+    }
+
     forAll { xs: Array[T#WrappedType] =>
       implicit val tAny = sigma.AnyType
-      roundTripTest(Constant[SCollection[T]](xs.toColl, SCollection(tpe)))
-      roundTripTest(Constant[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe)))) // pairs are special case
+      roundTripTest(Constant[SCollection[T]](xs.toColl, SCollection(tpe)), withVersion)
+      roundTripTest(Constant[SType](xs.toColl.map(x => (x, x)).asWrappedType, SCollection(STuple(tpe, tpe))), withVersion) // pairs are special case
       val triples = xs.toColl.map(x => TupleColl(x, x, x)).asWrappedType
-      roundTripTest(Constant[SType](triples, SCollection(STuple(tpe, tpe, tpe))))
+      roundTripTest(Constant[SType](triples, SCollection(STuple(tpe, tpe, tpe))), withVersion)
       val quartets = xs.toColl.map(x => TupleColl(x, x, x, x)).asWrappedType
-      roundTripTest(Constant[SType](quartets, SCollection(STuple(tpe, tpe, tpe, tpe))))
-      roundTripTest(Constant[SCollection[SCollection[T]]](xs.toColl.map(x => Colls.fromItems(x, x)), SCollection(SCollection(tpe))))
+      roundTripTest(Constant[SType](quartets, SCollection(STuple(tpe, tpe, tpe, tpe))), withVersion)
+      roundTripTest(Constant[SCollection[SCollection[T]]](xs.toColl.map(x => Colls.fromItems(x, x)), SCollection(SCollection(tpe))), withVersion)
       roundTripTest(Constant[SType](
         xs.toColl.map { x =>
           val arr = Colls.fromItems(x, x)
           (arr, arr)
         }.asWrappedType,
         SCollection(STuple(SCollection(tpe), SCollection(tpe)))
-      ))
+      ), withVersion)
     }
   }
 
@@ -49,14 +57,19 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     implicit val tT = Evaluation.stypeToRType(tpe)
     @nowarn implicit val tag = tT.classTag
     implicit val tAny: RType[Any] = sigma.AnyType
+    val withVersion = if (tpe == SHeader) {
+      Some(VersionContext.V6SoftForkVersion)
+    } else {
+      None
+    }
     forAll { in: (T#WrappedType, T#WrappedType) =>
       val (x,y) = (in._1, in._2)
-      roundTripTest(Constant[SType]((x, y).asWrappedType, STuple(tpe, tpe)))
-      roundTripTest(Constant[SType](TupleColl(x, y, x).asWrappedType, STuple(tpe, tpe, tpe)))
-      roundTripTest(Constant[SType](TupleColl(x, y, x, y).asWrappedType, STuple(tpe, tpe, tpe, tpe)))
-      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, (x, y)), STuple(tpe, tpe, STuple(tpe, tpe))))
-      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, TupleColl(x, y, x)), STuple(tpe, tpe, STuple(tpe, tpe, tpe))))
-      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, TupleColl(x, y, (x, y))), STuple(tpe, tpe, STuple(tpe, tpe, STuple(tpe, tpe)))))
+      roundTripTest(Constant[SType]((x, y).asWrappedType, STuple(tpe, tpe)), withVersion)
+      roundTripTest(Constant[SType](TupleColl(x, y, x).asWrappedType, STuple(tpe, tpe, tpe)), withVersion)
+      roundTripTest(Constant[SType](TupleColl(x, y, x, y).asWrappedType, STuple(tpe, tpe, tpe, tpe)), withVersion)
+      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, (x, y)), STuple(tpe, tpe, STuple(tpe, tpe))), withVersion)
+      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, TupleColl(x, y, x)), STuple(tpe, tpe, STuple(tpe, tpe, tpe))), withVersion)
+      roundTripTest(Constant[STuple](Colls.fromItems[Any](x, y, TupleColl(x, y, (x, y))), STuple(tpe, tpe, STuple(tpe, tpe, STuple(tpe, tpe)))), withVersion)
     }
   }
 
@@ -71,6 +84,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     forAll { x: SigmaBoolean => roundTripTest(Constant[SSigmaProp.type](x.toSigmaProp, SSigmaProp)) }
     forAll { x: ErgoBox => roundTripTest(Constant[SBox.type](x, SBox)) }
     forAll { x: AvlTree => roundTripTest(Constant[SAvlTree.type](x, SAvlTree)) }
+    forAll { x: Header => roundTripTest(Constant[SHeader.type](x, SHeader), Some(VersionContext.V6SoftForkVersion)) }
     forAll { x: Array[Byte] => roundTripTest(Constant[SByteArray](x.toColl, SByteArray)) }
     forAll { t: SPredefType => testCollection(t) }
     forAll { t: SPredefType => testTuples(t) }
@@ -88,6 +102,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     testCollection(SUnit)
     testCollection(SBox)
     testCollection(SAvlTree)
+    testCollection(SHeader)
   }
 
   private def caseObjectValue(v: SValue) = (v, Array[Byte](v.opCode))

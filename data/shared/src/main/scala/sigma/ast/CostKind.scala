@@ -1,5 +1,7 @@
 package sigma.ast
 
+import sigma.Coll
+
 import scala.runtime.Statics
 
 /** Cost descriptor of a single operation, usually associated with
@@ -51,6 +53,38 @@ abstract class TypeBasedCost extends CostKind {
   * In this case the operation cost is a sum of sub-operation costs.
   * See [[EQ]], [[NEQ]]. */
 case object DynamicCost extends CostKind
+
+/**
+  * Cost of  converting numeric value to the numeric value of the given type, i.e. Byte -> Int
+  */
+object NumericCastCostKind extends TypeBasedCost {
+  override def costFunc(targetTpe: SType): JitCost = targetTpe match {
+    case SBigInt => JitCost(30)
+    case _ => JitCost(10)
+  }
+}
+
+/**
+  * Cost of Global.powHit method, which is dependent on few parameters, see cost() function description
+  */
+object PowHitCostKind extends CostKind {
+  /**
+    * @param k - k parameter of Autolykos 2 (number of inputs in k-sum problem)"
+    * @param msg - message to calculate Autolykos hash 2 for
+    * @param nonce - used to pad the message to get Proof-of-Work hash function output with desirable properties
+    * @param h - PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)
+    * @return cost of custom Autolykos2 hash function invocation
+    */
+  def cost(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte]): JitCost = {
+    val chunkSize = CalcBlake2b256.costKind.chunkSize
+    val perChunkCost = CalcBlake2b256.costKind.perChunkCost
+    val baseCost = 300
+
+    // the heaviest part inside is k + 1 Blake2b256 invocations
+    val c = baseCost + (k + 1) * ((msg.length + nonce.length + h.length) / chunkSize + 1) * perChunkCost.value
+    JitCost(c)
+  }
+}
 
 
 

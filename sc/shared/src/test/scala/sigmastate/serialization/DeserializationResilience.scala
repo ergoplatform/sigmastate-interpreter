@@ -1,18 +1,18 @@
 package sigma.serialization
 
-import org.ergoplatform.ErgoBoxCandidate
+import org.ergoplatform.ErgoBox.R4
+import org.ergoplatform.{ErgoBoxCandidate, ErgoTreePredef}
 import org.scalacheck.Gen
 import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
 import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.serialization.{Reader, VLQByteBufferReader}
-import sigma.ast.{SBoolean, SInt, SizeOf}
+import sigma.ast.{SBoolean, SInt, SizeOf, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckPositionLimit
-import sigma.{Colls, Environment}
-import sigma.ast._
+import sigma.{Colls, Environment, VersionContext}
 import sigma.ast.syntax._
 import sigmastate._
 import sigma.Extensions.ArrayOps
@@ -25,6 +25,7 @@ import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoL
 import sigma.serialization.OpCodes._
 import sigmastate.utils.Helpers._
 
+import java.math.BigInteger
 import java.nio.ByteBuffer
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -426,4 +427,69 @@ class DeserializationResilience extends DeserializationResilienceTesting {
     // NOTE, even though performOneOperation fails, some AvlTree$ methods used in Interpreter
     // (remove_eval, update_eval, contains_eval) won't throw, while others will.
   }
+
+
+  property("impossible to use v6 types in box registers") {
+    val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+
+    val b = new ErgoBoxCandidate(1L, trueProp, 1,
+                  additionalRegisters = Map(R4 -> UnsignedBigIntConstant(new BigInteger("2"))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b2 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Constant[SOption[SInt.type]](Some(2), SOption(SInt))))
+    VersionContext.withVersions(3, 3) {
+      val bs2 = ErgoBoxCandidate.serializer.toBytes(b2)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs2)
+    }
+
+    val b3 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Tuple(UnsignedBigIntConstant(new BigInteger("1")), IntConstant(1))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b3)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b4 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> ConcreteCollection(Seq(UnsignedBigIntConstant(new BigInteger("1"))), SUnsignedBigInt)))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b4)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b5 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> Tuple(IntConstant(1), UnsignedBigIntConstant(new BigInteger("1")))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b5)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val reader = new SigmaByteReader(new VLQByteBufferReader(ByteBuffer.wrap(decodeBytes("5402030209050a050105").toArray)), new ConstantStore(), false)
+    val v = VersionContext.withVersions(3, 3) {ConstantSerializer(DeserializationSigmaBuilder).parse(reader).asInstanceOf[Constant[STuple]] }
+    val b6 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> v))
+    VersionContext.withVersions(3, 3) {
+      val bs6 = ErgoBoxCandidate.serializer.toBytes(b6)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs6)
+    }
+
+    val b7 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> ConcreteCollection(Seq(Tuple(IntConstant(1), UnsignedBigIntConstant(new BigInteger("1")))), STuple(SInt, SUnsignedBigInt))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b7)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+    val b8 = new ErgoBoxCandidate(1L, trueProp, 1,
+      additionalRegisters = Map(R4 -> ConcreteCollection(Seq(ConcreteCollection(Seq(UnsignedBigIntConstant(new BigInteger("1"))), SUnsignedBigInt)), (SCollection(SUnsignedBigInt)))))
+    VersionContext.withVersions(3, 3) {
+      val bs = ErgoBoxCandidate.serializer.toBytes(b8)
+      a[sigma.validation.ValidationException] should be thrownBy ErgoBoxCandidate.serializer.fromBytes(bs)
+    }
+
+  }
+
 }

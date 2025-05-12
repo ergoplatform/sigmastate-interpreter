@@ -105,6 +105,9 @@ class SigmaBinder(env: ScriptEnv, builder: SigmaBuilder,
     case a @ Apply(PKFunc.symNoType, args) =>
       Some(PKFunc.irInfo.irBuilder(PKFunc.sym, args).withPropagatedSrcCtx(a.sourceContext))
 
+    case a @ Apply(predefFuncRegistry.SerializeFunc.symNoType, args) =>
+      Some(predefFuncRegistry.SerializeFunc.irInfo.irBuilder(PKFunc.sym, args).withPropagatedSrcCtx(a.sourceContext))
+
     case sel @ Select(obj, "isEmpty", _) =>
       Some(mkLogicalNot(mkSelect(obj, "isDefined").asBoolValue).withPropagatedSrcCtx(sel.sourceContext))
 

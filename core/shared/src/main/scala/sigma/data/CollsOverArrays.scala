@@ -1,6 +1,8 @@
 package sigma.data
 
 import debox.{Buffer, cfor}
+import sigma.Evaluation.stypeToRType
+import sigma.data.CollOverArray.equalsPairCollWithCollOverArray
 import sigma.data.RType._
 import sigma.util.{CollectionUtil, MaxArrayLength, safeConcatArrays_v5}
 import sigma.{Coll, CollBuilder, PairColl, VersionContext, requireSameLength}
@@ -38,6 +40,10 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
   def slice(from: Int, until: Int): Coll[A] = builder.fromArray(toArray.slice(from, until))
 
   @inline def zip[@specialized B](ys: Coll[B]): PairColl[A, B] = builder.pairColl(this, ys)
+
+  @inline def startsWith(ys: Coll[A]): Boolean = toArray.startsWith(ys.toArray)
+
+  @inline def endsWith(ys: Coll[A]): Boolean = toArray.endsWith(ys.toArray)
 
   def append(other: Coll[A]): Coll[A] = {
     if (toArray.length <= 0) return other
@@ -135,14 +141,44 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
 
   override def equals(obj: scala.Any): Boolean = (this eq obj.asInstanceOf[AnyRef]) || (obj match {
     case obj: CollOverArray[_] if obj.tItem == this.tItem =>
-      java.util.Objects.deepEquals(obj.toArray, toArray)
+      java.util.Objects.deepEquals(obj.toArray, this.toArray)
+    case obj: PairColl[Any, Any] if obj.tItem == this.tItem =>
+      // in v6, we do compare PairColl with CollOverArray for tree version >= 3
+      // see https://github.com/ergoplatform/sigmastate-interpreter/issues/909
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+        equalsPairCollWithCollOverArray(obj, this.asInstanceOf[CollOverArray[Any]])
+      } else {
+        false
+      }
     case _ => false
   })
 
-  override def hashCode() = CollectionUtil.deepHashCode(toArray)
+  override def hashCode(): Int = CollectionUtil.deepHashCode(toArray)
 }
 
-private[sigma] class CollOverArrayBuilder extends CollBuilder { builder =>
+object CollOverArray {
+
+  // comparing PairColl and CollOverArray instances
+  private[data] def equalsPairCollWithCollOverArray(pc: PairColl[Any, Any], coa: CollOverArray[Any]): Boolean = {
+    val ls = pc.ls
+    val rs = pc.rs
+    val ts = coa.toArray
+    if (ts.length == ls.length && ts.isInstanceOf[Array[(Any, Any)]]) {
+      val ta = ts.asInstanceOf[Array[(Any, Any)]]
+      var eq = true
+      cfor(0)(_ < ta.length && eq, _ + 1) { i =>
+        eq = java.util.Objects.deepEquals(ta(i)._1, ls(i)) && java.util.Objects.deepEquals(ta(i)._2, rs(i))
+      }
+      eq
+    } else {
+      false
+    }
+  }
+  
+}
+
+private[sigma] class CollOverArrayBuilder extends CollBuilder {
+  builder =>
 
   @inline override def pairColl[@specialized A, @specialized B](as: Coll[A], bs: Coll[B]): PairColl[A, B] = {
     if (VersionContext.current.isJitActivated) {
@@ -237,8 +273,17 @@ private[sigma] class CollOverArrayBuilder extends CollBuilder { builder =>
 
 class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R]) extends PairColl[L,R] {
 
-  override def equals(that: scala.Any) = (this eq that.asInstanceOf[AnyRef]) || (that match {
-    case that: PairColl[_,_] if that.tItem == this.tItem => ls == that.ls && rs == that.rs
+  override def equals(that: scala.Any): Boolean = (this eq that.asInstanceOf[AnyRef]) || (that match {
+    case that: PairColl[_, _] if that.tItem == this.tItem =>
+      ls == that.ls && rs == that.rs
+    case that: CollOverArray[Any] if that.tItem == this.tItem =>
+      // in v6, we do compare PairColl with CollOverArray for tree version >= 3
+      // see https://github.com/ergoplatform/sigmastate-interpreter/issues/909
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+        equalsPairCollWithCollOverArray(this.asInstanceOf[PairColl[Any, Any]], that)
+      } else {
+        false
+      }
     case _ => false
   })
 
@@ -349,6 +394,16 @@ class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R
   }
 
   def zip[@specialized B](ys: Coll[B]): PairColl[(L,R), B] = builder.pairColl(this, ys)
+
+  def startsWith(ys: Coll[(L, R)]): Boolean = ys match {
+    case yp: PairOfCols[L, R] => ls.startsWith(yp.ls) && rs.startsWith(yp.rs)
+    case _ => toArray.startsWith(ys.toArray)
+  }
+
+  def endsWith(ys: Coll[(L, R)]): Boolean = ys match {
+    case yp: PairOfCols[L, R] => ls.endsWith(yp.ls) && rs.endsWith(yp.rs)
+    case _ => toArray.endsWith(ys.toArray)
+  }
 
   override def indices: Coll[Int] = if (ls.length <= rs.length) ls.indices else rs.indices
 

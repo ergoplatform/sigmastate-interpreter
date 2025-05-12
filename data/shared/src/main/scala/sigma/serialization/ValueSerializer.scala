@@ -90,7 +90,7 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     LogicalTransformerSerializer(AND, mkAND),
     LogicalTransformerSerializer(OR, mkOR),
     LogicalTransformerSerializer(XorOf, mkXorOf),
-    TaggedVariableSerializer(mkTaggedVariable), // TODO v6.0: remove this serializer https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584
+    TaggedVariableSerializer(mkTaggedVariable), // TODO v7.0: remove this serializer https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584
     GetVarSerializer(mkGetVar),
     MapCollectionSerializer(mkMapCollection),
     BooleanTransformerSerializer[SType](Exists, mkExists),

@@ -14,6 +14,7 @@ trait NumericOps extends Base { self: IRContext =>
     def unary_- : Ref[T] = NumericNegate(n)(x.elem).apply(x)
     def toInt: Ref[Int] = NumericToInt(n).apply(x)
     def toLong: Ref[Long] = NumericToLong(n).apply(x)
+    def toBigEndianBytes: Ref[Coll[Byte]] = NumericToBigEndianBytes(n).apply(x)
   }
 
   /** Extension methods over `Ref[T]` where T is instance of ExactIntegral type-class. */
@@ -46,6 +47,27 @@ trait NumericOps extends Base { self: IRContext =>
     override def applySeq(x: T, y: T): T = n.times(x, y)
   }
 
+  /** Descriptor of unary `ToBits` conversion operation. */
+  case class NumericBitwiseOr[T: Elem](n: ExactNumeric[T]) extends EndoBinOp[T]("|") {
+    override def applySeq(x: T, y: T): T = n.bitwiseOr(x, y)
+  }
+
+  case class NumericBitwiseAnd[T: Elem](n: ExactNumeric[T]) extends EndoBinOp[T]("&") {
+    override def applySeq(x: T, y: T): T = n.bitwiseAnd(x, y)
+  }
+
+  case class NumericBitwiseXor[T: Elem](n: ExactNumeric[T]) extends EndoBinOp[T]("^") {
+    override def applySeq(x: T, y: T): T = n.bitwiseXor(x, y)
+  }
+
+  case class NumericShiftLeft[T: Elem](n: ExactNumeric[T]) extends BinDiffArgsOp[T, Int]("<<") {
+    override def applySeq(x: T, y: Int): T = n.shiftLeft(x, y)
+  }
+
+  case class NumericShiftRight[T: Elem](n: ExactNumeric[T]) extends BinDiffArgsOp[T, Int](">>") {
+    override def applySeq(x: T, y: Int): T = n.shiftRight(x, y)
+  }
+
   /** Base class for descriptors of binary division operations. */
   abstract class DivOp[T: Elem](opName: String, n: ExactIntegral[T]) extends EndoBinOp[T](opName) {
     override def shouldPropagate(lhs: T, rhs: T) = rhs != n.zero
@@ -64,6 +86,28 @@ trait NumericOps extends Base { self: IRContext =>
   /** Descriptor of unary `ToLong` conversion operation. */
   case class NumericToLong[T](n: ExactNumeric[T]) extends UnOp[T,Long]("ToLong") {
     override def applySeq(x: T): Long = n.toLong(x)
+  }
+
+  import Coll._
+  /** Descriptor of unary `ToBigEndianBytes` conversion operation. */
+  case class NumericToBigEndianBytes[T](n: ExactNumeric[T])
+    extends UnOp[T, Coll[Byte]]("ToBigEndianBytes")(element[Coll[Byte]]) {
+    override def applySeq(x: T): Coll[Byte] = {
+      liftableColl(Liftables.ByteIsLiftable).lift(n.toBigEndianBytes(x))
+    }
+  }
+
+  /** Descriptor of unary `ToBits` conversion operation. */
+  case class NumericToBits[T](n: ExactNumeric[T])
+    extends UnOp[T, Coll[Boolean]]("ToBits")(element[Coll[Boolean]]) {
+    override def applySeq(x: T): Coll[Boolean] = {
+      liftableColl(Liftables.BooleanIsLiftable).lift(n.toBits(x))
+    }
+  }
+
+  /** Descriptor of unary `BitwiseInverse` conversion operation. */
+  case class NumericBitwiseInverse[T: Elem](n: ExactNumeric[T]) extends UnOp[T, T]("~") {
+    override def applySeq(x: T): T = n.bitwiseInverse(x)
   }
 
   /** Descriptor of binary `/` operation (integral division). */

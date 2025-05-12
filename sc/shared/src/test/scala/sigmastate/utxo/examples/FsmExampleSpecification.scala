@@ -158,7 +158,7 @@ class FsmExampleSpecification extends CompilerTestingCommons
     val spendingProof = prover
       .withContextExtender(scriptVarId, ByteArrayConstant(ValueSerializer.serialize(script1)))
       .withContextExtender(transitionProofId, ByteArrayConstant(transition12Proof))
-      .prove(emptyEnv + (ScriptNameProp -> "prove"), fsmScript, ctx, fakeMessage).get
+      .prove(emptyEnv, fsmScript, ctx, fakeMessage).get
 
     (new ErgoLikeTestInterpreter).verify(fsmScript, ctx, spendingProof, fakeMessage).get._1 shouldBe true
 
@@ -360,7 +360,7 @@ class FsmExampleSpecification extends CompilerTestingCommons
     val esProp = (env: Map[String, _])
       => mkTestErgoTree(compile(env, es)(IR).asBoolValue.toSigmaProp)
 
-    val testBoxEnv = emptyEnv + (ScriptNameProp -> "test")
+    val testBoxEnv = emptyEnv
     //creating a box in an initial state
 
     val fsmBox1 = testBox(100, esProp(testBoxEnv), 0, Seq(), Map(fsmDescRegister -> AvlTreeConstant(treeData),
@@ -381,13 +381,13 @@ class FsmExampleSpecification extends CompilerTestingCommons
       createTransaction(fsmBox2),
       self = fsmBox1, activatedVersionInTests)
 
-    val proofEnv = emptyEnv + (ScriptNameProp -> "prove")
+    val proofEnv = emptyEnv
     val spendingProof = prover
       .withContextExtender(scriptVarId, ByteArrayConstant(ValueSerializer.serialize(script1)))
       .withContextExtender(transitionProofId, ByteArrayConstant(transition12Proof))
       .prove(proofEnv, esProp(proofEnv), ctx, fakeMessage).get
 
-    val verifyEnv = emptyEnv + (ScriptNameProp -> "verify")
+    val verifyEnv = emptyEnv
     (new ErgoLikeTestInterpreter)
       .verify(verifyEnv, esProp(verifyEnv), ctx, spendingProof, fakeMessage).get._1 shouldBe true
 

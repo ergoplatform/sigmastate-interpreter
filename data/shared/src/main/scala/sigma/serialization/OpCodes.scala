@@ -153,6 +153,7 @@ object OpCodes {
   val OptionIsDefinedCode: OpCode = newOpCode(118)
 
   // Modular arithmetic operations codes
+  // todo: remove?
   val ModQCode     : OpCode = newOpCode(119)
   val PlusModQCode : OpCode = newOpCode(120)
   val MinusModQCode: OpCode = newOpCode(121)

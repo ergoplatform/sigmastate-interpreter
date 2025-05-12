@@ -106,7 +106,7 @@ class MASTExampleSpecification extends CompilerTestingCommons
     val esProp = (env: Map[String, _])
       => mkTestErgoTree(compile(env, es)(IR).asBoolValue.toSigmaProp)
 
-    val proveEnv = emptyEnv + (ScriptNameProp -> "simple_branching_prove")
+    val proveEnv = emptyEnv
     val input1 = testBox(20, esProp(proveEnv), 0)
     val tx = UnsignedErgoLikeTransaction(IndexedSeq(input1).map(i => new UnsignedInput(i.id)),
       IndexedSeq(testBox(1, TrueTree, 0)))
@@ -124,7 +124,7 @@ class MASTExampleSpecification extends CompilerTestingCommons
 
     val proof = prover.prove(proveEnv, esProp(proveEnv), ctx, fakeMessage).get
 
-    val verifyEnv = emptyEnv + (ScriptNameProp -> "simple_branching_verify")
+    val verifyEnv = emptyEnv
     (new ErgoLikeTestInterpreter).verify(verifyEnv, esProp(proveEnv), ctx, proof, fakeMessage).get._1 shouldBe true
   }
 
@@ -179,10 +179,10 @@ class MASTExampleSpecification extends CompilerTestingCommons
       .withContextExtender(scriptId, ByteArrayConstant(usedBranch))
       .withContextExtender(proofId, ByteArrayConstant(knownSecretPathProof))
 
-    val proveEnv = emptyEnv + (ScriptNameProp -> "MAST_prove")
+    val proveEnv = emptyEnv
     val proof = prover.prove(proveEnv, prop, ctx, fakeMessage).get
 
-    val verifyEnv = emptyEnv + (ScriptNameProp -> "MAST_verify")
+    val verifyEnv = emptyEnv
     (new ErgoLikeTestInterpreter).verify(verifyEnv, prop, ctx, proof, fakeMessage).get._1 shouldBe true
   }
 
@@ -245,10 +245,10 @@ class MASTExampleSpecification extends CompilerTestingCommons
       .withContextExtender(scriptId.toByte, ByteArrayConstant(usedBranch))
       .withContextExtender(proofId.toByte, ByteArrayConstant(knownSecretPathProof))
 
-    val proveEnv = emptyEnv + (ScriptNameProp -> "MAST_prove")
+    val proveEnv = emptyEnv
     val proof = prover.prove(proveEnv, esProp(proveEnv), ctx, fakeMessage).get
 
-    val verifyEnv = emptyEnv + (ScriptNameProp -> "MAST_verify")
+    val verifyEnv = emptyEnv
     (new ErgoLikeTestInterpreter).verify(verifyEnv, esProp(verifyEnv), ctx, proof, fakeMessage).get._1 shouldBe true
   }
 }

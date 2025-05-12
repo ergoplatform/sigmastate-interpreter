@@ -1,6 +1,7 @@
 package sigma.compiler.ir
 
 import debox.{cfor, Buffer => DBuffer}
+import sigma.ast.{SType, STypeVar}
 import sigma.compiler.DelayInvokeException
 import sigma.reflection.RMethod
 import sigma.util.CollectionUtil.TraversableOps
@@ -26,7 +27,9 @@ trait MethodCalls extends Base { self: IRContext =>
     *                      given `method`.
     */
   case class MethodCall private[MethodCalls](receiver: Sym, method: RMethod, args: Seq[AnyRef], neverInvoke: Boolean)
-                                            (val resultType: Elem[Any], val isAdapterCall: Boolean = false) extends Def[Any] {
+                                            (val resultType: Elem[Any],
+                                             val isAdapterCall: Boolean = false,
+                                             val typeSubst: Map[STypeVar, SType]) extends Def[Any] {
 
     override def mirror(t: Transformer): Ref[Any] = {
       val len = args.length
@@ -99,9 +102,14 @@ trait MethodCalls extends Base { self: IRContext =>
   }
 
   /** Creates new MethodCall node and returns its node ref. */
-  def mkMethodCall(receiver: Sym, method: RMethod, args: Seq[AnyRef],
-                   neverInvoke: Boolean, isAdapterCall: Boolean, resultElem: Elem[_]): Sym = {
-    reifyObject(MethodCall(receiver, method, args, neverInvoke)(asElem[Any](resultElem), isAdapterCall))
+  def mkMethodCall(receiver: Sym,
+                   method: RMethod,
+                   args: Seq[AnyRef],
+                   neverInvoke: Boolean,
+                   isAdapterCall: Boolean,
+                   resultElem: Elem[_],
+                   typeSubst: Map[STypeVar, SType] = Map.empty): Sym = {
+    reifyObject(MethodCall(receiver, method, args, neverInvoke)(asElem[Any](resultElem), isAdapterCall, typeSubst))
   }
 
   @tailrec
