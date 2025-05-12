@@ -2980,7 +2980,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
       holTest()
     } else {
-      an[Exception] shouldBe thrownBy(holTest())
+      an[scala.MatchError] shouldBe thrownBy(holTest())
     }
   }
 
