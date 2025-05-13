@@ -542,7 +542,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
   property("unsigned bigint - arith") {
     def miTest() = {
-      test("modInverse", env, ext,
+      test("arith", env, ext,
         s"""{
            |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
            |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
@@ -585,9 +585,9 @@ class BasicOpsSpecification extends CompilerTestingCommons
     def miTest() = {
       test("modInverse", env, ext,
         s"""{
-           |   val bi = unsignedBigInt("248486720836984554860790790898080606")
-           |   val m = unsignedBigInt("575879797")
-           |   bi.modInverse(m) > 0
+           |   val bi = unsignedBigInt("3")
+           |   val m = unsignedBigInt("7")
+           |   bi.modInverse(m) == unsignedBigInt("5")
            |}""".stripMargin,
         null,
         true
@@ -598,6 +598,26 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an[sigma.validation.ValidationException] should be thrownBy miTest()
     } else {
       miTest()
+    }
+  }
+
+  property("modInverse - zero") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("248486720836984554860790790898080606")
+           |   val m = unsignedBigInt("0")
+           |   bi.modInverse(m) > 0
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      an[Exception] should be thrownBy miTest()
     }
   }
 
