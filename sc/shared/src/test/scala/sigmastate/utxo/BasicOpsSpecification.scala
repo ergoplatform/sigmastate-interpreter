@@ -371,6 +371,42 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("unsigned bigint - subtract") {
+    def conversionTest() = {test("subtract", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("10")
+         |  val b = unsignedBigInt("5")
+         |  a - b == b
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned bigint - multiply") {
+    def conversionTest() = {test("multiply", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("10")
+         |  val b = unsignedBigInt("50")
+         |  a * b == unsignedBigInt("500")
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
   property("unsigned bigint - subtract with neg result") {
     def conversionTest() = {test("subtract", env, ext,
       s"""{
@@ -1129,7 +1165,28 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  property("UnsignedBigInt.bitwiseXor") {
+  property("BigInt.bitwiseXor") {
+    def bitwiseXorTest(): Assertion = test("BigInt.bitwiseXor", env, ext,
+      s"""{
+         | val x = bigInt("-768674748430101084849204595060664949857579483737383833332727484848588886")
+         | val y = bigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = bigInt("-1157640033036725491711737956849584949341472215181452524373827965546397848917")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseXor(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseXorTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseXorTest())
+    }
+  }
+
+
+    property("UnsignedBigInt.bitwiseXor") {
     def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseXor", env, ext,
       s"""{
          | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
