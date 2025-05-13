@@ -623,12 +623,12 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
   property("mod ops - plus") {
     def miTest() = {
-      test("modInverse", env, ext,
+      test("mod plus", env, ext,
         s"""{
            |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
            |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
            |   val m = unsignedBigInt("575879797")
-           |   bi1.plusMod(bi2, m) > 0
+           |   bi1.plusMod(bi2, m) == unsignedBigInt("88450889")
            |}""".stripMargin,
         null,
         true
@@ -649,7 +649,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
            |   val bi1 = unsignedBigInt("2")
            |   val bi2 = unsignedBigInt("4")
            |   val m = unsignedBigInt("575879797")
-           |   bi1.subtractMod(bi2, m) > 0
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("575879795")
            |}""".stripMargin,
         null,
         true
@@ -670,7 +670,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
            |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
            |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
            |   val m = unsignedBigInt("575879797")
-           |   bi1.multiplyMod(bi2, m) > 0
+           |   bi1.multiplyMod(bi2, m) == unsignedBigInt("532796569")
            |}""".stripMargin,
         null,
         true
