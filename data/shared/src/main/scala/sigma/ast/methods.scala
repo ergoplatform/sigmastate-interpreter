@@ -62,18 +62,54 @@ sealed trait MethodsContainer {
     */
   protected def getMethods(): Seq[SMethod] = Nil
 
+  private var _v5Methods: Seq[SMethod] = null
+  private var _v6Methods: Seq[SMethod] = null
+
   /** Returns all the methods of this type. */
-  def methods: Seq[SMethod] = {                        //todo: consider versioned caching
-    val ms = getMethods().toArray
-    assert(ms.map(_.name).distinct.length == ms.length, s"Duplicate method names in $this")
-    ms.groupBy(_.objType).foreach { case (comp, ms) =>
-      assert(ms.map(_.methodId).distinct.length == ms.length, s"Duplicate method ids in $comp: $ms")
+  def methods: Seq[SMethod] = {
+    def calc() = {
+      val ms = getMethods().toArray
+      assert(ms.map(_.name).distinct.length == ms.length, s"Duplicate method names in $this")
+      ms.groupBy(_.objType).foreach { case (comp, ms) =>
+        assert(ms.map(_.methodId).distinct.length == ms.length, s"Duplicate method ids in $comp: $ms")
+      }
+      ms
     }
-    ms
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      if (_v6Methods == null) {
+        _v6Methods = calc()
+      }
+      _v6Methods
+    } else {
+      if (_v5Methods == null) {
+        _v5Methods = calc()
+      }
+      _v5Methods
+    }
   }
-  private def _methodsMap: Map[Byte, Map[Byte, SMethod]] = methods //todo: consider versioned caching
-      .groupBy(_.objType.typeId)
-      .map { case (typeId, ms) => (typeId -> ms.map(m => m.methodId -> m).toMap) }
+
+  private var _v5MethodsMap: Map[Byte, Map[Byte, SMethod]] = null
+  private var _v6MethodsMap: Map[Byte, Map[Byte, SMethod]] = null
+
+  private def _methodsMap: Map[Byte, Map[Byte, SMethod]] = {
+    def calc() = {
+      methods
+        .groupBy(_.objType.typeId)
+        .map { case (typeId, ms) => (typeId -> ms.map(m => m.methodId -> m).toMap) }
+    }
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      if (_v6MethodsMap == null) {
+        _v6MethodsMap = calc()
+      }
+      _v6MethodsMap
+    } else {
+      if (_v5MethodsMap == null) {
+        _v5MethodsMap = calc()
+      }
+      _v5MethodsMap
+    }
+  }
 
   /** Lookup method by its id in this type. */
   @inline def getMethodById(methodId: Byte): Option[SMethod] =

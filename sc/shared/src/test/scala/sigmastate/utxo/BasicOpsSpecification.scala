@@ -567,7 +567,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
         s"""{
            |   val bi = unsignedBigInt("248486720836984554860790790898080606")
            |   val m = unsignedBigInt("575879797")
-           |   bi.mod(m) < bi
+           |   bi.mod(m) == unsignedBigInt("554794378")
            |}""".stripMargin,
         null,
         true
