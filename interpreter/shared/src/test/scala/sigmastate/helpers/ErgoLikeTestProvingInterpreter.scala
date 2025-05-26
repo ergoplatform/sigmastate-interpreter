@@ -1,14 +1,14 @@
 package sigmastate.helpers
 
 import sigmastate.UnprovenConjecture
-import sigmastate.basics.DLogProtocol.DLogProverInput
-import sigmastate.basics.{DiffieHellmanTupleProverInput, SigmaProtocolPrivateInput}
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigmastate.crypto.{DiffieHellmanTupleProverInput, SigmaProtocolPrivateInput}
 import sigmastate.interpreter.ProverInterpreter
 
 class ErgoLikeTestProvingInterpreter
   extends ErgoLikeTestInterpreter with ProverInterpreter {
 
-  override lazy val secrets: Seq[SigmaProtocolPrivateInput[_, _]] = {
+  override lazy val secrets: Seq[SigmaProtocolPrivateInput[_]] = {
     (1 to 4).map(_ => DLogProverInput.random()) ++
       (1 to 4).map(_ => DiffieHellmanTupleProverInput.random())
   }

@@ -1,29 +1,33 @@
 package sigmastate.interpreter
 
-import java.util
-import sigmastate.kiama.rewriting.Rewriter.{everywherebu, rule, strategy}
-import sigmastate.kiama.rewriting.Strategy
-import org.ergoplatform.ErgoLikeContext
-import org.ergoplatform.validation.SigmaValidationSettings
-import org.ergoplatform.validation.ValidationRules._
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.SCollection.SByteArray
-import sigmastate.Values._
-import sigmastate.basics.DLogProtocol.{ProveDlog, DLogInteractiveProver, FirstDLogProverMessage}
-import sigmastate.basics._
-import sigmastate.interpreter.Interpreter._
-import sigmastate.serialization.{SigmaSerializer, ValueSerializer}
-import sigmastate.utxo.DeserializeContext
-import sigmastate.{SType, _}
-import sigmastate.eval.{Evaluation, Profiler, SigmaDsl}
-import sigmastate.FiatShamirTree._
-import sigmastate.SigSerializer._
-import sigmastate.eval.Evaluation.addCostChecked
-import sigmastate.interpreter.ErgoTreeEvaluator.fixedCostOp
-import sigmastate.utils.Helpers._
-import sigmastate.lang.Terms.ValueOps
 import debox.cfor
-import sigmastate.exceptions.{CostLimitException, InterpreterException}
+import org.ergoplatform.ErgoLikeContext
+import org.ergoplatform.validation.ValidationRules._
+import sigma.VersionContext
+import sigma.ast.SCollection.SByteArray
+import sigma.ast.syntax._
+import sigma.ast._
+import sigma.data.{CAND, COR, CTHRESHOLD, ProveDHTuple, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.kiama.rewriting.Rewriter.{everywherebu, rule, strategy}
+import sigma.kiama.rewriting.Strategy
+import sigma.serialization.SigSerializer._
+import sigma.serialization.{SigSerializer, SigmaSerializer, ValueSerializer}
+import sigma.validation.SigmaValidationSettings
+import sigma.validation.ValidationRules.trySoftForkable
+import sigmastate.FiatShamirTree._
+import sigmastate._
+import sigmastate.crypto.DLogProtocol.{DLogProver, FirstDLogProverMessage}
+import sigmastate.crypto._
+import sigmastate.eval.{CProfiler, addCostChecked}
+import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
+import sigmastate.interpreter.Interpreter._
+import sigma.ast.syntax.ValueOps
+import sigma.eval.{EvalSettings, SigmaDsl}
+import sigma.exceptions.InterpreterException
+import sigma.interpreter.ProverResult
+import sigma.util.CollectionUtil
+import sigmastate.utils.Helpers._
+
 import scala.util.{Success, Try}
 
 /** Base (verifying) interpreter of ErgoTrees.
@@ -50,10 +54,13 @@ trait Interpreter {
 
   type ProofT = UncheckedTree
 
-  /** Evaluation settings used by [[ErgoTreeEvaluator]] which is used by this
+  /** Force initialization of reflection. */
+  private val _ = InterpreterReflection
+
+  /** Evaluation settings used by [[CErgoTreeEvaluator]] which is used by this
     * interpreter to perform fullReduction.
     */
-  protected def evalSettings: EvalSettings = ErgoTreeEvaluator.DefaultEvalSettings
+  protected def evalSettings: EvalSettings = CErgoTreeEvaluator.DefaultEvalSettings
 
   /** Logs the given message string. Can be overridden in the derived interpreter classes
     * to redefine the default behavior. */
@@ -68,13 +75,13 @@ trait Interpreter {
 
   /** The cost of Value[T] deserialization is O(n), where n is the length of its bytes
     * array. To evaluate [[DeserializeContext]] and
-    * [[sigmastate.utxo.DeserializeRegister]] we add the following cost of deserialization
+    * [[DeserializeRegister]] we add the following cost of deserialization
     * for each byte.
     */
   val CostPerByteDeserialized = 2
 
   /** The cost of substituting [[DeserializeContext]] and
-    * [[sigmastate.utxo.DeserializeRegister]] nodes with the deserialized expression is
+    * [[DeserializeRegister]] nodes with the deserialized expression is
     * O(n), where n is the number of bytes in ErgoTree.
     * The following is the cost added for each ErgoTree.bytes.
     */
@@ -94,7 +101,7 @@ trait Interpreter {
     val script = ValueSerializer.deserialize(r)  // Why ValueSerializer? read NOTE above
     val scriptComplexity = java7.compat.Math.multiplyExact(scriptBytes.length, CostPerByteDeserialized)
 
-    val currCost = Evaluation.addCostChecked(context.initCost, scriptComplexity, context.costLimit)
+    val currCost = addCostChecked(context.initCost, scriptComplexity, context.costLimit)
     val ctx1 = context.withInitCost(currCost).asInstanceOf[CTX]
     (ctx1, script)
   }
@@ -119,7 +126,7 @@ trait Interpreter {
     case _ => None
   }
 
-  /** Extracts proposition for ErgoTree handing soft-fork condition.
+  /** Extracts proposition for ErgoTree handling soft-fork condition.
     * @note soft-fork handler */
   protected def propositionFromErgoTree(ergoTree: ErgoTree, context: CTX): SigmaPropValue = {
     val validationSettings = context.validationSettings
@@ -157,19 +164,18 @@ trait Interpreter {
     * else `exp` is computed in the given context and the resulting SigmaBoolean returned.
     *
     * @param context        the context in which `exp` should be executed
-    * @param env            environment of system variables used by the interpreter internally
     * @param exp            expression to be executed in the given `context`
     * @return result of script reduction
     * @see `ReductionResult`
     */
-  protected def reduceToCryptoJITC(context: CTX, env: ScriptEnv, exp: SigmaPropValue): Try[ReductionResult] = Try {
+  protected def reduceToCryptoJITC(context: CTX, exp: SigmaPropValue): Try[ReductionResult] = Try {
     implicit val vs = context.validationSettings
     trySoftForkable[ReductionResult](whenSoftFork = WhenSoftForkReductionResult(context.initCost)) {
 
       val (resProp, cost) = {
         val ctx = context.asInstanceOf[ErgoLikeContext]
-        ErgoTreeEvaluator.eval(ctx, ErgoTree.EmptyConstants, exp, evalSettings) match {
-          case (p: special.sigma.SigmaProp, c) => (p, c)
+        CErgoTreeEvaluator.eval(ctx, ErgoTree.EmptyConstants, exp, evalSettings) match {
+          case (p: sigma.SigmaProp, c) => (p, c)
           case (res, _) =>
             sys.error(s"Invalid result type of $res: expected SigmaProp when evaluating $exp")
         }
@@ -197,7 +203,6 @@ trait Interpreter {
   def fullReduction(ergoTree: ErgoTree,
                     ctx: CTX,
                     env: ScriptEnv): ReductionResult = {
-    implicit val vs: SigmaValidationSettings = ctx.validationSettings
     val context = ctx.withErgoTreeVersion(ergoTree.version).asInstanceOf[CTX]
     VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
       val prop = propositionFromErgoTree(ergoTree, context)
@@ -208,12 +213,12 @@ trait Interpreter {
 
           // NOTE, evaluator cost unit needs to be scaled to the cost unit of context
           val evalCost = Eval_SigmaPropConstant.costKind.cost.toBlockCost
-          val resCost = Evaluation.addCostChecked(context.initCost, evalCost, context.costLimit)
+          val resCost = addCostChecked(context.initCost, evalCost, context.costLimit)
           ReductionResult(sb, resCost)
         case _ if !ergoTree.hasDeserialize =>
           val ctx = context.asInstanceOf[ErgoLikeContext]
           val res = VersionContext.withVersions(ctx.activatedScriptVersion, ergoTree.version) {
-            ErgoTreeEvaluator.evalToCrypto(ctx, ergoTree, evalSettings)
+            CErgoTreeEvaluator.evalToCrypto(ctx, ergoTree, evalSettings)
           }
           res
         case _ =>
@@ -239,7 +244,7 @@ trait Interpreter {
     implicit val vs: SigmaValidationSettings = context.validationSettings
     val res = VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
       val deserializeSubstitutionCost = java7.compat.Math.multiplyExact(ergoTree.bytes.length, CostPerTreeByte)
-      val currCost = Evaluation.addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
+      val currCost = addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
       val (propTree, context2) = trySoftForkable[(SigmaPropValue, CTX)](whenSoftFork = (TrueSigmaProp, context1)) {
         applyDeserializeContextJITC(context, prop)
@@ -247,7 +252,7 @@ trait Interpreter {
 
       // here we assume that when `propTree` is TrueProp then `reduceToCrypto` always succeeds
       // and the rest of the verification is also trivial
-      reduceToCryptoJITC(context2, env, propTree).getOrThrow
+      reduceToCryptoJITC(context2, propTree).getOrThrow
     }
 
     res
@@ -282,7 +287,7 @@ trait Interpreter {
     * @throws InterpreterException when cannot proceed and no activation yet.
     */
   protected def checkSoftForkCondition(ergoTree: ErgoTree, context: CTX): Option[VerificationResult] = {
-    // TODO v6.0: the condition below should be revised if necessary
+    // TODO v6.0: the condition below should be revised if necessary (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/904)
     // The following conditions define behavior which depend on the version of ergoTree
     // This works in addition to more fine-grained soft-forkability mechanism implemented
     // using ValidationRules (see trySoftForkable method call here and in reduceToCrypto).
@@ -359,7 +364,7 @@ trait Interpreter {
             val fullCost = addCryptoCost(reduced.value, reduced.cost, context.costLimit)
 
             val ok = if (evalSettings.isMeasureOperationTime) {
-              val E = ErgoTreeEvaluator.forProfiling(verifySignatureProfiler, evalSettings)
+              val E = CErgoTreeEvaluator.forProfiling(verifySignatureProfiler, evalSettings)
               verifySignature(reduced.value, message, proof)(E)
             } else {
               verifySignature(reduced.value, message, proof)(null)
@@ -372,10 +377,10 @@ trait Interpreter {
   }
 
   // Perform Verifier Steps 4-6
-  private def checkCommitments(sp: UncheckedSigmaTree, message: Array[Byte])(implicit E: ErgoTreeEvaluator): Boolean = {
+  private def checkCommitments(sp: UncheckedSigmaTree, message: Array[Byte])(implicit E: CErgoTreeEvaluator): Boolean = {
     // Perform Verifier Step 4
     val newRoot = computeCommitments(sp).get.asInstanceOf[UncheckedSigmaTree]
-    val bytes = concatArrays(FiatShamirTree.toBytes(newRoot), message)
+    val bytes = CollectionUtil.concatArrays(FiatShamirTree.toBytes(newRoot), message)
     /**
       * Verifier Steps 5-6: Convert the tree to a string `s` for input to the Fiat-Shamir hash function,
       * using the same conversion as the prover in 7
@@ -383,7 +388,7 @@ trait Interpreter {
       * (and, if applicable,  the associated data). Reject otherwise.
       */
     val expectedChallenge = CryptoFunctions.hashFn(bytes)
-    util.Arrays.equals(newRoot.challenge, expectedChallenge)
+    java.util.Arrays.equals(newRoot.challenge.toArray, expectedChallenge)
   }
 
   /**
@@ -391,21 +396,21 @@ trait Interpreter {
     * per the verifier algorithm of the leaf's Sigma-protocol.
     * If the verifier algorithm of the Sigma-protocol for any of the leaves rejects, then reject the entire proof.
     */
-  private[sigmastate] val computeCommitments: Strategy = everywherebu(rule[Any] {
+  val computeCommitments: Strategy = everywherebu(rule[Any] {
     case c: UncheckedConjecture => c // Do nothing for internal nodes
 
     case sn: UncheckedSchnorr =>
-      implicit val E = ErgoTreeEvaluator.getCurrentEvaluator
+      implicit val E = CErgoTreeEvaluator.getCurrentEvaluator
       fixedCostOp(ComputeCommitments_Schnorr) {
-        val a = DLogInteractiveProver.computeCommitment(sn.proposition, sn.challenge, sn.secondMessage)
+        val a = DLogProver.computeCommitment(sn.proposition, sn.challenge, sn.secondMessage)
         sn.copy(commitmentOpt = Some(FirstDLogProverMessage(a)))
       }
 
     case dh: UncheckedDiffieHellmanTuple =>
-      implicit val E = ErgoTreeEvaluator.getCurrentEvaluator
+      implicit val E = CErgoTreeEvaluator.getCurrentEvaluator
       fixedCostOp(ComputeCommitments_DHT) {
-        val (a, b) = DiffieHellmanTupleInteractiveProver.computeCommitment(dh.proposition, dh.challenge, dh.secondMessage)
-        dh.copy(commitmentOpt = Some(FirstDiffieHellmanTupleProverMessage(a, b)))
+        val (a, b) = DiffieHellmanTupleProver.computeCommitment(dh.proposition, dh.challenge, dh.secondMessage)
+        dh.copy(commitmentOpt = Some(FirstDHTupleProverMessage(a, b)))
       }
 
     case _: UncheckedSigmaTree => ???
@@ -448,7 +453,7 @@ trait Interpreter {
     */
   def verifySignature(sigmaTree: SigmaBoolean,
                       message: Array[Byte],
-                      signature: Array[Byte])(implicit E: ErgoTreeEvaluator): Boolean = {
+                      signature: Array[Byte])(implicit E: CErgoTreeEvaluator): Boolean = {
     // Perform Verifier Steps 1-3
     try {
       SigSerializer.parseAndComputeChallenges(sigmaTree, signature) match {
@@ -580,15 +585,12 @@ object Interpreter {
   /** An instance of profiler used to measure cost parameters of verifySignature
     * operations.
     */
-  val verifySignatureProfiler = new Profiler
+  val verifySignatureProfiler = new CProfiler
 
   private def toValidScriptTypeJITC(exp: SValue): SigmaPropValue = exp match {
     case v: Value[SBoolean.type]@unchecked if v.tpe == SBoolean => v.toSigmaProp
     case p: SValue if p.tpe == SSigmaProp => p.asSigmaProp
     case x => throw new Error(s"Context-dependent pre-processing should produce tree of type Boolean or SigmaProp but was $x")
   }
-
-  /** Helper method to throw errors from Interpreter. */
-  def error(msg: String) = throw new InterpreterException(msg)
 
 }

@@ -1,15 +1,15 @@
 package sigmastate.helpers
 
-import sigmastate.Values.GroupElementConstant
 import org.scalatest.propspec.AnyPropSpec
 import sigmastate.TestsBase
 import sigmastate.helpers.TestingHelpers.createBox
-import org.scalatestplus.scalacheck.{ScalaCheckPropertyChecks, ScalaCheckDrivenPropertyChecks}
-import sigmastate.eval.SigmaDsl
+import org.scalatestplus.scalacheck.{ScalaCheckDrivenPropertyChecks, ScalaCheckPropertyChecks}
+import sigma.eval.SigmaDsl
 import scorex.crypto.hash.Blake2b256
 import org.ergoplatform.{ErgoBox, ErgoLikeContext}
 import org.scalatest.matchers.should.Matchers
-import sigmastate.basics.CryptoConstants.EcPointType
+import sigma.ast.syntax.GroupElementConstant
+import sigma.crypto.EcPointType
 
 trait TestingCommons extends AnyPropSpec
     with ScalaCheckPropertyChecks

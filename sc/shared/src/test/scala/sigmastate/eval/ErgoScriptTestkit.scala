@@ -2,21 +2,28 @@ package sigmastate.eval
 
 import org.ergoplatform.ErgoAddressEncoder.TestnetNetworkPrefix
 import org.ergoplatform.validation.ValidationSpecification
-import org.ergoplatform.{Context => _, _}
+import org.ergoplatform._
 import scalan.BaseCtxTests
-import sigmastate.Values.{BigIntArrayConstant, EvaluatedValue, SValue, SigmaPropConstant, Value}
+import sigma.VersionContext
+import sigma.ast.{BigIntArrayConstant, ErgoTree, EvaluatedValue, SigmaPropConstant, Value}
+import sigma.ast.SType
+import sigma.ast.syntax.SValue
+import sigma.data.AvlTreeData
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting}
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigmastate.interpreter.{ContextExtension, ErgoTreeEvaluator}
-import sigmastate.lang.Terms.ValueOps
-import sigmastate.lang.{CompilerResult, CompilerSettings, LangTests, SigmaCompiler}
-import sigmastate.serialization.ErgoTreeSerializer.DefaultSerializer
-import sigmastate.{AvlTreeData, CompilerTestsBase, SType, VersionContext}
-import special.sigma.{ContractsTestkit, Context => DContext}
+import sigmastate.interpreter.CErgoTreeEvaluator
+import sigma.ast.syntax.ValueOps
+import sigma.compiler.{CompilerResult, CompilerSettings, SigmaCompiler}
+import sigma.compiler.ir.IRContext
+import sigma.interpreter.ContextExtension
+import sigmastate.lang.LangTests
+import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
+import sigmastate.CompilerTestsBase
+import sigma.{ContractsTestkit, Context => DContext}
 
 import scala.annotation.unused
-import scala.util.Success
+import scala.util.{Success, Try}
 
 trait ErgoScriptTestkit extends ContractsTestkit with LangTests
     with ValidationSpecification with CompilerTestsBase { self: BaseCtxTests =>
@@ -29,7 +36,7 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
   import Context._
   import Liftables._
 
-  override lazy val compiler = new SigmaCompiler(CompilerSettings(
+  override lazy val compiler = SigmaCompiler(CompilerSettings(
     TestnetNetworkPrefix,
     IR.builder,
     lowerMethodCalls = true
@@ -49,9 +56,8 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
     ergoCtx
   }
 
-
-  lazy val boxA1 = newAliceBox(1, 100)
-  lazy val boxA2 = newAliceBox(2, 200)
+  lazy val boxA1 = newAliceBox(100)
+  lazy val boxA2 = newAliceBox(200)
 
   lazy val n1Sym = liftConst(n1)
 
@@ -66,8 +72,8 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
 
   lazy val boxToSpend = testBox(10, TrueTree, 0,
     additionalRegisters = Map(ErgoBox.R4 -> BigIntArrayConstant(bigIntegerArr1)))
-  lazy val tx1Output1 = testBox(minToRaise, projectPubKey, 0)
-  lazy val tx1Output2 = testBox(1, projectPubKey, 0)
+  lazy val tx1Output1 = testBox(minToRaise, ErgoTree.fromProposition(projectPubKey), 0)
+  lazy val tx1Output2 = testBox(1, ErgoTree.fromProposition(projectPubKey), 0)
   lazy val tx1 = new ErgoLikeTransaction(IndexedSeq(), IndexedSeq(), IndexedSeq(tx1Output1, tx1Output2))
   lazy val ergoCtx = ErgoLikeContextTesting(
     currentHeight = timeout - 1,
@@ -142,6 +148,31 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       res
     }
 
+    private val SigmaM = SigmaProp.SigmaPropMethods
+
+    /** Finds SigmaProp.isProven method calls in the given Lambda `f` */
+    private def findIsProven[T](f: Ref[Context => T]): Option[Sym] = {
+      val Def(Lambda(lam,_,_,_)) = f
+      val s = lam.flatSchedule.find(sym => sym.node match {
+        case SigmaM.isValid(_) => true
+        case _ => false
+      })
+      s
+    }
+
+    /** Checks that if SigmaProp.isProven method calls exists in the given Lambda's schedule,
+      * then it is the last operation. */
+    private def verifyIsProven[T](f: Ref[Context => T]): Try[Unit] = {
+      val isProvenOpt = findIsProven(f)
+      Try {
+        isProvenOpt match {
+          case Some(s) =>
+            if (f.getLambda.y != s) !!!(s"Sigma.isProven found in none-root position", s)
+          case None =>
+        }
+      }
+    }
+
     def doReduce(): Unit = {
       val res = doCosting
       verifyIsProven(res.compiledGraph) shouldBe Success(())
@@ -165,11 +196,11 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
           }
 
           // check calc
-          val (res, _) = ErgoTreeEvaluator.eval(
+          val (res, _) = CErgoTreeEvaluator.eval(
             context = ectx,
             constants = ergoTree.constants,
             exp = ergoTree.toProposition(replaceConstants = false),
-            evalSettings = ErgoTreeEvaluator.DefaultEvalSettings
+            evalSettings = CErgoTreeEvaluator.DefaultEvalSettings
           )
           checkExpected(res, expectedResult.calc,
             "Calc evaluation:\n value = %s,\n expectedResult.calc: %s\n")
@@ -177,13 +208,6 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       }
     }
   }
-
-  def Case(env: ScriptEnv, name: String, script: String, ctx: ErgoLikeContext,
-           calc: Ref[Context] => Ref[Any],
-           tree: SValue,
-           result: Result) =
-    EsTestCase(name, env, Code(script), Option(ctx), None,
-      Option(calc), Option(tree), result)
 
   def reduce(env: ScriptEnv, name: String, script: String, ergoCtx: ErgoLikeContext, expectedResult: Any): Unit = {
     val tcase = EsTestCase(name, env, Code(script), Some(ergoCtx), expectedResult = Result(expectedResult))

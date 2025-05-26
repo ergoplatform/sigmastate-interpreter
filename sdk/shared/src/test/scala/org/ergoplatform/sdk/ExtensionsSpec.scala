@@ -3,22 +3,17 @@ package org.ergoplatform.sdk
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import special.collection.Coll
-import special.collections.CollGens
-import org.ergoplatform.sdk.Extensions.{CollBuilderOps, CollOps, GenIterableOps, PairCollOps}
-import scalan.RType
-import sigmastate.eval.CostingSigmaDslBuilder
+import sigma.{Coll, CollGens}
+import org.ergoplatform.sdk.Extensions.{CollBuilderOps, CollOps, PairCollOps}
+import sigma.Extensions.ArrayOps
+import sigma.data.{CSigmaDslBuilder, RType}
 
 class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with CollGens {
   def Coll[T](items: T*)(implicit cT: RType[T]) =
-    CostingSigmaDslBuilder.Colls.fromItems(items: _*)
+    CSigmaDslBuilder.Colls.fromItems(items: _*)
 
   val items: Iterable[(Int, String)] = Array((1, "a"), (2, "b"), (1, "c"))
 
-  property("Traversable.mapReduce") {
-    val res = items.mapReduce(p => (p._1, p._2))((v1, v2) => v1 + v2)
-    assertResult(List((1, "ac"), (2, "b")))(res)
-  }
 
   property("Coll.partition") {
     forAll(collGen) { col: Coll[Int] =>
@@ -30,14 +25,14 @@ class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matc
   }
 
   property("Coll.mapReduce") {
-    def m(x: Int) = (math.abs(x) % 10, x)
+    def m(x: Int): (Int, Int) = (math.abs(x) % 10, x)
 
     forAll(collGen) { col =>
       val res = col.mapReduce(m, plusF)
       val (ks, vs) = builder.unzip(res)
       vs.toArray.sum shouldBe col.toArray.sum
       ks.length <= 10 shouldBe true
-      res.toArray shouldBe col.toArray.toIterable.mapReduce(m)(plus).toArray
+      res.toArray shouldBe col.toArray.toColl.mapReduce[Int, Int](m, plusF).toArray
     }
   }
 
@@ -91,7 +86,7 @@ class ExtensionsSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Matc
       val left = builder.pairColl(leftKeys, leftValues)
       val right = builder.pairColl(rightKeys, rightValues)
       val res = builder.outerJoin(left, right)(l => l._2 - 2, r => r._2 - 3, i => i._2._1 + 5)
-      val (ks, vs) = builder.unzip(res)
+      val (_, vs) = builder.unzip(res)
       vs.sum shouldBe (col.sum * 2 + col.map(_ + 5).sum)
     }
     //    test(builder.fromItems(0))

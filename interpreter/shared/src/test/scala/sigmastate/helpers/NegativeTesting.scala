@@ -114,7 +114,7 @@ trait NegativeTesting extends Matchers {
   def repeatAndReturnLast[A](nIters: Int)(block: => A): A = {
     require(nIters > 0)
     var res = block
-    cfor(1)(_ < nIters, _ + 1) { i =>
+    cfor(1)(_ < nIters, _ + 1) { _ =>
       res = block
     }
     res

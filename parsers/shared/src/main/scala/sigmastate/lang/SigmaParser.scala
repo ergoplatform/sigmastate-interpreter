@@ -1,19 +1,18 @@
 package sigmastate.lang
 
 import fastparse.internal.Logger
-import sigmastate._
-import Values._
-import scalan.Nullable
-import sigmastate.lang.Terms._
-import sigmastate.lang.syntax.Basic._
-import sigmastate.lang.syntax.{Core, Exprs}
+import sigma.ast._
+import sigma.data.Nullable
+import sigma.ast.syntax._
+import sigmastate.lang.parsers.{Basic, Core, Exprs}
 
 import scala.collection.mutable
 import scala.util.DynamicVariable
 
 /** Main facade to ErgoScript parser implementation. */
-object SigmaParser extends Exprs with Types with Core {
-  import fastparse._; import ScalaWhitespace._
+object SigmaParser extends Exprs with Types with Core { parser =>
+  import fastparse._
+  import ScalaWhitespace._
   import builder._
 
   private val currentInput = new DynamicVariable[String]("")
@@ -30,7 +29,7 @@ object SigmaParser extends Exprs with Types with Core {
         mkVal(n, t.getOrElse(NoType), body)
       }
     case (index, pat,_,_) =>
-      error(s"Only single name patterns supported but was $pat", Some(srcCtx(index)))
+      Basic.error(s"Only single name patterns supported but was $pat", Some(srcCtx(index)))
   }
 
   override def BlockDef[_:P] = P( Dcl )
@@ -47,7 +46,7 @@ object SigmaParser extends Exprs with Types with Core {
               mkConstant[SInt.type](-value, SInt)
             case LongConstant(value) =>
               mkConstant[SLong.type](-value, SLong)
-            case _ => error(s"cannot prefix $arg with op $opName", arg.sourceContext)
+            case _ => Basic.error(s"cannot prefix $arg with op $opName", arg.sourceContext)
           }
 
         case "!" => mkLogicalNot(arg.asBoolValue)
@@ -56,16 +55,16 @@ object SigmaParser extends Exprs with Types with Core {
           if (arg.tpe.isNumTypeOrNoType)
             mkNegation(arg.asNumValue)
           else
-            error(s"Numeric argument expected for '$opName' operation: $arg", arg.sourceContext)
+            Basic.error(s"Numeric argument expected for '$opName' operation: $arg", arg.sourceContext)
 
         case "~" =>
           if (arg.tpe.isNumTypeOrNoType)
             mkBitInversion(arg.asNumValue)
           else
-            error(s"Numeric argument expected for '$opName' operation: $arg", arg.sourceContext)
+            Basic.error(s"Numeric argument expected for '$opName' operation: $arg", arg.sourceContext)
 
         case _ =>
-          error(s"Unknown prefix operation $opName for $arg", arg.sourceContext)
+          Basic.error(s"Unknown prefix operation $opName for $arg", arg.sourceContext)
       }
     }
 
@@ -86,18 +85,18 @@ object SigmaParser extends Exprs with Types with Core {
           if (l.tpe.isNumTypeOrNoType && r.tpe.isNumTypeOrNoType)
             mkBitOr(l.asNumValue, r.asNumValue)
           else
-            error(s"Numeric arguments expected for '$opName' operation: ($l, $r)", l.sourceContext)
+            Basic.error(s"Numeric arguments expected for '$opName' operation: ($l, $r)", l.sourceContext)
 
         case "&" =>
           if (l.tpe.isNumTypeOrNoType && r.tpe.isNumTypeOrNoType)
             mkBitAnd(l.asNumValue, r.asNumValue)
           else
-            error(s"Numeric arguments expected for '$opName' operation: ($l, $r)", l.sourceContext)
+            Basic.error(s"Numeric arguments expected for '$opName' operation: ($l, $r)", l.sourceContext)
 
         case _ if parseAsMethods.contains(opName) => mkMethodCallLike(l, opName, IndexedSeq(r))
         case "/" => mkDivide(l.asNumValue, r.asNumValue)
         case "%" => mkModulo(l.asNumValue, r.asNumValue)
-        case _ => error(s"Unknown binary operation $opName", l.sourceContext)
+        case _ => Basic.error(s"Unknown binary operation $opName", l.sourceContext)
       }
     }
 

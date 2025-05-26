@@ -1,19 +1,17 @@
 package sigmastate.lang
 
 import org.scalatest.matchers.should.Matchers
-import sigmastate.lang.Terms.{Ident, MethodCallLike}
-import sigmastate.Values.{ConcreteCollection, LongConstant, SValue, SigmaBoolean, Value}
-import sigmastate._
+import sigma.ast.SCollection.SByteArray
+import sigma.ast.syntax.{SValue, ValueOps}
+import sigma.ast._
+import sigma.crypto.CryptoConstants
+import sigma.data.{CAnyValue, CSigmaDslBuilder, ProveDHTuple, ProveDlog, SigmaBoolean}
+import sigma.util.Extensions.BigIntegerOps
+import sigma._
+import sigmastate.helpers.NegativeTesting
+import sigmastate.interpreter.Interpreter.ScriptEnv
 
 import java.math.BigInteger
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.SCollection.SByteArray
-import sigmastate.basics.{ProveDHTuple, CryptoConstants}
-import sigmastate.interpreter.Interpreter.ScriptEnv
-import special.sigma._
-import sigmastate.eval._
-import sigmastate.helpers.NegativeTesting
-import special.collection.Coll
 
 trait LangTests extends Matchers with NegativeTesting {
 
@@ -37,13 +35,13 @@ trait LangTests extends Matchers with NegativeTesting {
   val ecp2 = dlog.multiplyGroupElements(ecp1, ecp1)
   val ecp3 = dlog.multiplyGroupElements(ecp2, ecp2)
   val ecp4 = dlog.multiplyGroupElements(ecp3, ecp3)
-  val g1 = CostingSigmaDslBuilder.GroupElement(ecp1)
-  val g2 = CostingSigmaDslBuilder.GroupElement(ecp2)
-  val g3 = CostingSigmaDslBuilder.GroupElement(ecp3)
-  val g4 = CostingSigmaDslBuilder.GroupElement(ecp4)
+  val g1 = CSigmaDslBuilder.GroupElement(ecp1)
+  val g2 = CSigmaDslBuilder.GroupElement(ecp2)
+  val g3 = CSigmaDslBuilder.GroupElement(ecp3)
+  val g4 = CSigmaDslBuilder.GroupElement(ecp4)
 
-  protected val n1: BigInt = BigInt(10).underlying()
-  protected val n2: BigInt = BigInt(20).underlying()
+  protected val n1: BigInt = BigInt(10).underlying().toBigInt
+  protected val n2: BigInt = BigInt(20).underlying().toBigInt
   protected val bigIntegerArr1: Coll[BigInt] = Colls.fromItems(n1, n2)
   protected val big: BigInteger = BigInt(Long.MaxValue).underlying().pow(2)
   protected val p1: SigmaBoolean = ProveDlog(ecp1)
@@ -74,7 +72,7 @@ trait LangTests extends Matchers with NegativeTesting {
   def ty(s: String): SType = SigmaParser.parseType(s)
 
   def assertSrcCtxForAllNodes(tree: SValue): Unit = {
-    import sigmastate.kiama.rewriting.Rewriter._
+    import sigma.kiama.rewriting.Rewriter._
     rewrite(everywherebu(rule[Any] {
       case node: SValue =>
         withClue(s"Missing sourceContext for $node") { node.sourceContext.isDefined shouldBe true }

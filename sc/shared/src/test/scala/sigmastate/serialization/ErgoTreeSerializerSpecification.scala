@@ -1,16 +1,22 @@
-package sigmastate.serialization
+package sigma.serialization
+
+import org.ergoplatform.ErgoBox
+import org.ergoplatform.validation.ValidationRules.CheckDeserializedScriptIsSigmaProp
+import sigma.SigmaProp
+import sigma.ast._
+import sigma.ast.syntax.SigmaPropValue
+import sigma.data.CBigInt
+import sigma.util.Extensions.SigmaPropOps
+import sigma.validation.ValidationException
+import ErgoTree.EmptyConstants
+import ErgoTree.HeaderType
+import sigma.compiler.ir.IRContext
+import sigma.eval.Extensions.SigmaBooleanOps
+import sigmastate._
+import sigmastate.helpers.CompilerTestingCommons
+import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 
 import java.math.BigInteger
-import org.ergoplatform.ErgoBox
-import org.ergoplatform.validation.ValidationException
-import org.ergoplatform.validation.ValidationRules.CheckDeserializedScriptIsSigmaProp
-import sigmastate.Values.{BigIntConstant, ByteConstant, ConstantPlaceholder, ErgoTree, IntConstant, ShortConstant, SigmaPropValue, UnparsedErgoTree}
-import sigmastate._
-import sigmastate.eval.{CBigInt, IRContext}
-import sigmastate.exceptions.{SerializerException, ReaderPositionLimitExceeded}
-import sigmastate.helpers.CompilerTestingCommons
-import sigmastate.serialization.ErgoTreeSerializer.DefaultSerializer
-import sigmastate.utxo.{DeserializeContext, DeserializeRegister}
 
 class ErgoTreeSerializerSpecification extends SerializationSpecification
   with CompilerTestingCommons with CompilerCrossVersionProps {
@@ -32,7 +38,7 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
       Seq(ErgoTree(ergoTreeHeaderInTests, constants, outExpr))
     } else {
       Seq(
-        ErgoTree((ConstantSegregationHeader | ergoTreeHeaderInTests).toByte, constants, outExpr),
+        ErgoTree(setConstantSegregation(ergoTreeHeaderInTests), constants, outExpr),
         ErgoTree(ergoTreeHeaderInTests, EmptyConstants, prop)
       )
     }
@@ -171,7 +177,7 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
 
     forAll(samples) { (exp, hasDeserialize) =>
       val t = new ErgoTree(
-        16.toByte,
+        HeaderType @@ 16.toByte,
         Array(IntConstant(1)),
         Right(BoolToSigmaProp(EQ(ConstantPlaceholder(0, SInt), exp)))
       )
@@ -206,5 +212,14 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
 
     test(positions = Array(1, 2), expected = Array(-1, 0, 1, -1, -1))
     test(positions = Array(1, 2, 4), expected = Array(-1, 0, 1, -1, 2))
+  }
+
+  property("SigmaProp.propBytes vs ErgoTree.serializer equivalence") {
+    forAll(MinSuccessful(100)) { sp: SigmaProp =>
+      val propBytes = sp.propBytes
+      val ergoTree = new ErgoTree(ErgoTree.DefaultHeader, EmptyConstants, Right(sp.toSigmaBoolean.toSigmaPropValue), null, None, None)
+      val treeBytes = DefaultSerializer.serializeErgoTree(ergoTree)
+      treeBytes shouldBe propBytes.toArray
+    }
   }
 }

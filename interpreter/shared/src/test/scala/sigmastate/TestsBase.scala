@@ -1,8 +1,12 @@
 package sigmastate
 
 import org.scalatest.matchers.should.Matchers
-import sigmastate.Values.{SigmaPropValue, SigmaBoolean, ErgoTree}
+import sigma.ast.syntax.SigmaPropValue
 import org.ergoplatform.ErgoTreePredef
+import sigma.VersionTesting
+import sigma.ast.ErgoTree
+import sigma.data.SigmaBoolean
+import sigma.ast.ErgoTree.{HeaderType, ZeroHeader}
 
 trait TestsBase extends Matchers with VersionTesting {
   /** Set this to true to enable debug console output in tests */
@@ -14,7 +18,7 @@ trait TestsBase extends Matchers with VersionTesting {
   /** Current ErgoTree header flags assigned dynamically using [[CrossVersionProps]] and
     * ergoTreeVersionInTests.
     */
-  def ergoTreeHeaderInTests: Byte = ErgoTree.headerWithVersion(ergoTreeVersionInTests)
+  def ergoTreeHeaderInTests: HeaderType = ErgoTree.headerWithVersion(ZeroHeader, ergoTreeVersionInTests)
 
   /** Obtains [[ErgoTree]] which corresponds to True proposition using current
     * ergoTreeHeaderInTests. */
@@ -31,4 +35,7 @@ trait TestsBase extends Matchers with VersionTesting {
   /** Transform sigma proposition into [[ErgoTree]] using current ergoTreeHeaderInTests. */
   def mkTestErgoTree(prop: SigmaBoolean): ErgoTree =
     ErgoTree.fromSigmaBoolean(ergoTreeHeaderInTests, prop)
+
+  /** Max cost of script execution in tests. */
+  val scriptCostLimitInTests: Int = 1000000
 }

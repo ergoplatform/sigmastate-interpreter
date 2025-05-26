@@ -1,6 +1,6 @@
 package org.ergoplatform.sdk
 
-import scalan.ExactIntegral
+import sigma.data.ExactIntegral
 
 import scala.collection.mutable
 import scala.reflect.ClassTag

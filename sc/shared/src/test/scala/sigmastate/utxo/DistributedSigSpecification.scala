@@ -1,9 +1,11 @@
 package sigmastate.utxo
 
+import sigma.ast.ErgoTree
+import sigma.data.CAND
 import sigmastate._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeTestProvingInterpreter, CompilerTestingCommons}
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.interpreter._
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 
 /**
   * Distributed signatures examples.
@@ -518,7 +520,10 @@ class DistributedSigSpecification extends CompilerTestingCommons
 
     val sigAlice = proverA.signMessage(sigmaTree, msg, bagA).get
 
-    val bagB = proverB.bagForMultisig(ctx, sigmaTree, sigAlice, Seq(pubkeyAlice))
+    val bagB = proverB.bagForMultisig(ctx,
+          ErgoTree.fromSigmaBoolean(ergoTreeHeaderInTests, sigmaTree),
+          proof = sigAlice,
+          realSecretsToExtract = Seq(pubkeyAlice))
       .addHint(hintsFromBob.ownCommitments.head)
 
     val sigBob = proverB.signMessage(sigmaTree, msg, bagB).get

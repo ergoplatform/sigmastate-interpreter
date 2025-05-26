@@ -1,18 +1,18 @@
 package sigmastate.utxo.examples
 
-import org.ergoplatform.{Height, Outputs, ErgoBox, Self}
+import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.R4
 import sigmastate.helpers.CompilerTestingCommons
 import org.ergoplatform.dsl.ContractSyntax.Token
 import org.ergoplatform.dsl.TestContractSpec
 import scorex.crypto.hash.Blake2b256
-import sigmastate.SCollection.SByteArray
-import sigmastate._
-import sigmastate.Values.{BlockValue, ByteArrayConstant, LongConstant, ValDef, ValUse, Value}
-import sigmastate.eval.{CSigmaProp, Digest32Coll}
+import sigma.ast.SCollection.SByteArray
+import sigma.ast._
+import sigma.ast.syntax._
+import sigma.data.{CSigmaProp, Digest32Coll, TrivialProp}
+import sigma.ast.{BlockValue, ByteArrayConstant, LongConstant, ValDef, ValUse, Value}
 import sigmastate.eval.Extensions._
-import sigmastate.lang.Terms.ValueOps
-import sigmastate.utxo._
+import sigma.ast.syntax.ValueOps
 
 /** An example of an atomic ergo <=> asset exchange.
   * Let's assume that Alice is willing to buy 60 assets of type "token1" for 100 ergo coins, and Bob
@@ -140,7 +140,7 @@ class AssetsAtomicExchangeTests extends CompilerTestingCommons { suite =>
 
     // ASSERT
     val input0 = spendingTx.inputs(0)
-    val buyerExt = Map(Byte.MaxValue -> toAnyValue(0.toShort))
+    val buyerExt = Map(Byte.MaxValue -> ShortConstant(0.toShort))
     val res = input0.runDsl(buyerExt)
     res shouldBe CSigmaProp(TrivialProp.TrueProp)
 
@@ -148,7 +148,7 @@ class AssetsAtomicExchangeTests extends CompilerTestingCommons { suite =>
     contract.verifier.verify(input0, buyerProof) shouldBe true
 
     val input1 = spendingTx.inputs(1)
-    val sellerExt = Map(Byte.MaxValue -> toAnyValue(1.toShort))
+    val sellerExt = Map(Byte.MaxValue -> ShortConstant(1.toShort))
     val res1 = input1.runDsl(sellerExt)
     res1 shouldBe CSigmaProp(TrivialProp.TrueProp)
     val sellerProof = contract.tokenSeller.prove(input1, sellerExt).get

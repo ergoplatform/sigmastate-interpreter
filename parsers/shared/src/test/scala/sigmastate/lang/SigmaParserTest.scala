@@ -1,17 +1,19 @@
 package sigmastate.lang
 
 import fastparse.Parsed
-import org.ergoplatform.{ErgoAddressEncoder, ErgoBox}
+import fastparse.Parsed.Failure
+import org.ergoplatform.ErgoBox
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import sigmastate.SCollection._
-import sigmastate.Values._
+import sigma.ast.SCollection.{SByteArray, SLongArray}
+import sigma.ast._
+import sigma.ast.syntax.SValue
 import sigmastate._
-import sigmastate.lang.SigmaPredef.PredefinedFuncRegistry
-import sigmastate.lang.Terms._
-import sigmastate.lang.syntax.ParserException
-import sigmastate.serialization.OpCodes
+import SigmaPredef.PredefinedFuncRegistry
+import sigma.ast.syntax._
+import sigmastate.lang.parsers.ParserException
+import sigma.serialization.OpCodes
 
 class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with LangTests {
   import StdSigmaBuilder._
@@ -25,9 +27,9 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
         v.sourceContext.isDefined shouldBe true
         assertSrcCtxForAllNodes(v)
         v
-      case f@Parsed.Failure(_, _, extra) =>
-        val traced = extra.traced
-        println(s"\nTRACE: ${traced.trace}")
+      case f: Failure =>
+        val traced = f.extra.trace()
+        println(s"\nTRACE: ${traced.msg}")
         f.get // force show error diagnostics
     }
   }
@@ -537,7 +539,7 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
 
   property("Box properties") {
     parse("{ (box: Box) => box.value }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "value"))
-    parse("{ (box: Box) => box.propositionBytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), SBox.PropositionBytes))
+    parse("{ (box: Box) => box.propositionBytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), SBoxMethods.PropositionBytes))
     parse("{ (box: Box) => box.bytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "bytes"))
     parse("{ (box: Box) => box.id }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "id"))
   }
@@ -611,6 +613,11 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
   property("string concat") {
     parse(""" "hello" + "hello" """) shouldBe
       MethodCallLike(StringConstant("hello"), "+", IndexedSeq(StringConstant("hello")))
+  }
+
+  property("bigInt string decoding") {
+    parse("""bigInt("32667486267383620946248345338628674027033885928301927616853987602485119134400")""") shouldBe
+      Apply(BigIntFromStringFunc.symNoType, IndexedSeq(StringConstant("32667486267383620946248345338628674027033885928301927616853987602485119134400")))
   }
 
   property("fromBaseX string decoding") {

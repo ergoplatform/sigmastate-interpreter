@@ -1,10 +1,13 @@
 package sigmastate.utxo
 
-import sigmastate.basics.DLogProtocol.{DLogProverInput, ProveDlog}
-import sigmastate.Values.{ConcreteCollection, FalseLeaf, IntConstant, SigmaPropConstant, SigmaPropValue, TrueLeaf}
+import sigma.ast._
+import sigma.ast.syntax._
+import sigma.data.{AvlTreeData, CAND, COR, ProveDlog, TrivialProp}
+import sigma.eval.Extensions.SigmaBooleanOps
+import sigma.exceptions.GraphBuildingException
 import sigmastate._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTransactionTesting, CompilerTestingCommons}
-import sigmastate.exceptions.CosterException
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigmastate.helpers._
 
 class ThresholdSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -88,7 +91,7 @@ class ThresholdSpecification extends CompilerTestingCommons
     proverD.prove(compiledTree3, ctx, fakeMessage).isFailure shouldBe true
 
     {
-      val prop3Or = COR(Seq(pubkeyA, pubkeyB, pubkeyC)).toSigmaProp
+      val prop3Or = COR(Seq(pubkeyA, pubkeyB, pubkeyC)).toSigmaPropValue
       val res1 = testReduce(proverA)(ctx, compiledProp3)
       val res2 = testReduce(proverA)(ctx, prop3Or)
       res1 shouldBe res2
@@ -113,7 +116,6 @@ class ThresholdSpecification extends CompilerTestingCommons
   }
 
   property("threshold reduce to crypto") {
-    import TrivialProp._
     val prover = new ContextEnrichingTestProvingInterpreter
     val ctx = ErgoLikeContextTesting(
       currentHeight = 1,
@@ -407,8 +409,8 @@ class ThresholdSpecification extends CompilerTestingCommons
     val keyName = "pubkeyA"
     val env = Map(keyName -> pubkeyA)
     val pubKeysStrExceeding = Array.fill[String](AtLeast.MaxChildrenCount + 1)(keyName).mkString(",")
-    an[CosterException] should be thrownBy compile(env, s"""atLeast(2, Coll($pubKeysStrExceeding))""")
-    an[CosterException] should be thrownBy
+    an[GraphBuildingException] should be thrownBy compile(env, s"""atLeast(2, Coll($pubKeysStrExceeding))""")
+    an[GraphBuildingException] should be thrownBy
       compile(env, s"""{ val arr = Coll($pubKeysStrExceeding); atLeast(2, arr) }""")
 
     // max children should work fine

@@ -1,27 +1,29 @@
-package sigmastate.serialization
+package sigma.serialization
 
-import org.ergoplatform.validation.ValidationException
-import org.ergoplatform.validation.ValidationRules.CheckPositionLimit
-import org.ergoplatform.{ErgoBoxCandidate, Outputs}
+import org.ergoplatform.ErgoBoxCandidate
 import org.scalacheck.Gen
-import scalan.util.BenchmarkUtil
 import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
 import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.serialization.{Reader, VLQByteBufferReader}
-import sigmastate.Values.{BlockValue, GetVarInt, IntConstant, SValue, SigmaBoolean, SigmaPropValue, Tuple, ValDef, ValUse}
+import sigma.ast.{SBoolean, SInt, SizeOf}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
+import sigma.util.{BenchmarkUtil, safeNewArray}
+import sigma.validation.ValidationException
+import sigma.validation.ValidationRules.CheckPositionLimit
+import sigma.{Colls, Environment}
+import sigma.ast._
+import sigma.ast.syntax._
 import sigmastate._
-import sigmastate.basics.CryptoConstants
-import sigmastate.eval.Extensions._
+import sigma.Extensions.ArrayOps
+import sigma.eval.Extensions.SigmaBooleanOps
+import sigma.eval.SigmaDsl
+import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.eval.Extensions.EvalIterableOps
 import sigmastate.eval._
-import sigmastate.exceptions.{DeserializeCallDepthExceeded, InvalidTypePrefix, ReaderPositionLimitExceeded, SerializerException}
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
-import sigmastate.interpreter.{ContextExtension, CostedProverResult}
-import sigmastate.serialization.OpCodes._
-import sigmastate.util.safeNewArray
+import sigma.serialization.OpCodes._
 import sigmastate.utils.Helpers._
-import sigmastate.utils.SigmaByteReader
-import sigmastate.utxo.SizeOf
 
 import java.nio.ByteBuffer
 import scala.collection.immutable.Seq
@@ -119,8 +121,8 @@ class DeserializationResilience extends DeserializationResilienceTesting {
 
   property("exceeding ergo box propositionBytes max size check") {
     val oversizedTree = mkTestErgoTree(SigmaAnd(
-      Gen.listOfN(SigmaSerializer.MaxPropositionSize / CryptoConstants.groupSize,
-        proveDlogGen.map(_.toSigmaProp)).sample.get))
+      Gen.listOfN(SigmaSerializer.MaxPropositionSize / sigma.crypto.groupSize,
+        proveDlogGen.map(_.toSigmaPropValue)).sample.get))
     val b = new ErgoBoxCandidate(1L, oversizedTree, 1)
     val w = SigmaSerializer.startWriter()
     ErgoBoxCandidate.serializer.serialize(b, w)
@@ -134,9 +136,10 @@ class DeserializationResilience extends DeserializationResilienceTesting {
         assertExceptionThrown(
           ErgoBoxCandidate.serializer.parse(SigmaSerializer.startReader(w.toBytes)),
           {
-            case SerializerException(_,
-                   Some(ValidationException(_,CheckPositionLimit,_,
-                          Some(_: ReaderPositionLimitExceeded)))) => true
+            case SerializerException(
+              _,
+              Some(ValidationException(_, CheckPositionLimit, _, Some(_: ReaderPositionLimitExceeded)))
+            ) => true
             case _ => false
           })
       case _ =>
@@ -158,8 +161,8 @@ class DeserializationResilience extends DeserializationResilienceTesting {
 
   property("ergo box propositionBytes max size check") {
     val bigTree = mkTestErgoTree(SigmaAnd(
-      Gen.listOfN((SigmaSerializer.MaxPropositionSize / 2) / CryptoConstants.groupSize,
-        proveDlogGen.map(_.toSigmaProp)).sample.get))
+      Gen.listOfN((SigmaSerializer.MaxPropositionSize / 2) / sigma.crypto.groupSize,
+        proveDlogGen.map(_.toSigmaPropValue)).sample.get))
     val b = new ErgoBoxCandidate(1L, bigTree, 1)
     val w = SigmaSerializer.startWriter()
     ErgoBoxCandidate.serializer.serialize(b, w)
@@ -231,7 +234,9 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   property("reader.level is updated in DataSerializer.deserialize") {
     val expr = IntConstant(1)
     val (callDepths, levels) = traceReaderCallDepth(expr)
-    callDepths shouldEqual levels
+    if (Environment.current.isJVM) {
+      callDepths shouldEqual levels  // on JS stacktrace differs from JVM
+    }
     callDepths shouldEqual IndexedSeq(1, 2, 2, 1)
   }
 
@@ -244,7 +249,9 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   property("reader.level is updated in SigmaBoolean.serializer.parse") {
     val expr = CAND(Seq(proveDlogGen.sample.get, proveDHTGen.sample.get))
     val (callDepths, levels) = traceReaderCallDepth(expr)
-    callDepths shouldEqual levels
+    if (Environment.current.isJVM) {
+      callDepths shouldEqual levels  // on JS stacktrace differs from JVM
+    }
     callDepths shouldEqual IndexedSeq(1, 2, 3, 4, 4, 4, 4, 3, 2, 1)
   }
 
@@ -257,7 +264,9 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   property("reader.level is updated in TypeSerializer") {
     val expr = Tuple(Tuple(IntConstant(1), IntConstant(1)), IntConstant(1))
     val (callDepths, levels) = traceReaderCallDepth(expr)
-    callDepths shouldEqual levels
+    if (Environment.current.isJVM) {
+       callDepths shouldEqual levels  // on JS stacktrace differs from JVM
+    }
     callDepths shouldEqual IndexedSeq(1, 2, 3, 4, 4, 3, 3, 4, 4, 3, 2, 2, 3, 3, 2, 1)
   }
 
@@ -269,8 +278,8 @@ class DeserializationResilience extends DeserializationResilienceTesting {
 
   property("exceed ergo box max size check") {
     val bigTree = mkTestErgoTree(SigmaAnd(
-      Gen.listOfN((SigmaSerializer.MaxPropositionSize / 2) / CryptoConstants.groupSize,
-        proveDlogGen.map(_.toSigmaProp)).sample.get))
+      Gen.listOfN((SigmaSerializer.MaxPropositionSize / 2) / sigma.crypto.groupSize,
+        proveDlogGen.map(_.toSigmaPropValue)).sample.get))
     val tokens = additionalTokensGen(127).sample.get.map(_.sample.get).toColl
     val b = new ErgoBoxCandidate(1L, bigTree, 1, tokens)
     val w = SigmaSerializer.startWriter()
@@ -412,7 +421,7 @@ class DeserializationResilience extends DeserializationResilienceTesting {
     val v = k
     avlProver.performOneOperation(Insert(ADKey @@@ k, ADValue @@@ v))
     val proof = avlProver.generateProof()
-    val verifier = tree.createVerifier(Colls.fromArray(proof))
+    val verifier = CAvlTreeVerifier(tree, Colls.fromArray(proof))
     verifier.performOneOperation(Insert(ADKey @@@ k, ADValue @@@ v)).isFailure shouldBe true
     // NOTE, even though performOneOperation fails, some AvlTree$ methods used in Interpreter
     // (remove_eval, update_eval, contains_eval) won't throw, while others will.

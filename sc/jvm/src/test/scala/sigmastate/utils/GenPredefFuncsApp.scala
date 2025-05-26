@@ -1,7 +1,7 @@
 package sigmastate.utils
 
-import scalan.util.FileUtil
-import scalan.util.PrintExtensions._
+import sigma.util.FileUtil
+import sigma.util.PrintExtensions.IterableExtensions
 
 object GenPredefFuncsApp extends SpecGen {
 

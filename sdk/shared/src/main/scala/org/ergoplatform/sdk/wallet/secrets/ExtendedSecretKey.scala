@@ -1,15 +1,10 @@
 package org.ergoplatform.sdk.wallet.secrets
 
-import org.ergoplatform.sdk.wallet.Constants
+import sigma.crypto.{BigIntegers, CryptoConstants, CryptoFacade}
+import sigma.data.ProveDlog
 import java.math.BigInteger
-import java.util
-import sigmastate.crypto.BigIntegers
-import sigmastate.basics.DLogProtocol
-import sigmastate.basics.DLogProtocol.DLogProverInput
-import sigmastate.basics.CryptoConstants
-import sigmastate.crypto.CryptoFacade
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.utils.{SigmaByteReader, SigmaByteWriter}
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 
 /**
   * Secret, its chain code and path in key tree.
@@ -25,7 +20,7 @@ final class ExtendedSecretKey(/*private[secrets]*/ val keyBytes: Array[Byte],
 
   override def privateInput: DLogProverInput = DLogProverInput(BigIntegers.fromUnsignedByteArray(keyBytes))
 
-  def publicImage: DLogProtocol.ProveDlog = privateInput.publicImage
+  def publicImage: ProveDlog = privateInput.publicImage
 
   def child(idx: Int): ExtendedSecretKey = ExtendedSecretKey.deriveChildSecretKey(this, idx)
 
@@ -34,19 +29,19 @@ final class ExtendedSecretKey(/*private[secrets]*/ val keyBytes: Array[Byte],
 
   def isErased: Boolean = keyBytes.forall(_ == 0x00)
 
-  def zeroSecret(): Unit = util.Arrays.fill(keyBytes, 0: Byte)
+  def zeroSecret(): Unit = java.util.Arrays.fill(keyBytes, 0: Byte)
 
   override def equals(obj: Any): Boolean = (this eq obj.asInstanceOf[AnyRef]) || (obj match {
     case that: ExtendedSecretKey =>
-      util.Arrays.equals(that.keyBytes, this.keyBytes) &&
-        util.Arrays.equals(that.chainCode, this.chainCode) &&
+      java.util.Arrays.equals(that.keyBytes, this.keyBytes) &&
+        java.util.Arrays.equals(that.chainCode, this.chainCode) &&
         that.path == this.path
     case _ => false
   })
 
   override def hashCode(): Int = {
-    var h = util.Arrays.hashCode(keyBytes)
-    h = 31 * h + util.Arrays.hashCode(chainCode)
+    var h = java.util.Arrays.hashCode(keyBytes)
+    h = 31 * h + java.util.Arrays.hashCode(chainCode)
     h = 31 * h + path.hashCode()
     h
   }

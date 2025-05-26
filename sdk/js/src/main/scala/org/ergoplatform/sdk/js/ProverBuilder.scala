@@ -1,19 +1,24 @@
 package org.ergoplatform.sdk.js
 
-import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
-import org.ergoplatform.sdk.wallet.protocol.context.ErgoLikeParameters
 import org.ergoplatform.sdk
 import org.ergoplatform.sdk.SecretString
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 import Isos._
-import sigmastate.eval.SigmaDsl
+import sigma.data.js.{Isos => DataIsos}
+import sigma.eval.SigmaDsl
 
-/** Equivalent of [[sdk.ProverBuilder]] available from JS. */
+/** Equivalent of [[sdk.ProverBuilder]] available from JS.
+  *
+  * @param parameters Blockchain parameters re-adjustable via miners voting and
+  *                   voting-related data. All of them are included into extension
+  *                   section of a first block of a voting epoch.
+  * @param network    Network prefix to use for addresses.
+  */
 @JSExportTopLevel("ProverBuilder")
-class ProverBuilder(parameters: ErgoLikeParameters, networkPrefix: NetworkPrefix) extends js.Object {
-  val _builder = new sdk.ProverBuilder(parameters, networkPrefix)
+class ProverBuilder(parameters: BlockchainParameters, network: Byte) extends js.Object {
+  val _builder = new sdk.ProverBuilder(Isos.isoBlockchainParameters.to(parameters), network)
 
   /** Configure this builder to use the given seed when building a new prover.
     *
@@ -62,11 +67,11 @@ class ProverBuilder(parameters: ErgoLikeParameters, networkPrefix: NetworkPrefix
     */
   def withDHTSecret(g: String, h: String, u: String, v: String, x: js.BigInt): ProverBuilder = {
     _builder.withDHTData(
-      isoStringToGroupElement.to(g),
-      isoStringToGroupElement.to(h),
-      isoStringToGroupElement.to(u),
-      isoStringToGroupElement.to(v),
-      SigmaDsl.toBigInteger(isoBigInt.to(x))
+      DataIsos.isoStringToGroupElement.to(g),
+      DataIsos.isoStringToGroupElement.to(h),
+      DataIsos.isoStringToGroupElement.to(u),
+      DataIsos.isoStringToGroupElement.to(v),
+      SigmaDsl.toBigInteger(sigma.js.Isos.isoBigInt.to(x))
     )
     this
   }
@@ -80,7 +85,7 @@ class ProverBuilder(parameters: ErgoLikeParameters, networkPrefix: NetworkPrefix
     * as proveDlog(a) && proveDlog(b), where a and b are two group elements.
     */
   def withDLogSecret(x: js.BigInt): ProverBuilder = {
-    _builder.withDLogSecret(SigmaDsl.toBigInteger(isoBigInt.to(x)))
+    _builder.withDLogSecret(SigmaDsl.toBigInteger(sigma.js.Isos.isoBigInt.to(x)))
     this
   }
 
@@ -89,4 +94,18 @@ class ProverBuilder(parameters: ErgoLikeParameters, networkPrefix: NetworkPrefix
     val p =_builder.build()
     new SigmaProver(p)
   }
+}
+
+@JSExportTopLevel("ProverBuilder$")
+object ProverBuilder extends js.Object {
+  /** Creates a new [[ProverBuilder]] instance with the given blockchain parameters
+    * and network prefix.
+    *
+    * @param parameters Blockchain parameters re-adjustable via miners voting and
+    *                   voting-related data. All of them are included into extension
+    *                   section of a first block of a voting epoch.
+    * @param network    Network prefix to use for addresses.
+    */
+  def create(parameters: BlockchainParameters, network: Byte): ProverBuilder =
+    new ProverBuilder(parameters, network)
 }

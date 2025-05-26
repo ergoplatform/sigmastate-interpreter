@@ -1,20 +1,14 @@
 package sigmastate.helpers
 
-import scorex.crypto.hash.Digest32
-import special.collection.{Coll, CollOverArray, PairOfCols}
-import scorex.util.ModifierId
-import org.ergoplatform.{DataInput, ErgoBox, ErgoBoxCandidate, ErgoLikeContext, ErgoLikeTransaction, ErgoLikeTransactionTemplate, Input, UnsignedInput}
-import sigmastate.Values.ErgoTree
 import org.ergoplatform.ErgoBox.{AdditionalRegisters, Token, allZerosModifierId}
-import org.ergoplatform.validation.SigmaValidationSettings
-import sigmastate.AvlTreeData
-import sigmastate.eval.CostingSigmaDslBuilder
-import sigmastate.eval._
-import sigmastate.interpreter.ContextExtension
-import special.sigma.{Header, PreHeader}
-
+import org.ergoplatform._
+import scorex.util.ModifierId
+import sigma.ast.ErgoTree
+import sigma.data.{AvlTreeData, CSigmaDslBuilder, CollOverArray, PairOfCols}
+import sigma.interpreter.ContextExtension
+import sigma.validation.SigmaValidationSettings
+import sigma.{Coll, Colls, Header, PreHeader}
 import scala.collection.compat.immutable.ArraySeq
-import scala.collection.mutable.WrappedArray
 
 // TODO refactor: unification is required between two hierarchies of tests
 //  and as part of it, more methods can be moved to TestingHelpers
@@ -30,7 +24,7 @@ object TestingHelpers {
               transactionId: ModifierId = allZerosModifierId,
               boxIndex: Short = 0): ErgoBox =
     new ErgoBox(value, ergoTree,
-      CostingSigmaDslBuilder.Colls.fromArray(additionalTokens.toArray[Token]),
+      CSigmaDslBuilder.Colls.fromArray(additionalTokens.toArray[Token]),
       additionalRegisters,
       transactionId, boxIndex, creationHeight)
 
@@ -51,7 +45,7 @@ object TestingHelpers {
     */
   def cloneColl[A](c: Coll[A]): Coll[A] = (c match {
     case c: CollOverArray[_] =>
-      new CollOverArray(c.toArray.clone(), SigmaDsl.Colls)(c.tItem)
+      new CollOverArray(c.toArray.clone(), Colls)(c.tItem)
     case ps: PairOfCols[_,_] =>
       new PairOfCols(cloneColl(ps.ls), cloneColl(ps.rs))
   }).asInstanceOf[Coll[A]]

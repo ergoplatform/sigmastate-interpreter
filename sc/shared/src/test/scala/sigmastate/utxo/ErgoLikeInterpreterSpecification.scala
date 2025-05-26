@@ -3,23 +3,23 @@ package sigmastate.utxo
 import scorex.utils.Bytes
 import org.ergoplatform.ErgoBox.R4
 import org.ergoplatform._
-import org.ergoplatform.validation.ValidationException
 import org.scalatest.TryValues._
 import scorex.crypto.hash.Blake2b256
-import sigmastate.SCollection.SByteArray
-import sigmastate.Values._
+import sigma.ast.SCollection.SByteArray
+import sigma.ast._
 import sigmastate._
+import sigma.ast.syntax._
+import sigma.data.{AvlTreeData, ProveDHTuple, ProveDlog, TrivialProp}
+import sigma.util.Extensions.EcpOps
+import sigma.validation.ValidationException
 import sigmastate.eval._
-import sigmastate.eval.Extensions._
 import sigmastate.interpreter.Interpreter._
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.basics.ProveDHTuple
 import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.interpreter.ContextExtension.VarBinding
-import sigmastate.interpreter.{ContextExtension, CostedProverResult}
-import sigmastate.lang.Terms._
-import sigmastate.serialization.{ValueSerializer, SerializationSpecification}
+import sigma.interpreter.ContextExtension.VarBinding
+import sigma.eval.Extensions.SigmaBooleanOps
+import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.serialization.{SerializationSpecification, ValueSerializer}
 import sigmastate.utils.Helpers._
 
 class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
@@ -28,6 +28,15 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
   implicit lazy val IR: TestingIRContext = new TestingIRContext
   private val reg1 = ErgoBox.nonMandatoryRegisters.head
+
+  def sum[T <: SNumericType](input: Value[SCollection[T]], varId: Int)(implicit tT: T) =
+    Fold(input,
+      Constant(tT.upcast(0.toByte), tT),
+      FuncValue(Array((varId, STuple(tT, tT))),
+        Plus(
+          SelectField(ValUse(varId, STuple(tT, tT)), 1).asNumValue,
+          SelectField(ValUse(varId, STuple(tT, tT)), 2).asNumValue))
+    )
 
   property("scripts EQ/NEQ") {
     val prover1 = new ContextEnrichingTestProvingInterpreter
@@ -42,8 +51,8 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
         .withErgoTreeVersion(ergoTreeVersionInTests)
 
     val e = compile(Map(
-      "h1" -> h1.treeWithSegregation(ergoTreeHeaderInTests).bytes,
-      "h2" -> h2.treeWithSegregation(ergoTreeHeaderInTests).bytes),
+      "h1" -> ErgoTree.withSegregation(ergoTreeHeaderInTests, h1).bytes,
+      "h2" -> ErgoTree.withSegregation(ergoTreeHeaderInTests, h2).bytes),
       "h1 == h1")
     val exp = TrueLeaf
     e shouldBe exp
@@ -52,8 +61,8 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
     res shouldBe TrivialProp.TrueProp
     val ergoTree = mkTestErgoTree(
       EQ(
-        ByteArrayConstant(h1.treeWithSegregation(ergoTreeHeaderInTests).bytes),
-        ByteArrayConstant(h2.treeWithSegregation(ergoTreeHeaderInTests).bytes)
+        ByteArrayConstant(ErgoTree.withSegregation(ergoTreeHeaderInTests, h1).bytes),
+        ByteArrayConstant(ErgoTree.withSegregation(ergoTreeHeaderInTests, h2).bytes)
       ).toSigmaProp
     )
     val res2 = verifier.fullReduction(ergoTree, ctx).value
@@ -247,7 +256,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
         SigmaPropConstant(pubkey),
         BoolToSigmaProp(
           GT(
-            Fold.sum[SLong.type](MapCollection(Outputs,
+            sum[SLong.type](MapCollection(Outputs,
               FuncValue(Vector((1, SBox)), ExtractAmount(ValUse(1, SBox)))), 1),
             LongConstant(20))
         )
@@ -411,7 +420,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
     val prover0 = new ContextEnrichingTestProvingInterpreter()
 
-    val customScript = prover0.dlogSecrets.head.publicImage.toSigmaProp
+    val customScript = prover0.dlogSecrets.head.publicImage.toSigmaPropValue
     val scriptBytes = ValueSerializer.serialize(customScript)
     val scriptHash = Blake2b256(scriptBytes).take(bytesCount)
 
@@ -742,7 +751,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
   }
 
   property("non-const ProveDHT") {
-    import sigmastate.basics.CryptoConstants.dlogGroup
+    import sigma.crypto.CryptoConstants.dlogGroup
     compile(Map("gA" -> dlogGroup.generator.toGroupElement),
       "proveDHTuple(gA, OUTPUTS(0).R4[GroupElement].get, gA, gA)"
     ).asInstanceOf[BlockValue].result shouldBe a [CreateProveDHTuple]

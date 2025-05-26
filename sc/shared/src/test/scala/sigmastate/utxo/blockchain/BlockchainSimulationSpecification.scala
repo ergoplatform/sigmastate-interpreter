@@ -1,14 +1,11 @@
 package sigmastate.utxo.blockchain
 
-import java.io.{FileWriter, File}
-
+import sigma.ast.TrueLeaf
+import sigma.ast.syntax.{GetVarBoolean, OptionValueOps}
 import sigmastate.CompilerCrossVersionProps
-import sigmastate.Values.{TrueLeaf, GetVarBoolean}
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeTestProvingInterpreter}
-import sigmastate.interpreter.ContextExtension
+import sigmastate.helpers.ErgoLikeTestProvingInterpreter
+import sigma.interpreter.ContextExtension
 import sigmastate.utxo.blockchain.BlockchainSimulationTestingCommons._
-
-import scala.collection.concurrent.TrieMap
 
 
 class BlockchainSimulationSpecification extends BlockchainSimulationTestingCommons

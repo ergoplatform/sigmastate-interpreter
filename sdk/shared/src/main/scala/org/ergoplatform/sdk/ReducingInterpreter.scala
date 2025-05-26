@@ -3,15 +3,14 @@ package org.ergoplatform.sdk
 import org.ergoplatform.sdk.Extensions.{CollOps, PairCollOps}
 import org.ergoplatform.sdk.JavaHelpers.UniversalConverter
 import org.ergoplatform.sdk.utils.ArithUtils
-import org.ergoplatform.sdk.wallet.protocol.context.{ErgoLikeParameters, ErgoLikeStateContext, TransactionContext}
+import org.ergoplatform.sdk.wallet.protocol.context.{BlockchainStateContext, TransactionContext}
 import org.ergoplatform.validation.ValidationRules
 import org.ergoplatform.{ErgoLikeContext, ErgoLikeInterpreter}
-import scalan.util.Extensions.LongOps
-import scorex.crypto.authds.ADDigest
-import sigmastate.AvlTreeData
-import sigmastate.Values.ErgoTree
-import sigmastate.eval.Evaluation.addCostChecked
-import sigmastate.exceptions.CostLimitException
+import sigma.ast.ErgoTree
+import sigma.data.AvlTreeData
+import sigma.exceptions.CostLimitException
+import sigma.util.Extensions.LongOps
+import sigmastate.eval.addCostChecked
 import sigmastate.interpreter.Interpreter
 import sigmastate.interpreter.Interpreter.ScriptEnv
 
@@ -20,9 +19,9 @@ import java.util.{Objects, List => JList}
 import scala.collection.mutable
 
 /** Interpreter that can reduce transactions with given chain parameters. */
-class ReducingInterpreter(params: ErgoLikeParameters) extends ErgoLikeInterpreter {
+class ReducingInterpreter(params: BlockchainParameters) extends ErgoLikeInterpreter {
   override type CTX = ErgoLikeContext
-  import org.ergoplatform.sdk.Iso._
+  import org.ergoplatform.sdk.SdkIsos._
 
   /** Reduces the given ErgoTree in the given context to the sigma proposition.
     *
@@ -32,11 +31,13 @@ class ReducingInterpreter(params: ErgoLikeParameters) extends ErgoLikeInterprete
     * @return data object containing enough data to sign a transaction without Context.
     */
   def reduce(env: ScriptEnv, ergoTree: ErgoTree, context: CTX): ReducedInputData = {
-    val initCost = ergoTree.complexity + context.initCost
+    val initCost = context.initCost
     val remainingLimit = context.costLimit - initCost
     if (remainingLimit <= 0)
-      throw new CostLimitException(initCost,
-        s"Estimated execution cost $initCost exceeds the limit ${context.costLimit}", None)
+      throw new CostLimitException(
+        initCost,
+        s"Estimated execution cost $initCost exceeds the limit ${context.costLimit}"
+      )
     val ctxUpdInitCost = context.withInitCost(initCost)
     val res = fullReduction(ergoTree, ctxUpdInitCost, env)
     ReducedInputData(res, ctxUpdInitCost.extension)
@@ -56,7 +57,7 @@ class ReducingInterpreter(params: ErgoLikeParameters) extends ErgoLikeInterprete
     */
   def reduceTransaction(
       unreducedTx: UnreducedTransaction,
-      stateContext: ErgoLikeStateContext,
+      stateContext: BlockchainStateContext,
       baseCost: Int
   ): ReducedTransaction = {
     val unsignedTx = unreducedTx.unsignedTx

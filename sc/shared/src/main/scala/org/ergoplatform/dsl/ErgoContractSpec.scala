@@ -1,10 +1,10 @@
 package org.ergoplatform.dsl
 
-import special.collection.Coll
-import sigmastate.interpreter.CostedProverResult
-import sigmastate.eval.IRContext
+import sigma.Coll
 import org.ergoplatform.dsl.ContractSyntax.{ErgoScript, Proposition, Token}
 import org.ergoplatform.ErgoBox.{BoxId, NonMandatoryRegisterId, TokenId}
+import sigma.compiler.ir.IRContext
+import sigma.interpreter.CostedProverResult
 
 class ErgoContractSpec(implicit val IR: IRContext) extends ContractSpec {
 

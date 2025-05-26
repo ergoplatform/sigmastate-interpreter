@@ -1,10 +1,11 @@
 package sigmastate.interpreter
 
+import sigma.ast.ErgoTree
+import sigma.data.{ProveDHTuple, ProveDlog, SigmaBoolean, SigmaConjecture, SigmaLeaf}
+import sigma.serialization.SigSerializer
 import sigmastate._
-import sigmastate.Values.{ErgoTree, SigmaBoolean}
-import sigmastate.basics.DLogProtocol.{DLogInteractiveProver, ProveDlog}
-import sigmastate.basics.{DiffieHellmanTupleInteractiveProver, ProveDHTuple}
-import sigmastate.basics.VerifierMessage.Challenge
+import sigmastate.crypto.DLogProtocol.DLogProver
+import sigmastate.crypto.DiffieHellmanTupleProver
 
 
 trait ProverUtils extends Interpreter {
@@ -41,13 +42,13 @@ trait ProverUtils extends Interpreter {
           sc.children.zipWithIndex.foldLeft(bag) { case (b, (child, idx)) =>
             traverseNode(child, b, position.child(idx))
           }
-        case leaf: SigmaProofOfKnowledgeLeaf[_, _] =>
+        case leaf: SigmaLeaf =>
           if (generateFor.contains(leaf)) {
             val (r, a) = leaf match {
               case _: ProveDlog =>
-                DLogInteractiveProver.firstMessage()
+                DLogProver.firstMessage()
               case pdh: ProveDHTuple =>
-                DiffieHellmanTupleInteractiveProver.firstMessage(pdh)
+                DiffieHellmanTupleProver.firstMessage(pdh)
               case _ => ???
             }
             val hints = Seq(OwnCommitment(leaf, r, a, position), RealCommitment(leaf, a, position))
@@ -80,7 +81,7 @@ trait ProverUtils extends Interpreter {
                      realSecretsToExtract: Seq[SigmaBoolean],
                      simulatedSecretsToExtract: Seq[SigmaBoolean] = Seq.empty): HintsBag = {
     val reduced = fullReduction(ergoTree, context, Interpreter.emptyEnv)
-    bagForMultisig(context, reduced.value, proof, realSecretsToExtract, simulatedSecretsToExtract)
+    bagForMultisig(reduced.value, proof, realSecretsToExtract, simulatedSecretsToExtract)
   }
 
   /**
@@ -89,15 +90,13 @@ trait ProverUtils extends Interpreter {
     *
     * See DistributedSigSpecification for examples of usage.
     *
-    * @param context                   - context used to reduce the proposition
     * @param sigmaTree                 - public key (in form of a sigma-tree)
     * @param proof                     - signature for the key
     * @param realSecretsToExtract      - public keys of secrets with real proofs
     * @param simulatedSecretsToExtract - public keys of secrets with simulated proofs
     * @return - bag of OtherSecretProven and OtherCommitment hints
     */
-  def bagForMultisig(context: CTX,
-                     sigmaTree: SigmaBoolean,
+  def bagForMultisig(sigmaTree: SigmaBoolean,
                      proof: Array[Byte],
                      realSecretsToExtract: Seq[SigmaBoolean],
                      simulatedSecretsToExtract: Seq[SigmaBoolean]): HintsBag = {
@@ -115,19 +114,19 @@ trait ProverUtils extends Interpreter {
           inner.children.zipWithIndex.foldLeft(hintsBag) { case (hb, (c, idx)) =>
             traverseNode(c, realPropositions, simulatedPropositions, hb, position.child(idx))
           }
-        case leaf: UncheckedLeaf[_] =>
+        case leaf: UncheckedLeaf =>
           val realFound = realPropositions.contains(leaf.proposition)
           val simulatedFound = simulatedPropositions.contains(leaf.proposition)
           if (realFound || simulatedFound) {
             val hints = if (realFound) {
               Seq(
                 RealCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
-                RealSecretProof(leaf.proposition, Challenge @@ leaf.challenge, leaf, position)
+                RealSecretProof(leaf.proposition, leaf.challenge, leaf, position)
               )
             } else {
               Seq(
                 SimulatedCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
-                SimulatedSecretProof(leaf.proposition, Challenge @@ leaf.challenge, leaf, position)
+                SimulatedSecretProof(leaf.proposition, leaf.challenge, leaf, position)
               )
             }
             hintsBag.addHints(hints: _*)

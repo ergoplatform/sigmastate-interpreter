@@ -1,5 +1,6 @@
 package sigmastate
 
+import sigma.ast.JitCost
 import sigmastate.helpers.TestingCommons
 
 import scala.util.{Failure, Try}

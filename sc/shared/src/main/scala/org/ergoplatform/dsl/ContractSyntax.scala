@@ -1,18 +1,21 @@
 package org.ergoplatform.dsl
 
+import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.TokenId
-import scalan.RType
-import sigmastate.SType
-import sigmastate.SType.AnyOps
+import sigma.data.{AvlTreeData, CSigmaDslBuilder, RType, SigmaBoolean}
 import org.ergoplatform.dsl.ContractSyntax.{ErgoScript, Proposition}
-import sigmastate.eval.{CostingSigmaDslBuilder, Evaluation}
+import org.ergoplatform.sdk.JavaHelpers.collRType
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import special.sigma.{SigmaProp, SigmaContract, Context, SigmaDslBuilder}
-import scala.language.implicitConversions
+import sigma._
+import sigma.ast.{SType, syntax}
+import sigma.ast.SType.AnyOps
+
+import scala.reflect.ClassTag
+import scala.util.Try
 
 /** Defines methods to be used in contract implementations based on [[SigmaContract]]. */
 trait ContractSyntax { contract: SigmaContract =>
-  override def builder: SigmaDslBuilder = CostingSigmaDslBuilder
+  override def builder: SigmaDslBuilder = CSigmaDslBuilder
 
   /** Instance of contract specification DSL, which can be imported in the body of
    * [[SigmaContract]] implementations. */
@@ -30,6 +33,41 @@ trait ContractSyntax { contract: SigmaContract =>
   /** Helper method to support Scala <-> ErgoScript equivalence. */
   def Coll[T](items: T*)(implicit cT: RType[T]) = builder.Colls.fromItems(items:_*)
 
+  /** Tries to reconstruct RType of the given value.
+    * If not successfull returns failure. */
+  def rtypeOf(value: Any): Try[RType[_]] = Try {
+    value match {
+      case arr if arr.getClass.isArray =>
+        val itemClass = arr.getClass.getComponentType
+        if (itemClass.isPrimitive) {
+          val itemTag = ClassTag[Any](itemClass)
+          RType.fromClassTag(itemTag)
+        } else
+          sys.error(s"Cannot compute rtypeOf($value): non-primitive type of array items")
+      case coll: Coll[_] => collRType(coll.tItem)
+
+      // all primitive types
+      case _: Boolean => BooleanType
+      case _: Byte => ByteType
+      case _: Short => ShortType
+      case _: Int => IntType
+      case _: Long => LongType
+      case _: String => StringType
+      case _: Unit => UnitType
+      case _: sigma.BigInt => BigIntRType
+      case _: GroupElement => GroupElementRType
+      case _: ErgoBox => syntax.ErgoBoxRType // TODO remove this RType
+      case _: Box => BoxRType
+      case _: AvlTreeData => syntax.AvlTreeDataRType // TODO remove this RType
+      case _: AvlTree => AvlTreeRType
+      case _: SigmaBoolean => SigmaBooleanRType // TODO remove this RType
+      case _: SigmaProp => SigmaPropRType
+      case _: Context => ContextRType
+      case _ =>
+        sys.error(s"Don't know how to compute typeOf($value)")
+    }
+  }
+
   /** Call this function in [[SigmaContract]] implementations to define propositions.
     *
     * @param name    name of the proposition (aka contract name)
@@ -45,7 +83,7 @@ trait ContractSyntax { contract: SigmaContract =>
                   scriptCode: String,
                   scriptVersion: Option[Byte] = None): spec.PropositionSpec = {
     val env = contractEnv.map { case (k, v) =>
-      val tV = Evaluation.rtypeOf(v).get
+      val tV = rtypeOf(v).get
       val elemTpe = Evaluation.rtypeToSType(tV)
       k -> spec.IR.builder.mkConstant[SType](v.asWrappedType, elemTpe)
     }.toMap

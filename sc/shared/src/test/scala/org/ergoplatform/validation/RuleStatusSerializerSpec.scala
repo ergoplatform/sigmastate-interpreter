@@ -1,13 +1,13 @@
 package org.ergoplatform.validation
 
-import org.scalatest.Assertion
+import sigma.validation.{ReplacedRule, RuleStatus}
 import sigmastate.helpers.CompilerTestingCommons
-import sigmastate.serialization.{SigmaSerializer, SerializationSpecification}
+import sigma.serialization.{SerializationSpecification, SigmaSerializer}
 
 class RuleStatusSerializerSpec extends SerializationSpecification with CompilerTestingCommons {
 
-  private def roundtrip(status: RuleStatus): Assertion = {
-    implicit val ser = RuleStatusSerializer
+  private def roundtrip(status: RuleStatus) = {
+    implicit val ser: RuleStatusSerializer.type = RuleStatusSerializer
     roundTripTest(status)
     roundTripTestWithPos(status)
   }

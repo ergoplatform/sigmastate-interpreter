@@ -2,16 +2,17 @@ package sigmastate
 
 import debox.cfor
 import org.scalameter.api.Bench
-import sigmastate.Values.{IntConstant, SValue}
-import sigmastate.serialization.OpCodes.PlusCode
-import special.collections.BenchmarkGens
+import sigma.BenchmarkGens
+import sigma.ast.{ArithOp, EQ, IntConstant, SType}
+import sigma.ast.syntax.SValue
+import sigma.serialization.OpCodes.PlusCode
 
 object ErgoTreeBenchmarks extends Bench.LocalTime with BenchmarkGens { suite: Bench[Double] =>
 
   override def maxSize: Int = 10000
 
   /** Expected approximate results:
-    * ::Benchmark allocation of sigmastate.Values.ArithOp, EQ, IntConstant::
+    * ::Benchmark allocation of sigma.ast.ArithOp, EQ, IntConstant::
     * name: OpenJDK 64-Bit Server VM
     * osArch: x86_64
     * osName: Mac OS X
@@ -22,7 +23,7 @@ object ErgoTreeBenchmarks extends Bench.LocalTime with BenchmarkGens { suite: Be
     * Parameters(size -> 1000): 0.696851 ms
     * Parameters(size -> 10000): 5.687967 ms
     */
-  performance of "allocation of sigmastate.Values" in {
+  performance of "allocation of sigma.ast" in {
     measure method "ArithOp, EQ, IntConstant" in {
       using(sizes) in { size =>
         val arr = new Array[SValue](size)
@@ -57,7 +58,7 @@ object ErgoTreeBenchmarks extends Bench.LocalTime with BenchmarkGens { suite: Be
     measure method "isCorrectType" in {
       using(sizes) in { size =>
         cfor(0)(_ < size, _ + 1) { i =>
-          sigmastate.crypto.Platform.isCorrectType(i, SType.allPredefTypes(i % 10))
+          sigma.crypto.Platform.isCorrectType(i, SType.allPredefTypes(i % 10))
         }
       }
     }

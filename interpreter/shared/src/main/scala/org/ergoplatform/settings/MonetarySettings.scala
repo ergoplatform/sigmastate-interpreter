@@ -1,8 +1,8 @@
 package org.ergoplatform.settings
 
-import sigmastate.Values.ErgoTree
 import org.ergoplatform.ErgoTreePredef
 import org.ergoplatform.mining.emission.EmissionRules
+import sigma.ast.ErgoTree
 
 /**
   * Configuration file for monetary settings of Ergo chain

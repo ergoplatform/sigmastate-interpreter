@@ -5,7 +5,7 @@ import scorex.crypto.hash.Blake2b256
 import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, CompilerTestingCommons}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter._
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 
 class TrustlessLETS1 extends CompilerTestingCommons {
   private implicit lazy val IR: TestingIRContext = new TestingIRContext

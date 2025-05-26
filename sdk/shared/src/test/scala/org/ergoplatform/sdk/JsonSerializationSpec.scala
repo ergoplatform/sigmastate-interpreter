@@ -5,28 +5,18 @@ import io.circe._
 import io.circe.syntax._
 import org.ergoplatform.ErgoBox._
 import org.ergoplatform.validation.ValidationRules
+import org.ergoplatform._
 import org.scalacheck.Arbitrary.arbitrary
 import scorex.crypto.authds.{ADDigest, ADKey}
 import scorex.util.ModifierId
 import scorex.util.encode.Base16
-import sigmastate.{AvlTreeData, SType}
-import sigmastate.Values.{ByteArrayConstant, ByteConstant, ErgoTree, EvaluatedValue, IntConstant, LongArrayConstant, SigmaPropConstant}
-import sigmastate.basics.CryptoConstants
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.eval.Digest32Coll
-import sigmastate.interpreter.{ContextExtension, ProverResult}
-import sigmastate.serialization.SerializationSpecification
-import sigmastate.utils.Helpers._
-import special.collection.Coll
-import special.sigma.{Header, PreHeader}
-import org.ergoplatform.ErgoLikeContext
-import org.ergoplatform.DataInput
-import org.ergoplatform.Input
-import org.ergoplatform.UnsignedInput
-import org.ergoplatform.ErgoBox
-import org.ergoplatform.ErgoLikeTransaction
-import org.ergoplatform.UnsignedErgoLikeTransaction
-import org.ergoplatform.ErgoLikeTransactionTemplate
+import sigma.data.{AvlTreeData, Digest32Coll, ProveDlog}
+import sigma.{Coll, Header, PreHeader}
+import sigma.ast._
+import sigma.crypto.CryptoConstants
+import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.serialization.SerializationSpecification
+import sigmastate.utils.Helpers.DecoderResultOps  // required for Scala 2.11
 
 class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
 
@@ -35,12 +25,13 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
     withClue(s"\n for JSON: ${json.spaces2}") { json.as[T].toTry.get shouldEqual v }
   }
 
-  property("ErgoLikeContext should be encoded into JSON and decoded back correctly") {
-    forAll(ergoLikeContextGen) { v: ErgoLikeContext => jsonRoundTrip(v) }
+  // TODO enable after https://github.com/ScorexFoundation/sigmastate-interpreter/issues/681
+  ignore("ErgoLikeContext should be encoded into JSON and decoded back correctly") {
+    forAll(ergoLikeContextGen, MinSuccessful(50)) { v: ErgoLikeContext => jsonRoundTrip(v) }
   }
 
   property("sigma.BigInt should be encoded into JSON and decoded back correctly") {
-    forAll { v: special.sigma.BigInt => jsonRoundTrip(v) }
+    forAll { v: sigma.BigInt => jsonRoundTrip(v) }
   }
 
   property("byte array should be encoded into JSON and decoded back correctly") {
@@ -84,43 +75,52 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
   }
 
   property("Input should be encoded into JSON and decoded back correctly") {
-    forAll(inputGen) { v: Input => jsonRoundTrip(v) }
+    forAll(inputGen, MinSuccessful(50)) { v: Input => jsonRoundTrip(v) }
   }
 
   property("UnsignedInput should be encoded into JSON and decoded back correctly") {
-    forAll(unsignedInputGen) { v: UnsignedInput => jsonRoundTrip(v) }
+    forAll(unsignedInputGen, MinSuccessful(50)) { v: UnsignedInput => jsonRoundTrip(v) }
   }
 
   property("ContextExtension should be encoded into JSON and decoded back correctly") {
-    forAll(contextExtensionGen) { v: ContextExtension => jsonRoundTrip(v) }
+    forAll(contextExtensionGen, MinSuccessful(500)) { v: ContextExtension => jsonRoundTrip(v) }
+  }
+
+  property("AdditionalRegisters should be encoded into JSON and decoded back correctly") {
+    forAll(additionalRegistersGen, MinSuccessful(500)) { regs =>
+      jsonRoundTrip(regs)(registersEncoder, registersDecoder)
+    }
   }
 
   property("ProverResult should be encoded into JSON and decoded back correctly") {
-    forAll(serializedProverResultGen) { v: ProverResult => jsonRoundTrip(v) }
+    forAll(serializedProverResultGen, MinSuccessful(500)) { v: ProverResult => jsonRoundTrip(v) }
   }
 
   property("AvlTreeData should be encoded into JSON and decoded back correctly") {
-    forAll(avlTreeDataGen) { v: AvlTreeData => jsonRoundTrip(v) }
+    forAll(avlTreeDataGen, MinSuccessful(500)) { v: AvlTreeData => jsonRoundTrip(v) }
   }
 
   property("ErgoTree should be encoded into JSON and decoded back correctly") {
-    forAll(ergoTreeGen) { v: ErgoTree => jsonRoundTrip(v) }
+    forAll(ergoTreeGen, MinSuccessful(500)) { v: ErgoTree => jsonRoundTrip(v) }
   }
 
   property("ErgoBox should be encoded into JSON and decoded back correctly") {
-    forAll(ergoBoxGen) { v: ErgoBox => jsonRoundTrip(v) }
+    forAll(ergoBoxGen, MinSuccessful(500)) { v: ErgoBox => jsonRoundTrip(v) }
   }
 
-  property("ErgoLikeTransaction should be encoded into JSON and decoded back correctly") {
-    forAll(ergoLikeTransactionGen) { v: ErgoLikeTransaction => jsonRoundTrip(v) }
+  // TODO enable after https://github.com/ScorexFoundation/sigmastate-interpreter/issues/681
+  ignore("ErgoLikeTransaction should be encoded into JSON and decoded back correctly") {
+    forAll(ergoLikeTransactionGen, MinSuccessful(50)) { v: ErgoLikeTransaction => jsonRoundTrip(v) }
   }
 
-  property("UnsignedErgoLikeTransaction should be encoded into JSON and decoded back correctly") {
-    forAll(unsignedErgoLikeTransactionGen) { v: UnsignedErgoLikeTransaction => jsonRoundTrip(v) }
+  // TODO enable after https://github.com/ScorexFoundation/sigmastate-interpreter/issues/681
+  ignore("UnsignedErgoLikeTransaction should be encoded into JSON and decoded back correctly") {
+    forAll(unsignedErgoLikeTransactionGen, MinSuccessful(50)) { v: UnsignedErgoLikeTransaction => jsonRoundTrip(v) }
   }
 
-  property("ErgoLikeTransactionTemplate should be encoded into JSON and decoded back correctly") {
-    forAll(ergoLikeTransactionTemplateGen) { v: ErgoLikeTransactionTemplate[_ <: UnsignedInput] =>
+  // TODO enable after https://github.com/ScorexFoundation/sigmastate-interpreter/issues/681
+  ignore("ErgoLikeTransactionTemplate should be encoded into JSON and decoded back correctly") {
+    forAll(ergoLikeTransactionTemplateGen, MinSuccessful(50)) { v: ErgoLikeTransactionTemplate[_ <: UnsignedInput] =>
       v.asJson.as(ergoLikeTransactionTemplateDecoder).toTry.get shouldEqual v
     }
   }
@@ -133,10 +133,10 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
     val minerPkHex = "0326df75ea615c18acc6bb4b517ac82795872f388d5d180aac90eaa84de750b942"
     val minerPk = Base16.decode(minerPkHex).map { point =>
       ProveDlog(
-        CryptoConstants.dlogGroup.ctx.decodePoint(point).asInstanceOf[CryptoConstants.EcPointType]
+        CryptoConstants.dlogGroup.ctx.decodePoint(point)
       )
     }.get
-    val regs = Map(
+    val regs = scala.collection.Map(
       R7 -> LongArrayConstant(Array(1L, 2L, 1234123L)),
       R4 -> ByteConstant(1),
       R6 -> IntConstant(10),

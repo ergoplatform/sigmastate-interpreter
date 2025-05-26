@@ -2,12 +2,9 @@ package sigmastate.lang
 
 import fastparse._
 import ScalaWhitespace._
-import sigmastate._
-import sigmastate.SCollection.SByteArray
-import Values._
-import sigmastate.lang.Terms.Ident
-import sigmastate.lang.syntax.Core
-import syntax.Basic.error
+import sigmastate.lang.parsers.Core
+import parsers.Basic.error
+import sigma.ast._
 
 //noinspection ForwardReference
 /** Parsers of type terms. Can produce values of SType. */

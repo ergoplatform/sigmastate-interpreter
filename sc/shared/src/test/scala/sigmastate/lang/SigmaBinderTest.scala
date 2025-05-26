@@ -1,17 +1,19 @@
 package sigmastate.lang
 
-import org.ergoplatform.{Height, Inputs, Outputs, Self}
 import org.ergoplatform.ErgoAddressEncoder._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import sigmastate.Values._
+import sigma.ast.{NoType, SBoolean, SBox, SCollection, SFunc, SInt, SLong, STuple}
+import sigma.ast._
+import sigma.ast.syntax.SValue
 import sigmastate._
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigmastate.lang.SigmaPredef.PredefinedFuncRegistry
-import sigmastate.lang.Terms._
-import sigmastate.exceptions.BinderException
-import sigmastate.eval._
+import SigmaPredef.PredefinedFuncRegistry
+import sigma.ast.syntax._
+import sigma.compiler.phases.SigmaBinder
+import sigma.eval.SigmaDsl
+import sigma.exceptions.BinderException
 
 class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with LangTests {
   import StdSigmaBuilder._
@@ -143,19 +145,6 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
         If(EQ(IntConstant(10), IntConstant(11)), IntConstant(2), IntConstant(3)))
   }
 
-  // TODO v6.0 (4h): SomeValue and NoneValue are not used in ErgoTree and can be
-  //  either removed or implemented in v4.x
-  property("Option constructors") {
-    bind(env, "None") shouldBe NoneValue(NoType)
-    bind(env, "Some(None)") shouldBe SomeValue(NoneValue(NoType))
-    bind(env, "Some(10)") shouldBe SomeValue(IntConstant(10))
-    bind(env, "Some(X)") shouldBe SomeValue(Ident("X"))
-    bind(env, "Some(Some(X - 1))") shouldBe
-      SomeValue(SomeValue(mkMinus(Ident("X").asValue[SInt.type], IntConstant(1))))
-    bind(env, "Some(Some(X + 1))") shouldBe
-      SomeValue(SomeValue(plus(Ident("X").asValue[SInt.type], IntConstant(1))))
-  }
-
   property("lambdas") {
     bind(env, "{ (a: Int) => a - 1 }") shouldBe
       Lambda(IndexedSeq("a" -> SInt), NoType, mkMinus(IntIdent("a"), 1))
@@ -180,7 +169,7 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
 
   property("predefined primitives") {
     bind(env, "{ (box: Box) => box.value }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "value"))
-    bind(env, "{ (box: Box) => box.propositionBytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), SBox.PropositionBytes))
+    bind(env, "{ (box: Box) => box.propositionBytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), SBoxMethods.PropositionBytes))
     bind(env, "{ (box: Box) => box.bytes }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "bytes"))
     bind(env, "{ (box: Box) => box.id }") shouldBe Lambda(IndexedSeq("box" -> SBox), NoType, Select(Ident("box"), "id"))
   }
@@ -214,8 +203,4 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     e.source shouldBe Some(SourceContext(2, 5, "val x = 10"))
   }
 
-  property("fail Some (invalid arguments)") {
-    fail(env, "Some(1, 2)", 1, 1)
-    fail(env, "Some()", 1, 1)
-  }
 }

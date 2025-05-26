@@ -1,6 +1,7 @@
 package sigmastate.eval
 
 import scalan.BaseCtxTests
+import sigma.data.CAnyValue
 
 trait ExampleContracts extends ErgoScriptTestkit { self: BaseCtxTests =>
 

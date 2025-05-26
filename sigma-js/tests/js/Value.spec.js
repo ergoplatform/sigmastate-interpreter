@@ -1,4 +1,4 @@
-const { TypeObj, ValueObj } = require("sigmastate-js/main");
+const { Type$, Value$, SigmaProp$, SigmaProp} = require("sigmastate-js/main");
 
 function testRange(factory, min, max) {
   expect(factory(max).data).toEqual(max);
@@ -10,20 +10,20 @@ function testRange(factory, min, max) {
 
 describe("Smoke tests for Values", () => {
   it("Should create values of primitive types", () => {
-    expect(ValueObj.ofByte(0).data).toEqual(0);
-    expect(ValueObj.ofByte(0).tpe).toEqual(TypeObj.Byte);
-    testRange(function(v) { return ValueObj.ofByte(v); }, -128, 127);
-    testRange(function(v) { return ValueObj.ofShort(v); }, -32768, 32767);
-    testRange(function(v) { return ValueObj.ofInt(v); }, -0x7FFFFFFF - 1, 0x7FFFFFFF);
-    testRange(function(v) { return ValueObj.ofLong(v); }, -0x8000000000000000n, 0x7fffffffffffffffn);
+    expect(Value$.ofByte(0).data).toEqual(0);
+    expect(Value$.ofByte(0).tpe).toEqual(Type$.Byte);
+    testRange(function(v) { return Value$.ofByte(v); }, -128, 127);
+    testRange(function(v) { return Value$.ofShort(v); }, -32768, 32767);
+    testRange(function(v) { return Value$.ofInt(v); }, -0x7FFFFFFF - 1, 0x7FFFFFFF);
+    testRange(function(v) { return Value$.ofLong(v); }, -0x8000000000000000n, 0x7fffffffffffffffn);
   });
 
   it("Should create values of complex types", () => {
-    let pair = ValueObj.pairOf(ValueObj.ofByte(10), ValueObj.ofLong(20n));
+    let pair = Value$.pairOf(Value$.ofByte(10), Value$.ofLong(20n));
     expect(pair.data).toEqual([10, 20n]);
     expect(pair.tpe.name).toEqual("(Byte, Long)");
 
-    let coll = ValueObj.collOf([-10, 0, 10], TypeObj.Byte)
+    let coll = Value$.collOf([-10, 0, 10], Type$.Byte)
     expect(coll.tpe.name).toEqual("Coll[Byte]");
   });
 
@@ -42,91 +42,100 @@ describe("Smoke tests for Values", () => {
   let pairHex = "3e050a28"
 
   it("Unit Value.toHex", () => {
-    let v = ValueObj.fromHex(unitHex)
+    let v = Value$.fromHex(unitHex)
     expect(v.toHex()).toEqual(unitHex)
   });
 
   it("Boolean Value.toHex", () => {
-    let v = ValueObj.fromHex(booleanHex)
+    let v = Value$.fromHex(booleanHex)
     expect(v.toHex()).toEqual(booleanHex)
   });
 
   it("Byte Value.toHex", () => {
-    let v = ValueObj.fromHex(byteHex)
+    let v = Value$.fromHex(byteHex)
     expect(v.toHex()).toEqual(byteHex)
   });
 
   it("Short Value.toHex", () => {
-    let v = ValueObj.fromHex(shortHex)
+    let v = Value$.fromHex(shortHex)
     expect(v.toHex()).toEqual(shortHex)
   });
 
   it("Int Value.toHex", () => {
-    let v = ValueObj.fromHex(intHex)
+    let v = Value$.fromHex(intHex)
     expect(v.toHex()).toEqual(intHex)
   });
 
   it("Long Value.toHex", () => {
-    let v = ValueObj.ofLong(1200n)
+    let v = Value$.ofLong(1200n)
     expect(v.toHex()).toEqual(longHex)
   });
 
   it("BigInt Value.toHex", () => {
-    let v = ValueObj.ofBigInt(0xfffffffffffffffen)
+    let v = Value$.ofBigInt(0xfffffffffffffffen)
     expect(v.toHex()).toEqual(bigIntHex)
   });
 
   it("GroupElement Value.toHex", () => {
-    let v = ValueObj.fromHex(groupElementHex)
+    let v = Value$.fromHex(groupElementHex)
     expect(v.toHex()).toEqual(groupElementHex)
   });
 
   it("SigmaProp Value.toHex", () => {
-    let v = ValueObj.fromHex(sigmaPropHex)
+    let v = Value$.fromHex(sigmaPropHex)
     expect(v.toHex()).toEqual(sigmaPropHex)
   });
 
   it("AvlTree Value.toHex", () => {
-    let v = ValueObj.fromHex(avlTreeHex)
+    let v = Value$.fromHex(avlTreeHex)
     expect(v.toHex()).toEqual(avlTreeHex)
   });
 
-  it("Box Value.toHex", () => {
-    let v = ValueObj.fromHex(boxHex)
-    expect(v.toHex()).toEqual(boxHex)
-  });
+  // TODO uncomment when Box is implemented
+  // ignore("Box Value.toHex", () => {
+  //   let v = Value$.fromHex(boxHex)
+  //   expect(v.toHex()).toEqual(boxHex)
+  // });
 
   it("Coll Value.toHex", () => {
     let arr = [ [1, 2, 3], [10, 20] ]
-    let t = TypeObj.collType(TypeObj.Byte)
-    let collV = ValueObj.collOf(arr, t)
+    let t = Type$.collType(Type$.Byte)
+    let collV = Value$.collOf(arr, t)
 
     expect(collV.tpe.name).toEqual("Coll[Coll[Byte]]");
     expect(collV.toHex()).toEqual(collHex)
   });
 
+  it("Value of type Coll[SigmaProp]", () => {
+    let sp1 = SigmaProp$.fromPointHex(groupElementHex.substring(2))
+    let sp2 = SigmaProp$.fromPointHex(sigmaPropHex.substring(4))
+    let collV = Value$.collOf([sp1, sp2], Type$.SigmaProp)
+
+    expect(collV.tpe.name).toEqual("Coll[SigmaProp]");
+  });
+
   it("Pair Value.toHex", () => {
-    let fst = ValueObj.ofByte(10)
-    let snd = ValueObj.ofLong(20)
-    let pair = ValueObj.pairOf(fst, snd)
+    let fst = Value$.ofByte(10)
+    let snd = Value$.ofLong(20)
+    let pair = Value$.pairOf(fst, snd)
     expect(pair.tpe.name).toEqual("(Byte, Long)");
     expect(pair.toHex()).toEqual(pairHex)
   });
 
   it("Long Value.fromHex", () => {
-    let v = ValueObj.fromHex(longHex)
+    let v = Value$.fromHex(longHex)
     expect(v.data).toEqual(1200n)
     expect(v.tpe.name).toEqual("Long")
   });
 
   it("Coll Value.fromHex", () => {
-    let coll = ValueObj.fromHex(collHex)
+    let coll = Value$.fromHex(collHex)
     expect(coll.tpe.name).toEqual("Coll[Coll[Byte]]");
     expect(coll.toHex()).toEqual(collHex)
   });
 
   it("Pair Value.fromHex", () => {
-    let p = ValueObj.fromHex(pairHex)
+    let p = Value$.fromHex(pairHex)
     expect(p.tpe.name).toEqual("(Byte, Long)");
     expect(p.toHex()).toEqual(pairHex)
   });

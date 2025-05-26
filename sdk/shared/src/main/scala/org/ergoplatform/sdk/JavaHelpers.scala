@@ -1,78 +1,39 @@
 package org.ergoplatform.sdk
 
-import scalan.RType
-import special.collection.Coll
-
-import scala.collection.{JavaConverters, mutable}
-import org.ergoplatform._
-import org.ergoplatform.ErgoBox.{Token, TokenId}
-import sigmastate.SType
-import sigmastate.Values.{Constant, ErgoTree, EvaluatedValue, SValue, SigmaBoolean, SigmaPropConstant}
-import sigmastate.serialization.{ErgoTreeSerializer, GroupElementSerializer, SigmaSerializer, ValueSerializer}
-import scorex.crypto.authds.ADKey
-import org.ergoplatform.settings.ErgoAlgos
-import sigmastate.eval.{CPreHeader, Colls, CostingSigmaDslBuilder, Digest32Coll, Evaluation}
-import special.sigma.{AnyValue, AvlTree, GroupElement, Header}
-import sigmastate.utils.Helpers._  // don't remove, required for Scala 2.11
-
-import java.util
-import java.lang.{Boolean => JBoolean, Byte => JByte, Integer => JInt, Long => JLong, Short => JShort, String => JString}
-import java.util.{List => JList, Map => JMap}
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
-import scorex.util.encode.Base16
-import sigmastate.basics.DLogProtocol.ProveDlog
-import scorex.util.{ModifierId, bytesToId, idToBytes}
-import org.ergoplatform.sdk.JavaHelpers.{TokenColl, TokenIdRType}
+import org.ergoplatform.ErgoBox.{Token, TokenId}
+import org.ergoplatform._
 import org.ergoplatform.sdk.Extensions.{CollBuilderOps, PairCollOps}
-import org.ergoplatform.sdk.wallet.{Constants, TokensMap}
+import org.ergoplatform.sdk.JavaHelpers.{TokenColl, TokenIdRType}
 import org.ergoplatform.sdk.wallet.secrets.{DerivationPath, ExtendedSecretKey}
-import scalan.ExactIntegral.LongIsExactIntegral
-import scalan.util.StringUtil.StringUtilExtensions
-import sigmastate.basics.CryptoConstants.EcPointType
-import sigmastate.basics.{DiffieHellmanTupleProverInput, ProveDHTuple}
-import sigmastate.crypto.CryptoFacade
+import org.ergoplatform.sdk.wallet.{Constants, TokensMap}
+import org.ergoplatform.settings.ErgoAlgos
+import scorex.crypto.authds.ADKey
+import scorex.util.encode.Base16
+import scorex.util.{ModifierId, bytesToId, idToBytes}
+import sigma.ast.{ErgoTree, SType}
+import sigma.ast.syntax.SValue
+import sigma.crypto.{CryptoFacade, EcPointType}
+import sigma.data.ExactIntegral.LongIsExactIntegral
+import sigma.data.{CSigmaDslBuilder, Digest32Coll, Iso, ProveDHTuple, ProveDlog, RType, SigmaBoolean, SigmaConstants}
+import sigma.serialization.GroupElementSerializer
+import sigma.util.StringUtil.StringUtilExtensions
+import sigma.{AnyValue, AvlTree, Coll, Colls, Evaluation, GroupElement, Header}
+import sigma.ast.{Constant, EvaluatedValue, SigmaPropConstant}
+import sigmastate.crypto.DiffieHellmanTupleProverInput
+import sigma.serialization.{ErgoTreeSerializer, SigmaSerializer, ValueSerializer}
+import sigmastate.utils.Helpers._  // required for Scala 2.11
 
+import java.lang.{Boolean => JBoolean, Byte => JByte, Integer => JInt, Long => JLong, Short => JShort, String => JString}
 import java.math.BigInteger
-
-/** Type-class of isomorphisms between types.
-  * Isomorphism between two types `A` and `B` essentially say that both types
-  * represents the same information (entity) but in a different way.
-  * <p>
-  * The information is not lost so that both are true:
-  * 1) a == from(to(a))
-  * 2) b == to(from(b))
-  * <p>
-  * It is used to define type-full conversions:
-  * - different conversions between Java and Scala data types.
-  * - conversion between Ergo representations and generated API representations
-  */
-abstract class Iso[A, B] {
-  def to(a: A): B
-  def from(b: B): A
-  def andThen[C](iso: Iso[B,C]): Iso[A,C] = ComposeIso(iso, this)
-  def inverse: Iso[B, A] = InverseIso(this)
-}
-final case class InverseIso[A,B](iso: Iso[A,B]) extends Iso[B,A] {
-  override def to(a: B): A = iso.from(a)
-  override def from(b: A): B = iso.to(b)
-}
-final case class ComposeIso[A, B, C](iso2: Iso[B, C], iso1: Iso[A, B]) extends Iso[A, C] {
-  def from(c: C): A = iso1.from(iso2.from(c))
-  def to(a: A): C = iso2.to(iso1.to(a))
-}
+import java.util
+import java.util.{List => JList, Map => JMap}
+import scala.collection.{JavaConverters, mutable}
 
 trait LowPriorityIsos {
 }
 
-object Iso extends LowPriorityIsos {
-  implicit def identityIso[A]: Iso[A, A] = new Iso[A, A] {
-    override def to(a: A): A = a
-
-    override def from(b: A): A = b
-  }
-
-  implicit def inverseIso[A,B](implicit iso: Iso[A,B]): Iso[B,A] = InverseIso[A,B](iso)
-
+object SdkIsos extends LowPriorityIsos {
   implicit val jbyteToByte: Iso[JByte, Byte] = new Iso[JByte, Byte] {
     override def to(b: JByte): Byte = b
     override def from(a: Byte): JByte = a
@@ -109,21 +70,25 @@ object Iso extends LowPriorityIsos {
     override def from(t: Token): ErgoToken = new ErgoToken(t._1.toArray, t._2)
   }
 
-  implicit val isoJListErgoTokenToMapPair: Iso[JList[ErgoToken], mutable.LinkedHashMap[ModifierId, Long]] =
-    new Iso[JList[ErgoToken], mutable.LinkedHashMap[ModifierId, Long]] {
-      override def to(a: JList[ErgoToken]): mutable.LinkedHashMap[ModifierId, Long] = {
-        import JavaHelpers._
+  implicit val isoErgoTokenSeqToLinkedMap: Iso[IndexedSeq[ErgoToken], mutable.LinkedHashMap[ModifierId, Long]] =
+    new Iso[IndexedSeq[ErgoToken], mutable.LinkedHashMap[ModifierId, Long]] {
+      override def to(a: IndexedSeq[ErgoToken]): mutable.LinkedHashMap[ModifierId, Long] = {
         val lhm = new mutable.LinkedHashMap[ModifierId, Long]()
-        a.convertTo[IndexedSeq[Token]]
-          .map(t => bytesToId(t._1.toArray) -> t._2)
-          .foldLeft(lhm)(_ += _)
+        a.foreach { et =>
+          val t = isoErgoTokenToPair.to(et)
+          lhm += bytesToId(t._1.toArray) -> t._2
+        }
+        lhm
       }
 
-      override def from(t: mutable.LinkedHashMap[ModifierId, Long]): JList[ErgoToken] = {
-        import JavaHelpers._
-        val pairs: IndexedSeq[Token] = t.toIndexedSeq
-          .map(t => (Digest32Coll @@ Colls.fromArray(idToBytes(t._1))) -> t._2)
-        pairs.convertTo[JList[ErgoToken]]
+      override def from(t: mutable.LinkedHashMap[ModifierId, Long]): IndexedSeq[ErgoToken] = {
+        val pairs = t.toIndexedSeq
+          .map { t =>
+            val id = Digest32Coll @@ Colls.fromArray(idToBytes(t._1))
+            val value = t._2
+            isoErgoTokenToPair.from((id, value))
+          }
+        pairs
       }
     }
 
@@ -238,15 +203,16 @@ object JavaHelpers {
     def toErgoTree: ErgoTree = decodeStringToErgoTree(base16)
   }
 
-  implicit val TokenIdRType: RType[TokenId] = collRType(RType.ByteType).asInstanceOf[RType[TokenId]]
-  implicit val JByteRType: RType[JByte] = RType.ByteType.asInstanceOf[RType[JByte]]
-  implicit val JShortRType: RType[JShort] = RType.ShortType.asInstanceOf[RType[JShort]]
-  implicit val JIntRType: RType[JInt] = RType.IntType.asInstanceOf[RType[JInt]]
-  implicit val JLongRType: RType[JLong] = RType.LongType.asInstanceOf[RType[JLong]]
-  implicit val JBooleanRType: RType[JBoolean] = RType.BooleanType.asInstanceOf[RType[JBoolean]]
+  implicit val TokenIdRType: RType[TokenId] = collRType(sigma.ByteType).asInstanceOf[RType[TokenId]]
+  implicit val JByteRType: RType[JByte] = sigma.ByteType.asInstanceOf[RType[JByte]]
+  implicit val JShortRType: RType[JShort] = sigma.ShortType.asInstanceOf[RType[JShort]]
+  implicit val JIntRType: RType[JInt] = sigma.IntType.asInstanceOf[RType[JInt]]
+  implicit val JLongRType: RType[JLong] = sigma.LongType.asInstanceOf[RType[JLong]]
+  implicit val JBooleanRType: RType[JBoolean] = sigma.BooleanType.asInstanceOf[RType[JBoolean]]
+  implicit val JUnitRType: RType[Unit] = sigma.UnitType
 
-  val HeaderRType: RType[Header] = special.sigma.HeaderRType
-  val PreHeaderRType: RType[special.sigma.PreHeader] = special.sigma.PreHeaderRType
+  val HeaderRType: RType[Header] = sigma.HeaderRType
+  val PreHeaderRType: RType[sigma.PreHeader] = sigma.PreHeaderRType
 
   def Algos: ErgoAlgos = org.ergoplatform.settings.ErgoAlgos
 
@@ -292,17 +258,6 @@ object JavaHelpers {
 
   def hash(s: String): String = {
     ErgoAlgos.encode(ErgoAlgos.hash(s))
-  }
-
-  def toPreHeader(h: Header): special.sigma.PreHeader = {
-    CPreHeader(h.version, h.parentId, h.timestamp, h.nBits, h.height, h.minerPk, h.votes)
-  }
-
-  def toSigmaBoolean(ergoTree: ErgoTree): SigmaBoolean = {
-    val prop = ergoTree.toProposition(ergoTree.isConstantSegregation)
-    prop match {
-      case SigmaPropConstant(p) => SigmaDsl.toSigmaBoolean(p)
-    }
   }
 
   def toErgoTree(sigmaBoolean: SigmaBoolean): ErgoTree = ErgoTree.fromSigmaBoolean(sigmaBoolean)
@@ -358,19 +313,19 @@ object JavaHelpers {
     DataInput(ADKey @@ boxIdBytes)
   }
 
-  def collRType[T](tItem: RType[T]): RType[Coll[T]] = special.collection.collRType(tItem)
+  def collRType[T](tItem: RType[T]): RType[Coll[T]] = sigma.collRType(tItem)
 
-  def BigIntRType: RType[special.sigma.BigInt] = special.sigma.BigIntRType
+  def BigIntRType: RType[sigma.BigInt] = sigma.BigIntRType
 
-  def GroupElementRType: RType[special.sigma.GroupElement] = special.sigma.GroupElementRType
+  def GroupElementRType: RType[sigma.GroupElement] = sigma.GroupElementRType
 
-  def SigmaPropRType: RType[special.sigma.SigmaProp] = special.sigma.SigmaPropRType
+  def SigmaPropRType: RType[sigma.SigmaProp] = sigma.SigmaPropRType
 
-  def AvlTreeRType: RType[special.sigma.AvlTree] = special.sigma.AvlTreeRType
+  def AvlTreeRType: RType[sigma.AvlTree] = sigma.AvlTreeRType
 
-  def BoxRType: RType[special.sigma.Box] = special.sigma.BoxRType
+  def BoxRType: RType[sigma.Box] = sigma.BoxRType
 
-  def SigmaDsl: CostingSigmaDslBuilder = sigmastate.eval.SigmaDsl
+  def SigmaDsl: CSigmaDslBuilder = sigma.eval.SigmaDsl
 
   def collFrom(arr: Array[Byte]): Coll[Byte] = {
     Colls.fromArray(arr)
@@ -408,7 +363,7 @@ object JavaHelpers {
    * @return a mapping from asset id to to balance and total assets number
    */
   def extractAssets(boxes: IndexedSeq[ErgoBoxCandidate]): (Map[Digest32Coll, Long], Int) = {
-    import special.collection.Extensions.CollOps
+    import sigma.Extensions.CollOps
     val map = mutable.Map[Digest32Coll, Long]()
     val assetsNum = boxes.foldLeft(0) { case (acc, box) =>
       require(box.additionalTokens.length <= SigmaConstants.MaxTokens.value, "too many assets in one box")

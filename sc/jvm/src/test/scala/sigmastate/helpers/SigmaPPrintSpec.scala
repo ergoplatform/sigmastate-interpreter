@@ -1,19 +1,17 @@
 package sigmastate.helpers
 
 import org.ergoplatform.settings.ErgoAlgos
-import org.ergoplatform.{ErgoBox, Outputs}
-import scalan.RType
+import org.ergoplatform.ErgoBox
 import scorex.util.ModifierId
-import sigmastate.Values._
-import sigmastate._
-import sigmastate.eval.Extensions.ArrayOps
+import sigma.Extensions.ArrayOps
+import sigma.SigmaDslTesting
+import sigma.ast._
+import sigma.data.{AvlTreeData, AvlTreeFlags, CBox, CollType, Digest32Coll}
+import ErgoTree.HeaderType
 import sigmastate.eval._
-import sigmastate.lang.Terms.MethodCall
-import sigmastate.serialization.OpCodes
+import sigma.ast.MethodCall
+import sigma.serialization.OpCodes
 import sigmastate.utils.Helpers
-import sigmastate.utxo.SelectField
-import special.collection.CollType
-import special.sigma.SigmaDslTesting
 
 import java.math.BigInteger
 import scala.collection.mutable.ArrayBuffer
@@ -43,8 +41,8 @@ class SigmaPPrintSpec extends SigmaDslTesting {
     test(SCollectionType(SBoolean), "SBooleanArray")
     test(STuple(Vector(SBoolean, SInt)), "SPair(SBoolean, SInt)")
 
-    test(RType.BooleanType, "RType.BooleanType")
-    test(CollType(RType.ByteType), "CollType(RType.ByteType)")
+    test(sigma.BooleanType, "RType.BooleanType")
+    test(CollType(sigma.ByteType), "CollType(RType.ByteType)")
 
     // exception handlers
     test(new ArithmeticException("msg"), "new ArithmeticException(\"msg\")")
@@ -89,7 +87,7 @@ class SigmaPPrintSpec extends SigmaDslTesting {
         |)""".stripMargin)
     test(
       new ErgoTree(
-        16.toByte,
+        HeaderType @@ 16.toByte,
         Vector(IntArrayConstant(Array(10, 20))),
         Right(BoolToSigmaProp(TrueLeaf))
       ),
@@ -99,10 +97,10 @@ class SigmaPPrintSpec extends SigmaDslTesting {
         |  Right(BoolToSigmaProp(TrueLeaf))
         |)""".stripMargin)
     test(
-      CostingBox(
+      CBox(
         new ErgoBox(
             9223372036854775807L,
-          new ErgoTree(0.toByte, Vector(), Right(BoolToSigmaProp(FalseLeaf))),
+          new ErgoTree(HeaderType @@ 0.toByte, Vector(), Right(BoolToSigmaProp(FalseLeaf))),
           Coll(
             (Digest32Coll @@ (ErgoAlgos.decodeUnsafe("6e789ab7b2fffff12280a6cd01557f6fb22b7f80ff7aff8e1f7f15973d7f0001").toColl), 10000000L)
           ),
@@ -112,7 +110,7 @@ class SigmaPPrintSpec extends SigmaDslTesting {
             1000000
         )
       ),
-      """CostingBox(
+      """CBox(
         |  new ErgoBox(
         |    9223372036854775807L,
         |    new ErgoTree(0.toByte, Vector(), Right(BoolToSigmaProp(FalseLeaf))),
@@ -150,13 +148,13 @@ class SigmaPPrintSpec extends SigmaDslTesting {
     test(
       MethodCall.typed[Value[SCollection[SBox.type]]](
         ValUse(1, SContext),
-        SContext.getMethodByName("dataInputs"),
+        SContextMethods.getMethodByName("dataInputs"),
         Vector(),
         Map()
       ),
       """MethodCall.typed[Value[SCollection[SBox.type]]](
         |  ValUse(1, SContext),
-        |  SContext.getMethodByName("dataInputs"),
+        |  SContextMethods.getMethodByName("dataInputs"),
         |  Vector(),
         |  Map()
         |)""".stripMargin)
@@ -166,13 +164,13 @@ class SigmaPPrintSpec extends SigmaDslTesting {
     test(
       MethodCall.typed[Value[SCollection[SInt.type]]](
         ValUse(1, SCollectionType(SBox)),
-        SCollection.IndicesMethod.withConcreteTypes(Map(SCollection.tIV -> SBox)),
+        SCollectionMethods.IndicesMethod.withConcreteTypes(Map(SCollection.tIV -> SBox)),
         Vector(),
         Map()
       ),
       """MethodCall.typed[Value[SCollection[SInt.type]]](
         |  ValUse(1, SCollectionType(SBox)),
-        |  SCollection.getMethodByName("indices").withConcreteTypes(Map(STypeVar("IV") -> SBox)),
+        |  SCollectionMethods.getMethodByName("indices").withConcreteTypes(Map(STypeVar("IV") -> SBox)),
         |  Vector(),
         |  Map()
         |)""".stripMargin)

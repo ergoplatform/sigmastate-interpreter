@@ -1,7 +1,7 @@
 package org.ergoplatform.sdk.wallet.secrets
 
-import sigmastate.basics.DLogProtocol.DLogProverInput
-import sigmastate.basics.{DiffieHellmanTupleProverInput, SigmaProtocolPrivateInput}
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigmastate.crypto.{DiffieHellmanTupleProverInput, SigmaProtocolPrivateInput}
 
 /**
   * Basic trait for secret data, encapsulating a corresponding private inputs for a Sigma protocol.
@@ -10,7 +10,7 @@ trait SecretKey {
   /**
     * Private (secret) input of a sigma protocol
     */
-  def privateInput: SigmaProtocolPrivateInput[_, _]
+  def privateInput: SigmaProtocolPrivateInput[_]
 }
 
 /**
@@ -19,7 +19,7 @@ trait SecretKey {
 sealed trait PrimitiveSecretKey extends SecretKey
 
 object PrimitiveSecretKey {
-  def apply(sigmaPrivateInput: SigmaProtocolPrivateInput[_, _]): PrimitiveSecretKey = sigmaPrivateInput match {
+  def apply(sigmaPrivateInput: SigmaProtocolPrivateInput[_]): PrimitiveSecretKey = sigmaPrivateInput match {
     case dls: DLogProverInput => DlogSecretKey(dls)
     case dhts: DiffieHellmanTupleProverInput => DhtSecretKey(dhts)
   }

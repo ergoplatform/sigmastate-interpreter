@@ -3,15 +3,16 @@ package sigmastate.utxo.examples
 import org.ergoplatform._
 import scorex.crypto.hash.Blake2b256
 import scorex.util._
-import sigmastate.Values._
+import sigma.Colls
+import sigma.ast.syntax.{BooleanConstant, GetVarByteArray, OptionValueOps}
+import sigma.ast._
+import sigma.data.AvlTreeData
 import sigmastate._
-import sigmastate.eval._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, CompilerTestingCommons, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.interpreter.ContextExtension
-import sigmastate.lang.Terms._
-import sigmastate.serialization.ValueSerializer
-import sigmastate.utxo._
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
+import sigma.ast.syntax._
+import sigma.interpreter.ContextExtension
+import sigma.serialization.ValueSerializer
 import sigmastate.utxo.blockchain.BlockchainSimulationTestingCommons._
 
 /**

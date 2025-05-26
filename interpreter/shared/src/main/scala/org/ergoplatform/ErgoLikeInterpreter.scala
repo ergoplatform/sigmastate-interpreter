@@ -1,9 +1,9 @@
 package org.ergoplatform
 
-import sigmastate.SCollection.SByteArray
-import sigmastate.Values._
+import sigma.ast.SCollection.SByteArray
+import sigma.ast._
+import sigma.ast.syntax._
 import sigmastate.interpreter.Interpreter
-import sigmastate.utxo._
 
 
 /** Base class of verifying interpreter which expects ErgoLikeContext as input of

@@ -1,7 +1,7 @@
 package org.ergoplatform.validation
 
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.utils.{SigmaByteReader, SigmaByteWriter}
+import sigma.validation.{ChangedRule, DisabledRule, EnabledRule, ReplacedRule, RuleStatus}
+import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 
 object RuleStatusSerializer extends SigmaSerializer[RuleStatus, RuleStatus] {
   import RuleStatus._

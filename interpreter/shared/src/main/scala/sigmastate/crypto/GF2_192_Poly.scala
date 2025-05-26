@@ -31,9 +31,6 @@ package sigmastate.crypto
 
 import debox.cfor
 
-import java.util
-import java.util.Arrays
-
 class GF2_192_Poly {
   final private var c: Array[GF2_192] = null // must be not null and of length at least 1
 
@@ -165,14 +162,14 @@ class GF2_192_Poly {
   def coeff0Bytes: Array[Byte] = c(0).toByteArray
 
   override def hashCode: Int = {
-    31 * util.Arrays.deepHashCode(c.asInstanceOf[Array[AnyRef]]) + deg
+    31 * java.util.Arrays.deepHashCode(c.asInstanceOf[Array[AnyRef]]) + deg
   }
 
   override def equals(obj: Any): Boolean = {
     if (this eq obj.asInstanceOf[AnyRef]) return true
     obj match {
       case that: GF2_192_Poly =>
-        util.Arrays.deepEquals(c.asInstanceOf[Array[AnyRef]], that.c.asInstanceOf[Array[AnyRef]]) &&
+        java.util.Arrays.deepEquals(c.asInstanceOf[Array[AnyRef]], that.c.asInstanceOf[Array[AnyRef]]) &&
           deg == that.deg
       case _ => false
     }

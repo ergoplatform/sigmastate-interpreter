@@ -1,8 +1,9 @@
 package org.ergoplatform.sdk
 
+import org.ergoplatform.sdk.JavaHelpers.StringExtensions
 import org.ergoplatform.{ErgoBox, ErgoLikeTransaction, UnsignedErgoLikeTransaction}
-
-import java.util
+import sigmastate.eval.Extensions.ArrayByteOps
+import sigma.serialization.SigmaSerializer
 
 /** Represents a transaction data chat can be reduced to [[ReducedTransaction]].
   *
@@ -33,7 +34,7 @@ case class UnreducedTransaction(
   private def checkSameIds(
       xsName: String, xs: Seq[Array[Byte]],
       ysName: String, ys: Seq[Array[Byte]], msg: => String) = {
-    require(xs.zip(ys).forall { case (id1, id2) => util.Arrays.equals(id1, id2) }, {
+    require(xs.zip(ys).forall { case (id1, id2) => java.util.Arrays.equals(id1, id2) }, {
       val xsOnly = xs.diff(ys)
       val ysOnly = ys.diff(xs)
       s"""$msg:
@@ -45,7 +46,23 @@ case class UnreducedTransaction(
 }
 
 /** Represents results for transaction reduction by [[ReducingInterpreter]]. */
-case class ReducedTransaction(ergoTx: ReducedErgoLikeTransaction)
+case class ReducedTransaction(ergoTx: ReducedErgoLikeTransaction) {
+  /** Serialized bytes of this transaction in hex format. */
+  def toHex: String = {
+    val w = SigmaSerializer.startWriter()
+    ReducedErgoLikeTransactionSerializer.serialize(ergoTx, w)
+    w.toBytes.toHex
+  }
+}
+
+object ReducedTransaction {
+  /** Creates a [[ReducedTransaction]] from serialized bytes in hex format. */
+  def fromHex(hex: String): ReducedTransaction = {
+    val r = SigmaSerializer.startReader(hex.toBytes)
+    val tx = ReducedErgoLikeTransactionSerializer.parse(r)
+    ReducedTransaction(tx)
+  }
+}
 
 /** Represents results for transaction signing by a prover like [[SigmaProver]]. */
 case class SignedTransaction(ergoTx: ErgoLikeTransaction, cost: Int)

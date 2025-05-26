@@ -1,18 +1,19 @@
 package org.ergoplatform
 
-import sigmastate.SType
-import sigmastate.lang.SigmaCompiler
-import sigmastate.eval.IRContext
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
-import sigmastate.Values.{SigmaPropValue, Value}
-import sigmastate.lang.Terms.ValueOps
+import sigma.ast.SType
+import sigma.ast.syntax.SigmaPropValue
+import sigma.ast.Value
+import sigma.ast.syntax.ValueOps
+import sigma.compiler.SigmaCompiler
+import sigma.compiler.ir.IRContext
 
 object ErgoScriptPredef {
   import sigmastate.interpreter.Interpreter._
 
   /** Compiles the given ErgoScript `code` into ErgoTree expression. */
   def compileWithCosting(env: ScriptEnv, code: String, networkPrefix: NetworkPrefix)(implicit IR: IRContext): Value[SType] = {
-    val compiler = new SigmaCompiler(networkPrefix)
+    val compiler = SigmaCompiler(networkPrefix)
     val res = compiler.compile(env, code)
     res.buildTree
   }

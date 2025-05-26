@@ -2,17 +2,17 @@
 package sigmastate.utxo.examples
 
 import java.math.BigInteger
-
 import org.ergoplatform.ErgoBox.{R4, R5}
-import sigmastate.{AvlTreeData, CompilerCrossVersionProps}
-import sigmastate.Values.GroupElementConstant
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.basics.{DiffieHellmanTupleProverInput, ProveDHTuple, CryptoConstants}
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, CompilerTestingCommons, ErgoLikeTestInterpreter}
+import sigma.data.{AvlTreeData, ProveDHTuple, ProveDlog}
+import sigma.util.Extensions.EcpOps
+import sigmastate.CompilerCrossVersionProps
+import sigma.ast.GroupElementConstant
+import sigma.crypto.CryptoConstants
+import sigmastate.crypto.DiffieHellmanTupleProverInput
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter._
-import sigmastate.lang.Terms._
-import sigmastate.eval.Extensions._
+import sigma.ast.syntax._
 
 class DHTupleExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -31,7 +31,7 @@ class DHTupleExampleSpecification extends CompilerTestingCommons
     val g = dlogGroup.generator
 
     val alice = new ContextEnrichingTestProvingInterpreter
-    val alicePubKey:ProveDlog = alice.dlogSecrets.head.publicImage
+    val alicePubKey: ProveDlog = alice.dlogSecrets.head.publicImage
 
     val x:BigInteger = alice.dlogSecrets.head.w // x is Alice's private key
 

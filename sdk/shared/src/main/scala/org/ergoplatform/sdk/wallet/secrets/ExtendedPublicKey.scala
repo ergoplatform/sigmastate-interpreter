@@ -1,13 +1,9 @@
 package org.ergoplatform.sdk.wallet.secrets
 
-import java.util
-import sigmastate.basics.DLogProtocol.{DLogProverInput, ProveDlog}
-import sigmastate.basics.CryptoConstants
-import sigmastate.crypto.CryptoFacade
-import sigmastate.crypto.BigIntegers
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.utils.{SigmaByteReader, SigmaByteWriter}
-
+import sigma.crypto.{BigIntegers, CryptoConstants, CryptoFacade}
+import sigma.data.ProveDlog
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 import scala.annotation.tailrec
 
 /**
@@ -29,15 +25,15 @@ final class ExtendedPublicKey(/*private[secrets] */val keyBytes: Array[Byte],
 
   override def equals(obj: Any): Boolean = (this eq obj.asInstanceOf[AnyRef]) || (obj match {
     case that: ExtendedPublicKey =>
-      util.Arrays.equals(that.keyBytes, this.keyBytes) &&
-          util.Arrays.equals(that.chainCode, this.chainCode) &&
+      java.util.Arrays.equals(that.keyBytes, this.keyBytes) &&
+          java.util.Arrays.equals(that.chainCode, this.chainCode) &&
           that.path == this.path
     case _ => false
   })
 
   override def hashCode(): Int = {
-    var h = util.Arrays.hashCode(keyBytes)
-    h = 31 * h + util.Arrays.hashCode(chainCode)
+    var h = java.util.Arrays.hashCode(keyBytes)
+    h = 31 * h + java.util.Arrays.hashCode(chainCode)
     h = 31 * h + path.hashCode()
     h
   }

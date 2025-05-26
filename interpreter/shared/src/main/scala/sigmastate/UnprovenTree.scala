@@ -1,18 +1,18 @@
 package sigmastate
 
-import java.math.BigInteger
-import sigmastate.Values.{ErgoTree, SigmaBoolean, SigmaPropConstant}
-import sigmastate.basics.DLogProtocol.{FirstDLogProverMessage, ProveDlog}
-import sigmastate.basics.VerifierMessage.Challenge
-import sigmastate.basics.{FirstDiffieHellmanTupleProverMessage, FirstProverMessage, ProveDHTuple}
-import sigmastate.interpreter.{ErgoTreeEvaluator, NamedDesc, OperationCostInfo}
-import sigmastate.interpreter.ErgoTreeEvaluator.fixedCostOp
-import sigmastate.serialization.ErgoTreeSerializer.DefaultSerializer
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.utils.SigmaByteWriter
 import debox.cfor
-import sigmastate.crypto.GF2_192_Poly
-import scala.language.existentials
+import sigma.data.{CAND, COR, CTHRESHOLD, ProveDHTuple, ProveDlog, SigmaBoolean, SigmaLeaf}
+import sigma.ast.ErgoTree.ZeroHeader
+import sigma.ast.{ErgoTree, FixedCost, JitCost, NamedDesc, OperationCostInfo, SigmaPropConstant}
+import sigma.eval.ErgoTreeEvaluator
+import sigmastate.crypto.DLogProtocol.FirstDLogProverMessage
+import sigmastate.crypto.VerifierMessage.Challenge
+import sigmastate.crypto.{FirstDHTupleProverMessage, FirstProverMessage, GF2_192_Poly}
+import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
+import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
+import sigma.serialization.{SigmaByteWriter, SigmaSerializer}
+
+import java.math.BigInteger
 
 object ConjectureType extends Enumeration {
   val AndConjecture = Value(0)
@@ -25,7 +25,7 @@ object ConjectureType extends Enumeration {
 trait ProofTree extends Product
 
 trait ProofTreeLeaf extends ProofTree {
-  val proposition: SigmaBoolean
+  val proposition: SigmaLeaf
   val commitmentOpt: Option[FirstProverMessage]
 }
 
@@ -102,7 +102,7 @@ sealed trait UnprovenTree extends ProofTree {
   /**
     * Challenge used by the prover.
     */
-  val challengeOpt: Option[Array[Byte]]
+  val challengeOpt: Option[Challenge]
 
   def withChallenge(challenge: Challenge): UnprovenTree
 
@@ -187,7 +187,7 @@ case class UnprovenSchnorr(override val proposition: ProveDlog,
 }
 
 case class UnprovenDiffieHellmanTuple(override val proposition: ProveDHTuple,
-                                      override val commitmentOpt: Option[FirstDiffieHellmanTupleProverMessage],
+                                      override val commitmentOpt: Option[FirstDHTupleProverMessage],
                                       randomnessOpt: Option[BigInteger],
                                       override val challengeOpt: Option[Challenge] = None,
                                       override val simulated: Boolean,
@@ -255,7 +255,7 @@ object FiatShamirTree {
         case _: UncheckedDiffieHellmanTuple | _: UnprovenDiffieHellmanTuple => ToBytes_DHT
       }
       fixedCostOp(costInfo) {
-        val propTree = ErgoTree.withSegregation(SigmaPropConstant(l.proposition))
+        val propTree = ErgoTree.withSegregation(ZeroHeader, SigmaPropConstant(l.proposition))
         val propBytes = DefaultSerializer.serializeErgoTree(propTree)
         val commitmentBytes = l.commitmentOpt.get.bytes
         w.put(leafPrefix)

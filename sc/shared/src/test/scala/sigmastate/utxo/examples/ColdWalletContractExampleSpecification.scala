@@ -2,12 +2,13 @@ package sigmastate.utxo.examples
 
 import org.ergoplatform.ErgoBox.{R4, R5}
 import org.ergoplatform._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, CompilerTestingCommons, ErgoLikeTestInterpreter}
+import sigma.data.AvlTreeData
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.{AvlTreeData, CompilerCrossVersionProps}
-import sigmastate.Values.{LongConstant, IntConstant}
+import sigmastate.CompilerCrossVersionProps
+import sigma.ast.{ErgoTree, IntConstant, LongConstant}
 import sigmastate.interpreter.Interpreter.ScriptNameProp
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 
 
 class ColdWalletContractExampleSpecification extends CompilerTestingCommons
@@ -92,7 +93,7 @@ class ColdWalletContractExampleSpecification extends CompilerTestingCommons
     // Both Alice ane Bob withdraw
     val withdrawAmountFull = depositAmount // full amount is withdrawn
 
-    val withdrawOutputAliceAndBob = testBox(withdrawAmountFull, carolPubKey, firstWithdrawHeight)
+    val withdrawOutputAliceAndBob = testBox(withdrawAmountFull, ErgoTree.fromSigmaBoolean(carolPubKey), firstWithdrawHeight)
 
     val withdrawTxAliceAndBob = ErgoLikeTransaction(IndexedSeq(), IndexedSeq(withdrawOutputAliceAndBob))
 
@@ -122,7 +123,7 @@ class ColdWalletContractExampleSpecification extends CompilerTestingCommons
         R5 -> LongConstant(min) // newMin (= old min) = 99000
       )
     )
-    val firstWithdrawOutput = testBox(firstWithdrawAmount, carolPubKey, firstWithdrawHeight)
+    val firstWithdrawOutput = testBox(firstWithdrawAmount, ErgoTree.fromSigmaBoolean(carolPubKey), firstWithdrawHeight)
 
     //normally this transaction would be invalid, but we're not checking it in this test
     val firstWithdrawTx = ErgoLikeTransaction(IndexedSeq(), IndexedSeq(firstChangeOutput, firstWithdrawOutput))
@@ -152,7 +153,7 @@ class ColdWalletContractExampleSpecification extends CompilerTestingCommons
         R5 -> LongConstant(min) // newMin (= old min)
       )
     )
-    val withdrawOutputInvalid = testBox(withdrawAmountInvalid, carolPubKey, firstWithdrawHeight)
+    val withdrawOutputInvalid = testBox(withdrawAmountInvalid, ErgoTree.fromSigmaBoolean(carolPubKey), firstWithdrawHeight)
 
     // normally this transaction would be invalid, but we're not checking it in this test
     val withdrawTxInvalid = ErgoLikeTransaction(IndexedSeq(), IndexedSeq(changeOutputInvalid, withdrawOutputInvalid))
@@ -187,7 +188,7 @@ class ColdWalletContractExampleSpecification extends CompilerTestingCommons
         R5 -> LongConstant(secondMin) // newMin
       )
     )
-    val secondWithdrawOutput = testBox(secondWithdrawAmount, carolPubKey, secondWithdrawHeight)
+    val secondWithdrawOutput = testBox(secondWithdrawAmount, ErgoTree.fromSigmaBoolean(carolPubKey), secondWithdrawHeight)
 
     //normally this transaction would be invalid, but we're not checking it in this test
     val secondWithdrawTx = ErgoLikeTransaction(IndexedSeq(), IndexedSeq(secondChangeOutput, secondWithdrawOutput))

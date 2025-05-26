@@ -1,8 +1,13 @@
-import sigmastate.Values._
-import sigmastate.lang.CheckingSigmaBuilder
+import org.ergoplatform.ErgoLikeContext
+import sigma.ast._
+import sigma.data.RType
+
+import scala.reflect.classTag
 
 package object sigmastate {
   import CheckingSigmaBuilder._
+
+  implicit val ErgoLikeContextRType: RType[ErgoLikeContext] = RType.fromClassTag(classTag[ErgoLikeContext])
 
   /** Helper method to create "+" operation node. */
   def Plus[T <: SNumericType](left: Value[T], right: Value[T]): Value[T] =
@@ -31,5 +36,4 @@ package object sigmastate {
   /** Helper method to create "max" operation node. */
   def Max[T <: SNumericType](left: Value[T], right: Value[T]): Value[T] =
     mkMax(left, right)
-
 }

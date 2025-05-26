@@ -3,12 +3,13 @@ package sigmastate.utxo.examples
 import org.ergoplatform.ErgoBox.{R4, R5}
 import org.ergoplatform._
 import scorex.crypto.hash.Blake2b256
-import sigmastate.Values.{IntConstant, SigmaPropConstant}
+import sigma.data.AvlTreeData
+import sigma.ast.{ErgoTree, IntConstant, SigmaPropConstant}
 import sigmastate._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter.ScriptNameProp
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 
 
 class ReversibleTxExampleSpecification extends CompilerTestingCommons
@@ -174,7 +175,7 @@ class ReversibleTxExampleSpecification extends CompilerTestingCommons
     val bobSpendAmount = 10
     val bobSpendHeight = bobDeadline+1
 
-    val bobSpendOutput = testBox(bobSpendAmount, davePubKey, bobSpendHeight)
+    val bobSpendOutput = testBox(bobSpendAmount, ErgoTree.fromSigmaBoolean(davePubKey), bobSpendHeight)
 
     //normally this transaction would be invalid (why?), but we're not checking it in this test
     val bobSpendTx = createTransaction(bobSpendOutput)
@@ -201,7 +202,7 @@ class ReversibleTxExampleSpecification extends CompilerTestingCommons
     val carolSpendHeight = bobDeadline - 1
 
     // Carol sends to Dave
-    val carolSpendOutput = testBox(carolSpendAmount, davePubKey, carolSpendHeight)
+    val carolSpendOutput = testBox(carolSpendAmount, ErgoTree.fromSigmaBoolean(davePubKey), carolSpendHeight)
 
     //normally this transaction would be invalid (why?), but we're not checking it in this test
     val carolSpendTx = createTransaction(carolSpendOutput)

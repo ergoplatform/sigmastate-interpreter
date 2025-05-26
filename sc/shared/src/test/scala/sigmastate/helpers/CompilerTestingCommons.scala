@@ -1,35 +1,38 @@
 package sigmastate.helpers
 
-import org.ergoplatform.SigmaConstants.ScriptCostLimit
 import org.ergoplatform._
-import org.ergoplatform.validation.ValidationRules.CheckSerializableTypeCode
-import org.ergoplatform.validation.{ValidationException, ValidationSpecification}
+import org.ergoplatform.validation.ValidationSpecification
 import org.scalacheck.Arbitrary.arbByte
 import org.scalacheck.Gen
-import org.scalatest.Assertion
-import scalan.util.BenchmarkUtil
-import scalan.{RType, TestContexts, TestUtils}
-import sigmastate.Values.{Constant, ErgoTree, SValue, SigmaBoolean, SigmaPropValue}
-import sigmastate.eval._
+import sigma.util.BenchmarkUtil
+import scalan.TestContexts
+import sigma.ast.{Constant, CostItem, ErgoTree, JitCost, SOption, SType}
+import sigma.{Colls, Evaluation, TestUtils}
+import sigma.data.{RType, SigmaBoolean}
+import sigma.validation.ValidationException
+import sigma.validation.ValidationRules.CheckSerializableTypeCode
+import sigma.ast.syntax.{SValue, SigmaPropValue}
+import sigma.compiler.{CompilerSettings, SigmaCompiler}
+import sigma.compiler.ir.IRContext
+import sigma.eval.{CostDetails, EvalSettings, Extensions, GivenCost, TracedCost}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.interpreter.ContextExtension.VarBinding
-import sigmastate.interpreter.ErgoTreeEvaluator.DefaultProfiler
+import sigma.interpreter.ContextExtension.VarBinding
+import sigma.kiama.rewriting.Rewriter
+import sigma.kiama.rewriting.Rewriter.{everywherebu, strategy}
+import sigmastate.interpreter.CErgoTreeEvaluator.DefaultProfiler
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigmastate.interpreter._
-import sigmastate.lang.{CompilerSettings, SigmaCompiler, Terms}
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.{CompilerTestsBase, JitCost, SOption, SType}
+import sigma.serialization.SigmaSerializer
+import sigmastate.CompilerTestsBase
+import sigmastate.eval.CContext
 
-import scala.language.implicitConversions
-import scala.reflect.ClassTag
 import scala.util.DynamicVariable
 
 trait CompilerTestingCommons extends TestingCommons
     with TestUtils with TestContexts with ValidationSpecification
     with CompilerTestsBase {
 
-  class TestingIRContext extends TestContext with IRContext {
-  }
+  class TestingIRContext extends TestContext with IRContext
 
   case class CompiledFunc[A,B]
     (script: String, bindings: Seq[VarBinding], expr: SValue, compiledTree: SValue, func: A => (B, CostDetails))
@@ -47,7 +50,7 @@ trait CompilerTestingCommons extends TestingCommons
   def createContexts[A](in: A, bindings: Seq[VarBinding])(implicit tA: RType[A]) = {
     val tpeA = Evaluation.rtypeToSType(tA)
     in match {
-      case ctx: CostingDataContext =>
+      case ctx: CContext =>
         // the context is passed as function argument (this is for testing only)
         // This is to overcome non-functional semantics of context operations
         // (such as Inputs, Height, etc which don't have arguments and refer to the
@@ -56,13 +59,13 @@ trait CompilerTestingCommons extends TestingCommons
         // (ctx.HEIGHT method call compiled to Height IR node)
         // -------
         // We add ctx as it's own variable with id = 1
-        val ctxVar = Extensions.toAnyValue[special.sigma.Context](ctx)(special.sigma.ContextRType)
+        val ctxVar = Extensions.toAnyValue[sigma.Context](ctx)(sigma.ContextRType)
         val newVars = if (ctx.vars.length < 2) {
           val vars = ctx.vars.toArray
-          val buf = new Array[special.sigma.AnyValue](2)
+          val buf = new Array[sigma.AnyValue](2)
           Array.copy(vars, 0, buf, 0, vars.length)
           buf(1) = ctxVar
-          CostingSigmaDslBuilder.Colls.fromArray(buf)
+          Colls.fromArray(buf)
         } else {
           ctx.vars.updated(1, ctxVar)
         }
@@ -82,7 +85,7 @@ trait CompilerTestingCommons extends TestingCommons
           .withErgoTreeVersion(ergoTreeVersionInTests)
           .withBindings(1.toByte -> Constant[SType](in.asInstanceOf[SType#WrappedType], tpeA))
           .withBindings(bindings: _*)
-        val calcCtx = ergoCtx.toSigmaContext().asInstanceOf[CostingDataContext]
+        val calcCtx = ergoCtx.toSigmaContext().asInstanceOf[CContext]
         calcCtx
     }
   }
@@ -115,7 +118,7 @@ trait CompilerTestingCommons extends TestingCommons
     compiledTree
   }
 
-  def evalSettings = ErgoTreeEvaluator.DefaultEvalSettings
+  def evalSettings = CErgoTreeEvaluator.DefaultEvalSettings
 
   def printCostDetails(script: String, details: CostDetails) = {
     val traceLines = SigmaPPrint(details, height = 550, width = 150)
@@ -131,20 +134,18 @@ trait CompilerTestingCommons extends TestingCommons
       (implicit IR: IRContext,
                 evalSettings: EvalSettings,
                 compilerSettings: CompilerSettings): CompiledFunc[A, B] = {
-    val tA = RType[A]
     val f = (in: A) => {
-      implicit val cA: ClassTag[A] = tA.classTag
       val sigmaCtx = createContexts(in, bindings)
       val accumulator = new CostAccumulator(
         initialCost = JitCost(0),
-        costLimit = Some(JitCost.fromBlockCost(ScriptCostLimit.value)))
-      val evaluator = new ErgoTreeEvaluator(
+        costLimit = Some(JitCost.fromBlockCost(evalSettings.scriptCostLimitInEvaluator)))
+      val evaluator = new CErgoTreeEvaluator(
         context = sigmaCtx,
         constants = ErgoTree.EmptyConstants,
         coster = accumulator, evalSettings.profilerOpt.getOrElse(DefaultProfiler), evalSettings)
 
       val (res, actualTime) = BenchmarkUtil.measureTimeNano(
-        evaluator.evalWithCost[B](ErgoTreeEvaluator.EmptyDataEnv, expr))
+        evaluator.evalWithCost[B](CErgoTreeEvaluator.EmptyDataEnv, expr))
       val costDetails = if (evalSettings.costTracingEnabled) {
         val trace: Seq[CostItem] = evaluator.getCostTrace()
         val costDetails = TracedCost(trace, Some(actualTime))
@@ -162,7 +163,12 @@ trait CompilerTestingCommons extends TestingCommons
       }
       (res.value, costDetails)
     }
-    val Terms.Apply(funcVal, _) = expr.asInstanceOf[SValue]
+    if (evalSettings.isDebug) {
+      // Deep clone expr using kiama. This is to make sure JS reflection works correctly.
+      val copyRule = strategy[Any] { case x: SValue => Some(Rewriter.copy(x)) }
+      val Some(copy) = everywherebu(copyRule)(expr)
+    }
+    val sigma.ast.Apply(funcVal, _) = expr.asInstanceOf[SValue]
     CompiledFunc(funcScript, bindings, funcVal, expr, f)
   }
 
@@ -175,22 +181,26 @@ trait CompilerTestingCommons extends TestingCommons
     funcJitFromExpr(funcScript, compiledTree, bindings:_*)
   }
 
-  protected def roundTripTest[T](v: T)(implicit serializer: SigmaSerializer[T, T]): Assertion = {
+  protected def roundTripTest[T](v: T)(implicit serializer: SigmaSerializer[T, T]): T = {
     // using default sigma reader/writer
     val bytes = serializer.toBytes(v)
     bytes.nonEmpty shouldBe true
     val r = SigmaSerializer.startReader(bytes)
     val positionLimitBefore = r.positionLimit
-    serializer.parse(r) shouldBe v
+    val parsed = serializer.parse(r)
+    parsed shouldBe v
     r.positionLimit shouldBe positionLimitBefore
+    parsed
   }
 
-  protected def roundTripTestWithPos[T](v: T)(implicit serializer: SigmaSerializer[T, T]): Assertion = {
+  protected def roundTripTestWithPos[T](v: T)(implicit serializer: SigmaSerializer[T, T]): T = {
     val randomBytesCount = Gen.chooseNum(1, 20).sample.get
     val randomBytes = Gen.listOfN(randomBytesCount, arbByte.arbitrary).sample.get.toArray
     val bytes = serializer.toBytes(v)
-    serializer.parse(SigmaSerializer.startReader(bytes)) shouldBe v
+    val parsed = serializer.parse(SigmaSerializer.startReader(bytes))
+    parsed shouldBe v
     serializer.parse(SigmaSerializer.startReader(randomBytes ++ bytes, randomBytesCount)) shouldBe v
+    parsed
   }
 
   def testReduce(I: Interpreter)(ctx: I.CTX, prop: SigmaPropValue): SigmaBoolean = {

@@ -3,19 +3,23 @@ package sigmastate
 import org.ergoplatform.ErgoBox.AdditionalRegisters
 import org.ergoplatform._
 import scorex.util.ModifierId
-import sigmastate.Values.ErgoTree.{DefaultHeader, updateVersionBits}
-import sigmastate.Values._
-import sigmastate.VersionContext.MaxSupportedScriptVersion
+import sigma.VersionContext.MaxSupportedScriptVersion
+import sigma.ast.ErgoTree.{HeaderType, ZeroHeader, setConstantSegregation, setVersionBits}
+import sigma.ast._
+import sigma.{Box, SigmaDslTesting}
 import sigmastate.eval._
-import sigmastate.exceptions.InterpreterException
-import sigmastate.helpers.{ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers.createBox
-import sigmastate.interpreter.ErgoTreeEvaluator.DefaultEvalSettings
-import sigmastate.interpreter.EvalSettings.EvaluationMode
-import sigmastate.interpreter.{CostedProverResult, ErgoTreeEvaluator, EvalSettings, Interpreter, ProverResult}
-import sigmastate.lang.Terms.ValueOps
+import sigmastate.helpers.{ErgoLikeContextTesting, ErgoLikeTestInterpreter}
+import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
+import sigma.eval.EvalSettings.EvaluationMode
+import sigmastate.interpreter._
+import sigma.ast.syntax.ValueOps
+import sigma.compiler.ir.IRContext
+import sigma.data.CBox
+import sigma.eval.EvalSettings
+import sigma.exceptions.InterpreterException
+import sigma.interpreter.{CostedProverResult, ProverResult}
 import sigmastate.utils.Helpers._
-import special.sigma.{Box, SigmaDslTesting}
 
 /** Specification to verify that the interpreter behaves according to docs/aot-jit-switch.md.
   *
@@ -25,17 +29,17 @@ import special.sigma.{Box, SigmaDslTesting}
 class ScriptVersionSwitchSpecification extends SigmaDslTesting {
   override implicit val generatorDrivenConfig: PropertyCheckConfiguration = PropertyCheckConfiguration(minSuccessful = 30)
   override implicit val evalSettings: EvalSettings =
-    ErgoTreeEvaluator.DefaultEvalSettings.copy(
+    CErgoTreeEvaluator.DefaultEvalSettings.copy(
       costTracingEnabled = true  // should always be enabled in tests (and false by default)
     )
 
   implicit def IR: IRContext = createIR()
 
-  lazy val b1 = CostingBox(
+  lazy val b1 = CBox(
     new ErgoBox(
       1L,
       new ErgoTree(
-        0.toByte,
+        HeaderType @@ 0.toByte,
         Vector(),
         Right(BoolToSigmaProp(OR(ConcreteCollection(Array(FalseLeaf, AND(ConcreteCollection(Array(FalseLeaf, FalseLeaf), SBoolean))), SBoolean))))
       ),
@@ -48,7 +52,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
   )
 
   /** Creates ErgoTree with segregated constants and also the given header flags. */
-  def createErgoTree(headerFlags: Byte)(implicit IR: IRContext): ErgoTree = {
+  def createErgoTree(header: HeaderType)(implicit IR: IRContext): ErgoTree = {
     val code =
       s"""{
         |  val func = { (x: Coll[Box]) => x.filter({(b: Box) => b.value > 1 }) }
@@ -65,7 +69,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
       checkCompilerResult(res)
       res.buildTree.asSigmaProp
     }
-    ErgoTree.withSegregation(headerFlags, compiledTree)
+    ErgoTree.withSegregation(header, compiledTree)
   }
 
   /** Proves the given ergoTree in a dummy context with the given activatedScriptVersion.
@@ -136,7 +140,10 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
   property("new versions of scripts will require size bit in the header") {
     (1 to 7).foreach { version =>
       assertExceptionThrown(
-        createErgoTree(headerFlags = updateVersionBits(DefaultHeader, version.toByte)),
+        {
+          val tree = createErgoTree(header = setVersionBits(ZeroHeader, version.toByte))
+          new ErgoTree(setVersionBits(setConstantSegregation(ZeroHeader), version.toByte), tree.constants, tree.root)
+        },
         exceptionLike[IllegalArgumentException]("For newer version the size bit is required")
       )
     }
@@ -160,7 +167,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
 
       forEachErgoTreeVersion(treeVers) {
         // SF inactive: check cost vectors of v4.x interpreter
-        val headerFlags = ErgoTree.headerWithVersion(ergoTreeVersionInTests)
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 
         // both prove and verify are accepting with full evaluation
@@ -187,8 +194,8 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     forEachActivatedScriptVersion(Array[Byte](0, 1)) { // Block Versions 1, 2
 
       forEachErgoTreeVersion(ergoTreeVers = Array[Byte](2)) { // only Script v2
-        val headerFlags = ErgoTree.headerWithVersion(ergoTreeVersionInTests /* Script v2 */)
-        val ergoTree = createErgoTree(headerFlags = headerFlags)
+        val header = ErgoTree.headerWithVersion(ZeroHeader, ergoTreeVersionInTests /* Script v2 */)
+        val ergoTree = createErgoTree(header)
 
         // prover is rejecting ErgoTree versions higher than activated
         assertExceptionThrown(
@@ -246,7 +253,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     forEachActivatedScriptVersion(activatedVers = Array[Byte](2)) // version for Block v3
     {
       forEachErgoTreeVersion(ergoTreeVers = Array[Byte](3, 4)) { // scripts >= v3
-        val headerFlags = ErgoTree.headerWithVersion(ergoTreeVersionInTests)
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 
         // prover is rejecting ErgoTree versions higher than activated
@@ -273,7 +280,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     forEachActivatedScriptVersion(activatedVers = Array[Byte](3)) // version for Block v4
     {
       forEachErgoTreeVersion(ergoTreeVers = Array[Byte](3, 4)) { // scripts >= v3
-        val headerFlags = ErgoTree.headerWithVersion(ergoTreeVersionInTests)
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 
         // prover is rejecting, because such context parameters doesn't make sense
@@ -305,7 +312,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     {
       forEachErgoTreeVersion(Array[Byte](0, 1, 2)) { // tree versions supported by v5.x
         // SF inactive: check cost vectors of v4.x interpreter
-        val headerFlags = ErgoTree.headerWithVersion(ergoTreeVersionInTests)
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 
         // both prove and verify are accepting with full evaluation

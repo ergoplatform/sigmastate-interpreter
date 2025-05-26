@@ -2,11 +2,12 @@ package org.ergoplatform.sdk
 
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
 import org.ergoplatform._
-import org.ergoplatform.sdk.wallet.protocol.context.ErgoLikeStateContext
-import sigmastate.eval.{CostingSigmaDslBuilder, SigmaDsl}
+import org.ergoplatform.sdk.wallet.protocol.context.BlockchainStateContext
+import sigma.data.CSigmaDslBuilder
+import sigma.eval.SigmaDsl
 import sigmastate.interpreter.HintsBag
 import sigmastate.utils.Helpers.TryOps
-import special.sigma.{BigInt, SigmaProp}
+import sigma.{BigInt, SigmaProp}
 
 /** Represents a prover for signing Ergo transactions and messages.
   *
@@ -16,7 +17,10 @@ import special.sigma.{BigInt, SigmaProp}
 class SigmaProver(_prover: AppkitProvingInterpreter, networkPrefix: NetworkPrefix) {
   implicit val ergoAddressEncoder: ErgoAddressEncoder = ErgoAddressEncoder(networkPrefix)
 
-  /** Returns the Pay-to-Public-Key (P2PK) address associated with the prover's public key. */
+  /** Returns the Pay-to-Public-Key (P2PK) address associated with the prover's public key.
+    * The returned address corresponds to the master secret derived from the mnemonic
+    * phrase configured in the [[ProverBuilder]].
+    */
   def getP2PKAddress: P2PKAddress = {
     val pk = _prover.pubKeys(0)
     P2PKAddress(pk)
@@ -24,7 +28,7 @@ class SigmaProver(_prover: AppkitProvingInterpreter, networkPrefix: NetworkPrefi
 
   /** Returns the prover's secret key. */
   def getSecretKey: BigInt =
-    CostingSigmaDslBuilder.BigInt(_prover.secretKeys(0).privateInput.w)
+    CSigmaDslBuilder.BigInt(_prover.secretKeys(0).privateInput.w)
 
   /** Returns a sequence of EIP-3 addresses associated with the prover's secret keys. */
   def getEip3Addresses: Seq[P2PKAddress] = {
@@ -37,16 +41,16 @@ class SigmaProver(_prover: AppkitProvingInterpreter, networkPrefix: NetworkPrefi
     addresses
   }
 
-  /** Signs a given `UnreducedTransaction` using the prover's secret keys and the provided `ErgoLikeStateContext`.
+  /** Signs a given `UnreducedTransaction` using the prover's secret keys and the provided [[BlockchainStateContext]].
     * Uses baseCost == 0.
     */
-  def sign(stateCtx: ErgoLikeStateContext, tx: UnreducedTransaction): SignedTransaction =
+  def sign(stateCtx: BlockchainStateContext, tx: UnreducedTransaction): SignedTransaction =
     sign(stateCtx, tx, baseCost = 0)
 
-  /** Signs a given `UnreducedTransaction` using the prover's secret keys and the provided `ErgoLikeStateContext`.
+  /** Signs a given `UnreducedTransaction` using the prover's secret keys and the provided [[BlockchainStateContext]].
     * Uses the given baseCost.
     */
-  def sign(stateCtx: ErgoLikeStateContext, tx: UnreducedTransaction, baseCost: Int): SignedTransaction = {
+  def sign(stateCtx: BlockchainStateContext, tx: UnreducedTransaction, baseCost: Int): SignedTransaction = {
     val signed = _prover
         .sign(tx, stateContext = stateCtx, baseCost = baseCost)
         .getOrThrow
@@ -65,9 +69,9 @@ class SigmaProver(_prover: AppkitProvingInterpreter, networkPrefix: NetworkPrefi
   }
 
   /** Reduces a given `UnreducedTransaction` using the prover's secret keys and the
-    * provided `ErgoLikeStateContext` with a base cost.
+    * provided [[BlockchainStateContext]] with a base cost.
     */
-  def reduce(stateCtx: ErgoLikeStateContext, tx: UnreducedTransaction, baseCost: Int): ReducedTransaction = {
+  def reduce(stateCtx: BlockchainStateContext, tx: UnreducedTransaction, baseCost: Int): ReducedTransaction = {
     val reduced = _prover.reduceTransaction(
       unreducedTx = tx, stateContext = stateCtx, baseCost = baseCost)
     reduced

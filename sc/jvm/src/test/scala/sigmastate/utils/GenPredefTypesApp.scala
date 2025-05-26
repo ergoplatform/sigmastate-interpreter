@@ -1,6 +1,6 @@
 package sigmastate.utils
 
-import scalan.util.FileUtil
+import sigma.util.FileUtil
 
 object GenPredefTypesApp extends SpecGen {
   import SpecGenUtils._

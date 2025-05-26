@@ -1,16 +1,17 @@
 package sigmastate.eval
 
 import org.ergoplatform.ErgoBox
-import sigmastate.Values.{ConcreteCollection, IntArrayConstant, IntConstant, SigmaPropConstant, SigmaPropValue}
+import sigma.ast.{AND, ConcreteCollection, CreateProveDlog, DecodePoint, EQ, ErgoTree, IntArrayConstant, IntConstant, SSigmaProp, SigmaPropConstant, SigmaPropIsProven, SubstConstants}
 import sigmastate.helpers.ContextEnrichingTestProvingInterpreter
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter._
 import scalan.BaseCtxTests
+import sigma.ast.syntax.SigmaPropValue
+import sigma.data.ProveDlog
 import sigmastate.lang.LangTests
-import scalan.util.BenchmarkUtil._
-import sigmastate._
-import sigmastate.basics.DLogProtocol.{DLogProverInput, ProveDlog}
-import sigmastate.serialization.ErgoTreeSerializer.DefaultSerializer
+import sigma.util.BenchmarkUtil._
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 
 class EvaluationTest extends BaseCtxTests
     with LangTests with ExampleContracts with ErgoScriptTestkit {
@@ -38,7 +39,7 @@ class EvaluationTest extends BaseCtxTests
   test("lazy logical ops") {
     val prover = new ContextEnrichingTestProvingInterpreter
     val pk = prover.dlogSecrets.head.publicImage
-    val self = testBox(1, pk, 0, additionalRegisters = Map(ErgoBox.R4 -> IntConstant(10)))
+    val self = testBox(1, ErgoTree.fromSigmaBoolean(pk), 0, additionalRegisters = Map(ErgoBox.R4 -> IntConstant(10)))
     val ctx = newErgoContext(height = 1, self)
     // guarded register access: existing reg
     reduce(emptyEnv, "lazy1", "SELF.R4[Int].isDefined && SELF.R4[Int].get == 10", ctx, true)
@@ -80,28 +81,10 @@ class EvaluationTest extends BaseCtxTests
        |  f(SELF) || g(SELF.R5[Coll[Int]].get)
        | }""".stripMargin, ctx, true)
   }
-
-  test("Measure IRContext creation speed") {
-    var ctx: RuntimeIRContext = new RuntimeIRContext
-    measure(100, okShowIterTime = printDebugInfo, okShowTotalTime = printDebugInfo) { i =>
-      ctx = new RuntimeIRContext
-    }
-    printDebug(s"Def count: ${ctx.defCount}")
-    /*
-    Iter 0: 4 ms
-        ...
-    Iter 96: 2 ms
-    Iter 97: 1 ms
-    Iter 98: 2 ms
-    Iter 99: 2 ms
-    Total time: 244 ms
-    Def count: 20
-    */
-  }
   
   test("SubstConst") {
     def script(pk: ProveDlog): SigmaPropValue =
-      AND(EQ(IntConstant(1), IntConstant(1)), SigmaPropConstant(pk).isProven).toSigmaProp
+      AND(EQ(IntConstant(1), IntConstant(1)), SigmaPropIsProven(SigmaPropConstant(pk))).toSigmaProp
 
     val pk1 = DLogProverInput.random().publicImage
     val pk2 = DLogProverInput.random().publicImage

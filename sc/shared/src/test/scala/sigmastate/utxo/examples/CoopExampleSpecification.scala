@@ -1,15 +1,17 @@
 package sigmastate.utxo.examples
 
-import org.ergoplatform.{ErgoLikeContext, ErgoLikeTransaction, ErgoBox}
+import org.ergoplatform.{ErgoBox, ErgoLikeContext, ErgoLikeTransaction}
 import org.scalatest.Assertion
 import org.scalatest.TryValues._
-import sigmastate.basics.DLogProtocol.{ProveDlog, DLogProverInput}
 import scorex.crypto.hash.Blake2b256
-import sigmastate.Values.{ByteArrayConstant, ErgoTree, BooleanConstant}
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, CompilerTestingCommons, ErgoLikeTestInterpreter}
+import sigma.data.{AvlTreeData, ProveDlog}
+import sigma.ast.ErgoTree.ZeroHeader
+import sigma.ast.{BooleanConstant, ByteArrayConstant, ErgoTree}
+import sigmastate.crypto.DLogProtocol.DLogProverInput
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.lang.Terms._
-import sigmastate.{AvlTreeData, CompilerCrossVersionProps}
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
+import sigma.ast.syntax._
+import sigmastate.CompilerCrossVersionProps
 
 class CoopExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -65,7 +67,7 @@ class CoopExampleSpecification extends CompilerTestingCommons
 
     def pkWithTree(in: DLogProverInput): (ProveDlog, ErgoTree) = {
       val pk = in.publicImage
-      val tree = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(0), pk)
+      val tree = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, 0), pk)
       (pk, tree)
     }
 

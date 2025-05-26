@@ -2,11 +2,11 @@ package sigmastate.utxo
 
 import scorex.util.encode.Base16
 import scorex.crypto.hash.Blake2b256
-import sigmastate.Values._
+import sigma.ast._
+import sigma.ast.syntax._
 import sigmastate._
-import sigmastate.lang.Terms._
 import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
-import special.collection.Coll
+import sigma.Coll
 
 
 class ContextEnrichingSpecification extends CompilerTestingCommons

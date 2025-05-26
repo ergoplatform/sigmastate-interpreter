@@ -1,4 +1,4 @@
-package special.sigma
+package sigma
 
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.settings.ErgoAlgos
@@ -6,48 +6,39 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.containerOfN
 import org.scalacheck.util.Buildable
 import org.scalacheck.{Arbitrary, Gen}
-import scalan.RType
-import scorex.crypto.authds.{ADDigest, ADKey, ADValue}
+import sigma.data._
+import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ModifierId
-import sigmastate.Values.{ByteArrayConstant, ConcreteCollection, ConstantPlaceholder, ErgoTree, FalseLeaf, IntConstant, LongConstant, SigmaPropConstant, TrueLeaf}
-import sigmastate.basics.CryptoConstants.EcPointType
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.basics.ProveDHTuple
-import sigmastate.eval.{Colls, _}
-import sigmastate.eval.Extensions._
-import sigmastate.eval.{CAvlTree, CBigInt, CHeader, CPreHeader, CSigmaProp, CostingBox, CostingSigmaDslBuilder, SigmaDsl}
+import sigma.ast._
+import sigma.Extensions.ArrayOps
+import sigmastate.eval.{CHeader, CPreHeader}
 import sigmastate.helpers.TestingCommons
-import sigmastate.serialization.ErgoTreeSerializer
-import sigmastate.serialization.generators.ObjectGenerators
+import sigma.serialization.ErgoTreeSerializer
+import sigma.serialization.generators.ObjectGenerators
 import sigmastate.utils.Helpers
-import sigmastate._
-import special.collection.Coll
+import sigma.ast.{SBoolean, SSigmaProp}
+import sigma.crypto.EcPointType
+import ErgoTree.HeaderType
+import sigma.eval.SigmaDsl
 
 import java.math.BigInteger
 import scala.reflect.ClassTag
 
 trait SigmaTestingData extends TestingCommons with ObjectGenerators {
-  /** Creates a [[special.collection.Coll]] with the given `items`. */
+  /** Creates a [[sigma.Coll]] with the given `items`. */
   def Coll[T](items: T*)(implicit cT: RType[T]): Coll[T] =
-    CostingSigmaDslBuilder.Colls.fromItems(items: _*)
-
-  /** Generator of random collection with `n` elements. */
-  def collOfN[T: RType : Arbitrary](n: Int)
-      (implicit b: Buildable[T, Array[T]]): Gen[Coll[T]] = {
-    implicit val g: Gen[T] = Arbitrary.arbitrary[T]
-    containerOfN[Array, T](n, g).map(Colls.fromArray(_))
-  }
+    CSigmaDslBuilder.Colls.fromItems(items: _*)
 
   val bytesGen: Gen[Array[Byte]] = for {
     len <- Gen.choose(0, 100)
     arr <- containerOfN[Array, Byte](len, Arbitrary.arbByte.arbitrary)
   } yield arr
-  val bytesCollGen = bytesGen.map(Colls.fromArray(_))
-  val intsCollGen = arrayGen[Int].map(Colls.fromArray(_))
-  implicit val arbBytes = Arbitrary(bytesCollGen)
-  implicit val arbInts = Arbitrary(intsCollGen)
-  val keyCollGen = collOfN[Byte](32, arbitrary[Byte])
+  val bytesCollGen: Gen[Coll[Byte]] = bytesGen.map(Colls.fromArray(_))
+  val intsCollGen: Gen[Coll[Int]] = arrayGen[Int].map(Colls.fromArray(_))
+  implicit val arbBytes: Arbitrary[Coll[Byte]] = Arbitrary(bytesCollGen)
+  implicit val arbInts: Arbitrary[Coll[Int]] = Arbitrary(intsCollGen)
+  val keyCollGen: Gen[Coll[Byte]] = collOfN[Byte](32, arbitrary[Byte])
   import org.ergoplatform.dsl.AvlTreeHelpers._
 
   def createAvlTreeAndProver(entries: (Coll[Byte], Coll[Byte])*) = {
@@ -56,63 +47,9 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
     res
   }
 
-  protected def sampleAvlProver = {
-    val keys = arrayOfN(100, keyCollGen).sample.get
-    val values = arrayOfN(100, bytesCollGen).sample.get
-    val (tree, prover) = createAvlTreeAndProver(keys.zip(values): _*)
-    (keys, values, tree, prover)
-  }
-
-  protected def sampleAvlTree: AvlTree = {
-    val (_, _, _, avlProver) = sampleAvlProver
-    val digest = avlProver.digest.toColl
-    val tree = SigmaDsl.avlTree(AvlTreeFlags.ReadOnly.serializeToByte, digest, 32, None)
-    tree
-  }
-
   val tokenId1: Digest32 = Blake2b256("id1")
   val tokenId2: Digest32 = Blake2b256("id2")
-  val header1: Header = CHeader(Blake2b256("Header.id").toColl,
-    0,
-    Blake2b256("Header.parentId").toColl,
-    Blake2b256("ADProofsRoot").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot").toColl,
-    timestamp = 0,
-    nBits = 0,
-    height = 0,
-    extensionRoot = Blake2b256("transactionsRoot").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7)),
-    powDistance = SigmaDsl.BigInt(BigInt("1405498250268750867257727119510201256371618473728619086008183115260323").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 2))
-  )
-  val header2: Header = CHeader(Blake2b256("Header2.id").toColl,
-    0,
-    header1.id,
-    Blake2b256("ADProofsRoot2").toColl,
-    sampleAvlTree,
-    Blake2b256("transactionsRoot2").toColl,
-    timestamp = 2,
-    nBits = 0,
-    height = 1,
-    extensionRoot = Blake2b256("transactionsRoot2").toColl,
-    minerPk = SigmaDsl.groupGenerator,
-    powOnetimePk = SigmaDsl.groupGenerator,
-    powNonce = Colls.fromArray(Array.fill(0.toByte)(8)),
-    powDistance = SigmaDsl.BigInt(BigInt("19306206489815517413186395405558417825367537880571815686937307203793939").bigInteger),
-    votes = Colls.fromArray(Array[Byte](0, 1, 0))
-  )
-  val headers = Colls.fromItems(header2, header1)
-  val preHeader: PreHeader = CPreHeader(0,
-    header2.id,
-    timestamp = 3,
-    nBits = 0,
-    height = 2,
-    minerPk = SigmaDsl.groupGenerator,
-    votes = Colls.emptyColl[Byte]
-  )
+
 
   object TestData {
     val BigIntZero: BigInt = CBigInt(new BigInteger("0", 16))
@@ -132,7 +69,7 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
 
     def createBigIntMaxValue(): BigInt = BigIntMaxValue_instances.getNext
 
-    // TODO v6.0: this values have bitCount == 255 (see to256BitValueExact)
+    // TODO v6.0: this values have bitCount == 255 (see to256BitValueExact) (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
     val BigIntMinValue = CBigInt(new BigInteger("-7F" + "ff" * 31, 16))
 
     val BigIntMaxValue = createBigIntMaxValue()
@@ -208,11 +145,11 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
       )
     )
 
-    val b1_instances = new CloneSet(1000, CostingBox(
+    val b1_instances = new CloneSet(1000, CBox(
       new ErgoBox(
         9223372036854775807L,
         new ErgoTree(
-          16.toByte,
+          HeaderType @@ 16.toByte,
           Array(
             SigmaPropConstant(
               CSigmaProp(
@@ -246,11 +183,11 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
 
     val b1: Box = create_b1()
 
-    val b2: Box = CostingBox(
+    val b2: Box = CBox(
       new ErgoBox(
         12345L,
         new ErgoTree(
-          0.toByte,
+          HeaderType @@ 0.toByte,
           Vector(),
           Right(
             BoolToSigmaProp(

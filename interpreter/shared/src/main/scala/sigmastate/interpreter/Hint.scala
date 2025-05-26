@@ -1,11 +1,10 @@
 package sigmastate.interpreter
 
+import sigma.data.{SigmaBoolean, SigmaLeaf}
 import java.math.BigInteger
-
 import sigmastate.{NodePosition, UncheckedTree}
-import sigmastate.Values.SigmaBoolean
-import sigmastate.basics.FirstProverMessage
-import sigmastate.basics.VerifierMessage.Challenge
+import sigmastate.crypto.FirstProverMessage
+import sigmastate.crypto.VerifierMessage.Challenge
 
 /**
   * A hint for a prover which helps the prover to prove a statement. For example, if the statement is "pk1 && pk2",
@@ -13,6 +12,10 @@ import sigmastate.basics.VerifierMessage.Challenge
   * prover knows that pk2 is known to another party, the prover may prove the statement (with an empty proof for "pk2").
   */
 trait Hint {
+  /**
+    * Public image of a secret
+    */
+  def image: SigmaLeaf
 
   /**
     * A hint is related to a subtree (or a leaf) of a tree. This field encodes a position in the tree.
@@ -25,12 +28,6 @@ trait Hint {
   * A hint which is indicating that a secret associated with its public image "image" is already proven.
   */
 abstract class SecretProven extends Hint {
-
-  /**
-    * Public image of a secret which is proven
-    */
-  def image: SigmaBoolean
-
   /**
     * Challenge used for a proof
     */
@@ -46,16 +43,16 @@ abstract class SecretProven extends Hint {
   * A hint which contains a proof-of-knowledge for a secret associated with its public image "image",
   * with also the mark that the proof is real.
   */
-case class RealSecretProof(image: SigmaBoolean,
+case class RealSecretProof(image: SigmaLeaf,
                            challenge: Challenge,
                            uncheckedTree: UncheckedTree,
                            override val position: NodePosition) extends SecretProven
 
 /**
   * A hint which contains a proof-of-knowledge for a secret associated with its public image "image",
-  * with also the mark that the proof is real.
+  * with also the mark that the proof is simulated (not real).
   */
-case class SimulatedSecretProof(image: SigmaBoolean,
+case class SimulatedSecretProof(image: SigmaLeaf,
                                 challenge: Challenge,
                                 uncheckedTree: UncheckedTree,
                                 override val position: NodePosition) extends SecretProven
@@ -66,7 +63,7 @@ case class SimulatedSecretProof(image: SigmaBoolean,
   * to randomness ("a" in a sigma protocol).
   */
 abstract class CommitmentHint extends Hint {
-  def image: SigmaBoolean
+  /** Commitment to randomness (first message in a sigma protocol) */
   def commitment: FirstProverMessage
 }
 
@@ -78,7 +75,7 @@ abstract class CommitmentHint extends Hint {
   * @param secretRandomness - randomness
   * @param commitment - commitment to randomness used while proving knowledge of the secret
   */
-case class OwnCommitment(override val image: SigmaBoolean,
+case class OwnCommitment(override val image: SigmaLeaf,
                          secretRandomness: BigInteger,
                          commitment: FirstProverMessage,
                          override val position: NodePosition) extends CommitmentHint
@@ -89,7 +86,7 @@ case class OwnCommitment(override val image: SigmaBoolean,
   * @param image      - image of a secret
   * @param commitment - commitment to randomness used while proving knowledge of the secret
   */
-case class RealCommitment(override val image: SigmaBoolean,
+case class RealCommitment(override val image: SigmaLeaf,
                           commitment: FirstProverMessage,
                           override val position: NodePosition) extends CommitmentHint
 
@@ -99,7 +96,7 @@ case class RealCommitment(override val image: SigmaBoolean,
   * @param image      - image of a secret
   * @param commitment - commitment to randomness used while proving knowledge of the secret
   */
-case class SimulatedCommitment(override val image: SigmaBoolean,
+case class SimulatedCommitment(override val image: SigmaLeaf,
                                commitment: FirstProverMessage,
                                override val position: NodePosition) extends CommitmentHint
 

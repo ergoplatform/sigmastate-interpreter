@@ -1,16 +1,18 @@
 package sigmastate.helpers
 
-import org.ergoplatform.SigmaConstants.ScriptCostLimit
 import org.ergoplatform.ErgoLikeContext.Height
 import org.ergoplatform._
-import org.ergoplatform.validation.{ValidationRules, SigmaValidationSettings}
-import sigmastate.AvlTreeData
-import sigmastate.basics.CryptoConstants
+import org.ergoplatform.validation.ValidationRules
+import sigma.crypto.CryptoConstants
+import sigma.data.{AvlTreeData, CSigmaDslBuilder}
+import sigma.interpreter.ContextExtension
+import sigma.serialization.GroupElementSerializer
+import sigma.util.Extensions.EcpOps
+import sigma.validation.SigmaValidationSettings
+import sigma.{Box, Coll, Colls, Header, PreHeader}
 import sigmastate.eval._
-import sigmastate.interpreter.ContextExtension
-import sigmastate.serialization.{SigmaSerializer, GroupElementSerializer}
-import special.collection.Coll
-import special.sigma.{Box, PreHeader, Header}
+import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
+import sigma.serialization.SigmaSerializer
 
 object ErgoLikeContextTesting {
   /* NO HF PROOF:
@@ -23,14 +25,14 @@ object ErgoLikeContextTesting {
   val dummyPubkey: Array[Byte] = GroupElementSerializer.toBytes(CryptoConstants.dlogGroup.generator)
 
   val noBoxes: IndexedSeq[ErgoBox] = IndexedSeq.empty[ErgoBox]
-  val noHeaders: Coll[Header] = CostingSigmaDslBuilder.Colls.emptyColl[Header]
+  val noHeaders: Coll[Header] = CSigmaDslBuilder.Colls.emptyColl[Header]
 
   def dummyPreHeader(currentHeight: Height, minerPk: Array[Byte]): PreHeader = CPreHeader(0,
     parentId = Colls.emptyColl[Byte],
     timestamp = 3,
     nBits = 0,
     height = currentHeight,
-    minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(minerPk)),
+    minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(minerPk)).toGroupElement,
     votes = Colls.emptyColl[Byte]
   )
 
@@ -46,7 +48,8 @@ object ErgoLikeContextTesting {
     new ErgoLikeContext(
       lastBlockUtxoRoot, noHeaders, dummyPreHeader(currentHeight, minerPubkey), noBoxes,
       boxesToSpend, spendingTransaction, boxesToSpend.indexOf(self), extension, vs,
-      ScriptCostLimit.value, initCost = 0L, activatedVersion)
+      DefaultEvalSettings.scriptCostLimitInEvaluator,
+      initCost = 0L, activatedVersion)
 
   def apply(currentHeight: Height,
             lastBlockUtxoRoot: AvlTreeData,
@@ -59,7 +62,7 @@ object ErgoLikeContextTesting {
     new ErgoLikeContext(
       lastBlockUtxoRoot, noHeaders, dummyPreHeader(currentHeight, minerPubkey),
       dataBoxes, boxesToSpend, spendingTransaction, selfIndex, ContextExtension.empty,
-      ValidationRules.currentSettings, ScriptCostLimit.value,
+      ValidationRules.currentSettings, DefaultEvalSettings.scriptCostLimitInEvaluator,
       initCost = 0L, activatedVersion)
 
 

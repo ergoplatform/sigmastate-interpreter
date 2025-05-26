@@ -1,27 +1,27 @@
-const { TypeObj } = require("sigmastate-js/main");
+const { Type$ } = require("sigmastate-js/main");
 
 describe("Smoke tests for Types", () => {
 
   it("Should create primitive types", () => {
-    expect(TypeObj.Byte.name).toEqual("Byte");
-    expect(TypeObj.Short.name).toEqual("Short");
-    expect(TypeObj.Int.name).toEqual("Int");
-    expect(TypeObj.Long.name).toEqual("Long");
-    expect(TypeObj.BigInt.name).toEqual("BigInt");
-    expect(TypeObj.GroupElement.name).toEqual("GroupElement");
-    expect(TypeObj.SigmaProp.name).toEqual("SigmaProp");
-    expect(TypeObj.Box.name).toEqual("Box");
-    expect(TypeObj.AvlTree.name).toEqual("AvlTree");
-    expect(TypeObj.Context.name).toEqual("Context");
-    expect(TypeObj.Header.name).toEqual("Header");
-    expect(TypeObj.PreHeader.name).toEqual("PreHeader");
-    expect(TypeObj.SigmaDslBuilder.name).toEqual("SigmaDslBuilder");
+    expect(Type$.Byte.name).toEqual("Byte");
+    expect(Type$.Short.name).toEqual("Short");
+    expect(Type$.Int.name).toEqual("Int");
+    expect(Type$.Long.name).toEqual("Long");
+    expect(Type$.BigInt.name).toEqual("BigInt");
+    expect(Type$.GroupElement.name).toEqual("GroupElement");
+    expect(Type$.SigmaProp.name).toEqual("SigmaProp");
+    expect(Type$.Box.name).toEqual("Box");
+    expect(Type$.AvlTree.name).toEqual("AvlTree");
+    expect(Type$.Context.name).toEqual("Context");
+    expect(Type$.Header.name).toEqual("Header");
+    expect(Type$.PreHeader.name).toEqual("PreHeader");
+    expect(Type$.SigmaDslBuilder.name).toEqual("SigmaDslBuilder");
   });
 
   it("Should create complex types", () => {
-    expect(TypeObj.pairType(TypeObj.Int, TypeObj.Long).name).toEqual("(Int, Long)");
-    expect(TypeObj.collType(TypeObj.Int).name).toEqual("Coll[Int]");
-    expect(TypeObj.collType(TypeObj.pairType(TypeObj.Int, TypeObj.Long)).name)
+    expect(Type$.pairType(Type$.Int, Type$.Long).name).toEqual("(Int, Long)");
+    expect(Type$.collType(Type$.Int).name).toEqual("Coll[Int]");
+    expect(Type$.collType(Type$.pairType(Type$.Int, Type$.Long)).name)
         .toEqual("Coll[(Int, Long)]");
   });
 });

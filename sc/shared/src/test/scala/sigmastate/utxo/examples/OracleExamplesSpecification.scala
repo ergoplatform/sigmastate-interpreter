@@ -5,21 +5,21 @@ import org.ergoplatform.ErgoBox.RegisterId
 import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, Lookup}
 import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
-import sigmastate.SCollection.SByteArray
-import sigmastate.Values._
+import sigma.ast.SCollection.SByteArray
+import sigma.ast._
 import sigmastate._
 import sigmastate.eval._
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import org.ergoplatform._
 import org.ergoplatform.dsl.{ContractSpec, SigmaContractSyntax, StdContracts, TestContractSpec}
-import sigmastate.basics.CryptoConstants
-import sigmastate.crypto.CryptoFacade
-import sigmastate.eval.Extensions.ArrayOps
+import sigma.Extensions.ArrayOps
 import sigmastate.interpreter.Interpreter.{ScriptNameProp, emptyEnv}
-import sigmastate.utxo._
-import special.sigma.Context
+import sigma.Context
+import sigma.ast.syntax._
+import sigma.crypto.{BigIntegers, CryptoConstants, CryptoFacade}
+import sigma.data.{AvlTreeData, AvlTreeFlags}
 import sigmastate.utils.Helpers._
 
 class OracleExamplesSpecification extends CompilerTestingCommons
@@ -71,7 +71,12 @@ class OracleExamplesSpecification extends CompilerTestingCommons
     *
     *
     */
-  property("oracle example") {
+  // TODO v6.0: re-implement this example using UBigInt type
+  // Note, the value `z` computed in the test doesn't fit into BigInt type.
+  // This makes the oracleBox.bytes fail deserialization and thus, such box cannot be
+  // accepted by the blockchain (see assertExceptionThrown in the test).
+  // This test is `ignored` after fitsIn256Bits check is added to SBigInt serialization.
+  ignore("oracle example") {
     val oracle = new ContextEnrichingTestProvingInterpreter
     val aliceTemplate = new ContextEnrichingTestProvingInterpreter
     val bob = new ContextEnrichingTestProvingInterpreter
@@ -89,7 +94,8 @@ class OracleExamplesSpecification extends CompilerTestingCommons
 
     val temperature: Long = 18
 
-    val r = BigInt.apply(128, CryptoFacade.createSecureRandom()) //128 bits random number
+    //create 128 bits random number
+    val r = BigInt(BigIntegers.createRandomBigInteger(128, CryptoFacade.createSecureRandom()))
     val a = group.exponentiate(group.generator, r.bigInteger)
 
     val ts = System.currentTimeMillis()
@@ -102,7 +108,7 @@ class OracleExamplesSpecification extends CompilerTestingCommons
 
     val oracleBox = testBox(
       value = 1L,
-      ergoTree = oraclePubKey,
+      ergoTree = ErgoTree.fromSigmaBoolean(oraclePubKey),
       creationHeight = 0,
       additionalRegisters = Map(
         reg1 -> LongConstant(temperature),
@@ -110,6 +116,11 @@ class OracleExamplesSpecification extends CompilerTestingCommons
         reg3 -> BigIntConstant(z),
         reg4 -> LongConstant(ts)),
       boxIndex = 1
+    )
+
+    assertExceptionThrown(
+      oracleBox.bytes,
+      exceptionLike[IllegalArgumentException]("doesn't fit into 256 bits")
     )
 
     val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
@@ -134,7 +145,7 @@ class OracleExamplesSpecification extends CompilerTestingCommons
 
     val oracleProp = SigmaAnd(
       OptionIsDefined(IR.builder.mkMethodCall(
-        LastBlockUtxoRootHash, SAvlTree.getMethod,
+        LastBlockUtxoRootHash, SAvlTreeMethods.getMethod,
         IndexedSeq(ExtractId(GetVarBox(22: Byte).get), GetVarByteArray(23: Byte).get)).asOption[SByteArray]),
       EQ(extract[SByteArray](ErgoBox.ScriptRegId), ByteArrayConstant(ErgoTree.fromSigmaBoolean(oraclePubKey).bytes)),
       EQ(Exponentiate(GroupGenerator, extract[SBigInt.type](reg3)),
@@ -155,7 +166,7 @@ class OracleExamplesSpecification extends CompilerTestingCommons
     avlProver.performOneOperation(Lookup(ADKey @@@ oracleBox.id))
     val proof = avlProver.generateProof()
 
-    val newBox1 = testBox(20, alicePubKey, 0, boxIndex = 2)
+    val newBox1 = testBox(20, ErgoTree.fromSigmaBoolean(alicePubKey), 0, boxIndex = 2)
     val newBoxes = IndexedSeq(newBox1)
     val spendingTransaction = createTransaction(newBoxes)
 
@@ -249,8 +260,8 @@ class OracleExamplesSpecification extends CompilerTestingCommons
     )
 
     val sOracle = oracleBox
-    val sAlice = testBox(10, prop, 0, Seq(), Map())
-    val sBob = testBox(10, prop, 0, Seq(), Map())
+    val sAlice = testBox(10, ErgoTree.fromProposition(prop), 0, Seq(), Map())
+    val sBob = testBox(10, ErgoTree.fromProposition(prop), 0, Seq(), Map())
 
     val newBox1 = testBox(20, mkTestErgoTree(alicePubKey), 0)
     val newBoxes = IndexedSeq(newBox1)
@@ -264,8 +275,10 @@ class OracleExamplesSpecification extends CompilerTestingCommons
       spendingTransaction,
       self = sOracle, activatedVersionInTests)
 
-    val prA = alice.prove(emptyEnv + (ScriptNameProp -> "alice_prove"), prop, ctx, fakeMessage).get
-    verifier.verify(emptyEnv + (ScriptNameProp -> "verify"), prop, ctx, prA, fakeMessage).get._1 shouldBe true
+    val prA = alice.prove(emptyEnv + (ScriptNameProp -> "alice_prove"),
+      mkTestErgoTree(prop), ctx, fakeMessage).get
+    verifier.verify(emptyEnv + (ScriptNameProp -> "verify"),
+      mkTestErgoTree(prop), ctx, prA, fakeMessage).get._1 shouldBe true
   }
 
   case class OracleContract[Spec <: ContractSpec]

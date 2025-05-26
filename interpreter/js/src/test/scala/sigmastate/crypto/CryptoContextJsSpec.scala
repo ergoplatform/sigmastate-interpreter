@@ -2,6 +2,7 @@ package sigmastate.crypto
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
+import sigma.crypto.CryptoContextJs
 
 import scala.scalajs.js
 

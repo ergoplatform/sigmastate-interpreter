@@ -5,11 +5,13 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import scorex.util.encode.Base16
-import sigmastate.crypto.CryptoFacade
+import sigma.crypto.CryptoFacade
 
 import java.math.BigInteger
 
 class CryptoFacadeSpecification extends AnyPropSpec with Matchers with ScalaCheckPropertyChecks {
+
+  val G_hex = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
 
   property("CryptoFacade.HashHmacSHA512") {
     val cases = Table(
@@ -54,7 +56,7 @@ class CryptoFacadeSpecification extends AnyPropSpec with Matchers with ScalaChec
     }
   }
 
-  property("CryptoFacade.encodePoint") {
+  property("CryptoFacade.getASN1Encoding") {
     val ctx = CryptoFacade.createCryptoContext()
     val G = ctx.generator
     val Q = ctx.order
@@ -62,13 +64,29 @@ class CryptoFacadeSpecification extends AnyPropSpec with Matchers with ScalaChec
       ("point", "expectedHex"),
       (ctx.infinity(), "00"),
       (CryptoFacade.exponentiatePoint(G, Q), "00"),
-      (G, "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"),
-      (CryptoFacade.exponentiatePoint(G, BigInteger.ONE), "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"),
+      (G, G_hex),
+      (CryptoFacade.exponentiatePoint(G, BigInteger.ONE), G_hex),
       (CryptoFacade.exponentiatePoint(G, Q.subtract(BigInteger.ONE)), "0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
     )
     forAll (vectors) { (point, expectedHex) =>
       val res = ErgoAlgos.encode(CryptoFacade.getASN1Encoding(point, true))
       res shouldBe expectedHex
     }
+  }
+
+  property("CryptoContext.decodePoint") {
+    val ctx = CryptoFacade.createCryptoContext()
+    
+    val inf = ctx.decodePoint(Array[Byte](0))
+    CryptoFacade.isInfinityPoint(inf) shouldBe true
+
+    val G = ctx.generator
+    ctx.decodePoint(ErgoAlgos.decode(G_hex).get) shouldBe G
+
+    val Q = ctx.order
+    val Q_minus_1 = Q.subtract(BigInteger.ONE)
+    val maxExp = CryptoFacade.exponentiatePoint(G, Q_minus_1)
+    val maxExpBytes = ErgoAlgos.decode("0379be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798").get
+    ctx.decodePoint(maxExpBytes) shouldBe maxExp
   }
 }

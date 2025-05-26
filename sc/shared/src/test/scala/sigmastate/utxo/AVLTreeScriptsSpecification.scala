@@ -5,27 +5,32 @@ import org.ergoplatform._
 import org.ergoplatform.dsl.{ContractSpec, SigmaContractSyntax, TestContractSpec}
 import scorex.crypto.authds.avltree.batch._
 import scorex.crypto.authds.{ADKey, ADValue, SerializedAdProof}
-import scorex.crypto.hash.{Digest32, Blake2b256}
-import sigmastate.SCollection.SByteArray
-import sigmastate.Values._
+import scorex.crypto.hash.{Blake2b256, Digest32}
+import sigma.ast.SCollection.SByteArray
+import sigma.ast._
 import sigmastate._
-import sigmastate.eval.{CSigmaProp, IRContext}
 import sigmastate.eval._
-import sigmastate.eval.Extensions._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
+import sigma.Extensions.ArrayOps
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter.ScriptNameProp
-import sigmastate.interpreter.ProverResult
-import sigmastate.lang.Terms._
-import special.collection.Coll
-import special.sigma.{AvlTree, Context}
+import sigma.ast.syntax._
+import sigma.Coll
+import sigma.ast.SAvlTree
+import sigma.ast.syntax.{GetVarByteArray, OptionValueOps}
+import sigma.compiler.ir.IRContext
+import sigma.data.{AvlTreeData, AvlTreeFlags, CSigmaProp, TrivialProp}
+import sigma.eval.SigmaDsl
+import sigma.interpreter.ProverResult
+import sigma.{AvlTree, Context}
+import sigmastate.eval.Extensions.AvlTreeOps
 
 
 class AVLTreeScriptsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps { suite =>
   import org.ergoplatform.dsl.AvlTreeHelpers._
   lazy val spec = TestContractSpec(suite)(new TestingIRContext)
-  lazy val prover = spec.ProvingParty("Alice")
+  lazy val prover                         = spec.ProvingParty("Alice")
   private implicit lazy val IR: IRContext = spec.IR
 
   private val reg1 = ErgoBox.nonMandatoryRegisters(0)
@@ -204,12 +209,12 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
 
     val propExp = IR.builder.mkMethodCall(
       ExtractRegisterAs[SAvlTree.type](Self, reg1).get,
-      SAvlTree.containsMethod,
+      SAvlTreeMethods.containsMethod,
       IndexedSeq(ByteArrayConstant(key), ByteArrayConstant(proof))
     ).asBoolValue.toSigmaProp
     prop shouldBe propExp
 
-    val newBox1 = testBox(10, pubkey, 0)
+    val newBox1 = testBox(10, ErgoTree.fromSigmaBoolean(pubkey), 0)
     val newBoxes = IndexedSeq(newBox1)
 
     val spendingTransaction = createTransaction(newBoxes)
@@ -257,7 +262,7 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
       lastBlockUtxoRoot = AvlTreeData.dummy,
       minerPubkey = ErgoLikeContextTesting.dummyPubkey,
       boxesToSpend = IndexedSeq(selfBox),
-      createTransaction(testBox(1, recipientProposition, 0)),
+      createTransaction(testBox(1, ErgoTree.fromSigmaBoolean(recipientProposition), 0)),
       self = selfBox, activatedVersionInTests)
 
     avlProver.performOneOperation(Lookup(treeElements.head._1))
@@ -320,12 +325,12 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
 
     val propExp = IR.builder.mkMethodCall(
       ExtractRegisterAs[SAvlTree.type](Self, reg1).get,
-      SAvlTree.containsMethod,
+      SAvlTreeMethods.containsMethod,
       IndexedSeq(ExtractRegisterAs[SByteArray](Self, reg2).get, GetVarByteArray(proofId).get)
     ).asBoolValue.toSigmaProp
     prop shouldBe propExp
 
-    val newBox1 = testBox(10, pubkey, 0)
+    val newBox1 = testBox(10, ErgoTree.fromSigmaBoolean(pubkey), 0)
     val newBoxes = IndexedSeq(newBox1)
 
     val spendingTransaction = createTransaction(newBoxes)
@@ -379,7 +384,7 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
 
     val propTree = ErgoTree.fromProposition(ergoTreeHeaderInTests, prop)
 
-    val newBox1 = testBox(10, pubkey, 0)
+    val newBox1 = testBox(10, ErgoTree.fromSigmaBoolean(pubkey), 0)
     val newBoxes = IndexedSeq(newBox1)
 
     val spendingTransaction = ErgoLikeTransaction(IndexedSeq(), newBoxes)

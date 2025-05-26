@@ -1,7 +1,6 @@
 package org.ergoplatform.sdk.utils
 
-import sigmastate.utils.{SigmaByteReader, SigmaByteWriter}
-
+import sigma.serialization.{SigmaByteReader, SigmaByteWriter}
 import java.nio.charset.StandardCharsets
 
 object SerializationUtils {

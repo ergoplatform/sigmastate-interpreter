@@ -3,13 +3,11 @@ package sigmastate.utxo.examples
 import org.ergoplatform._
 import org.ergoplatform.dsl.{ContractSpec, SigmaContractSyntax, StdContracts, TestContractSpec}
 import sigmastate.helpers.CompilerTestingCommons
-import special.sigma.Context
-import sigmastate.eval.Extensions._
+import sigma.Context
+import sigma.ast.ByteArrayConstant
 
 class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
   implicit lazy val IR = new TestingIRContext
-
-  private val reg1 = ErgoBox.nonMandatoryRegisters(0)
 
   case class OracleContract[Spec <: ContractSpec]
       (alice: Spec#ProvingParty)
@@ -40,8 +38,7 @@ class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
 
   lazy val alice = spec.ProvingParty("Alice")
 
-  // TODO soft-fork: related to https://github.com/ScorexFoundation/sigmastate-interpreter/issues/443
-  ignore("Execute from var example (ErgoDsl)") {
+  property("Execute from var example (ErgoDsl)") {
     val contract = OracleContract[spec.type](alice)(spec)
     import contract.spec._
 
@@ -55,7 +52,7 @@ class ExecuteFromExamplesSpecification extends CompilerTestingCommons { suite =>
     tx.outBox(20, contract.aliceSignature)
 
     val in = tx.inputs(0)
-    val vars = Map(1.toByte -> toAnyValue(alice.pubKey.propBytes))
+    val vars = Map(1.toByte -> ByteArrayConstant(alice.pubKey.propBytes))
     val res = in.runDsl(vars)
     res shouldBe alice.pubKey
 

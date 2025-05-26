@@ -1,38 +1,17 @@
 package org.ergoplatform.sdk
 
 import debox.cfor
-import scalan.RType
-import scalan.rtypeToClassTag // actually required
-import special.collection.{Coll, CollBuilder, PairColl}
+import sigma.data.RType
+import sigma.rtypeToClassTag // actually used
+import sigmastate.eval.CPreHeader
+import sigma.{Coll, CollBuilder, PairColl}
+import sigma.{Header, PreHeader}
 
 import scala.collection.compat.BuildFrom
 import scala.collection.{GenIterable, immutable}
 import scala.reflect.ClassTag
 
 object Extensions {
-
-  implicit class GenIterableOps[A, Source[X] <: GenIterable[X]](val xs: Source[A]) extends AnyVal {
-
-    /** Apply m for each element of this collection, group by key and reduce each group
-      * using r.
-      * Note, the ordering of the resulting keys is deterministic and the keys appear in
-      * the order they first produced by `map`.
-      *
-      * @returns one item for each group in a new collection of (K,V) pairs. */
-    def mapReduce[K, V](map: A => (K, V))(reduce: (V, V) => V)
-        (implicit cbf: BuildFrom[Source[A], (K, V), Source[(K, V)]]): Source[(K, V)] = {
-      val result = scala.collection.mutable.LinkedHashMap.empty[K, V]
-      xs.foreach { x =>
-        val (key, value) = map(x)
-        val reduced = if (result.contains(key)) reduce(result(key), value) else value
-        result.update(key, reduced)
-      }
-
-      val b = cbf.newBuilder(xs)
-      for ( kv <- result ) b += kv
-      b.result()
-    }
-  }
 
   implicit class CollOps[A](val coll: Coll[A]) extends AnyVal {
 
@@ -196,4 +175,11 @@ object Extensions {
       builder.pairCollFromArrays(ks, vs)
     }
   }
+
+  implicit class HeaderOps(val h: Header) extends AnyVal {
+    def toPreHeader: PreHeader = {
+      CPreHeader(h.version, h.parentId, h.timestamp, h.nBits, h.height, h.minerPk, h.votes)
+    }
+  }
+
 }

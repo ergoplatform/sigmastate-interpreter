@@ -1,17 +1,16 @@
 package sigmastate.utils
 
-import sigmastate._
-import sigmastate.eval.Evaluation._
-import scalan.util.Extensions.ByteOps
-import scalan.util.CollectionUtil
-import scalan.util.PrintExtensions._
-import sigmastate.Values._
-import sigmastate.lang.SigmaPredef.{PredefinedFuncRegistry, PredefinedFunc}
-import sigmastate.lang.StdSigmaBuilder
-import sigmastate.lang.Terms.{MethodCall, PropertyCall}
-import sigmastate.serialization.OpCodes.OpCode
-import sigmastate.serialization.{ValueSerializer, OpCodes}
-import sigmastate.utxo.{SigmaPropIsProven, SelectField}
+import sigma.Evaluation._
+import sigma.ast.TypeCodes.LastConstantCode
+import sigma.ast._
+import sigma.serialization.CoreByteWriter.ArgInfo
+import sigma.util.CollectionUtil
+import sigma.util.Extensions.ByteOps
+import sigma.util.PrintExtensions._
+import SigmaPredef.{PredefinedFunc, PredefinedFuncRegistry}
+import sigma.ast.{MethodCall, PropertyCall}
+import sigma.serialization.ValueCodes.OpCode
+import sigma.serialization.ValueSerializer
 
 object SpecGenUtils {
   val types = SType.allPredefTypes.diff(Seq(SString))
@@ -28,8 +27,8 @@ trait SpecGen {
       description: String,
       args: Seq[ArgInfo], op: Either[PredefinedFunc, SMethod])
 
-  def collectSerializers(): Seq[ValueSerializer[_ <: Values.Value[SType]]] = {
-    ((OpCodes.LastConstantCode + 1) to 255).collect {
+  def collectSerializers(): Seq[ValueSerializer[_ <: Value[SType]]] = {
+    ((LastConstantCode + 1) to 255).collect {
       case i if ValueSerializer.serializers(i.toByte) != null =>
         val ser = ValueSerializer.serializers(i.toByte)
         assert(i == ser.opDesc.opCode.toUByte)
@@ -38,7 +37,7 @@ trait SpecGen {
   }
 
   def collectFreeCodes(): Seq[Int] = {
-    ((OpCodes.LastConstantCode + 1) to 255).collect {
+    ((LastConstantCode + 1) to 255).collect {
       case i if ValueSerializer.serializers(i.toByte) == null => i
     }
   }
@@ -46,7 +45,8 @@ trait SpecGen {
   def collectMethods(): Seq[SMethod] = {
     for {
       tc <- typesWithMethods.sortBy(_.typeId)
-      m <- tc.methods.sortBy(_.methodId)
+      mc = MethodsContainer(tc.typeId)
+      m <- mc.methods.sortBy(_.methodId)
     } yield m
   }
 
@@ -214,7 +214,8 @@ trait SpecGen {
   }
 
   def printMethods(tc: STypeCompanion) = {
-    val methodSubsections = for { m <- tc.methods.sortBy(_.methodId) } yield {
+    val mc = MethodsContainer(tc.typeId)
+    val methodSubsections = for { m <- mc.methods.sortBy(_.methodId) } yield {
       methodSubsection(tc.typeName, m)
     }
     val res = methodSubsections.mkString("\n\n")
@@ -251,7 +252,7 @@ object GenPrimOpsApp extends SpecGen {
     val methods = collectMethods()
     val ops = collectSerializableOperations()
     val noOps = Set(
-      TaggedVariable, ValUse, ConstantPlaceholder, TrueLeaf, FalseLeaf,
+      ValUse, ConstantPlaceholder, TrueLeaf, FalseLeaf,
       ConcreteCollection, ConcreteCollectionBooleanConstant, Tuple, SelectField, SigmaPropIsProven, ValDef, FunDef, BlockValue
     )
 

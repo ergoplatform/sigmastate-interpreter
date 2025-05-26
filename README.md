@@ -16,6 +16,10 @@ For development of Ergo applications using JVM languages (Java/Scala/Kotlin/etc)
 a better alternative is to use
 [Appkit](https://github.com/ergoplatform/ergo-appkit).
 
+The library is cross-compiled to JS using Scala.js and the main abstractions can be used
+from JS directly by importing [NPM module](https://www.npmjs.com/package/sigmastate-js).
+See [README](sigma-js/README.md) for details.
+
 ## Sigma Language Background
 
 Every coin in Bitcoin is protected by a program in the stack-based Script
@@ -93,19 +97,21 @@ This library is
 on Maven repository and can be added to the SBT configuration of Scala project.
 
 ```scala
-libraryDependencies += "org.scorexfoundation" %% "sigma-state" % "5.0.6"
+libraryDependencies += "org.scorexfoundation" %% "sigma-state" % "5.0.14"
 ```
 
 ## Repository Organization
 
-| sub-module  | description                                                                               |
-|-------------|-------------------------------------------------------------------------------------------|
-| common      | Used in all other submodules and contain basic utility classes                            |
-| core-lib    | Contains core classes such as Coll, BigInt used by interpreter                            |
-| docs        | Collection of documents                                                                   |
-| graph-ir    | Implementation of graph-based intermediate representation of ErgoTree, which is used in by ErgoScript compiler |
-| interpreter | Implementation of ErgoTree Interpreter                                                    |
-| sc          | Implementation of ErgoScript compiler                                                     |
+| sub-module  | description                                                                        |
+|-------------|------------------------------------------------------------------------------------|
+| core        | contains core classes of Sigma library                                             |
+| data        | contains classes for working with ErgoTree, addresses and all related serializers  |
+| docs        | Collection of documents                                                            |
+| interpreter | contains an implementation of ErgoTree Interpreter                                 |
+| sdk         | contains and implementation of transaction reduction and signing                   |
+| parsers     | contains an implementation of ErgoScript parsers using FastParse library           |
+| sc          | contains an implementation of ErgoScript compiler                                  |
+| sigma-js    | root directory of sigmastate-js JS module (see [package.json](sigma-js/README.md)) |
 
 ## Contributing
 
@@ -151,12 +157,13 @@ innovative and intelligent tools for profiling Java and .NET applications.
 
 - [Ergo Site](https://ergoplatform.org/en/)
 - [Ergo Sources](https://github.com/ergoplatform/ergo)
+- [Sigma-js](https://www.npmjs.com/package/sigmastate-js)
 - [Ergo Appkit](https://github.com/ergoplatform/ergo-appkit)
 - [Ergo Appkit Examples](https://github.com/aslesarenko/ergo-appkit-examples)
 - [ergo-android](https://github.com/aslesarenko/ergo-android)
 - [ergo-wallet-android](https://github.com/MrStahlfelge/ergo-wallet-android)
 - [ErgoTree Specification](https://ergoplatform.org/docs/ErgoTree.pdf)
-- [Ergo Documents](https://ergoplatform.org/en/documents/)
+- [Ergo Documents](https://docs.ergoplatform.org/)
 
 
 

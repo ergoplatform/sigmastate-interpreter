@@ -2,23 +2,20 @@ package org.ergoplatform.sdk.wallet.utils
 
 import org.ergoplatform.ErgoBox.{BoxId, NonMandatoryRegisterId, Token}
 import org.ergoplatform.sdk.wallet.Constants
-import org.ergoplatform.sdk.wallet.secrets.ExtendedPublicKey
-import org.ergoplatform.sdk.wallet.secrets.{DerivationPath, ExtendedSecretKey, Index, SecretKey}
+import org.ergoplatform.sdk.wallet.secrets._
 import org.ergoplatform.sdk.wallet.settings.EncryptionSettings
+import org.ergoplatform._
 import org.scalacheck.Arbitrary.arbByte
 import org.scalacheck.{Arbitrary, Gen}
 import scorex.crypto.authds.ADKey
-import sigmastate.Values.{ByteArrayConstant, CollectionConstant, ErgoTree, EvaluatedValue, FalseLeaf, TrueLeaf}
-import sigmastate.basics.DLogProtocol.ProveDlog
-import sigmastate.{SByte, SType}
 import scorex.util._
-import org.ergoplatform.{ErgoBox, ErgoBoxCandidate, ErgoTreePredef, UnsignedErgoLikeTransaction, UnsignedInput}
-import sigmastate.eval.Extensions._
-import scorex.util.{ModifierId, bytesToId}
-import sigmastate.eval._
+import sigma.Extensions.ArrayOps
+import sigma.ast._
+import sigma.ast.syntax.CollectionConstant
+import sigma.crypto.CryptoFacade
+import sigma.data.{Digest32Coll, ProveDlog}
+import sigma.eval.Extensions.EvalIterableOps
 import sigmastate.helpers.TestingHelpers._
-import scorex.crypto.hash.Digest32
-import sigmastate.crypto.CryptoFacade
 
 trait Generators {
 
@@ -101,7 +98,7 @@ trait Generators {
     Gen.choose(minValue, CoinsTotalTest / 1000)
   }
 
-  def ergoBoxGen(propGen: Gen[ErgoTree] = Gen.const(TrueLeaf.toSigmaProp),
+  def ergoBoxGen(propGen: Gen[ErgoTree] = Gen.const(ErgoTree.fromProposition(TrueLeaf.toSigmaProp)),
                  tokensGen: Gen[Seq[Token]] = additionalTokensGen,
                  valueGenOpt: Option[Gen[Long]] = None,
                  heightGen: Gen[Int] = heightGen): Gen[ErgoBox] = for {
@@ -145,10 +142,8 @@ trait Generators {
     }
   }
 
-
-
   def unsignedTxGen(secret: SecretKey): Gen[(IndexedSeq[ErgoBox], UnsignedErgoLikeTransaction)] = {
-    val dlog: Gen[ErgoTree] = Gen.const(secret.privateInput.publicImage.asInstanceOf[ProveDlog].toSigmaProp)
+    val dlog: Gen[ErgoTree] = Gen.const(ErgoTree.fromSigmaBoolean(secret.privateInput.publicImage.asInstanceOf[ProveDlog]))
 
     for {
       ins <- Gen.listOfN(2, ergoBoxGen(dlog))

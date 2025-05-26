@@ -6,10 +6,8 @@
  code directly in Scala IDE (e.g. IntelliJ IDEA) and copy-paste code snippets
  between SigmaDsl and SigmaScript.
  Special Scala macros can also be used to automatically translate SigmaDsl to 
- Sigma byte code.
-
-SigmaDsl is implemented as Scala library using [Special](https://github.com/scalan/special) 
-framework.
+ Sigma byte code. Some prototype has been implemented [here](https://github.com/ergoplatform/ergo-scala-compiler)
 
 ## See also
-[Special](https://github.com/scalan/special)
+
+[ergo-scala-compiler](https://github.com/ergoplatform/ergo-scala-compiler)

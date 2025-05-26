@@ -2,8 +2,8 @@ package sigmastate.utxo.examples
 
 import org.ergoplatform.ErgoBox.TokenId
 import org.ergoplatform.dsl.ContractSyntax.Token
-import special.sigma.Context
-import special.collection.Coll
+import sigma.Context
+import sigma.Coll
 import org.ergoplatform.dsl.{SigmaContractSyntax, ContractSpec, StdContracts}
 
 /**

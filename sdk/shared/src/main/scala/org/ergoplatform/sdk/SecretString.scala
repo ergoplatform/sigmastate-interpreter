@@ -2,7 +2,6 @@ package org.ergoplatform.sdk
 
 import debox.cfor
 
-import java.util
 
 /**
   * Encapsulates secret array of characters (char[]) with proper equality.
@@ -67,13 +66,13 @@ final class SecretString private[sdk](val _data: Array[Char]) {
     * Erases secret characters stored in this instance so that they are no longer reside in memory.
     */
   def erase(): Unit = {
-    util.Arrays.fill(_data, ' ')
+    java.util.Arrays.fill(_data, ' ')
     _erased = true
   }
 
   override def hashCode(): Int = {
     checkErased()
-    util.Arrays.hashCode(_data)
+    java.util.Arrays.hashCode(_data)
   }
 
   /** this is adapted version of java.lang.String */

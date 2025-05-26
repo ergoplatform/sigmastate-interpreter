@@ -2,7 +2,9 @@ package sigmastate.crypto
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
-import scorex.util.encode.Base16
+import sigma.crypto.Platform.Ecp
+import sigma.crypto.utils.bytesToHex
+import sigma.crypto.{CryptoFacade, CryptoFacadeJs, Point}
 
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.Uint8Array
@@ -69,9 +71,9 @@ class CryptoFacadeJsSpec extends AnyPropSpec with Matchers with CryptoTesting {
   }
 
   property("CryptoFacade.getEncodedOfFieldElem") {
-    utils.bytesToHex(CryptoFacadeJs.getEncodedOfFieldElem(p1.x)) shouldEqual
+    bytesToHex(CryptoFacadeJs.getEncodedOfFieldElem(p1.x)) shouldEqual
         "81c5275b1d50c39a0c36c4561c3a37bff1d87e37a9ad69eab029e426c0b1a8ac"
-    utils.bytesToHex(CryptoFacadeJs.getEncodedOfFieldElem(p1.y)) shouldBe
+    bytesToHex(CryptoFacadeJs.getEncodedOfFieldElem(p1.y)) shouldBe
         "db5d999704ec84b62962f3e35889901d04a619cd6d81d251c69d0f625c2dc4f3"
   }
   
@@ -88,14 +90,14 @@ class CryptoFacadeJsSpec extends AnyPropSpec with Matchers with CryptoTesting {
   property("CryptoFacade.hashHmacSHA512") {
     val key = Uint8Array.from(bytesToJsShorts(CryptoFacade.BitcoinSeed))
     val data = Uint8Array.from(bytesToJsShorts("abc".getBytes(CryptoFacade.Encoding)))
-    val res = utils.bytesToHex(CryptoFacadeJs.hashHmacSHA512(key, data))
+    val res = bytesToHex(CryptoFacadeJs.hashHmacSHA512(key, data))
     res shouldBe "2c15e87cde0f876fd8f060993748330cbe5f37c8bb3355e8ef44cea57890ec1d9b3274ef2b67bbe046cf8a012fba69796ec7803b1cc227521b9f5191e80a7da2"
   }
 
   property("CryptoFacade.generatePbkdf2Key") {
     val mnemonic = "slow silly start wash bundle suffer bulb ancient height spin express remind today effort helmet"
     val password = "pwd"
-    val res = utils.bytesToHex(CryptoFacadeJs.generatePbkdf2Key(mnemonic, password))
+    val res = bytesToHex(CryptoFacadeJs.generatePbkdf2Key(mnemonic, password))
     res shouldBe "0a8ea2ea0c4c12a9df88b005bda00c4de51ff36834b5fcd6a83667c371ad1da94bca1798690d87f2603b8f51d5ae025209e31f6cf81e12b84e4c543d236e58d0"
   }
 }

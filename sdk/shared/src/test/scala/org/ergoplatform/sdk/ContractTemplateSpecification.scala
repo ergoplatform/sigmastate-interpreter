@@ -3,12 +3,15 @@ package org.ergoplatform.sdk
 import org.ergoplatform.sdk.generators.ObjectGenerators
 import org.scalatest.compatible.Assertion
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import sigmastate.Values._
+import sigma.ast._
 import sigmastate._
-import sigmastate.eval.CBigInt
 import sigmastate.helpers.NegativeTesting
-import sigmastate.serialization.{SerializationSpecification, SigmaSerializer}
-import special.sigma.ContractsTestkit
+import sigma.serialization.{SerializationSpecification, SigmaSerializer}
+import sigma.{ContractsTestkit, VersionContext}
+import sigma.ast.syntax.SigmaPropValue
+import sigma.ast.{SByte, SInt, SType}
+import sigma.data.CBigInt
+import ErgoTree.setConstantSegregation
 
 import java.math.BigInteger
 
@@ -66,15 +69,15 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("unequal length of constTypes and constValues") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("p1", 0),
           createParameter("p2", 1),
           createParameter("p3", 2)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("constValues must be empty or of same length as constTypes. Got 2, expected 3")
     )
@@ -83,16 +86,16 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("more parameters than constants") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("p1", 0),
           createParameter("p2", 1),
           createParameter("p3", 2),
           createParameter("p4", 3)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("number of parameters must be <= number of constants")
     )
@@ -101,15 +104,15 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("invalid parameter constantIndex") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("p1", 0),
           createParameter("p2", 1),
           createParameter("p3", 100)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("parameter constantIndex must be in range [0, 3)")
     )
@@ -118,15 +121,15 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("duplicate parameter constantIndex") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("p1", 0),
           createParameter("p2", 1),
           createParameter("p3", 1)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("multiple parameters point to the same constantIndex")
     )
@@ -135,15 +138,15 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("duplicate parameter names") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("duplicate_name", 0),
           createParameter("p2", 1),
           createParameter("duplicate_name", 2)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("parameter names must be unique. Found duplicate parameters with name duplicate_name")
     )
@@ -152,14 +155,14 @@ class ContractTemplateSpecification extends SerializationSpecification
   property("constantIndex without default value and parameter") {
     assertExceptionThrown(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(None, Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         IndexedSeq(
           createParameter("p2", 1),
           createParameter("p3", 2)),
-        EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-          ConstantPlaceholder(1, SType.typeByte)),
-          ConstantPlaceholder(2, SType.typeByte)).toSigmaProp
+        EQ(Plus(ConstantPlaceholder(0, SByte),
+          ConstantPlaceholder(1, SByte)),
+          ConstantPlaceholder(2, SByte)).toSigmaProp
       ),
       exceptionLike[IllegalArgumentException]("constantIndex 0 does not have a default value and absent from parameter as well")
     )
@@ -171,23 +174,23 @@ class ContractTemplateSpecification extends SerializationSpecification
       createParameter("p2", 1),
       createParameter("p3", 2))
     val expressionTrees = IndexedSeq(
-      EQ(Plus(ConstantPlaceholder(0, SType.typeByte),
-        ConstantPlaceholder(1, SType.typeByte)),
-        ConstantPlaceholder(2, SType.typeByte)).toSigmaProp,
-      EQ(Plus(ConstantPlaceholder(0, SType.typeInt),
-        ConstantPlaceholder(1, SType.typeInt)),
-        ConstantPlaceholder(2, SType.typeInt)).toSigmaProp,
+      EQ(Plus(ConstantPlaceholder(0, SByte),
+        ConstantPlaceholder(1, SByte)),
+        ConstantPlaceholder(2, SByte)).toSigmaProp,
+      EQ(Plus(ConstantPlaceholder(0, SInt),
+        ConstantPlaceholder(1, SInt)),
+        ConstantPlaceholder(2, SInt)).toSigmaProp,
       EQ(Plus(CBigInt(BigInteger.valueOf(10L)), BigIntConstant(20L)), BigIntConstant(30L)).toSigmaProp
     )
     val templates = Seq(
       createContractTemplate(
-        IndexedSeq(SType.typeByte, SType.typeByte, SType.typeByte).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SByte, SByte, SByte).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         parameters,
         expressionTrees(0)
       ),
       createContractTemplate(
-        IndexedSeq(SType.typeInt, SType.typeInt, SType.typeInt).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SInt, SInt, SInt).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(Some(10), None, Some(30)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         parameters,
         expressionTrees(1)
@@ -204,13 +207,10 @@ class ContractTemplateSpecification extends SerializationSpecification
       Map("p1" -> IntConstant(10), "p2" -> IntConstant(20)),
       Map.empty[String, Constant[SType]]
     )
-    var expectedErgoTreeVersion = (ErgoTree.ConstantSegregationHeader | ergoTreeVersionInTests).toByte
-    if (ergoTreeVersionInTests > 0) {
-      expectedErgoTreeVersion = (expectedErgoTreeVersion | ErgoTree.SizeFlag).toByte
-    }
+    val expectedErgoTreeHeader = setConstantSegregation(ergoTreeHeaderInTests)
     val expectedErgoTree = Seq(
       ErgoTree(
-        expectedErgoTreeVersion,
+        expectedErgoTreeHeader,
         IndexedSeq(
           ByteConstant(10.toByte),
           ByteConstant(40.toByte),
@@ -219,7 +219,7 @@ class ContractTemplateSpecification extends SerializationSpecification
         expressionTrees(0)
       ),
       ErgoTree(
-        expectedErgoTreeVersion,
+        expectedErgoTreeHeader,
         IndexedSeq(
           IntConstant(10),
           IntConstant(20),
@@ -228,15 +228,17 @@ class ContractTemplateSpecification extends SerializationSpecification
         expressionTrees(1)
       ),
       ErgoTree(
-        expectedErgoTreeVersion,
+        expectedErgoTreeHeader,
         Constant.EmptySeq,
         expressionTrees(2)
       )
     )
 
-    templates.indices.foreach(i =>
-      templates(i).applyTemplate(Some(ergoTreeVersionInTests), templateValues(i)) shouldEqual expectedErgoTree(i)
-    )
+    templates.indices.foreach { i =>
+      val template = templates(i)
+      val applied = template.applyTemplate(Some(ergoTreeVersionInTests), templateValues(i))
+      applied shouldEqual expectedErgoTree(i)
+    }
   }
 
   property("applyTemplate num(parameters) < num(constants)") {
@@ -244,23 +246,20 @@ class ContractTemplateSpecification extends SerializationSpecification
       createParameter("p1", 0),
       createParameter("p2", 2))
     val expressionTree =
-      EQ(Plus(ConstantPlaceholder(0, SType.typeInt),
-        ConstantPlaceholder(1, SType.typeInt)),
-        ConstantPlaceholder(2, SType.typeInt)).toSigmaProp
+      EQ(Plus(ConstantPlaceholder(0, SInt),
+        ConstantPlaceholder(1, SInt)),
+        ConstantPlaceholder(2, SInt)).toSigmaProp
     val template = createContractTemplate(
-        IndexedSeq(SType.typeInt, SType.typeInt, SType.typeInt).asInstanceOf[IndexedSeq[SType]],
+        IndexedSeq(SInt, SInt, SInt).asInstanceOf[IndexedSeq[SType]],
         Some(IndexedSeq(None, Some(20), None).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
         parameters,
         expressionTree
       )
     val templateValues = Map("p1" -> IntConstant(10), "p2" -> IntConstant(30))
 
-    var expectedErgoTreeVersion = (ErgoTree.ConstantSegregationHeader | ergoTreeVersionInTests).toByte
-    if (ergoTreeVersionInTests > 0) {
-      expectedErgoTreeVersion = (expectedErgoTreeVersion | ErgoTree.SizeFlag).toByte
-    }
+    val expectedErgoTreeHeader = setConstantSegregation(ergoTreeHeaderInTests)
     val expectedErgoTree = ErgoTree(
-        expectedErgoTreeVersion,
+        expectedErgoTreeHeader,
         IndexedSeq(
           IntConstant(10),
           IntConstant(20),

@@ -5,20 +5,22 @@ import org.ergoplatform._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import sigmastate.SCollection._
-import sigmastate.Values._
+import sigma.Colls
+import sigma.ast.SCollection._
+import sigma.ast._
+import sigma.ast.syntax.{SValue, SigmaPropValue, SigmaPropValueOps}
+import sigma.crypto.CryptoConstants
+import sigma.data.ProveDlog
 import sigmastate._
-import sigmastate.basics.CryptoConstants
-import sigmastate.basics.DLogProtocol.{DLogProverInput, ProveDlog}
-import sigmastate.eval.Colls
-import sigmastate.exceptions.TyperException
+import sigmastate.crypto.DLogProtocol.DLogProverInput
 import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigmastate.lang.SigmaPredef._
-import sigmastate.lang.Terms._
-import sigmastate.lang.syntax.ParserException
-import sigmastate.serialization.ErgoTreeSerializer
-import sigmastate.serialization.generators.ObjectGenerators
-import sigmastate.utxo.{Append, ExtractCreationInfo}
+import SigmaPredef._
+import sigmastate.lang.parsers.ParserException
+import sigma.serialization.ErgoTreeSerializer
+import sigma.serialization.generators.ObjectGenerators
+import sigma.ast.Select
+import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
+import sigma.exceptions.TyperException
 
 class SigmaTyperTest extends AnyPropSpec
   with ScalaCheckPropertyChecks with Matchers with LangTests with ObjectGenerators {
@@ -33,7 +35,8 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       val typed = typer.typecheck(bound)
       assertSrcCtxForAllNodes(typed)
       if (expected != null) typed shouldBe expected
@@ -50,7 +53,8 @@ class SigmaTyperTest extends AnyPropSpec
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
       val binder = new SigmaBinder(env, builder, TestnetNetworkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
-      val typer = new SigmaTyper(builder, predefinedFuncRegistry, lowerMethodCalls = true)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, lowerMethodCalls = true)
       typer.typecheck(bound)
     }, {
       case te: TyperException =>
@@ -59,7 +63,7 @@ class SigmaTyperTest extends AnyPropSpec
         sourceContext.line shouldBe expectedLine
         sourceContext.column shouldBe expectedCol
         true
-      case pe: ParserException => true
+      case _: ParserException => true
       case t => throw t
     })
   }
@@ -112,6 +116,7 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "min(HEIGHT, INPUTS.size)") shouldBe SInt
     typecheck(env, "max(1, 2)") shouldBe SInt
     typecheck(env, "max(1L, 2)") shouldBe SLong
+    typecheck(env, """bigInt("1111")""") shouldBe SBigInt
     typecheck(env, """fromBase16("1111")""") shouldBe SByteArray
     typecheck(env, """fromBase58("111")""") shouldBe SByteArray
     typecheck(env, """fromBase64("111")""") shouldBe SByteArray
@@ -212,13 +217,6 @@ class SigmaTyperTest extends AnyPropSpec
 
     typefail(env, "Coll(1, x + 1, Coll())", 1, 16)
     typefail(env, "Coll(1, false)", 1, 1)
-  }
-
-  property("Option constructors") {
-    typecheck(env, "Some(10)") shouldBe SOption(SInt)
-    typecheck(env, "Some(x)") shouldBe SOption(SInt)
-    typecheck(env, "Some(x + 1)") shouldBe SOption(SInt)
-    typecheck(env, "Some(Some(10))") shouldBe SOption(SOption(SInt))
   }
 
   property("methods returning Option") {
@@ -565,6 +563,14 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "executeFromVar[Boolean](1)") shouldBe SBoolean
   }
 
+  property("executeFromSelfRegWithDefault") {
+    typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Boolean](1).get)") shouldBe SBoolean
+
+    an[TyperException] should be thrownBy {
+      typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Int](1).get)")
+    }
+  }
+
   property("LogicalNot") {
     typecheck(env, "!true") shouldBe SBoolean
     typefail(env, "!getVar[SigmaProp](1).get", 1, 2)
@@ -645,7 +651,7 @@ class SigmaTyperTest extends AnyPropSpec
 
   property("substConst") {
     def script(pk: ProveDlog): SigmaPropValue =
-      AND(EQ(IntConstant(1), IntConstant(1)), SigmaPropConstant(pk).isProven).toSigmaProp
+      AND(EQ(IntConstant(1), IntConstant(1)), SigmaPropIsProven(SigmaPropConstant(pk))).toSigmaProp
 
     val pk1 = DLogProverInput.random().publicImage
     val pk2 = DLogProverInput.random().publicImage

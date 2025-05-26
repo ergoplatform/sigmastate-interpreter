@@ -1,6 +1,6 @@
 package sigmastate.utxo.examples
 
-import special.sigma.{Context, Box}
+import sigma.{Context, Box}
 import org.ergoplatform.dsl.{SigmaContractSyntax, ContractSpec, StdContracts}
 
 /** @param backer    The party, who wants to fund some amount of Ergs to the project.

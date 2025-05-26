@@ -5,23 +5,21 @@ import io.circe._
 import io.circe.syntax._
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.{NonMandatoryRegisterId, Token}
-import org.ergoplatform.settings.ErgoAlgos
-import scalan.RType
+import sigma.data.{CAnyValue, RType}
 import scorex.util._
-import sigmastate.Values.{Constant, EvaluatedValue}
-import sigmastate._
 import sigmastate.lang.SigmaParser
 import sigmastate.eval._
-import special.collection.Coll
-import special.sigma._
+import sigma._
 import debox.cfor
-import sigmastate.exceptions.SerializerException
+import scorex.util.encode.Base16
+
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
-import fastparse.{Parsed, parse}
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.serialization.DataSerializer
-import sigmastate.serialization.ErgoTreeSerializer
+import sigma.ast._
+import sigma.eval.SigmaDsl
+import sigma.serialization.SerializerException
+import sigma.serialization.{DataSerializer, SigmaSerializer}
+import sigma.serialization.ErgoTreeSerializer
 
 object DataJsonEncoder {
   def encode[T <: SType](v: T#WrappedType, tpe: T): Json = {
@@ -34,7 +32,7 @@ object DataJsonEncoder {
   }
 
   private def encodeBytes: Encoder[Array[Byte]] = Encoder.instance((bytes: Array[Byte]) => {
-    ErgoAlgos.encode(bytes).asJson
+    Base16.encode(bytes).asJson
   })
 
   def encodeAnyValue(v: AnyValue): Json = {
@@ -154,7 +152,7 @@ object DataJsonEncoder {
   private def decodeBytes(json: Json): Array[Byte] = {
     val jsonStr = json.as[String]
     jsonStr match {
-      case Right(jsonStr) => ErgoAlgos.decode(jsonStr).get
+      case Right(jsonStr) => Base16.decode(jsonStr).get
       case Left(error) => throw new SerializerException(error.getMessage)
     }
   }
@@ -191,7 +189,7 @@ object DataJsonEncoder {
         cfor(1)(_ <= tArr.length, _ + 1) { i =>
           collSource += decodeData(json.hcursor.downField(s"_${i}").focus.get, tArr(i - 1))
         }
-        val coll = Colls.fromArray(collSource.result())(RType.AnyType)
+        val coll = Colls.fromArray(collSource.result())(sigma.AnyType)
         Evaluation.toDslTuple(coll, t)
       case SGroupElement =>
         val str = decodeBytes(json)

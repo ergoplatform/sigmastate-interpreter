@@ -1,10 +1,10 @@
 package org.ergoplatform.validation
 
-import sigmastate.serialization.SigmaSerializer
-import sigmastate.utils.{SigmaByteReader, SigmaByteWriter}
-import scalan.util.Extensions.{IntOps,LongOps}
+import sigma.serialization.{SerializerException, SigmaByteReader, SigmaByteWriter}
+import sigma.serialization.SigmaSerializer
+import sigma.util.Extensions.IntOps
+import sigma.validation.{MapSigmaValidationSettings, SigmaValidationSettings}
 
-// TODO v5.x: remove unused class and related json encoders
 /** The rules are serialized ordered by ruleId.
   * This serializer preserves roundtrip identity `deserialize(serialize(_)) = identity`
   * however it may not preserve `serialize(deserialize(_)) = identity` */
@@ -13,9 +13,9 @@ object SigmaValidationSettingsSerializer extends SigmaSerializer[SigmaValidation
   override def serialize(settings: SigmaValidationSettings, w: SigmaByteWriter): Unit = {
     val rules = settings.toArray.sortBy(_._1)
     w.putUInt(rules.length)
-    rules.foreach { r =>
-      w.putUShort(r._1)
-      RuleStatusSerializer.serialize(r._2._2, w)
+    rules.foreach { case (id, (_, status)) =>
+      w.putUShort(id)
+      RuleStatusSerializer.serialize(status, w)
     }
   }
 
@@ -27,10 +27,12 @@ object SigmaValidationSettingsSerializer extends SigmaSerializer[SigmaValidation
       val status = RuleStatusSerializer.parse(r)
       ruleId -> status
     }
-    val initVs = ValidationRules.currentSettings
-    val res = parsed
-      .filter(pair => initVs.get(pair._1).isDefined)
-      .foldLeft(initVs) { (vs, rule) => vs.updated(rule._1, rule._2) }
+    val map = parsed.map { case (id, status) =>
+      val (rule, _) = ValidationRules.currentSettings.get(id)
+          .getOrElse(throw SerializerException(s"Rule with id $id is not registered"))
+      id -> (rule, status)
+    }.toMap
+    val res = new MapSigmaValidationSettings(map)
     res
   }
 }

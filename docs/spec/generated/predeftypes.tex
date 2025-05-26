@@ -1,27 +1,31 @@
-\lst{Boolean}	&	$1$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{false}	& $\Set{\lst{true}, \lst{false}}$ \\
+\lst{Boolean}	&	$1$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{false}	& $\Set{\lst{true}, \lst{false}}$ \\
 \hline
-\lst{Byte}	&	$2$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{7} \dots 2^{7}-1}$~\ref{sec:type:Byte} \\
+\lst{Byte}	&	$2$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{7} \dots 2^{7}-1}$~\ref{sec:type:Byte} \\
 \hline
-\lst{Short}	&	$3$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{15} \dots 2^{15}-1}$~\ref{sec:type:Short} \\
+\lst{Short}	&	$3$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{15} \dots 2^{15}-1}$~\ref{sec:type:Short} \\
 \hline
-\lst{Int}	&	$4$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{31} \dots 2^{31}-1}$~\ref{sec:type:Int} \\
+\lst{Int}	&	$4$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{31} \dots 2^{31}-1}$~\ref{sec:type:Int} \\
 \hline
-\lst{Long}	&	$5$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{63} \dots 2^{63}-1}$~\ref{sec:type:Long} \\
+\lst{Long}	&	$5$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{63} \dots 2^{63}-1}$~\ref{sec:type:Long} \\
 \hline
-\lst{BigInt}	&	$6$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{255} \dots 2^{255}-1}$~\ref{sec:type:BigInt} \\
+\lst{BigInt}	&	$6$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{true}	& $\Set{-2^{255} \dots 2^{255}-1}$~\ref{sec:type:BigInt} \\
 \hline
-\lst{GroupElement}	&	$7$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{false}	& $\Set{p \in \lst{SecP256K1Point}}$ \\
+\lst{GroupElement}	&	$7$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{false}	& $\Set{p \in \lst{SecP256K1Point}}$ \\
 \hline
-\lst{SigmaProp}	&	$8$	&	\lst{true}	& \lst{true}	&	\lst{true} &	\lst{false}	& Sec.~\ref{sec:type:SigmaProp} \\
+\lst{SigmaProp}	&	$8$	&	\lst{isConst}	& \lst{true}	&	\lst{true} &	\lst{false}	& Sec.~\ref{sec:type:SigmaProp} \\
 \hline
-\lst{Box}	&	$99$	&	\lst{false}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Box} \\
+\lst{Any}	&	$97$	&	\lst{isConst}	& \lst{true}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Any} \\
 \hline
-\lst{AvlTree}	&	$100$	&	\lst{true}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:AvlTree} \\
+\lst{Unit}	&	$98$	&	\lst{isConst}	& \lst{true}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Unit} \\
 \hline
-\lst{Context}	&	$101$	&	\lst{false}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Context} \\
+\lst{Box}	&	$99$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Box} \\
 \hline
-\lst{Header}	&	$104$	&	\lst{true}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Header} \\
+\lst{AvlTree}	&	$100$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:AvlTree} \\
 \hline
-\lst{PreHeader}	&	$105$	&	\lst{true}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:PreHeader} \\
+\lst{Context}	&	$101$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Context} \\
 \hline
-\lst{Global}	&	$106$	&	\lst{true}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Global} \\
+\lst{Header}	&	$104$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Header} \\
+\hline
+\lst{PreHeader}	&	$105$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:PreHeader} \\
+\hline
+\lst{Global}	&	$106$	&	\lst{isConst}	& \lst{false}	&	\lst{false} &	\lst{false}	& Sec.~\ref{sec:type:Global} \\

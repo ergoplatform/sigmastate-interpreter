@@ -1,18 +1,26 @@
 package sigmastate.interpreter
 
-import sigmastate.kiama.rewriting.Rewriter.{everywherebu, everywheretd, rule}
-import sigmastate.kiama.rewriting.Strategy
-import scalan.util.CollectionUtil._
-import sigmastate.TrivialProp.{FalseProp, TrueProp}
-import sigmastate.Values._
-import sigmastate.VersionContext.MaxSupportedScriptVersion
+import sigma.kiama.rewriting.Rewriter.{everywherebu, everywheretd, rule}
+import sigma.util.CollectionUtil._
+import sigma.VersionContext
+import sigma.kiama.rewriting.Strategy
+import sigma.data.TrivialProp.{FalseProp, TrueProp}
+import sigma.ast._
+import sigma.VersionContext.MaxSupportedScriptVersion
 import sigmastate._
-import sigmastate.basics.DLogProtocol._
-import sigmastate.basics.VerifierMessage.Challenge
-import sigmastate.basics._
+import sigmastate.crypto.DLogProtocol._
+import sigmastate.crypto.VerifierMessage.Challenge
+import sigmastate.crypto._
 import sigmastate.crypto.{GF2_192, GF2_192_Poly}
-import sigmastate.exceptions.InterpreterException
 import sigmastate.utils.Helpers
+import sigma.Coll
+import sigma.Extensions.ArrayOps
+import sigma.crypto.CryptoConstants
+import sigma.data.{CAND, COR, CTHRESHOLD, ProveDHTuple, ProveDlog, SigmaBoolean}
+import sigma.exceptions.InterpreterException
+import sigma.interpreter.CostedProverResult
+import sigma.serialization.SigSerializer
+import sigma.util.CollectionUtil
 
 import java.math.BigInteger
 import scala.util.Try
@@ -23,13 +31,13 @@ import scala.util.Try
   */
 trait ProverInterpreter extends Interpreter with ProverUtils {
 
-  import CryptoConstants.secureRandomBytes
+  import sigma.crypto.CryptoConstants.secureRandomBytes
   import Interpreter._
 
   override type ProofT = UncheckedTree
 
   /** All secrets available for this prover. */
-  def secrets: Seq[SigmaProtocolPrivateInput[_, _]]
+  def secrets: Seq[SigmaProtocolPrivateInput[_]]
 
   /**
     * Public keys of prover's secrets. This operation can be costly if there are many
@@ -91,7 +99,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
 
     // Prover Step 8: compute the challenge for the root of the tree as the Fiat-Shamir hash of propBytes
     // and the message being signed.
-    val rootChallenge = Challenge @@ CryptoFunctions.hashFn(Helpers.concatArrays(propBytes, message))
+    val rootChallenge = Challenge @@ CryptoFunctions.hashFn(CollectionUtil.concatArrays(propBytes, message)).toColl
     val step8 = step6.withChallenge(rootChallenge)
 
     // Prover Step 9: complete the proof by computing challenges at real nodes and additionally responses at real leaves
@@ -143,7 +151,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
                     hintsBag: HintsBag): Array[Byte] = {
     val proofTree = sb match {
       case TrueProp => NoProof
-      case FalseProp => error("Script reduced to false")
+      case FalseProp => syntax.error("Script reduced to false")
       case sigmaTree =>
         val unprovenTree = convertToUnproven(sigmaTree)
         prove(unprovenTree, message, hintsBag)
@@ -181,11 +189,11 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       // is known to an external participant in multi-signing;
       // else mark it "simulated"
       val isReal = hintsBag.realImages.contains(ul.proposition) || secrets.exists {
-        case in: SigmaProtocolPrivateInput[_, _] => in.publicImage == ul.proposition
+        case in: SigmaProtocolPrivateInput[_] => in.publicImage == ul.proposition
       }
       ul.withSimulated(!isReal)
     case t: UnprovenTree =>
-      error(s"Don't know how to markReal($t)")
+      syntax.error(s"Don't know how to markReal($t)")
   })
 
   /**
@@ -287,7 +295,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
           // take challenge from previously done proof stored in the hints bag,
           // or generate random challenge for simulated child
           val newChallenge = hintsBag.proofs.find(_.position == c.position).map(_.challenge).getOrElse(
-            Challenge @@ secureRandomBytes(CryptoFunctions.soundnessBytes)
+            Challenge @@ secureRandomBytes(CryptoFunctions.soundnessBytes).toColl
           )
           c.withChallenge(newChallenge)
         }
@@ -314,8 +322,10 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       // the other children and e_0.
       assert(or.challengeOpt.isDefined)
       val unprovenChildren = or.children.cast[UnprovenTree]
-      val t = unprovenChildren.tail.map(_.withChallenge(Challenge @@ secureRandomBytes(CryptoFunctions.soundnessBytes)))
-      val toXor: Seq[Array[Byte]] = or.challengeOpt.get +: t.map(_.challengeOpt.get)
+      val t = unprovenChildren.tail.map(
+        _.withChallenge(Challenge @@ secureRandomBytes(CryptoFunctions.soundnessBytes).toColl)
+      )
+      val toXor: Seq[Coll[Byte]] = or.challengeOpt.get +: t.map(_.challengeOpt.get)
       val xoredChallenge = Challenge @@ Helpers.xor(toXor: _*)
       val h = unprovenChildren.head.withChallenge(xoredChallenge)
       or.copy(children = h +: t)
@@ -329,11 +339,11 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       assert(t.challengeOpt.isDefined)
       val n = t.children.length
       val unprovenChildren = t.children.cast[UnprovenTree]
-      val q = GF2_192_Poly.fromByteArray(t.challengeOpt.get, secureRandomBytes(CryptoFunctions.soundnessBytes * (n - t.k)))
+      val q = GF2_192_Poly.fromByteArray(t.challengeOpt.get.toArray, secureRandomBytes(CryptoFunctions.soundnessBytes * (n - t.k)))
 
       val newChildren = unprovenChildren.foldLeft((Seq[UnprovenTree](), 1)) {
         case ((childSeq, childIndex), child) =>
-          (childSeq :+ child.withChallenge(Challenge @@ q.evaluate(childIndex.toByte).toByteArray), childIndex + 1)
+          (childSeq :+ child.withChallenge(Challenge @@ q.evaluate(childIndex.toByte).toByteArray.toColl), childIndex + 1)
       }._1
       t.withPolynomial(q).copy(children = newChildren)
 
@@ -380,11 +390,11 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
         if (su.simulated) {
           // Step 5 (simulated leaf -- complete the simulation)
           assert(su.challengeOpt.isDefined)
-          val (fm, sm) = DLogInteractiveProver.simulate(su.proposition, su.challengeOpt.get)
+          val (fm, sm) = DLogProver.simulate(su.proposition, su.challengeOpt.get)
           UncheckedSchnorr(su.proposition, Some(fm), su.challengeOpt.get, sm)
         } else {
           // Step 6 -- compute the commitment
-          val (r, commitment) = DLogInteractiveProver.firstMessage()
+          val (r, commitment) = DLogProver.firstMessage()
           su.copy(commitmentOpt = Some(commitment), randomnessOpt = Some(r))
         }
       }
@@ -395,28 +405,28 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
 
         // Step 6 (real leaf -- compute the commitment a or take it from the hints bag)
         hintsBag.commitments.find(_.position == dhu.position).map { cmtHint =>
-          dhu.copy(commitmentOpt = Some(cmtHint.commitment.asInstanceOf[FirstDiffieHellmanTupleProverMessage]))
+          dhu.copy(commitmentOpt = Some(cmtHint.commitment.asInstanceOf[FirstDHTupleProverMessage]))
         }.getOrElse {
           if (dhu.simulated) {
             // Step 5 (simulated leaf -- complete the simulation)
             assert(dhu.challengeOpt.isDefined)
-            val (fm, sm) = DiffieHellmanTupleInteractiveProver.simulate(dhu.proposition, dhu.challengeOpt.get)
+            val (fm, sm) = DiffieHellmanTupleProver.simulate(dhu.proposition, dhu.challengeOpt.get)
             UncheckedDiffieHellmanTuple(dhu.proposition, Some(fm), dhu.challengeOpt.get, sm)
           } else {
             // Step 6 -- compute the commitment
-            val (r, fm) = DiffieHellmanTupleInteractiveProver.firstMessage(dhu.proposition)
+            val (r, fm) = DiffieHellmanTupleProver.firstMessage(dhu.proposition)
             dhu.copy(commitmentOpt = Some(fm), randomnessOpt = Some(r))
           }
         }
 
-    case t: ProofTree => error(s"Don't know how to challengeSimulated($t)")
+    case t: ProofTree => syntax.error(s"Don't know how to challengeSimulated($t)")
   })
 
-  private def extractChallenge(pt: ProofTree): Option[Array[Byte]] = pt match {
+  private def extractChallenge(pt: ProofTree): Option[Challenge] = pt match {
     case upt: UnprovenTree => upt.challengeOpt
     case sn: UncheckedSchnorr => Some(sn.challenge)
     case dh: UncheckedDiffieHellmanTuple => Some(dh.challenge)
-    case _ => error(s"Cannot extractChallenge($pt)")
+    case _ => syntax.error(s"Cannot extractChallenge($pt)")
   }
 
   /**
@@ -461,16 +471,16 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
             // has a challenge. Other ways are more of a pain because the children can be of different types
             val challengeOpt = extractChallenge(child)
             if (challengeOpt.isEmpty) (p, v)
-            else (p :+ count.toByte, v :+ new GF2_192(challengeOpt.get))
+            else (p :+ count.toByte, v :+ new GF2_192(challengeOpt.get.toArray))
 
           }
           (newPoints, newValues, count + 1)
       }
-      val q = GF2_192_Poly.interpolate(points, values, new GF2_192(t.challengeOpt.get))
+      val q = GF2_192_Poly.interpolate(points, values, new GF2_192(t.challengeOpt.get.toArray))
       val newChildren = t.children.foldLeft(Seq[ProofTree](), 1) {
         case ((s, count), child) =>
           val newChild = child match {
-            case r: UnprovenTree if r.real => r.withChallenge(Challenge @@ q.evaluate(count.toByte).toByteArray)
+            case r: UnprovenTree if r.real => r.withChallenge(Challenge @@ q.evaluate(count.toByte).toByteArray.toColl)
             case p: ProofTree => p
           }
           (s :+ newChild, count + 1)
@@ -488,12 +498,12 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       val z = privKeyOpt match {
         case Some(privKey: DLogProverInput) =>
           hintsBag.ownCommitments.find(_.position == su.position).map { oc =>
-            DLogInteractiveProver.secondMessage(
+            DLogProver.secondMessage(
               privKey,
               oc.secretRandomness,
               su.challengeOpt.get)
           }.getOrElse {
-            DLogInteractiveProver.secondMessage(
+            DLogProver.secondMessage(
               privKey,
               su.randomnessOpt.get,
               su.challengeOpt.get)
@@ -521,12 +531,12 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
       val z = privKeyOpt match {
         case Some(privKey) =>
           hintsBag.ownCommitments.find(_.position == dhu.position).map { oc =>
-            DiffieHellmanTupleInteractiveProver.secondMessage(
+            DiffieHellmanTupleProver.secondMessage(
               privKey.asInstanceOf[DiffieHellmanTupleProverInput],
               oc.secretRandomness,
               dhu.challengeOpt.get)
           }.getOrElse {
-            DiffieHellmanTupleInteractiveProver.secondMessage(
+            DiffieHellmanTupleProver.secondMessage(
               privKey.asInstanceOf[DiffieHellmanTupleProverInput],
               dhu.randomnessOpt.get,
               dhu.challengeOpt.get)
@@ -538,7 +548,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
             provenSchnorr.secondMessage
           }.getOrElse {
             val bs = secureRandomBytes(32)
-            SecondDiffieHellmanTupleProverMessage(new BigInteger(1, bs).mod(CryptoConstants.groupOrder))
+            SecondDHTupleProverMessage(new BigInteger(1, bs).mod(CryptoConstants.groupOrder))
           }
       }
       UncheckedDiffieHellmanTuple(dhu.proposition, None, dhu.challengeOpt.get, z)
@@ -574,7 +584,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
     case dh: ProveDHTuple =>
       UnprovenDiffieHellmanTuple(dh, None, None, None, simulated = false)
     case _ =>
-      error(s"Cannot convertToUnproven($sigmaTree)")
+      syntax.error(s"Cannot convertToUnproven($sigmaTree)")
   }
 
   //converts ProofTree => UncheckedSigmaTree
@@ -588,7 +598,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
     case s: UncheckedSchnorr => s
     case d: UncheckedDiffieHellmanTuple => d
     case a: Any =>
-      error(s"Cannot convertToUnproven($a)")
+      syntax.error(s"Cannot convertToUnproven($a)")
   }
 
   /**

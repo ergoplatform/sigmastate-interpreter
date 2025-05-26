@@ -1,20 +1,21 @@
 package sigmastate.lang.js
 
 import org.ergoplatform.ErgoAddressEncoder
-import org.ergoplatform.sdk.js.Isos.isoValueToConstant
 import org.scalablytyped.runtime.StringDictionary
+import sigma.ast
+import sigma.ast.js.{ErgoTree, isoValueToConstant}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
-import org.ergoplatform.sdk.js.{ErgoTree, Value}
-import sigmastate.Values
-import sigmastate.eval.CompiletimeIRContext
-import sigmastate.lang.Terms.ValueOps
+import sigma.js.Value
+import sigma.ast.ErgoTree.HeaderType
+import sigma.compiler.ir.CompiletimeIRContext
+import sigma.ast.syntax.ValueOps
 
 
 /** Wrapper exported to JS. */
 @JSExportTopLevel("SigmaCompiler")
-class SigmaCompiler(_compiler: sigmastate.lang.SigmaCompiler) extends js.Object {
+class SigmaCompiler(_compiler: sigma.compiler.SigmaCompiler) extends js.Object {
 
   /** Compiles ErgoScript code to ErgoTree.
     *
@@ -27,7 +28,7 @@ class SigmaCompiler(_compiler: sigmastate.lang.SigmaCompiler) extends js.Object 
   def compile(
       namedConstants: StringDictionary[Value],
       segregateConstants: Boolean,
-      additionalHeaderFlags: Byte, ergoScript: String): ErgoTree = {
+      treeHeader: Byte, ergoScript: String): ErgoTree = {
     val env = StringDictionary
         .wrapStringDictionary(namedConstants)
         .view.mapValues(v => isoValueToConstant.to(v)).toMap
@@ -36,15 +37,15 @@ class SigmaCompiler(_compiler: sigmastate.lang.SigmaCompiler) extends js.Object 
     require(prop.tpe.isSigmaProp, s"Expected SigmaProp expression type bue got ${prop.tpe}: $prop")
 
     val tree = if (segregateConstants) {
-      Values.ErgoTree.withSegregation(additionalHeaderFlags, prop.asSigmaProp)
+      ast.ErgoTree.withSegregation(HeaderType @@ treeHeader, prop.asSigmaProp)
     } else {
-      Values.ErgoTree.withoutSegregation(additionalHeaderFlags, prop.asSigmaProp)
+      ast.ErgoTree.withoutSegregation(HeaderType @@ treeHeader, prop.asSigmaProp)
     }
     new ErgoTree(tree)
   }
 }
 
-@JSExportTopLevel("SigmaCompilerObj")
+@JSExportTopLevel("SigmaCompiler$")
 object SigmaCompiler extends js.Object {
   /** Creates a new instance of SigmaCompiler for the mainnet. */
   def forMainnet(): SigmaCompiler = create(ErgoAddressEncoder.MainnetNetworkPrefix)
@@ -58,7 +59,7 @@ object SigmaCompiler extends js.Object {
     * @return SigmaCompiler instance
     */
   private def create(networkPrefix: Byte): SigmaCompiler = {
-    val compiler = new sigmastate.lang.SigmaCompiler(networkPrefix)
+    val compiler = sigma.compiler.SigmaCompiler(networkPrefix)
     new SigmaCompiler(compiler)
   }
 }

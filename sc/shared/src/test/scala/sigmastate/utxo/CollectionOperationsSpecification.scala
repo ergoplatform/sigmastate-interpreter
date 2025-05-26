@@ -1,14 +1,19 @@
 package sigmastate.utxo
 
-import sigmastate.Values._
+import sigma.ast._
 import sigmastate._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.lang.Terms._
+import sigma.ast.syntax._
 import org.ergoplatform._
-import sigmastate.SCollection._
+import sigma.ast.SCollection._
+import sigma.data.AvlTreeData
+import SCollectionMethods.{FlatMapMethod, IndexOfMethod, IndicesMethod, PatchMethod, UpdateManyMethod, UpdatedMethod}
+import sigma.ast
 import sigmastate.interpreter.Interpreter.{ScriptNameProp, emptyEnv}
-import sigmastate.serialization.OpCodes._
+import sigma.serialization.OpCodes._
+import sigma.ast.MethodCall
+import sigma.eval.Extensions.SigmaBooleanOps
 import sigmastate.utils.Helpers._
 
 class CollectionOperationsSpecification extends CompilerTestingCommons
@@ -87,7 +92,7 @@ class CollectionOperationsSpecification extends CompilerTestingCommons
     val prover = new ContextEnrichingTestProvingInterpreter
     val verifier = new ErgoLikeTestInterpreter
 
-    val pubkey = prover.dlogSecrets.head.publicImage.toSigmaProp
+    val pubkey = prover.dlogSecrets.head.publicImage.toSigmaPropValue
     val pubkeyTree = mkTestErgoTree(pubkey)
 
     val prop = compile(Map(), "OUTPUTS.exists({ (box: Box) => box.value + 5 > 10 })").asBoolValue.toSigmaProp
@@ -202,7 +207,7 @@ class CollectionOperationsSpecification extends CompilerTestingCommons
     val prover = new ContextEnrichingTestProvingInterpreter
     val verifier = new ErgoLikeTestInterpreter
 
-    val pubkey = prover.dlogSecrets.head.publicImage.toSigmaProp
+    val pubkey = prover.dlogSecrets.head.publicImage.toSigmaPropValue
     val pubkeyTree = mkTestErgoTree(pubkey)
 
     val prop = compile(Map(),
@@ -215,8 +220,8 @@ class CollectionOperationsSpecification extends CompilerTestingCommons
       FuncValue(
         Vector((1, SBox)),
         EQ(
-          utxo.ExtractRegisterAs[SLong.type](ValUse(1, SBox), reg1).get,
-          Plus(utxo.ExtractRegisterAs[SLong.type](Self, reg1).get, LongConstant(1)))
+          ast.ExtractRegisterAs[SLong.type](ValUse(1, SBox), reg1).get,
+          Plus(ast.ExtractRegisterAs[SLong.type](Self, reg1).get, LongConstant(1)))
       )
     ).toSigmaProp
     prop shouldBe propExpected
@@ -258,8 +263,8 @@ class CollectionOperationsSpecification extends CompilerTestingCommons
       FuncValue(
         Vector((1, SBox)),
         EQ(
-          utxo.ExtractRegisterAs[SLong.type](ValUse(1, SBox), reg1).getOrElse(LongConstant(0)),
-          Plus(utxo.ExtractRegisterAs[SLong.type](Self, reg1).get, LongConstant(1))
+          ast.ExtractRegisterAs[SLong.type](ValUse(1, SBox), reg1).getOrElse(LongConstant(0)),
+          Plus(ast.ExtractRegisterAs[SLong.type](Self, reg1).get, LongConstant(1))
         )
       )
     ).toSigmaProp
@@ -531,7 +536,7 @@ class CollectionOperationsSpecification extends CompilerTestingCommons
     assertProof("OUTPUTS.zip(INPUTS).size == 2",
       EQ(
         SizeOf(MethodCall(Outputs,
-          SCollection.ZipMethod.withConcreteTypes(Map(SCollection.tIV -> SBox, SCollection.tOV -> SBox)),
+          SCollectionMethods.ZipMethod.withConcreteTypes(Map(SCollection.tIV -> SBox, SCollection.tOV -> SBox)),
           Vector(Inputs),
           Map()).asCollection[STuple]),
         IntConstant(2)),

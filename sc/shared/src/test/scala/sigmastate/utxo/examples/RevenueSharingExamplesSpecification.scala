@@ -1,9 +1,9 @@
 package sigmastate.utxo.examples
 
-import org.ergoplatform.dsl.{SigmaContractSyntax, ContractSpec, TestContractSpec, StdContracts}
-import sigmastate.eval.Extensions
+import org.ergoplatform.dsl.{ContractSpec, SigmaContractSyntax, StdContracts, TestContractSpec}
 import sigmastate.helpers.CompilerTestingCommons
-import special.sigma.Context
+import sigma.Context
+import sigma.ast.IntConstant
 
 class RevenueSharingExamplesSpecification extends CompilerTestingCommons { suite =>
   implicit lazy val IR = new TestingIRContext
@@ -121,7 +121,7 @@ class RevenueSharingExamplesSpecification extends CompilerTestingCommons { suite
 
     val in = tx.inputs(0)
 
-    val res = in.runDsl(Map(1.toByte -> Extensions.toAnyValue(1)))
+    val res = in.runDsl(Map(1.toByte -> IntConstant(1)))
 
     val pr = alice.prove(in).get
     contract.verifier.verify(in, pr) shouldBe true

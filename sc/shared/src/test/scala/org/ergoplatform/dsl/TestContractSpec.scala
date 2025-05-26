@@ -3,33 +3,35 @@ package org.ergoplatform.dsl
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 
 import scala.collection.mutable
-import sigmastate.interpreter.{CostedProverResult, ProverResult}
+import sigma.interpreter.{CostedProverResult, ProverResult}
 
 import scala.collection.mutable.ArrayBuffer
 import org.ergoplatform.ErgoBox.{NonMandatoryRegisterId, TokenId}
-import scalan.Nullable
+import sigma.data.{AvlTreeData, CAnyValue, CSigmaProp, Nullable}
 
 import scala.util.Try
 import org.ergoplatform.{ErgoBox, ErgoLikeContext}
 import org.ergoplatform.dsl.ContractSyntax.{ErgoScript, Proposition, Token}
-import sigmastate.{AvlTreeData, SType}
-import sigmastate.Values.{ErgoTree, EvaluatedValue}
-import sigmastate.eval.{CSigmaProp, Evaluation, IRContext, CAnyValue}
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
+import sigma.ast.{ErgoTree, SType}
+import sigma.ast.EvaluatedValue
+import sigma.interpreter.ContextExtension
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
-import sigmastate.lang.Terms.ValueOps
-import special.sigma.{AnyValue, SigmaProp}
+import sigma.ast.syntax.ValueOps
+import sigma.{AnyValue, Evaluation, SigmaProp}
+import ErgoTree.ZeroHeader
+import sigma.compiler.ir.IRContext
 
 case class TestContractSpec(testSuite: CompilerTestingCommons)(implicit val IR: IRContext) extends ContractSpec {
 
   case class TestPropositionSpec(name: String, dslSpec: Proposition, scriptSpec: ErgoScript) extends PropositionSpec {
     lazy val ergoTree: ErgoTree = {
       val value = testSuite.compile(scriptSpec.env, scriptSpec.code)
-      val headerFlags = scriptSpec.scriptVersion match {
-        case Some(version) => ErgoTree.headerWithVersion(version)
+      val header = scriptSpec.scriptVersion match {
+        case Some(version) => ErgoTree.headerWithVersion(ZeroHeader, version)
         case None => testSuite.ergoTreeHeaderInTests
       }
-      val tree: ErgoTree = ErgoTree.fromProposition(headerFlags, value.asSigmaProp)
+      val tree: ErgoTree = ErgoTree.fromProposition(header, value.asSigmaProp)
       tree
     }
   }
@@ -44,16 +46,13 @@ case class TestContractSpec(testSuite: CompilerTestingCommons)(implicit val IR: 
     val pubKey: SigmaProp = CSigmaProp(prover.dlogSecrets.head.publicImage)
 
     import SType.AnyOps
-    def prove(inBox: InputBox, extensions: Map[Byte, AnyValue] = Map()): Try[CostedProverResult] = {
+    def prove(inBox: InputBox, extensions: Map[Byte, EvaluatedValue[_ <: SType]] = Map()): Try[CostedProverResult] = {
       val boxToSpend = inBox.utxoBox
       val propSpec: PropositionSpec = boxToSpend.propSpec
-      val bindings = extensions.mapValues { case v: CAnyValue[a] =>
-        IR.builder.mkConstant(v.value.asWrappedType, Evaluation.rtypeToSType(v.tA))
-      }
       val ctx = inBox.toErgoContext
       val env = propSpec.scriptSpec.env + (ScriptNameProp -> (propSpec.name + "_prove"))
       val prop = propSpec.ergoTree
-      val p = bindings.foldLeft(prover) { (p, b) => p.withContextExtender(b._1, b._2) }
+      val p = extensions.foldLeft(prover) { (p, b) => p.withContextExtender(b._1, b._2) }
       val proof = p.prove(env, prop, ctx, testSuite.fakeMessage)
       proof
     }
@@ -92,8 +91,8 @@ case class TestContractSpec(testSuite: CompilerTestingCommons)(implicit val IR: 
               .withErgoTreeVersion(testSuite.ergoTreeVersionInTests)
       ctx
     }
-    def runDsl(extensions: Map[Byte, AnyValue] = Map()): SigmaProp = {
-      val ctx = toErgoContext.toSigmaContext(extensions)
+    def runDsl(extensions: Map[Byte, EvaluatedValue[_ <: SType]] = Map()): SigmaProp = {
+      val ctx = toErgoContext.withExtension(ContextExtension(extensions)).toSigmaContext()
       val res = utxoBox.propSpec.dslSpec(ctx)
       res
     }
@@ -170,7 +169,6 @@ case class TestContractSpec(testSuite: CompilerTestingCommons)(implicit val IR: 
 
   case class BBlockCandidate(height: Int) extends BlockCandidate {
     def newTransaction() = MockTransaction(this)
-//    def onTopOf(chain: ChainBlock*)
   }
 
   def candidateBlock(height: Int): BlockCandidate = BBlockCandidate(height)

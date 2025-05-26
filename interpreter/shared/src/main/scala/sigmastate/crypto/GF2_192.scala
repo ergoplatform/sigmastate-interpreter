@@ -30,8 +30,6 @@ package sigmastate.crypto
 
 import debox.cfor
 
-import java.util
-
 class GF2_192 extends AnyRef {
   private[crypto] val word: Array[Long] = new Array[Long](3)
 
@@ -113,7 +111,7 @@ class GF2_192 extends AnyRef {
     }
   }
 
-  override def hashCode = util.Arrays.hashCode(word)
+  override def hashCode = java.util.Arrays.hashCode(word)
 
   /**
     *

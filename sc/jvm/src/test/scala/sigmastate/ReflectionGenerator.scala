@@ -1,11 +1,21 @@
 package sigmastate
 
-import scalan.reflection._
-import scalan.{Base, TypeDescs}
-
+import sigma.compiler.ir.{Base, TypeDescs}
+import sigma.reflection._
 import scala.annotation.unused
 import scala.collection.mutable
 
+/** Generates code for registering classes in the ReflectionData.
+  * It is not used in the runtime.
+  *
+  * The generated invocations of  `registerClassEntry`, `mkMethod`, `mkConstructor` may
+  * require manual adjustments.
+  *
+  * It uses [[sigma.reflection.Platform.unknownClasses]] to collect classes which were
+  * accessed during runtime
+  *
+  * @see [[ReflectionData]]
+  */
 object ReflectionGenerator {
 
   def normalizeName(name: String): String = {
@@ -31,17 +41,17 @@ object ReflectionGenerator {
   }
 
   val knownPackages = Array(
-    "scalan.primitives.",
-    "special.collection.",
-    "special.sigma.",
-    "special.wrappers.",
-    "sigmastate.Values.",
+    "sigma.compiler.ir.primitives.",
+    "sigma.",
+    "sigma.",
+    "sigma.compiler.ir.wrappers.",
+    "sigma.ast.",
     "sigmastate.lang.Terms.",
     "sigmastate.interpreter.",
     "sigmastate.utxo.",
     "sigmastate.",
-    "wrappers.scala.",
-    "scalan.",
+    "sigma.compiler.ir.wrappers.scala.",
+    "sigma.compiler.ir.",
     "scala.collection.",
     "scala."
   )
@@ -177,14 +187,14 @@ object ReflectionGenerator {
   }
 
   private def collectEmptyClasses = {
-    scalan.reflection.Platform.unknownClasses.toSeq.filter(e =>
+    sigma.reflection.Platform.unknownClasses.toSeq.filter(e =>
       isEmpty(e._2) && // don't contain constructors, fields or methods
-          !CommonReflection.classes.contains(e._1)) // not already registered
+          !ReflectionData.classes.contains(e._1)) // not already registered
   }
 
   private def collectNonEmptyClasses = {
-    scalan.reflection.Platform.unknownClasses.toSeq.filter(e =>
+    sigma.reflection.Platform.unknownClasses.toSeq.filter(e =>
       !isEmpty(e._2) &&
-          !CommonReflection.classes.contains(e._1))
+          !ReflectionData.classes.contains(e._1))
   }
 }
