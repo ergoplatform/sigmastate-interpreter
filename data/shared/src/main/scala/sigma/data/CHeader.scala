@@ -1,6 +1,6 @@
 package sigma.data
 
-import org.ergoplatform.{AutolykosSolution, ErgoHeader, HeaderWithoutPow, HeaderWithoutPowSerializer}
+import org.ergoplatform.{AutolykosSolution, ErgoHeader, HeaderWithoutPowSerializer}
 import scorex.crypto.authds.ADDigest
 import scorex.crypto.hash.Digest32
 import scorex.util.{bytesToId, idToBytes}

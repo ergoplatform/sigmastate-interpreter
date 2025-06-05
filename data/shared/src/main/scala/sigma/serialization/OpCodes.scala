@@ -144,6 +144,7 @@ object OpCodes {
   val MethodCallCode: OpCode = newOpCode(108)
   val GlobalCode    : OpCode = newOpCode(109)
 
+  // todo: not used and should be removed, as Some / None constructors are implemented as Global methods
   val SomeValueCode: OpCode = newOpCode(110)
   val NoneValueCode: OpCode = newOpCode(111) // reserved 112 - 114 (3)
 
@@ -178,10 +179,12 @@ object OpCodes {
   val BitShiftLeftCode     : OpCode = newOpCode(135)
   val BitShiftRightZeroedCode     : OpCode = newOpCode(136)
 
+  // todo: not used, remove
   val CollShiftRightCode    : OpCode = newOpCode(137)
   val CollShiftLeftCode     : OpCode = newOpCode(138)
   val CollShiftRightZeroedCode     : OpCode = newOpCode(139)
 
+  // todo: not used, remove
   val CollRotateLeftCode     : OpCode = newOpCode(140)
   val CollRotateRightCode     : OpCode = newOpCode(141)
 

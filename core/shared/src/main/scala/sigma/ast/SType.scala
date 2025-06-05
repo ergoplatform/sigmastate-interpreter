@@ -775,7 +775,7 @@ object SCollection extends STypeCompanion {
   override val reprClass: RClass[_] = RClass(classOf[Coll[_]])
   override def typeId = SCollectionType.CollectionTypeCode
 
-  /** Costructs a collection type with the given type of elements. */
+  /** Constructs a collection type with the given type of elements. */
   implicit def typeCollection[V <: SType](implicit tV: V): SCollection[V] = SCollection[V](tV)
 
   /** Helper descriptors reused across different method descriptors. */

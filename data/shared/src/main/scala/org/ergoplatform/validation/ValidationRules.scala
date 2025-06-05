@@ -13,8 +13,6 @@ import sigma.exceptions.InterpreterException
 import sigma.serialization.ValueCodes.OpCode
 import sigma.serialization.ValueSerializer
 
-import scala.annotation.tailrec
-
 /** All validation rules which are used to check soft-forkable conditions. Each validation
   * rule throws a [[org.ergoplatform.validation.ValidationException]]. Each
   * ValidationException can be caught and handled with respect to
@@ -171,7 +169,7 @@ object ValidationRules {
     final def apply[T](v: EvaluatedValue[_]): Unit = {
       checkRule()
 
-      def v6TypeCheck(tpe: SType) = {
+      def v6TypeCheck(tpe: SType): Unit = {
         if (tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode) {
           throwValidationException(
             SerializerException(s"V6 type used in register or context var extension: $tpe"),

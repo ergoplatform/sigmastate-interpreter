@@ -995,8 +995,10 @@ trait SigmaDslBuilder {
   /** Returns a number decoded from provided big-endian bytes array. */
   def fromBigEndianBytes[T](bytes: Coll[Byte])(implicit cT: RType[T]): T
 
+  /** Constructs wrapped into optional type `value`  */
   def some[T](value: T)(implicit cT: RType[T]): Option[T]
 
+  /** Constructs empty optional value */
   def none[T]()(implicit cT: RType[T]): Option[T]
 }
 

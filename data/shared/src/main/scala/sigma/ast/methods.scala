@@ -482,7 +482,6 @@ object SNumericTypeMethods extends MethodsContainer {
   }
 
   /** Collection of names of numeric casting methods (like `toByte`, `toInt`, etc). */
-  // todo: add unsigned big int
   val castMethods: Array[String] =
     Array(ToByteMethod, ToShortMethod, ToIntMethod, ToLongMethod, ToBigIntMethod)
         .map(_.name)
@@ -1240,7 +1239,6 @@ object STupleMethods extends MethodsContainer {
   /** A list of Coll methods inherited from Coll type and available as method of tuple. */
   lazy val colMethods: Seq[SMethod] = {
     val subst = Map(SType.tIV -> SAny)
-    // TODO: implement other methods
     val activeMethods = Set(1.toByte /*Coll.size*/, 10.toByte /*Coll.apply*/)
     SCollectionMethods.methods.filter(m => activeMethods.contains(m.methodId)).map { m =>
       m.copy(stype = applySubst(m.stype, subst).asFunc)

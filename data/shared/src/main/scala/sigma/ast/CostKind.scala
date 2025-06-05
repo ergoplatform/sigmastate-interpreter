@@ -60,6 +60,7 @@ case object DynamicCost extends CostKind
 object NumericCastCostKind extends TypeBasedCost {
   override def costFunc(targetTpe: SType): JitCost = targetTpe match {
     case SBigInt => JitCost(30)
+    case SUnsignedBigInt => JitCost(30)
     case _ => JitCost(10)
   }
 }
@@ -78,7 +79,7 @@ object PowHitCostKind extends CostKind {
   def cost(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte]): JitCost = {
     val chunkSize = CalcBlake2b256.costKind.chunkSize
     val perChunkCost = CalcBlake2b256.costKind.perChunkCost
-    val baseCost = 300
+    val baseCost = 500
 
     // the heaviest part inside is k + 1 Blake2b256 invocations
     val c = baseCost + (k + 1) * ((msg.length + nonce.length + h.length) / chunkSize + 1) * perChunkCost.value

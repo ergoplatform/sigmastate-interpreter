@@ -4,7 +4,7 @@
 
 ErgoScript is a language to write contracts for [Ergo
 blockchain](https://ergoplatform.org). ErgoScript contracts can be compiled to
-[ErgoTrees](https://ergoplatform.org/docs/ErgoTree.pdf), typed abstract serialized and stored
+[ErgoTrees](https://ergoplatform.org/docs/ErgoTree.pdf), typed abstract syntax treeы which are serialized and stored
 in UTXOs.
 
 A good starting point to writing contracts is to use [ErgoScript by
@@ -221,7 +221,7 @@ class Numeric {
 
 The only exception for conversions is about BigInt to and from UnsignedBigInt. To convert from signed big int to unsigned, use
 `.toUnsigned` method to convert signed big integer to unsigned, or `.toUnsignedMod(m)` to convert modulo `m` (and modulo
- operation is cryptographic, ie always returns positive number modulo `m`). To convert from unsigned big int to signed,
+ operation is cryptographic, i.e. always returns positive number modulo `m`). To convert from unsigned big int to signed,
  use `.toSigned`.
 
 All the predefined numeric types inherit Numeric class and its methods.
@@ -1017,10 +1017,9 @@ satisfying some predicate (condition)
 val ok = OUTPUTS.exists { (box: Box) => box.value > 1000 }
 ``` 
 
-### Predefined global functions
+### Global functions
 
 There are some functions which do not belong to other types, thus they put under `Global` type. Those functions are:
-
 
 
 ```
@@ -1084,7 +1083,7 @@ src == restored
 ```
 
 
-### Predefined global functions
+### Predefined functions
 <a name="PredefinedFunctions"></a>
 
 ErgoScript standard library include predefined functions that can be called 
@@ -1333,6 +1332,17 @@ def executeFromSelfRegWithDefault[T](id: Int, default: T): T
   */
 def substConstants[T](scriptBytes: Coll[Byte], positions: Coll[Int], newValues: Coll[T]): Coll[Byte]
 ```
+
+## Known Limitations
+
+* You can use methods added in 6.0 and new `UnsignedBigInt` type only within an ErgoTree with version >= 3 
+* 6.0 methods and other changes can be found in [EIP-50](https://github.com/ergoplatform/eips/pull/100)
+* You can't put values of `Option[]`, `Header`, `UnsignedBigInt` types into registers or context extension variables to 
+avoid versioning issues with 5.0 clients. To bypass the limitation, you can write typed value as bytes and call `Global.deserialize` in a script 
+to get an instance of those types.  
+* Higher order lambdas supported since 6.0 (you need to use ErgoTree v3 to have them parsed), see a higher order lambda example @ 
+[https://github.com/ergoplatform/sigmastate-interpreter/blob/b754e143cf38ed86d95698ede744a470dfa053d6/sigmastate/src/test/scala/special/sigma/SigmaDslSpecification.scala#L10040](https://github.com/ergoplatform/sigmastate-interpreter/blob/b754e143cf38ed86d95698ede744a470dfa053d6/sigmastate/src/test/scala/special/sigma/SigmaDslSpecification.scala#L10040)
+
 
 ## Examples
 

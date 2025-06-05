@@ -15,6 +15,8 @@ import scala.util.DynamicVariable
   * @see
   */
 case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
+  // ergoTreeVersion <= activatedVersion condition added in 5.0,
+  // and we check this condition only since 5.0 then
   require(activatedVersion < VersionContext.JitActivationVersion || ergoTreeVersion <= activatedVersion,
     s"In a valid VersionContext ergoTreeVersion must never exceed activatedVersion: $this")
 
@@ -98,7 +100,7 @@ object VersionContext {
     _versionContext.withValue(VersionContext(activatedVersion, ergoTreeVersion))(block)
 
   /** Checks the version context has the given versions*/
-  def checkVersions(activatedVersion: Byte, ergoTreeVersion: Byte) = {
+  def checkVersions(activatedVersion: Byte, ergoTreeVersion: Byte): Unit = {
     val ctx = VersionContext.current
     if (ctx.activatedVersion != activatedVersion || ctx.ergoTreeVersion != ergoTreeVersion) {
       val expected = VersionContext(activatedVersion, ergoTreeVersion)
