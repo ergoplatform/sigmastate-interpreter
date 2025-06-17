@@ -32,6 +32,8 @@ abstract class SigmaMap extends ContextVarsMap {
 
   def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])]
 
+  def keysIterator: Iterator[Byte]
+
   override def anyIterator: Iterator[(Byte, AnyValue)] = {
     iterator.map { case (k,v) =>
       val tVal = sigma.Evaluation.stypeToRType[SType](v.tpe)
@@ -59,6 +61,8 @@ object EmptySigmaMap extends SigmaMap {
 
   override def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])] = Iterator.empty
 
+  override def keysIterator: Iterator[Byte] = Iterator.empty
+
   override def contains(key: Byte): Boolean = false
 
   override def getNullable(key: Byte): AnyValue = null
@@ -71,6 +75,8 @@ class SigmaMap1(key1: Byte, value1: EvaluatedValue[_ <: SType]) extends SigmaMap
   override val size = 1
 
   override def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])] = Iterator.single((key1, value1))
+
+  override def keysIterator: Iterator[Byte] = Iterator.single(key1)
 
   override def contains(key: Byte): Boolean = {
     key == key1
@@ -113,6 +119,24 @@ class SigmaMap2(key1: Byte, value1: EvaluatedValue[_ <: SType],
         val result = i match {
           case 0 => (key1, value1)
           case 1 => (key2, value2)
+          case _ => Iterator.empty.next()
+        }
+        i += 1
+        result
+      }
+    }
+  }
+
+  override def keysIterator: Iterator[Byte] = {
+    new Iterator[Byte] {
+      private[this] var i = 0
+
+      override def hasNext: Boolean = i < 2
+
+      override def next(): Byte = {
+        val result = i match {
+          case 0 => key1
+          case 1 => key2
           case _ => Iterator.empty.next()
         }
         i += 1
@@ -182,6 +206,24 @@ class SigmaMap3(key1: Byte, value1: EvaluatedValue[_ <: SType],
       }
     }
   }
+  override def keysIterator: Iterator[Byte] = {
+    new Iterator[Byte] {
+      private[this] var i = 0
+
+      override def hasNext: Boolean = i < 3
+
+      override def next(): Byte = {
+        val result = i match {
+          case 0 => key1
+          case 1 => key2
+          case 2 => key3
+          case _ => Iterator.empty.next()
+        }
+        i += 1
+        result
+      }
+    }
+  }
 }
 
 class SigmaMap4(key1: Byte, value1: EvaluatedValue[_ <: SType],
@@ -223,6 +265,25 @@ class SigmaMap4(key1: Byte, value1: EvaluatedValue[_ <: SType],
           case 1 => (key2, value2)
           case 2 => (key3, value3)
           case 3 => (key4, value4)
+          case _ => Iterator.empty.next()
+        }
+        i += 1
+        result
+      }
+    }
+  }
+  override def keysIterator: Iterator[Byte] = {
+    new Iterator[Byte] {
+      private[this] var i = 0
+
+      override def hasNext: Boolean = i < 4
+
+      override def next(): Byte = {
+        val result = i match {
+          case 0 => key1
+          case 1 => key2
+          case 2 => key3
+          case 3 => key4
           case _ => Iterator.empty.next()
         }
         i += 1
@@ -281,6 +342,38 @@ class SigmaMapMulti(private val sparseValues: Array[EvaluatedValue[_ <: SType]],
           } while (res == null)
           iteratedOver += 1
           key -> res
+        }
+      }
+    }
+  }
+  override def keysIterator: Iterator[Byte] = {
+
+    val s = size
+
+    new Iterator[Byte] {
+      var iteratedOver = 0
+
+      var indexPos = 0
+
+      override val knownSize = s
+
+      override val size = s
+
+      override def hasNext: Boolean = {
+        iteratedOver < size
+      }
+
+      override def next(): Byte = {
+        if (iteratedOver > size) {
+          throw new NoSuchElementException("next on empty iterator")
+        } else {
+          var key: Byte = 0
+          do {
+            key = SigmaMap.indices(indexPos)
+            indexPos += 1
+          } while (key <= maxKey)
+          iteratedOver += 1
+          key
         }
       }
     }
