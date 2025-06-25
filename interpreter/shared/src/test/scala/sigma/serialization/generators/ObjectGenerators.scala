@@ -78,6 +78,7 @@ trait ObjectGenerators extends TypeGenerators
   implicit lazy val arbBoxConstant: Arbitrary[BoxConstant] = Arbitrary(boxConstantGen)
   implicit lazy val arbAvlTreeConstant: Arbitrary[AvlTreeConstant] = Arbitrary(avlTreeConstantGen)
   implicit lazy val arbBigIntConstant: Arbitrary[BigIntConstant] = Arbitrary(bigIntConstGen)
+  implicit lazy val arbUnsignedBigIntConstant: Arbitrary[UnsignedBigIntConstant] = Arbitrary(unsignedBigIntConstGen)
   implicit lazy val arbGetVarBox: Arbitrary[BoxValue] = Arbitrary(getVar[SBox.type])
   implicit lazy val arbGetVarAvlTree : Arbitrary[AvlTreeValue]   = Arbitrary(getVarAvlTreeGen)
   implicit lazy val arbProveDlog     : Arbitrary[ProveDlog]      = Arbitrary(proveDlogGen)
@@ -572,12 +573,13 @@ trait ObjectGenerators extends TypeGenerators
     )
   } yield node
 
-  def numExprTreeGen: Gen[Value[SNumericType]] =
+  def numExprTreeGen: Gen[Value[SNumericType]] = {
     Gen.oneOf(arbByteConstants.arbitrary,
       arbIntConstants.arbitrary,
       arbLongConstants.arbitrary,
       arbBigIntConstant.arbitrary,
       Gen.delay(numExprTreeNodeGen))
+  }
 
   def comparisonExprTreeNodeGen: Gen[Value[SBoolean.type]] = for {
     left <- numExprTreeNodeGen

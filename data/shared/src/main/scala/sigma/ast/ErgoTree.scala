@@ -75,6 +75,8 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   *                         for optimized execution.
   *                         ErgoTreeSerializer parsing method computes the value of
   *                         this flag and provides it to the constructor.
+  * @param givenIsUsingBlockchainContext optional flag which indicates that blockchain context related operations
+  *                                      are used in the tree
   */
 case class ErgoTree private[sigma](
     header: HeaderType,

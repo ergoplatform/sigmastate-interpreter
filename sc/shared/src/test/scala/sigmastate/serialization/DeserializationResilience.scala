@@ -27,12 +27,12 @@ import sigmastate.utils.Helpers._
 
 import java.math.BigInteger
 import java.nio.ByteBuffer
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 trait DeserializationResilienceTesting extends SerializationSpecification
     with CompilerTestingCommons with CompilerCrossVersionProps {
+
   protected def traceReaderCallDepth(expr: SValue): (IndexedSeq[Int], IndexedSeq[Int]) = {
     class LoggingSigmaByteReader(r: Reader) extends
         SigmaByteReader(r,
@@ -207,10 +207,12 @@ class DeserializationResilience extends DeserializationResilienceTesting {
         val (callDepths, levels) = traceReaderCallDepth(expr)
         callDepths shouldEqual levels
       }
-      forAll(numExprTreeNodeGen) { numExpr =>
-        val expr = EQ(numExpr, IntConstant(1))
-        val (callDepths, levels) = traceReaderCallDepth(expr)
-        callDepths shouldEqual levels
+      if(!VersionContext.current.isV3OrLaterErgoTreeVersion) { // to avoid issues with upcast in trees >= v3
+        forAll(numExprTreeNodeGen) { numExpr =>
+          val expr = EQ(numExpr, IntConstant(1))
+          val (callDepths, levels) = traceReaderCallDepth(expr)
+          callDepths shouldEqual levels
+        }
       }
       forAll(sigmaBooleanGen) { sigmaBool =>
         val (callDepths, levels) = traceReaderCallDepth(sigmaBool)

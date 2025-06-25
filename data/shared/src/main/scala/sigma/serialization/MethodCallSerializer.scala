@@ -5,6 +5,7 @@ import sigma.ast.{MethodCall, SContextMethods, SMethod, SType, STypeSubst, SType
 import sigma.util.safeNewArray
 import SigmaByteWriter._
 import debox.cfor
+import sigma.VersionContext
 import sigma.ast.SContextMethods.BlockchainContextMethodNames
 import sigma.serialization.CoreByteWriter.{ArgInfo, DataInfo}
 
@@ -48,6 +49,10 @@ case class MethodCallSerializer(cons: (Value[SType], SMethod, IndexedSeq[Value[S
     val methodId = r.getByte()
     val obj = r.getValue()
     val args = r.getValues()
+    // introducing the same check we have in serializer since v3 trees
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      assert(args.nonEmpty)
+    }
     val method = SMethod.fromIds(typeId, methodId)
 
     val explicitTypes = if (method.hasExplicitTypeArgs) {

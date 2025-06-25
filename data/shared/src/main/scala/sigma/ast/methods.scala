@@ -1996,7 +1996,7 @@ case object SGlobalMethods extends MonoTypeMethods {
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[SigmaDslBuilder, RType[_]]("none"),
       { mtype => Array(mtype.tRange) })
-    .withInfo(MethodCall, "Returns empty Option[T] of given type T.")
+    .withInfo(PropertyCall, "Returns empty Option[T] of given type T.")
 
   protected override def getMethods() = super.getMethods() ++ {
     if (VersionContext.current.isV3OrLaterErgoTreeVersion) {

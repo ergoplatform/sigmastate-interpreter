@@ -2,7 +2,7 @@ package sigma.serialization
 
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.validation.ValidationRules.CheckDeserializedScriptIsSigmaProp
-import sigma.SigmaProp
+import sigma.{SigmaProp, VersionContext}
 import sigma.ast._
 import sigma.ast.syntax.SigmaPropValue
 import sigma.data.CBigInt
@@ -10,6 +10,7 @@ import sigma.util.Extensions.SigmaPropOps
 import sigma.validation.ValidationException
 import ErgoTree.EmptyConstants
 import ErgoTree.HeaderType
+import scorex.util.encode.Base16
 import sigma.compiler.ir.IRContext
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigmastate._
@@ -24,6 +25,8 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
   implicit lazy val IR: TestingIRContext = new TestingIRContext {
     beginPass(noConstPropagationPass)
   }
+
+
 
   private def extractConstants(prop: SigmaPropValue)(implicit IR: IRContext): Seq[ErgoTree] = {
     import ErgoTree._
@@ -222,4 +225,16 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
       treeBytes shouldBe propBytes.toArray
     }
   }
+
+  property("v3 tree with upcast") {
+    val treeBytes = Base16.decode("0b15ea02e4dc650cfe020300020008b20e020102020100").get
+
+    VersionContext.withVersions(3, 3) {
+      val tree = DefaultSerializer.deserializeErgoTree(treeBytes)
+      val treeBytes2 = DefaultSerializer.serializeErgoTree(tree)
+
+      treeBytes.sameElements(treeBytes2) shouldBe true
+    }
+  }
+
 }

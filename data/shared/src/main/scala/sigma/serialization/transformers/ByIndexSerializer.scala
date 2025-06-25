@@ -4,6 +4,7 @@ import sigma.ast.{ByIndex, Value}
 import sigma.ast.syntax._
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, ValueSerializer}
 import ValueSerializer._
+import sigma.VersionContext
 import sigma.ast.syntax.SValue
 import sigma.ast.Operations.ByIndexInfo._
 import sigma.serialization.SigmaByteWriter._
@@ -25,7 +26,11 @@ case class ByIndexSerializer(cons: (Value[SCollection[SType]], Value[SInt.type],
 
   override def parse(r: SigmaByteReader): Value[SType] = {
     val input = r.getValue().asCollection[SType]
-    val index = r.getValue().upcastTo(SInt)
+    val index = if (VersionContext.current.isV3OrLaterErgoTreeVersion){
+      r.getValue().asValue[SInt.type]
+    } else {
+      r.getValue().upcastTo(SInt)
+    }
     val default = r.getOption(r.getValue())
     cons(input, index, default)
   }

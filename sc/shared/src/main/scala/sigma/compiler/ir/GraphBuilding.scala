@@ -1,29 +1,25 @@
 package sigma.compiler.ir
 
 import org.ergoplatform._
-import sigma.ast.SType.tT
-import sigma.{SigmaException, VersionContext, ast}
 import sigma.Evaluation.stypeToRType
+import sigma.SigmaException
+import sigma.VersionContext
+import sigma.ast.{Ident, Select, Val}
 import sigma.ast.SType.tT
-import sigma.{SigmaException, VersionContext, ast}
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.ast.Value.Typed
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.ast._
 import sigma.compiler.ir.core.MutableLazy
 import sigma.crypto.EcPointType
-import sigma.VersionContext
 import sigma.data.ExactIntegral.{ByteIsExactIntegral, IntIsExactIntegral, LongIsExactIntegral, ShortIsExactIntegral}
 import sigma.data.ExactOrdering.{ByteIsExactOrdering, IntIsExactOrdering, LongIsExactOrdering, ShortIsExactOrdering}
 import sigma.data.{CSigmaDslBuilder, ExactIntegral, ExactNumeric, ExactOrdering, Lazy, Nullable}
-import sigma.util.Extensions.ByteOps
-import sigmastate.interpreter.Interpreter.ScriptEnv
-import sigma.ast.{Ident, Select, Val}
 import sigma.data.UnsignedBigIntNumericOps.{UnsignedBigIntIsExactIntegral, UnsignedBigIntIsExactOrdering}
 import sigma.exceptions.GraphBuildingException
 import sigma.serialization.OpCodes
-import sigma.{SigmaException, ast}
-import sigma.VersionContext
+import sigma.util.Extensions.ByteOps
+import sigmastate.interpreter.Interpreter.ScriptEnv
 
 import scala.collection.mutable.ArrayBuffer
 import scala.language.{existentials,implicitConversions}
@@ -265,6 +261,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case SLong => LongElement
     case SString => StringElement
     case SAny => AnyElement
+    case SUnit => UnitElement
     case SBigInt => bigIntElement
     case SUnsignedBigInt => unsignedBigIntElement
     case SBox => boxElement
@@ -292,6 +289,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case LongElement => SLong
     case StringElement => SString
     case AnyElement => SAny
+    case UnitElement => SUnit
     case _: BigIntElem[_] => SBigInt
     case _: UnsignedBigIntElem[_] => SUnsignedBigInt
     case _: GroupElementElem[_] => SGroupElement
@@ -513,10 +511,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case Ident(n, _) =>
         env.getOrElse(n, !!!(s"Variable $n not found in environment $env"))
 
-      case ast.Upcast(Constant(value, _), toTpe: SNumericType) =>
+      case sigma.ast.Upcast(Constant(value, _), toTpe: SNumericType) =>
         eval(mkConstant(toTpe.upcast(value.asInstanceOf[AnyVal]), toTpe))
 
-      case ast.Downcast(Constant(value, _), toTpe: SNumericType) =>
+      case sigma.ast.Downcast(Constant(value, _), toTpe: SNumericType) =>
         eval(mkConstant(toTpe.downcast(value.asInstanceOf[AnyVal]), toTpe))
 
       // Rule: col.size --> SizeOf(col)
@@ -743,7 +741,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val res = sigmaDslBuilder.sha256(inputV)
         res
 
-      case ast.SizeOf(In(xs)) =>
+      case SizeOf(In(xs)) =>
         xs.elem.asInstanceOf[Any] match {
           case _: CollElem[a,_] =>
             val xsV = asRep[Coll[a]](xs)
@@ -937,11 +935,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val values = colBuilder.fromItems(vs: _*)(eAny)
         values
 
-      case ast.Upcast(In(input), tpe) =>
+      case sigma.ast.Upcast(In(input), tpe) =>
         val elem = stypeToElem(tpe.asNumType)
         upcast(input)(elem)
 
-      case ast.Downcast(In(input), tpe) =>
+      case sigma.ast.Downcast(In(input), tpe) =>
         val elem = stypeToElem(tpe.asNumType)
         downcast(input)(elem)
 
