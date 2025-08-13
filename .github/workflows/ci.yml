@@ -113,7 +113,7 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
       - name: JS Build
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} scJS/fastOptJS
+        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} scJS/fullOptJS
 
       - name: Runs JS tests
         run: npm run test
