@@ -1,0 +1,20 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/generated/Context_methods.tex)
+
+This file contains a set of methods that provide access to various pieces of information within the context of a transaction in the Ergo blockchain. 
+
+The `Context` object provides access to information about the inputs, outputs, headers, and other data related to the current transaction. Each method in this file returns a specific piece of information, such as the inputs or outputs of the transaction, the height of the block containing the transaction, or the public key of the miner who created the block.
+
+For example, the `Context.INPUTS` method returns a collection of all the input boxes in the transaction, while the `Context.OUTPUTS` method returns a collection of all the output boxes. The `Context.HEIGHT` method returns the height of the block containing the transaction, and the `Context.minerPubKey` method returns the public key of the miner who created the block.
+
+These methods can be used in conjunction with other methods and objects in the Ergo scripting language to create complex smart contracts that enforce specific conditions on transactions. For example, a contract might require that a certain input box be spent in order for the transaction to be valid, or that a certain output box be created with a specific value.
+
+Overall, the `Context` object provides a powerful set of tools for creating smart contracts on the Ergo blockchain, allowing developers to enforce complex conditions and constraints on transactions.
+## Questions: 
+ 1. What is the purpose of the Context class?
+- The Context class provides methods to access various information related to the current transaction, such as inputs, outputs, headers, and height.
+
+2. What is the result type of the Context.dataInputs method?
+- The result type of the Context.dataInputs method is Coll[Box], which represents a collection of input boxes containing data.
+
+3. What is the purpose of the Context.getVar method?
+- The Context.getVar method is used to retrieve a context variable with a given identifier and type. It returns an Option[T] type, which may contain the value of the variable or None if it does not exist.

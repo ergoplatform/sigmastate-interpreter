@@ -1,0 +1,27 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/org/ergoplatform/validation/SigmaValidationSettings.scala)
+
+The code in this file defines the configuration of validation rules for the Ergo blockchain platform. The purpose of this code is to provide a type-safe way to define and register validation rules that can be used to validate transactions and blocks on the blockchain. 
+
+The `ValidationRule` instances are implemented as objects and registered in `ValidationRules.currentSettings` to be used in the code to perform validation. The `currentSettings` value represents the validation settings of the current version of the code. The set of rules in `currentSettings` is fixed in the current version of the code, and only rule status can be changed. 
+
+Older versions of the code don't have access to the rules added in newer versions. The implementation of a specific rule, once released under a specific `ruleId`, should never be changed, hence `ruleId` denotes that implementation. However, the behavior of rules (released with code) can be altered by changing their status in block extensions section via voting. 
+
+The status changes are represented in `ValidationSettings` using the `RuleStatus` type. Each descendant class represents a particular change in the rule status. Rule ids are used as keys of the status values stored in the block extension section. `RuleStatus` instances are deserialized from the block extension values. Deserialized `(ruleId, status)` pairs are joined with the `(ruleId, status)` pairs in `currentSettings`, and for matching `ruleIds`, the default statuses stored in `currentSettings` are replaced with the new statuses obtained from the blockchain. Deserialized `(ruleId, status)` pairs which don't match with `currentSettings` are ignored. 
+
+Each rule has an associated check of soft-fork condition by implementing the `isSoftFork` method. If `isSoftFork` returns true, then `ValidationException` raised by the rule is interpreted as a soft-fork condition. Depending on the use case, soft-fork condition allows some operations performed by an old code to succeed which otherwise would fail due to `ValidationException` raised by the validation rule. 
+
+The `SigmaValidationSettings` class is an abstract class that defines the interface for accessing and updating the validation rules and their statuses. The `MapSigmaValidationSettings` class is a concrete implementation of `SigmaValidationSettings` that uses a `Map` to store the validation rules and their statuses. 
+
+Overall, this code provides a flexible and extensible way to define and manage validation rules for the Ergo blockchain platform. Developers can define new rules as objects and register them in `ValidationRules.currentSettings` to be used in the code to perform validation. The `RuleStatus` type allows for dynamic changes to the behavior of rules via voting, while the `isSoftFork` method provides a way to handle soft-fork conditions for backward compatibility.
+## Questions: 
+ 1. What is the purpose of the `ValidationRule` class and how is it used in this code?
+   
+   The `ValidationRule` class is used to implement each validation rule as an `object` and register it in `ValidationRules.currentSettings` to be used in the code to perform validation. It is also used to associate a check of soft-fork condition by implementing the `isSoftFork` method.
+
+2. How are rule statuses represented and updated in this code?
+   
+   Rule statuses are represented using the `RuleStatus` type and are stored in the block extension section using rule ids as keys. Deserialized (ruleId, status) pairs are joined with the (ruleId,status) pairs in `currentSettings`, and for matching ruleIds the default statuses stored in `currentSettings` are replaced with the new statuses obtained from the blockchain. Deserialized (ruleId,status) pairs which don't match with `currentSettings` are ignored.
+
+3. What is the purpose of the `isSoftFork` method and how is it used in this code?
+   
+   The `isSoftFork` method is used to check if a `ValidationException` raised by a rule is interpreted as a soft-fork condition. If `isSoftFork` returns true, then the exception is interpreted as a soft-fork condition, which allows some operations performed by an old code to succeed which otherwise would fail due to the exception raised by the validation rule. It is used in the `SigmaValidationSettings` class to determine if a `ValidationException` is a soft-fork condition.

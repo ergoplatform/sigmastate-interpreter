@@ -1,0 +1,22 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/crypto/GF2_192_Poly.scala)
+
+The GF2_192_Poly class is a polynomial class that represents a polynomial over the finite field GF(2^192). The class provides methods for constructing a polynomial from its byte array representation, evaluating the polynomial at a given point, adding a monic polynomial to this polynomial, multiplying this polynomial by a monomial, and converting the polynomial to a byte array representation. 
+
+The constructor GF2_192_Poly(coeff0, moreCoeffs) constructs the polynomial given the byte array representation of the coefficients. The coefficient of degree zero is given separately, and each coefficient should be given as a 24-byte representation of a GF2_192 value. Coefficient of degree 1 should start at moreCoeffs[0]. 
+
+The method evaluate(x) evaluates the polynomial at a given point x. The method addMonicTimesConstantTo(p, r) adds r*p to this polynomial, assuming p is monic, c.length>p.deg, and (p.deg == this.deg+1, or this==0 and p==1). The method monicTimesMonomial(r) multiplies this polynomial by (x+r), assuming this is monic of degree deg (i.e. assumed c[deg]==1). 
+
+The method toByteArray(coeff0) returns a byte array that contains the concatenation of all the coefficients (except possibly the degree-0 coefficient, which is omitted if coeff0 is false). The lowest-degree coefficient (0 or 1 depending on coeff0) starts at index 0 of the returned array. Each coefficient takes 24 bytes, for a total of degree*24 bytes if coeff0 is false, or (degree+1)*24 bytes if coeff0 is true. 
+
+The method interpolate(points, values, valueAt0) interpolates the polynomial at given points (and at point 0, if valueAt0!=null). If points are not all distinct, or if 0 is in the points array and valueAt0!=null, behavior is undefined. valueAt0 is separated only for efficiency reason; the caller can treat 0 like any other point instead (i.e., the points array can include 0 if valueAt0==null, but computation will be slightly less efficient). If points is null, or values is null, or if lengths of points and values arrays differ, or if the arrays are 0 length and valueAt0 is null, returns null. The method returns the unique lowest-degree polynomial p such that for every i, p(points[i]) = values[i] and p(0)=valueAt0 (if valueAt0!=null). 
+
+Overall, the GF2_192_Poly class provides a useful tool for working with polynomials over the finite field GF(2^192) and can be used in cryptographic applications that require polynomial interpolation and evaluation.
+## Questions: 
+ 1. What is the purpose of the GF2_192_Poly class?
+- The GF2_192_Poly class represents a polynomial with coefficients in the finite field GF(2^192). It provides methods for constructing, evaluating, and manipulating such polynomials.
+
+2. What is the format of the byte arrays used to represent the polynomial coefficients?
+- Each coefficient is represented as a 24-byte array, which is the byte representation of a GF2_192 value. The byte arrays for the coefficients are concatenated to form a larger byte array.
+
+3. What is the purpose of the interpolate method in the GF2_192_Poly object?
+- The interpolate method takes in arrays of distinct points and their corresponding values, and returns the unique lowest-degree polynomial that passes through those points. If a value is provided for the point x=0, the resulting polynomial will also evaluate to that value at x=0.

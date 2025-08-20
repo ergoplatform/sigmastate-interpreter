@@ -1,0 +1,22 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/sdk/shared/src/main/scala/org/ergoplatform/sdk/SecretString.scala)
+
+The code defines a class called SecretString that encapsulates a secret array of characters (char[]) with proper equality. The class provides a more secure and safe way of handling secret data than using char[] directly. The secret data can be erased in memory and not leaked to GC. 
+
+The SecretString class has several methods that allow for creating new instances, checking if the string is empty, extracting secret characters as an array, erasing secret characters stored in the instance, and returning an unsecured String with secret characters. 
+
+The create method creates a new instance of SecretString by wrapping the given characters or copying characters from the given String. The empty method creates a new instance with an empty sequence of characters. 
+
+The SecretString class has a private erased flag that is set to true when the erase method is called. Calling any methods after erase() will throw a runtime exception. The checkErased method is used to check if the SecretString is erased before executing any method. 
+
+The getData method returns the secret characters as an array. The erase method erases the secret characters stored in the instance so that they are no longer in memory. The toStringUnsecure method returns an unsecured String with secret characters. The secret characters are copied to the new String instance and cannot be erased in memory. 
+
+The SecretString class is a useful tool for securely handling secret data in a project. It can be used to create new instances of SecretString with secret data, erase secret data stored in an instance, and extract secret data as an array. The class provides a more secure and safe way of handling secret data than using char[] directly.
+## Questions: 
+ 1. What is the purpose of the SecretString class?
+- The SecretString class encapsulates a secret array of characters with proper equality and allows for the data to be erased in memory to prevent leakage to the garbage collector. It is more secure and safe than using char[] directly.
+
+2. How can a new instance of SecretString be created?
+- A new instance of SecretString can be created using the static methods `create` with either an array of characters or a String, or `empty` to create an instance with an empty sequence of characters.
+
+3. What is the purpose of the `erase` method and what happens when it is called?
+- The `erase` method erases the secret characters stored in the instance so that they no longer reside in memory. When called, it fills the array with spaces and sets the erased flag to true. Any subsequent method calls on the instance will throw a runtime exception.

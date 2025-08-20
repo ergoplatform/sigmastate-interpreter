@@ -1,0 +1,18 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/type_serialization.tex)
+
+This code describes the serialization of types and typed data in the project. The purpose of this code is to provide a basis for the serialization of Constant nodes of \ASDag and arbitrary \ASDag trees. The code defines the distribution of type codes, encoding of data types, encoding of function types, and recursive descent. 
+
+The distribution of type codes is divided into three intervals. The first interval is a special value to represent undefined type, the second interval includes data types such as primitive types, arrays, options, and classes, and the third interval includes function types. The encoding of data types is defined for primitive types and type constructors like Coll or Option. Each primitive type has an id in a range of 1 to 11. For each type constructor, a base code is associated, which is a multiple of 12. The base code can be added to the primitive type id to produce the code of the constructed type. The encoding of function types uses 12 different values for both domain and range types of functions. Each code in the range of function types can be represented as D * 12 + R + 112, where D and R are indices of domain and range types, and 112 is the first code in the interval of function types. 
+
+Recursive descent is used when an argument of a type constructor is not a primitive type. In such a case, the special code for the type constructor is emitted according to the table, and recursive descent is performed to every child node of the type tree. The recursive descent is done only for those children whose code cannot be embedded in the parent code. 
+
+This code is an essential part of the project as it provides the basis for serialization of types and typed data. It can be used to serialize Constant nodes of \ASDag and arbitrary \ASDag trees. The code examples provided in the code show how different types are encoded and how many bytes are required to encode them. This information can be used to optimize the serialization process and reduce the size of the serialized data.
+## Questions: 
+ 1. What is the motivation behind the type encoding used in this code?
+- The motivation behind the type encoding used in this code can be found in Appendix~\ref{sec:appendix:motivation:type}.
+
+2. How are function types encoded in this code?
+- Function types are encoded using 12 different values for both domain and range types, allowing for a total of 144 function types. Each code in the range of function types can be represented as $F = D * 12 + R + 112$, where $D$ and $R$ are indices of domain and range types respectively.
+
+3. How does recursive descent work in the encoding of non-primitive types?
+- When an argument of a type constructor is not a primitive type, the encoding falls back to a simple schema. The special code for the type constructor is emitted, and recursive descent is performed on every child node of the type tree, but only for those children whose code cannot be embedded in the parent code.

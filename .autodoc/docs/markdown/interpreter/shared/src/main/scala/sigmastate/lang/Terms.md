@@ -1,0 +1,23 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/lang/Terms.scala)
+
+This code is part of the SigmaState language module and provides an implementation of various frontend and intermediate representation (IR) nodes for ErgoTree, a language used to express conditions for spending Ergo coins. The code defines several case classes and objects that represent different types of nodes in the ErgoTree language, such as `Block`, `ZKProofBlock`, `Val`, `Select`, `Ident`, `Apply`, `Lambda`, and `MethodCall`.
+
+The `Block` case class represents a block of value definitions, while `ZKProofBlock` represents an explicit Zero Knowledge scope in ErgoTree. The `Val` trait and its case class `ValNode` represent value definitions, and `Select` is a frontend node to select a field from an object. The `Ident` case class represents variable names parsed in the source code, and `Apply` represents the application of a function to given arguments.
+
+The `Lambda` case class represents frontend implementation of lambdas, which should be transformed to `FuncValue`. The `MethodCall` case class represents an invocation of a method of an object with arguments in ErgoTree.
+
+The code also provides utility functions for type unification, substitution, and finding the most specific generalized type of a sequence of types. These functions are used during the compilation and type checking of ErgoTree expressions.
+
+Overall, this code is essential for the proper functioning of the ErgoTree language, as it defines the structure and behavior of various nodes and provides utility functions for type manipulation.
+## Questions: 
+ 1. **What is the purpose of the `ZKProofBlock` case class?**
+
+   The `ZKProofBlock` case class represents an explicit Zero Knowledge scope in ErgoTree. The compiler checks Zero Knowledge properties and issues error messages in case of violations. It is used when the user wants to ensure Zero Knowledge of a specific set of operations.
+
+2. **What is the role of the `Val` trait and its related case classes?**
+
+   The `Val` trait represents a block of Val definitions in the frontend representation. It is used to form a program structure and is not part of ErgoTree. The related case classes, such as `ValNode`, provide implementations for the `Val` trait.
+
+3. **How does the `MethodCall` case class work in ErgoTree?**
+
+   The `MethodCall` case class represents an invocation of a method of an object with arguments in ErgoTree. It ensures that all ErgoTree instances are monomorphic by construction. During evaluation, it invokes the method on the object with the given arguments and returns the result.

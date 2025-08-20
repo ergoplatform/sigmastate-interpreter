@@ -1,0 +1,18 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/appendix_motivation.tex)
+
+This code is a technical explanation of the motivations and rationale behind the serialization format and constant segregation used in the Ergo blockchain's \ASDag (Autonomous Script Dataflow Graph) language. The purpose of this code is to optimize the storage and processing of scripts in the blockchain, which is critical for efficient validation of transactions.
+
+The first section explains the type serialization format used in \ASDag. Since \ASDag is a monomorphic IR, concrete types must be specified for some operations. When these operations are serialized, their types must also be serialized. To minimize the number of bytes required for type serialization, a special encoding schema is used. The most frequently used types, such as primitive types, collections of primitive types, and options of primitive types, are represented in an optimized way, preferably by a single byte. For other types, recursive descent down the type tree is used.
+
+The second section explains the rationale behind constant segregation. In order to validate a transaction, the scripts protecting the input boxes must be executed in the context of the current transaction. This involves several steps, including deserialization of the script into ErgoTree, building cost and calc graphs, and evaluating the cost and data size limits. To optimize script evaluation, the compiled calcGraph can be cached in a map, using the script as a key. However, constants embedded in the script body can cause identical scripts to serialize to different byte arrays, making caching difficult. To solve this problem, constants are replaced with indexed placeholders, and the constants are extracted into a separate array. The serialized script contains the number of constants, the constants collection, and the script expression with placeholders. This allows the script expression part to be used as a key in the cache, and the placeholders can be bound with actual values from the constants collection before evaluation.
+
+Overall, this code demonstrates the importance of optimizing script storage and processing in the Ergo blockchain, and the clever techniques used to achieve this optimization.
+## Questions: 
+ 1. What is the purpose of the Type Serialization format and how does it work?
+- The Type Serialization format is designed to minimize the number of bytes required to represent a type in the serialization format of \ASDag. It uses a special encoding schema to save bytes for the types that are used more often, while other types are serialized using recursive descent down the type tree.
+
+2. Why is Constant Segregation important for massive script validation?
+- Constant Segregation is important for massive script validation because it allows for the caching of compiled calcGraphs, which can significantly improve script evaluation performance. However, constants embedded in contracts can cause issues with caching, which is why the solution is to replace each constant with an indexed placeholder.
+
+3. How does the Constant-less ErgoTree format work?
+- The Constant-less ErgoTree format replaces constants in the body of \ASDag with indexed placeholders. The constants are extracted and serialized separately, while the script expression is serialized with placeholders. This allows for the use of script expression as a key in the cache, and the binding of placeholders with actual values taken from the constants collection before executing the script.

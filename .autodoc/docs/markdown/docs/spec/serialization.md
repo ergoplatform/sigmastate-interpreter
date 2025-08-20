@@ -1,0 +1,21 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/serialization.tex)
+
+This code defines the serialization process for the \langname language, which is used to store contracts in persistent stores, transfer them over wire, and enable cross-platform interoperation. The serialization process converts terms of the language into a binary format, which can be stored in the Ergo blockchain as Box.propositionBytes. When validating the guarding script of an input box of a transaction, the propositionBytes array is deserialized to an \langname Intermediate Representation (IR) called \ASDag, which can be evaluated as specified in the code.
+
+The serialization procedure is specified in general, with the serialization format of \langname terms and types detailed in the corresponding appendices. The code also defines size limits for contract deserialization, as shown in Table~\ref{table:ser:formats}. The serialization formats used throughout the code are listed in Table~\ref{table:ser:formats}.
+
+The serialization format of \ASDag is optimized for compact storage and is data-dependent, with branching logic in many cases. Pseudo-language operators like \lst{for, match, if, optional} are used to express complex serialization logic and specify the structure of simple serialization slots. Each slot represents a fragment of the serialized byte stream, while operators specify how the slots are combined to form the byte stream.
+
+The code also covers the serialization of data values, constants, expressions, and \ASDag instances. The \ASDag serialization format is self-sufficient and can be stored and passed around, defining the top-level serialization format of \langname scripts. The interpretation of the byte array depends on the first header bytes, which use VLQ encoding up to 30 bits. The header bits are detailed in Figure~\ref{fig:ergotree:header}.
+## Questions: 
+ 1. **What is the purpose of the constant segregation bit in the header?**
+
+   The constant segregation bit in the header is used to indicate whether constant segregation is used for the ErgoTree. If it is set to 1, the `constants` collection contains the constants for which there may be `ConstantPlaceholder` nodes in the tree. If it is set to 0, the `constants` collection should be empty and any placeholder in the tree will lead to an exception.
+
+2. **How are data values of different types serialized in \langname?**
+
+   Data values of different types are serialized using a predefined function shown in Figure~\ref{fig:ser:data}. The serialization procedure is recursive over the type tree and the corresponding subcomponents of an object. For primitive types (the leaves of the type tree), the format is fixed.
+
+3. **What is the purpose of the \ASDag serialization format?**
+
+   The \ASDag serialization format defines the top-level serialization format of \langname scripts. Serialized instances of \ASDag are self-sufficient and can be stored and passed around. The interpretation of the byte array depends on the first `header` bytes, which uses VLQ encoding up to 30 bits. The header bits are used to indicate various properties and options for the serialized \ASDag, such as language version, constant segregation, and reserved bits for future extensions.

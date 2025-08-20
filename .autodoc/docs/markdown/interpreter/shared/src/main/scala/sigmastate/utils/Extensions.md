@@ -1,0 +1,20 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/utils/Extensions.scala)
+
+The code in this file defines extension methods for converting numeric types to byte arrays and collections of Booleans. These methods are defined as implicit classes, which allows them to be used as if they were part of the original numeric types.
+
+The `ByteOpsForSigma` class defines two methods: `toBytes` and `toBits`. The `toBytes` method returns a big-endian representation of the Byte value in a collection of bytes. For example, the Byte value `0x12` would yield the byte array `{0x12}`. The `toBits` method is not implemented and is left as a TODO for future development.
+
+The `ShortOpsForSigma`, `IntOpsForSigma`, and `LongOpsForSigma` classes define similar methods for converting Short, Int, and Long values to byte arrays and collections of Booleans. The `toBytes` methods return big-endian representations of the numeric values in collections of bytes, while the `toBits` methods are not implemented.
+
+These extension methods may be used in the larger project to convert numeric values to byte arrays and collections of Booleans for use in cryptographic operations. For example, the `toBytes` method for Long values could be used to convert a private key to a byte array for storage or transmission. The `toBits` method could be used to convert a numeric value to a collection of Booleans for use in a bitwise operation.
+
+Overall, this code provides a convenient way to convert numeric values to byte arrays and collections of Booleans, which are commonly used in cryptographic operations.
+## Questions: 
+ 1. What is the purpose of the `Extensions` object?
+- The `Extensions` object defines extension methods for converting numeric types to collections of bytes and Booleans.
+
+2. What is the purpose of the `toBytes` method in each implicit class?
+- The `toBytes` method returns a big-endian representation of the numeric value in a collection of bytes.
+
+3. What is the purpose of the `toBits` method in each implicit class?
+- The `toBits` method is not implemented and its purpose is unclear from the provided code.

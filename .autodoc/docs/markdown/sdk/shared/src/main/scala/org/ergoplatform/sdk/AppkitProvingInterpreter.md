@@ -1,0 +1,34 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/sdk/shared/src/main/scala/org/ergoplatform/sdk/AppkitProvingInterpreter.scala)
+
+## AppkitProvingInterpreter Class
+
+The `AppkitProvingInterpreter` class is a class that holds secrets and can sign transactions. It is used to generate proofs for transactions. It takes in `secretKeys`, `dLogInputs`, `dhtInputs`, and `params` as parameters. `secretKeys` are secrets in extended form to be used by the prover. `dLogInputs` are prover inputs containing secrets for generating proofs for ProveDlog nodes. `dhtInputs` are prover inputs containing secrets for generating proofs for ProveDHTuple nodes. `params` are ergo blockchain parameters.
+
+The class extends `ReducingInterpreter` and `ProverInterpreter`. It has a `secrets` field that holds all the necessary secrets to satisfy the given sigma proposition in the reducedInput. It has a `pubKeys` field that holds all public keys that correspond to all the DLogProverInput known to this prover.
+
+The `sign` method reduces and signs the given transaction. It takes in `unreducedTx`, `stateContext`, and `baseCost` as parameters. `unreducedTx` is the unreduced transaction data to be reduced (contains unsigned transaction). `stateContext` is the state context of the blockchain in which the transaction should be signed. `baseCost` is the cost accumulated before this transaction. It returns a new signed transaction with all inputs signed and the cost of this transaction. The returned cost doesn't include `baseCost`.
+
+The `signReduced` method signs the given transaction (i.e. providing spending proofs) for each input so that the resulting transaction can be submitted to the blockchain. It takes in `reducedTx` as a parameter. `reducedTx` is an unsigned transaction augmented with reduced. It returns a new signed transaction with all inputs signed and the cost of this transaction. The returned cost includes the costs of obtaining reduced transaction and the cost of verification of each signed input.
+
+The `proveReduced` method generates proof (aka signature) for the given message using secrets of this prover. All the necessary secrets should be configured in this prover to satisfy the given sigma proposition in the reducedInput.
+
+## ReducedErgoLikeTransaction Class
+
+The `ReducedErgoLikeTransaction` class represents `reduced` transaction, i.e. unsigned transaction where each unsigned input is augmented with `ReducedInputData` which contains a script reduction result. After an unsigned transaction is reduced it can be signed without context. Thus, it can be serialized and transferred for example to Cold Wallet and signed in an environment where secrets are known. It takes in `unsignedTx` and `reducedInputs` as parameters. `unsignedTx` is an unsigned transaction. `reducedInputs` is a sequence of `ReducedInputData`.
+
+## ReducedInputData Class
+
+The `ReducedInputData` class represents data necessary to sign an input of an unsigned transaction. It takes in `reductionResult` and `extension` as parameters. `reductionResult` is the result of reducing input script to a sigma proposition. `extension` is context extensions (aka context variables) used by script and which are also necessary to verify the transaction on-chain. Extensions are included in tx bytes, which are signed.
+
+## TokenBalanceException Class
+
+The `TokenBalanceException` class is thrown during transaction signing when inputs token are not balanced with output tokens. It takes in `message` and `tokensDiff` as parameters. `message` is the balance difference which caused the error. `tokensDiff` is the difference between input and output tokens.
+## Questions: 
+ 1. What is the purpose of the `AppkitProvingInterpreter` class?
+- The `AppkitProvingInterpreter` class holds secrets and can sign transactions to generate proofs. It takes in secrets, prover inputs, and blockchain parameters as parameters.
+
+2. What is the difference between `sign` and `signReduced` methods in the `AppkitProvingInterpreter` class?
+- The `sign` method reduces and signs the given transaction, while the `signReduced` method signs the given transaction without requiring context to generate proofs.
+
+3. What is the purpose of the `ReducedErgoLikeTransactionSerializer` object?
+- The `ReducedErgoLikeTransactionSerializer` object is used to serialize and parse `ReducedErgoLikeTransaction` objects, which are unsigned transactions augmented with `ReducedInputData` that contain a script reduction result.

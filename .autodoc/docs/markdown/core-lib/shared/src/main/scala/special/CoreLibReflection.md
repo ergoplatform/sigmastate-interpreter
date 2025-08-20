@@ -1,0 +1,32 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/core-lib/shared/src/main/scala/special/CoreLibReflection.scala)
+
+The `CoreLibReflection` object in this code is responsible for registering various classes and their methods for reflection. This allows the methods to be called dynamically at runtime, which can be useful in a larger project where the code structure may not be known at compile time.
+
+The code registers several classes, such as `SigmaProp`, `BigInt`, `CollBuilder`, `OptionWrapSpec`, `Coll`, `AvlTree`, `Box`, `Context`, `GroupElement`, `Header`, `PreHeader`, and `SigmaDslBuilder`. For each class, a set of methods is registered with their respective argument types and a lambda function that calls the actual method on the object.
+
+For example, the `SigmaProp` class registers methods like `$bar$bar`, `isValid`, `propBytes`, and `$amp$amp`. The `BigInt` class registers methods like `add`, `max`, `min`, `subtract`, `multiply`, `mod`, and `divide`. Similarly, other classes register their respective methods.
+
+Here's an example of how a method is registered for the `SigmaProp` class:
+
+```scala
+val clazz = classOf[SigmaProp]
+registerClassEntry(clazz,
+  methods = Map(
+    mkMethod(clazz, "$bar$bar", Array[Class[_]](classOf[SigmaProp])) { (obj, args) =>
+      obj.asInstanceOf[SigmaProp].$bar$bar(args(0).asInstanceOf[SigmaProp])
+    },
+    // ... other methods ...
+  )
+)
+```
+
+In the larger project, this reflection information can be used to dynamically call methods on objects of these classes without knowing the exact method signatures at compile time.
+## Questions: 
+ 1. **Question**: What is the purpose of the `CoreLibReflection` object and how is it used in the project?
+   **Answer**: The `CoreLibReflection` object is used to register class entries and their corresponding methods for various classes in the project. This allows for reflection-based access to these classes and their methods, enabling dynamic method invocation and introspection.
+
+2. **Question**: How are the `mkMethod` calls used in the code and what do they achieve?
+   **Answer**: The `mkMethod` calls are used to create and register methods for the corresponding classes in the `CoreLibReflection` object. They define the method name, parameter types, and the implementation of the method using a lambda function. This enables reflection-based access to these methods.
+
+3. **Question**: What is the purpose of the `registerClassEntry` function and how is it used in the code?
+   **Answer**: The `registerClassEntry` function is used to register a class entry along with its methods in the `CoreLibReflection` object. It takes the class and a map of methods created using `mkMethod` calls. This registration allows for reflection-based access to the class and its methods, enabling dynamic method invocation and introspection.

@@ -1,0 +1,31 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/org/ergoplatform/Input.scala)
+
+This code defines three classes related to transaction inputs in the Ergo blockchain platform: DataInput, UnsignedInput, and Input. 
+
+DataInput is a simple case class that represents an input that enriches the script context but won't be spent by the transaction. It takes a BoxId as a parameter, which is the identifier of the box that should be added to the context. The toString method returns a string representation of the DataInput object, and the equals and hashCode methods are overridden to compare DataInput objects based on their boxId.
+
+UnsignedInput is a class that represents an input of a formed but unsigned transaction. It takes two parameters: the boxId of the box to be spent and an optional ContextExtension object that contains user-defined variables to be put into the context. If no ContextExtension is provided, an empty one is used. The class has two constructors, one that takes both parameters and another that takes only the boxId. The equals and hashCode methods are overridden to compare UnsignedInput objects based on their boxId.
+
+The Input class represents a fully signed transaction input. It takes two parameters: the boxId of the box to be spent and a ProverResult object that contains the proof of spending correctness. The class extends UnsignedInput and overrides the toString method to return a string representation of the Input object. The equals and hashCode methods are overridden to compare Input objects based on their boxId.
+
+The object Input contains a nested object serializer that extends SigmaSerializer and provides methods to serialize and parse Input objects. The serialize method writes the boxId and the spendingProof to a SigmaByteWriter, while the parse method reads the boxId and the spendingProof from a SigmaByteReader and returns an Input object.
+
+These classes are used to represent different types of transaction inputs in the Ergo blockchain platform. They can be used to create and manipulate transactions in the larger project. For example, to create a new Input object, one can use the following code:
+
+```
+val boxId: BoxId = ???
+val spendingProof: ProverResult = ???
+val input = Input(boxId, spendingProof)
+```
+## Questions: 
+ 1. What is the purpose of the `DataInput` class?
+   
+   The `DataInput` class represents an input that is used to enrich the script context but won't be spent by the transaction. It takes the id of a box to add into context.
+
+2. What is the difference between `UnsignedInput` and `Input` classes?
+   
+   `UnsignedInput` represents inputs of a formed but unsigned transaction and contains the id of a box to spend and user-defined variables to be put into context. `Input` represents a fully signed transaction input and contains the id of a box to spend and a proof of spending correctness.
+
+3. What is the purpose of the `Input.serializer` object?
+   
+   The `Input.serializer` object provides methods to serialize and parse an `Input` object to and from bytes using a `SigmaByteWriter` and `SigmaByteReader`.

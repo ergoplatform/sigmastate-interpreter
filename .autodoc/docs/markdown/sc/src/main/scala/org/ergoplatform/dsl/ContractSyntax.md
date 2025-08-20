@@ -1,0 +1,16 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/sc/src/main/scala/org/ergoplatform/dsl/ContractSyntax.scala)
+
+The code defines a set of methods and classes to be used in contract implementations based on SigmaContract. The ContractSyntax trait defines the methods that can be used in the implementation of SigmaContract. The trait extends SigmaContract and overrides the builder method to return a CostingSigmaDslBuilder. It also defines a contract environment that should be defined in SigmaContract implementations. The trait provides a helper method to support Scala <-> ErgoScript equivalence. The proposition method is used to define propositions in SigmaContract implementations. It takes the name of the proposition, a Scala lambda of type Proposition which defines contract semantics and can be executed directly, and the ErgoScript representation of the contract. It returns a proposition specification with compiled ErgoTree. The Env method creates a new environment with the given named constants.
+
+The SigmaContractSyntax trait extends SigmaContract and ContractSyntax. It defines two implicit classes that provide logical AND and OR between Boolean and SigmaProp values.
+
+This code can be used in the larger project to define and implement contracts based on SigmaContract. The ContractSyntax trait provides a set of methods that can be used to define and implement contracts. The SigmaContractSyntax trait extends ContractSyntax and provides additional methods to define contracts. The code can be used to define and implement contracts in the project, which can be used to verify transactions. The code can also be used to create new environments with named constants.
+## Questions: 
+ 1. What is the purpose of the `ContractSyntax` trait and how is it used in the project?
+- The `ContractSyntax` trait defines methods to be used in contract implementations based on `SigmaContract`. It is used as a mixin trait with `SigmaContractSyntax` to provide additional functionality to `SigmaContract`.
+
+2. What is the purpose of the `proposition` method and how is it used?
+- The `proposition` method is used to define propositions in `SigmaContract` implementations. It takes in a name, a Scala lambda of type `Proposition`, a string representation of the contract in ErgoScript, and an optional script version. It returns a proposition specification with a compiled ErgoTree.
+
+3. What is the purpose of the `BooleanSyntax` class and how is it used?
+- The `BooleanSyntax` class provides logical AND and OR operations between a Boolean on the left and a `SigmaProp` value on the right. It is used as an implicit class in `SigmaContractSyntax` to provide additional syntax for `SigmaProp` operations.

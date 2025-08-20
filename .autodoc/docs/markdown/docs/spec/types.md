@@ -1,0 +1,24 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/types.tex)
+
+# Typing
+
+This code defines the typing rules for a strictly typed language called `langname`. The purpose of this code is to ensure that every term in the language has a type in order to be well-formed and evaluated. The typing judgement is of the form $\Der{\Gamma}{e : T}$, which states that $e$ is a term of type $T$ in the typing context $\Gamma$.
+
+The code includes a figure that shows the typing rules of `langname`. Note that each well-typed term has exactly one type, so there exists a function `termType: Term -> T` that relates each well-typed term with the corresponding type.
+
+Primitive operations can be parameterized with type variables, such as addition, which has the signature $+~:~ (T,T) \to T$ where $T$ is a numeric type. The function `ptype` returns a type of primitive operation specialized for concrete types of its arguments. For example, `ptype(+,\lst{Int}, \lst{Int}) = (\lst{Int}, \lst{Int}) \to \lst{Int}`.
+
+Similarly, the function `mtype` returns a type of method specialized for concrete types of the arguments of the `MethodCall` term.
+
+The `BlockExpr` rule defines a type of well-formed block expression. It assumes a total ordering on `val` definitions. If a block expression is not well-formed, then it cannot be typed and evaluated.
+
+Overall, this code is an essential part of the `langname` language, as it ensures that every term has a type and can be evaluated properly. It also provides a way to parameterize primitive operations and methods with concrete types, making the language more flexible and powerful.
+## Questions: 
+ 1. What is the purpose of the "termType" function mentioned in the code?
+- The "termType" function relates each well-typed term with the corresponding type.
+
+2. How are primitive operations parameterized with type variables?
+- Primitive operations are parameterized with type variables using a signature that specifies the type of the arguments and the return type.
+
+3. What happens if a block expression is not well-formed?
+- If a block expression is not well-formed, it cannot be typed and evaluated.

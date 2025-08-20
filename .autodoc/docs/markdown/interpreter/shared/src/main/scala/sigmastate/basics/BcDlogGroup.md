@@ -1,0 +1,22 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/basics/BcDlogGroup.scala)
+
+The code defines an abstract class called BcDlogGroup, which is a basic implementation of a discrete logarithm group. The class is used to perform mathematical operations on group elements, such as exponentiation, multiplication, and inversion. The purpose of this class is to provide a common interface for different types of discrete logarithm groups, which can be used in cryptographic protocols.
+
+The class has several properties, including the modulus of the field, the order of the group, and the maximum length in bytes of a string to be converted to a group element of this group. It also has a generator, which is a group element that generates the entire group, and an identity element, which is the element that does not change any other element when multiplied by it.
+
+The class has several methods, including exponentiation, multiplication, and inversion of group elements. It also has a method for creating a random member of the group, checking if the order of the group is greater than a given number of bits, and computing the product of several exponentiations of the same base and distinct exponents.
+
+The class has a nested class called GroupElementsExponentiations, which performs the actual work of pre-computation of the exponentiations for one base. It is composed of two main elements: the group element for which the optimized computations are built for, called the base, and a vector of group elements that are the result of exponentiations of order 1, 2, 4, 8, etc. The constructor creates a map structure in memory and then calculates the exponentiations of order 1, 2, 4, 8 for the given base and saves them in the map.
+
+The class also has a map for multExponentiationsWithSameBase calculations, which is used to compute the product of several exponentiations of the same base and distinct exponents more quickly by keeping in memory the result of h1, h2, h4, h8, etc. and using it in the calculation.
+
+Finally, the code defines an object called SecP256K1Group, which is an instance of the BcDlogGroup class with a specific cryptographic context. This object can be used in cryptographic protocols that require a discrete logarithm group with a specific context.
+## Questions: 
+ 1. What is the purpose of the `GroupElementsExponentiations` class?
+- The `GroupElementsExponentiations` class performs pre-computation of exponentiations for a given base and saves them in a map structure in memory to optimize future exponentiation calculations.
+
+2. What is the significance of the `k` variable?
+- The `k` variable represents the maximum length in bytes of a string that can be converted to a Group Element of this group. It is calculated based on the modulus of the field and is used for encoding and decoding binary strings.
+
+3. What is the purpose of the `exponentiationsCache` map?
+- The `exponentiationsCache` map is used to store pre-computed exponentiations for a given base, so that they can be reused in future exponentiation calculations for the same base. This optimization can significantly speed up exponentiation calculations.

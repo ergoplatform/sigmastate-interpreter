@@ -1,0 +1,25 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/graph-ir/src/main/scala/scalan/primitives/Functions.scala)
+
+This code is part of the Scalan project and defines the `Functions` trait, which provides functionality for working with functions in the Scalan framework. The trait extends `Base` and `ProgramGraphs` traits and is mixed into the `Scalan` trait.
+
+The `Functions` trait provides several utility classes and methods for working with functions, such as `LambdaOps`, `Lambda`, `Apply`, and `FuncExtensions`. It also provides methods for creating, applying, and composing functions, such as `mkLambda`, `mkApply`, `compose`, and `identityFun`.
+
+`LambdaOps` is an implicit class that provides additional operations for functions, such as `apply`, `>>`, and `<<`. The `Lambda` class represents a lambda expression as an IR node, and it provides methods for working with lambda expressions, such as `isIdentity`, `isBoundVar`, and `getDeps`.
+
+The trait also provides several global flags that control the behavior of lambda expressions, such as `useAlphaEquality`, `keepOriginalFunc`, and `unfoldWithOriginalFunc`. These flags can be used to customize the behavior of lambda expressions in the Scalan framework.
+
+The `Functions` trait also provides several utility methods for working with lambda expressions, such as `alphaEqual`, `patternMatch`, `matchExps`, `matchDefs`, `matchIterators`, and `matchAny`. These methods are used for comparing and matching lambda expressions in the Scalan framework.
+
+In summary, the `Functions` trait provides a comprehensive set of tools for working with functions in the Scalan framework. It allows users to create, apply, and compose functions, as well as customize the behavior of lambda expressions.
+## Questions: 
+ 1. **What is the purpose of the `useAlphaEquality` variable?**
+
+   The `useAlphaEquality` variable is a global flag that determines the default lambda equality mode used by the `fun` and `fun2` lambda builders. If set to `true`, Lambda nodes are considered equal if they are the same up to renaming of symbols (see `Lambda.equals()`). Each Lambda node has an independent equality mode flag which is set up in the constructor.
+
+2. **What does the `keepOriginalFunc` variable do?**
+
+   The `keepOriginalFunc` variable is a global flag that governs lambda reification in the `fun` and `mkLambda` methods. If set to `true`, the original `f: Ref[A] => Ref[B]` function is stored in the Lambda node. As a consequence, if `f` is not stored, then `unfoldLambda` is done by `mirrorLambda`.
+
+3. **What is the purpose of the `unfoldWithOriginalFunc` variable?**
+
+   The `unfoldWithOriginalFunc` variable is a global flag that controls whether lambda unfolding should use the original function `f` stored in the Lambda node. If set to `false`, this function cannot be used even if it is present in the node.

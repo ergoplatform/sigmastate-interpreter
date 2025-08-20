@@ -1,0 +1,36 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/common/shared/src/main/scala/scalan/reflection/package.scala)
+
+The code provided is a Scala package object that contains two methods: `mkMethod` and `mkConstructor`. These methods are used for creating reflective methods and constructors, respectively. 
+
+The `mkMethod` method takes in three parameters: `clazz`, `name`, and `paramTypes`. `clazz` is a `Class` object that represents the class that the method belongs to. `name` is a `String` that represents the name of the method. `paramTypes` is a sequence of `Class` objects that represent the parameter types of the method. The method also takes in a `handler` function that takes in an `Any` object and an array of `AnyRef` objects and returns an `Any` object. The `mkMethod` method returns a tuple that contains a tuple of the method name and parameter types, and an instance of the `SRMethod` class that extends the `RMethod` trait. The `SRMethod` class overrides the `invoke` method of the `RMethod` trait to call the `handler` function with the `obj` and `args` parameters.
+
+The `mkConstructor` method takes in a single parameter `parameterTypes`, which is an array of `Class` objects that represent the parameter types of the constructor. The method also takes in a `handler` function that takes in an array of `AnyRef` objects and returns an `Any` object. The `mkConstructor` method returns an instance of the `SRConstructor` class that extends the `RConstructor` trait. The `SRConstructor` class overrides the `newInstance` method of the `RConstructor` trait to call the `handler` function with the `args` parameter.
+
+These methods can be used in a larger project that requires reflective methods and constructors. For example, if a project needs to dynamically create instances of classes or invoke methods on objects at runtime, these methods can be used to achieve that. Here is an example of how the `mkMethod` method can be used:
+
+```
+class MyClass {
+  def myMethod(param1: Int, param2: String): String = {
+    s"$param1 $param2"
+  }
+}
+
+val myClass = new MyClass
+val methodTuple = ("myMethod", Seq(classOf[Int], classOf[String]))
+val reflectiveMethod = reflection.mkMethod(classOf[MyClass], methodTuple._1, methodTuple._2) { (obj, args) =>
+  obj.asInstanceOf[MyClass].myMethod(args(0).asInstanceOf[Int], args(1).asInstanceOf[String])
+}
+val result = reflectiveMethod._2.invoke(myClass, 1, "hello")
+println(result) // prints "1 hello"
+```
+
+In this example, we create an instance of the `MyClass` class and use the `mkMethod` method to create a reflective method that calls the `myMethod` method on the `MyClass` instance. We then invoke the reflective method with the `invoke` method and pass in the `MyClass` instance and the method parameters. The result is printed to the console.
+## Questions: 
+ 1. What is the purpose of the `mkMethod` function?
+- The `mkMethod` function creates a new instance of `SRMethod` with the given class, name, and parameter types, and sets its `invoke` method to the provided `handler` function.
+
+2. What is the difference between `mkMethod` and `mkConstructor`?
+- `mkMethod` creates a new instance of `SRMethod`, while `mkConstructor` creates a new instance of `SRConstructor`. `SRMethod` represents a method of a class, while `SRConstructor` represents a constructor of a class.
+
+3. What is the purpose of the `reflection` package object?
+- The `reflection` package object contains utility functions for working with reflection in Scala, such as `mkMethod` and `mkConstructor`.

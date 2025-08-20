@@ -1,0 +1,34 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/interpreter/CostDetails.scala)
+
+The code defines an abstract representation of cost results obtained during evaluation. It provides two concrete implementations of the abstract class `CostDetails`: `TracedCost` and `GivenCost`. The former is used to represent detailed results of cost evaluation, while the latter is used to represent the cost of Ahead-Of-Time (AOT) costing. 
+
+The `CostDetails` class has three methods: `cost`, `trace`, and `actualTimeNano`. The `cost` method returns the total cost of evaluation, which is a `JitCost` object. The `trace` method returns the trace of costed operations performed during evaluation, which is a sequence of `CostItem` objects. The `actualTimeNano` method returns the actual execution time (in nanoseconds) if defined. 
+
+The `TracedCost` class extends `CostDetails` and has two fields: `trace` and `actualTimeNano`. The `trace` field is the accumulated trace of all cost items obtained during execution of `ErgoTree` operations. The `actualTimeNano` field is the measured time of execution (if some). The `cost` method of `TracedCost` calculates the total cost of all cost items by iterating over the `trace` sequence and summing up the costs of each `CostItem`. 
+
+The `GivenCost` class also extends `CostDetails` and has one field: `cost`. The `cost` field is the given value of the total cost obtained from AOT costing. The `actualTimeNano` field is the measured time of execution (if some). The `trace` method of `GivenCost` returns an empty sequence of `CostItem` objects since there is no trace available for AOT costing. 
+
+The `CostDetails` object provides three methods: `EmptyTrace`, `ZeroCost`, and `apply`. The `EmptyTrace` method returns an empty sequence of `CostItem` objects and should be used whenever possible to avoid allocations. The `ZeroCost` method returns a `TracedCost` object with an empty trace and zero total cost. The `apply` method is a helper factory method to create `CostDetails` objects from the given trace. 
+
+The `unapply` method of `CostDetails` is a helper recognizer to work with different representations of costs in patterns uniformly. It takes a `CostDetails` object as input and returns an `Option` of a tuple containing the total cost and the trace of cost items. It matches the input object against `TracedCost` and `GivenCost` and returns the appropriate tuple based on the type of the input object. 
+
+Overall, this code provides a way to represent and manipulate cost results obtained during evaluation in a flexible and extensible manner. It can be used in the larger project to optimize the performance of `ErgoTree` operations and reduce the computational cost of evaluating complex scripts. 
+
+Example usage:
+
+```
+val trace = Seq(CostItem(op1, cost1), CostItem(op2, cost2), CostItem(op3, cost3))
+val costDetails = CostDetails(trace)
+val totalCost = costDetails.cost
+val traceItems = costDetails.trace
+val actualTime = costDetails.actualTimeNano.getOrElse(0L)
+```
+## Questions: 
+ 1. What is the purpose of the `CostDetails` class and its subclasses?
+- The `CostDetails` class and its subclasses are used to represent the results of cost evaluation during code execution, including the total cost, trace of costed operations, and actual execution time.
+
+2. What is the difference between `TracedCost` and `GivenCost`?
+- `TracedCost` represents the detailed results of cost evaluation obtained during execution of `ErgoTree` operations, while `GivenCost` represents the cost of AOT (ahead-of-time) costing using a given value.
+
+3. What is the purpose of the `unapply` method in the `CostDetails` object?
+- The `unapply` method is a helper recognizer that allows for working with different representations of costs in patterns uniformly, by matching against the `CostDetails` subclasses and returning a tuple of the total cost and trace of costed operations.

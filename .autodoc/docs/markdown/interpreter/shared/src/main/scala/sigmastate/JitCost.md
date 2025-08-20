@@ -1,0 +1,24 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/JitCost.scala)
+
+The code defines a case class called JitCost, which represents cost estimation computed by JITC interpreter. The JITC costs use 10x more accurate scale compared to block cost values. The purpose of this class is to provide a way to perform arithmetic operations on cost values and convert them between JITC and block cost scales.
+
+The JitCost class has a private constructor and a private value field, which can only be accessed within the sigmastate package. This ensures that the JitCost instances can only be created and manipulated within the package, which is the intended scope of this class.
+
+The JitCost class provides several methods for performing arithmetic operations on cost values. The `+` method adds two cost values, the `*` method multiplies a cost value by an integer, and the `/` method divides a cost value by an integer. These methods return a new JitCost instance with the result of the operation.
+
+The JitCost class also provides two comparison methods, `>` and `>=`, which compare the value of two JitCost instances using the normal Int ordering.
+
+Finally, the JitCost class provides a method called `toBlockCost`, which scales a JitCost value back to block cost value. This method divides the JitCost value by 10 and returns the result as an integer.
+
+The JitCost object provides a companion method called `fromBlockCost`, which scales a block cost value to the JitCost scale. This method multiplies the block cost value by 10 and returns a new JitCost instance with the result.
+
+Overall, the JitCost class and its companion object provide a convenient way to perform arithmetic operations on cost values and convert them between JITC and block cost scales. This functionality can be used in the larger project to optimize the cost of executing smart contracts on the blockchain. For example, the JitCost values can be used to estimate the gas cost of executing a smart contract and optimize the contract code accordingly.
+## Questions: 
+ 1. What is the purpose of the JitCost class?
+- The JitCost class represents cost estimation computed by JITC interpreter and uses a more accurate scale than block cost values.
+
+2. What methods are available in the JitCost class?
+- The JitCost class has methods for adding, multiplying, and dividing cost values, as well as comparing values using normal Int ordering. It also has a method for scaling JitCost back to block cost value.
+
+3. What is the purpose of the JitCost object?
+- The JitCost object has a method for scaling block cost to the JitCost scale, which is the inverse of the toBlockCost method in the JitCost class.

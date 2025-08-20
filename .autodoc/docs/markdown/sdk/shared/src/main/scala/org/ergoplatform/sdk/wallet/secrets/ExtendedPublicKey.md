@@ -1,0 +1,20 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/sdk/shared/src/main/scala/org/ergoplatform/sdk/wallet/secrets/ExtendedPublicKey.scala)
+
+The code defines a class called `ExtendedPublicKey` which represents a public key, its chain code, and its path in a key tree. This class is used in the larger project to derive child public keys from a given parent public key. The `ExtendedPublicKey` class has three fields: `keyBytes`, `chainCode`, and `path`. `keyBytes` is an array of bytes representing the public key, `chainCode` is an array of bytes representing the chain code, and `path` is an instance of the `DerivationPath` class representing the path in the key tree.
+
+The `ExtendedPublicKey` class has two methods: `key` and `child`. The `key` method returns an instance of `ProveDlog` which represents the public key. The `child` method takes an integer `idx` and returns a new instance of `ExtendedPublicKey` representing the child public key at the given index. The `ExtendedPublicKey` class also overrides the `equals`, `hashCode`, and `toString` methods.
+
+The `ExtendedPublicKey` object has a method called `deriveChildPublicKey` which takes a parent public key and an integer `idx` and returns a new instance of `ExtendedPublicKey` representing the child public key at the given index. This method uses the `CryptoFacade` object to derive the child public key from the parent public key and the index. The `deriveChildPublicKey` method is tail-recursive and supports public key derivation for non-hardened keys.
+
+The `ExtendedPublicKeySerializer` object defines a serializer for the `ExtendedPublicKey` class. This serializer is used to serialize and deserialize instances of `ExtendedPublicKey` to and from bytes.
+
+Overall, this code provides functionality for deriving child public keys from a given parent public key. This is useful in the larger project for generating a hierarchy of public keys for use in a hierarchical deterministic wallet.
+## Questions: 
+ 1. What is the purpose of the ExtendedPublicKey class?
+- The ExtendedPublicKey class represents a public key, its chain code, and path in a key tree, following the BIP-0032 specification.
+
+2. What is the purpose of the deriveChildPublicKey method in the ExtendedPublicKey object?
+- The deriveChildPublicKey method is used to derive a child public key from a parent public key, following the BIP-0032 specification.
+
+3. What is the purpose of the ExtendedPublicKeySerializer object?
+- The ExtendedPublicKeySerializer object is used to serialize and deserialize ExtendedPublicKey objects, including their key bytes, chain code, and derivation path.

@@ -1,0 +1,34 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/sdk/js/src/main/scala/org/ergoplatform/sdk/js/Value.scala)
+
+# Code Explanation: org.ergoplatform.sdk.js
+
+The `org.ergoplatform.sdk.js` package contains the implementation of the ErgoScript language in JavaScript. The `Value` class is used to represent any valid value of the ErgoScript language. Each `Value` instance comes equipped with a `Type` descriptor. The `Value` class is implemented based on the pre-defined mapping between JavaScript and ErgoScript types. This mapping is applied recursively and is given by the following:
+
+| JS type | ErgoScript Type |
+| -------| ---------------|
+| Number | Byte |
+| Number | Short |
+| Number | Int |
+| BigInt | Long |
+| BigInt | BigInt |
+| array [A, B] | (A, B) - pair |
+| array [a1, a2 ..] | Coll[A] - collection |
+
+The `Value` class has two properties: `data` and `tpe`. The `data` property is the JavaScript value wrapped in this `Value` instance. The `tpe` property is the type descriptor of the ErgoScript type. 
+
+The `Value` class has two methods: `runtimeData` and `toHex()`. The `runtimeData` method returns the Sigma runtime value which can be passed to the interpreter, saved in the register, and `sigmastate.Values.Constant` nodes. The `toHex()` method encodes this `Value` instance as a Base16 hex string. 
+
+The `Values` object contains helper methods to create `Value` instances from JavaScript values. The `ofByte()`, `ofShort()`, `ofInt()`, and `ofLong()` methods create `Value` instances from JavaScript numbers. The `pairOf()` method creates a `Value` instance from two `Value` instances. The `collOf()` method creates a `Value` instance from an array of elements and an element type descriptor. The `fromHex()` method creates a `Value` instance from a hex-encoded serialized bytes of `Constant` values. 
+
+Overall, the `Value` class and `Values` object are essential components of the ErgoScript language implementation in JavaScript. They allow for the representation of ErgoScript values in JavaScript and provide methods to encode and decode these values.
+## Questions: 
+ 1. What is the purpose of the `Value` class and how is it used in ErgoScript language?
+- The `Value` class is used to represent any valid value of ErgoScript language and comes equipped with a `Type` descriptor. It is used to create Sigma runtime values which can be passed to interpreter, saved in register and `Constant` nodes.
+2. What is the mapping between JS types and ErgoScript types?
+- The mapping between JS types and ErgoScript types is as follows:
+  - Number -> Byte, Short, Int
+  - BigInt -> Long, BigInt
+  - array [A, B] -> (A, B) - pair
+  - array [a1, a2 ..] -> Coll[A] - collection
+3. How is a `Value` encoded as a Base16 hex string?
+- A `Value` is encoded as a Base16 hex string by transforming it into a `ConstantNode` of Sigma, serializing the constant into a byte array using `ConstantSerializer`, and then encoding the bytes using Base16 encoder into a string.

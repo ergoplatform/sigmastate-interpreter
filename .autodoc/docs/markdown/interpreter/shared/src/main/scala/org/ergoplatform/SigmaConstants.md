@@ -1,0 +1,22 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/org/ergoplatform/SigmaConstants.scala)
+
+The code defines a set of constants used in the Sigma protocol's logic and checks. The constants are collected in a sequence and each constant has an ID, value, and description. The constant IDs are stable and never change. Some constant values may be defined in terms of other more fundamental values. 
+
+The `SizeConstant` case class is used to define each constant. It takes a type parameter `T` that must be a subtype of `Numeric`. The `value` field holds the constant's value, the `id` field holds the constant's ID, and the `description` field holds a description of the constant. 
+
+The `SigmaConstants` object contains all the constants defined in the code. Each constant is defined as an object that extends the `SizeConstant` case class. For example, `MaxBoxSize` is defined as an object that extends `SizeConstant[Int]` with a value of `4 * 1024`, an ID of `1`, and a description of "Box size should not be greater than provided value". 
+
+The `ConstTable` field is a sequence of all the constants defined in the `SigmaConstants` object. It is created by collecting all the constant objects into a sequence. The `require` statement at the end of the `ConstTable` definition ensures that there are no duplicate constant IDs in the sequence. 
+
+This code can be used in the larger project to provide a centralized location for all the constants used in the Sigma protocol's logic and checks. By defining the constants as objects that extend the `SizeConstant` case class, the code provides a consistent and easy-to-use interface for accessing the constants. For example, to access the `MaxBoxSize` constant, one can simply call `SigmaConstants.MaxBoxSize.value`. 
+
+Overall, this code provides a useful abstraction for working with constants in the Sigma protocol and can help simplify the codebase by providing a centralized location for all the constants used in the project.
+## Questions: 
+ 1. What is the purpose of the `SizeConstant` case class?
+- The `SizeConstant` case class is used to define constants with a value, an ID, and a description.
+
+2. What is the purpose of the `SigmaConstants` object?
+- The `SigmaConstants` object provides access to the constants used in sigma's logic and checks. It collects all the constants in a sequence and each constant has an ID, value, and description.
+
+3. What is the purpose of the `ConstTable` sequence?
+- The `ConstTable` sequence is a collection of all the constants defined in the `SigmaConstants` object. It is used to ensure that there are no duplicate constant IDs.

@@ -1,0 +1,28 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/parsers/shared/src/main/scala/sigmastate/lang/syntax/Core.scala)
+
+The code provided is a part of the Sigmastate project and defines a trait called "Core". This trait contains a set of keywords and identifiers used in expressions. The purpose of this trait is to provide a set of common aliases and keywords that can be used in almost every parser in the file. 
+
+The trait contains two methods, "mkUnaryOp" and "mkBinaryOp", which are used to construct ErgoTree unary and binary operations, respectively. These methods take an operation name and one or two values of SType, respectively, and return a value of SType. 
+
+The trait also contains a set of aliases for common things such as keywords and symbols. These aliases are used in almost every parser in the file, so it makes sense to keep them short. For example, the keyword "type" is aliased as "type[_:P]", and the symbol "=>" is aliased as "`=>`[_:P]". 
+
+The trait also defines several parsers for identifiers, literals, and other constructs used in expressions. For example, the parser "Id[_:P]" parses an identifier, and the parser "ExprLiteral[_:P]" parses an expression literal. 
+
+Overall, the "Core" trait provides a set of common aliases and parsers that can be used throughout the project to simplify the parsing and construction of expressions. Here is an example of how the "mkUnaryOp" method might be used in the larger project:
+
+```
+val opName = "NOT"
+val arg = builder.mkIdent("x", SBoolean)
+val result = mkUnaryOp(opName, arg)
+```
+
+This code constructs a unary operation with the name "NOT" and the argument "x" of type SBoolean. The resulting value is of type SBoolean and can be used in further expressions.
+## Questions: 
+ 1. What is the purpose of the `Core` trait?
+- The `Core` trait defines keywords and identifiers used in expressions and provides constructors for ErgoTree unary and binary operations.
+
+2. What is the purpose of the `PostDotCheck` method?
+- The `PostDotCheck` method is used to whitelist a few suffixes that come after a `.` select. Everything else is considered illegal.
+
+3. What is the purpose of the `StableId` method?
+- The `StableId` method defines a parser for stable identifiers, which are used to represent paths to objects and values in the program.

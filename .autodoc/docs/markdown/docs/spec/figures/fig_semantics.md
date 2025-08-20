@@ -1,0 +1,16 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/figures/fig_semantics.tex)
+
+This code defines the reduction contexts and call-by-value evaluation relation for the \langname language. Reduction contexts are used to specify the position of an expression in a larger expression, and they are defined recursively. The $\Hole$ context represents a hole in the expression where another expression can be inserted. The $\delta~\Ov{v}~\Ctx~\Ov{e}$ context represents a primitive operation $\delta$ applied to a list of values $\Ov{v}$, followed by a context $\Ctx$ and a list of expressions $\Ov{e}$. The $\Ctx~e$ context represents an expression $e$ in the context $\Ctx$. Finally, the $(\Lam{x}{e})\Ctx$ context represents a lambda abstraction $\Lam{x}{e}$ applied to the context $\Ctx$.
+
+The call-by-value evaluation relation specifies how expressions are evaluated in the \langname language. The relation is defined using reduction rules, which specify how an expression can be reduced to another expression. Rule (1) specifies that a lambda abstraction applied to a value can be reduced by substituting the value for the lambda's parameter in the lambda's body. Rule (2) specifies that a let binding can be reduced by substituting the bound value for the bound variable in the body of the let expression. Rule (3) specifies that an if-then-else expression can be reduced by evaluating the first branch if the condition is true, or the second branch otherwise. Rule (4) specifies that a primitive operation applied to a list of values can be reduced by looking up the corresponding operation in the list of primitive operations and applying it to the list of values.
+
+This code is an important part of the \langname language, as it defines the evaluation semantics of the language. It can be used to implement an interpreter or compiler for the language, as well as to reason about the behavior of programs written in the language. For example, to evaluate the expression $(\Lam{x}{x+1})~2$, we can apply rule (1) to get $[[2/x](x+1)]$, which reduces to $3$. Similarly, to evaluate the expression $\lst{let}~x=2~\lst{in}~x+1$, we can apply rule (2) to get $[[2/x](x+1)]$, which reduces to $3$.
+## Questions: 
+ 1. What is the purpose of the \langname project?
+- Unfortunately, the code provided does not give any indication of the purpose of the \langname project.
+
+2. What is the meaning of the symbols used in the reduction contexts and evaluation relation?
+- The symbols used in the reduction contexts and evaluation relation are defined as follows: $\Hole$ represents a hole, $\delta$ represents a primitive operation, $\Ov{v}$ represents a sequence of values, $\Ctx$ represents a reduction context, $\Ov{e}$ represents a sequence of expressions, $\Lam{x}{e}$ represents a lambda abstraction, and $e_1$ and $e_2$ represent expressions.
+
+3. What is the significance of the numbers in parentheses at the end of each evaluation relation?
+- The numbers in parentheses at the end of each evaluation relation are rule numbers that are used to refer to the specific evaluation relation when discussing the behavior of the \langname language.

@@ -1,0 +1,39 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/common/shared/src/main/scala/sigmastate/util.scala)
+
+The `util` object in the `sigmastate` package provides utility functions for working with arrays in the context of the larger project. The code defines two functions: `safeNewArray` and `safeConcatArrays_v5`.
+
+The `safeNewArray` function allocates a new array of type `A` with a specified length `len`. It checks if the length is greater than the maximum allowed length `MaxArrayLength` and throws a `RuntimeException` if it is. This function is intended to be used instead of the standard `new Array[A](n)` or `Array.ofDim[A](n)` methods to ensure that the length of the array is within the allowed limit.
+
+Here is an example of how to use `safeNewArray`:
+
+```scala
+val arr: Array[Int] = util.safeNewArray[Int](10)
+```
+
+The above code creates a new array of integers with a length of 10 using the `safeNewArray` function.
+
+The `safeConcatArrays_v5` function concatenates two arrays of type `A` and checks if the resulting array length is within the allowed limit. This function is intended to be used in the implementation of collection operations in version 5.0 and above of the project.
+
+Here is an example of how to use `safeConcatArrays_v5`:
+
+```scala
+val arr1: Array[Int] = Array(1, 2, 3)
+val arr2: Array[Int] = Array(4, 5, 6)
+val result: Array[Int] = util.safeConcatArrays_v5(arr1, arr2)
+```
+
+The above code concatenates two arrays of integers `arr1` and `arr2` using the `safeConcatArrays_v5` function and stores the result in `result`.
+
+Overall, the `util` object provides useful utility functions for working with arrays in the larger project, ensuring that the length of the arrays is within the allowed limit.
+## Questions: 
+ 1. What is the purpose of the `util` object?
+    
+    The `util` object contains utility functions for working with arrays, including allocating new arrays and concatenating existing ones.
+
+2. What is the significance of the `MaxArrayLength` constant?
+    
+    The `MaxArrayLength` constant sets the maximum length of an allocatable array. If an attempt is made to allocate an array longer than this limit, a `RuntimeException` will be thrown.
+
+3. What is the difference between `safeNewArray` and `safeConcatArrays_v5`?
+    
+    `safeNewArray` is used to allocate a new array of a specified length, while `safeConcatArrays_v5` is used to concatenate two existing arrays while checking that the resulting array does not exceed the maximum length limit.

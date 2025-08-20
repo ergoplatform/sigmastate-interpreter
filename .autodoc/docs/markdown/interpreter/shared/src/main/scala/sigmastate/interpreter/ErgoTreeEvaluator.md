@@ -1,0 +1,37 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/interpreter/ErgoTreeEvaluator.scala)
+
+The `ErgoTreeEvaluator` class in this code is a simple and fast direct-style interpreter for ErgoTrees. ErgoTree is a declarative intermediate representation for Ergo contracts, designed to be compact in serialized form and directly executable. The interpreter works directly with ErgoTree's higher-order abstract syntax (HOAS) and follows its denotational semantics.
+
+The main method of the `ErgoTreeEvaluator` class is `eval`, which evaluates a given expression in a given data environment. The class also provides methods for evaluating expressions with cost, such as `evalWithCost`, which returns the value of the expression and the total accumulated cost in the coster.
+
+The `EvalSettings` case class contains configuration parameters for the evaluation run, such as flags for measuring operation time, enabling debug mode, logging, cost tracing, and specifying evaluation mode. The `EvaluationMode` object defines two evaluation modes: `AotEvaluationMode` for executing using AOT costing implementation of v4.x protocol, and `JitEvaluationMode` for executing using JIT costing implementation of v5.x protocol.
+
+The `ErgoTreeEvaluator` class also provides methods for adding costs to the coster, such as `addCost`, `addTypeBasedCost`, `addFixedCost`, and `addSeqCost`. These methods are used to accumulate costs during the evaluation of expressions, and can be associated with operation descriptors for tracing and profiling purposes.
+
+Example usage of the `ErgoTreeEvaluator` class would involve creating an instance with the desired context, constants, cost accumulator, profiler, and settings, and then using the `eval` method to evaluate an ErgoTree expression in a given data environment.
+
+```scala
+val context: ErgoLikeContext = ...
+val constants: Seq[Constant[SType]] = ...
+val costAccumulator = new CostAccumulator(...)
+val profiler = new Profiler
+val settings = EvalSettings(...)
+
+val evaluator = new ErgoTreeEvaluator(context, constants, costAccumulator, profiler, settings)
+val env: DataEnv = ...
+val exp: SValue = ...
+
+val result: Any = evaluator.eval(env, exp)
+```
+## Questions: 
+ 1. **What is the purpose of the `ErgoTreeEvaluator` class?**
+
+   The `ErgoTreeEvaluator` class is an interpreter for ErgoTrees, which are a simple declarative intermediate representation for Ergo contracts. It is designed to be compact in serialized form and directly executable. The evaluator follows the denotational semantics of ErgoTree and is purely functional with immutable data structures.
+
+2. **How does the `ErgoTreeEvaluator` handle costs and profiling?**
+
+   The `ErgoTreeEvaluator` uses a `CostAccumulator` to accumulate computation costs during evaluation. It also supports cost tracing and operation time measurement through the `Profiler` class if enabled in the `EvalSettings`. Various methods like `addFixedCost`, `addTypeBasedCost`, and `addSeqCost` are used to add costs associated with different operations.
+
+3. **What are the different evaluation modes available in `EvalSettings`?**
+
+   The `EvalSettings` class has an `evaluationMode` field, which can be set to either `AotEvaluationMode` (AOT costing implementation of v4.x protocol) or `JitEvaluationMode` (JIT costing implementation of v5.x protocol). The default value is `None`, which means the version is defined by `ErgoTree.version` and `Context.activatedScriptVersion`.

@@ -1,0 +1,23 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/docs/spec/language.tex)
+
+This code defines the abstract syntax for the ErgoScript language, which is a typed functional language with tuples, collections, optional types, and val binding expressions. The purpose of this code is to provide a specification for the syntax and semantics of ErgoScript, which can be used in the larger project to implement the language.
+
+The abstract syntax of ErgoScript is defined using notation shown in Figure 1, which corresponds to the ErgoTree data structure that can be serialized to an array of bytes. The mnemonics shown in the figure correspond to classes of the ErgoTree reference implementation.
+
+The code assigns types to the terms in a standard way following typing rules shown in Figure 2. Constants keep both the type and the data value of that type. Variables are always typed and identified by unique id, which refers to either lambda-bound variable of val-bound variable. Lambda expressions can take a list of lambda-bound variables which can be used in the body expression, which can be a block expression. Function application takes an expression of functional type and a list of arguments. Method invocation allows to apply functions defined as methods of interface types.
+
+Conditional expressions of ErgoScript are strict in condition and lazy in both of the branches. Block expression contains a list of val definitions of variables. Each subsequent definition can only refer to the previously defined variables. Each type may be associated with a list of method declarations, in which case we say that the type has methods. The semantics of the methods is the same as in Java.
+
+The semantics of ErgoScript is specified by translating all its terms to a lower and simplified language, which is called core language. This lowering translation is shown in Figure 3. All n-ary lambdas when n>1 are transformed to single arguments lambdas using tupled arguments. Logical operations of ErgoScript, which are lazy on second argument, are translated to if term of ErgoScript, which is recursively translated to the corresponding core language term. Syntactic blocks of ErgoScript are completely eliminated and translated to nested lambda expressions, which unambiguously specify evaluation semantics of blocks. The core language is specified in Section 4.
+## Questions: 
+ 1. What is the purpose of the \langname language and how is it related to \corelang?
+   
+   The \langname language is a typed functional language with various features such as tuples, collections, optional types, and \lst{val} binding expressions. Its semantics are specified by first translating it to \corelang and then giving its evaluation semantics. 
+
+2. How are variables defined and resolved in \langname?
+   
+   Variables in \langname are always typed and identified by a unique $id$, which refers to either lambda-bound variable or \lst{val} bound variable. The encoding of variables and their resolution is described in Section~\ref{sec:blocks}.
+
+3. How are logical operations (\lst{||}, \lst{&&}) of \langname translated to \corelang?
+   
+   Logical operations (\lst{||}, \lst{&&}) of \langname, which are lazy on the second argument, are translated to \lst{if} term of \langname, which is recursively translated to the corresponding \corelang term.

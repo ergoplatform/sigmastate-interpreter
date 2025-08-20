@@ -1,0 +1,20 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/interpreter/shared/src/main/scala/sigmastate/SigSerializer.scala)
+
+The `SigSerializer` class contains the implementation of signature (aka proof) serialization. It provides two main methods: `toProofBytes` and `parseAndComputeChallenges`. 
+
+The `toProofBytes` method takes an `UncheckedTree` as input and recursively traverses the given node to serialize challenges and prover messages to the given writer. The output is an array of bytes containing all the serialized challenges and prover messages. This method is used to serialize the proof bytes for a given `UncheckedTree`.
+
+The `parseAndComputeChallenges` method takes a sigma proposition `exp` and a proof as input and extracts challenges from the proof. It performs a top-down traversal of the tree and obtains the challenges for the children of every non-leaf node by reading them from the proof or computing them. For every leaf node, it reads the response `z` provided in the proof. The output is an instance of `UncheckedTree`, which is either `NoProof` or `UncheckedSigmaTree`. This method is used to parse the proof bytes and compute the challenges for a given `UncheckedTree`.
+
+The `SigSerializer` class also defines some constants and helper methods used in the serialization process. For example, it defines the size of challenge in Sigma protocols, in bits, and the number of bytes to represent any group element as a byte array. It also defines the cost of parsing `UncheckedSchnorr` and `UncheckedDiffieHellmanTuple` nodes from proof bytes, the cost of parsing `GF2_192_Poly` from proof bytes, and the cost of evaluating a polynomial.
+
+Overall, the `SigSerializer` class is an important component of the larger project as it provides the implementation of signature serialization and parsing, which is crucial for verifying the correctness of a given proof.
+## Questions: 
+ 1. What is the purpose of the `SigSerializer` class?
+- The `SigSerializer` class contains implementation of signature (aka proof) serialization and provides methods to serialize and deserialize sigma propositions and commitments.
+
+2. What is the `toProofBytes` method used for?
+- The `toProofBytes` method recursively traverses a given node and serializes challenges and prover messages to a given writer. It returns the proof bytes containing all the serialized challenges and prover messages.
+
+3. What is the purpose of the `parseAndComputeChallenges` method?
+- The `parseAndComputeChallenges` method is used to obtain the challenges for the children of every non-leaf node by reading them from the proof or computing them in a top-down traversal of the tree. It also reads the response z provided in the proof for every leaf node. The method returns an instance of `UncheckedTree` which can be either `NoProof` or `UncheckedSigmaTree`.

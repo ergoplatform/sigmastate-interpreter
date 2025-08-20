@@ -1,0 +1,26 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/graph-ir/src/main/scala/scalan/meta/SSymName.scala)
+
+The code in this file defines two case classes, ImportItem and SSymName, and an object, SSymName. The ImportItem case class takes a packageName string and a list of importedNames strings as parameters. The SSymName case class takes a packageName string and a name string as parameters. It also has a secondary constructor that takes only a name string and sets the packageName to an empty string. 
+
+The SSymName object contains a constant value, ImportAllWildcard, which is a wildcard character used to signify importing all names from a namespace. It also contains a method, fullNameString, which takes a packageName string and a name string as parameters and returns a string that concatenates the two with a period in between, unless the packageName is null or empty, in which case it just returns the name.
+
+The SSymName case class also contains a method, isImportedBy, which takes an ImportItem as a parameter and returns a Boolean indicating whether the SSymName instance is imported by the ImportItem. It does this by checking if the packageName of the SSymName matches the packageName of the ImportItem, and if the list of importedNames in the ImportItem contains either the ImportAllWildcard constant or the name of the SSymName instance.
+
+This code can be used in a larger project that involves importing and using symbols from different packages and namespaces. The ImportItem case class can be used to represent a single import statement, with the packageName representing the package being imported and the importedNames representing the specific symbols being imported. The SSymName case class can be used to represent a symbol name, with the packageName representing the namespace and the name representing the specific symbol. The isImportedBy method can then be used to check if a given symbol is imported by a given import statement. 
+
+Example usage:
+
+```
+val importItem = ImportItem("scala.collection", List("Seq", "Map"))
+val symName = SSymName("scala.collection", "Seq")
+val isImported = symName.isImportedBy(importItem) // returns true
+```
+## Questions: 
+ 1. What is the purpose of the `SSymName` class and how is it used?
+   The `SSymName` class represents a symbol name with a package name and a simple name. It is used to construct fully qualified names and check if it is imported by a given `ImportItem`.
+
+2. What is the purpose of the `ImportItem` case class and how is it used?
+   The `ImportItem` case class represents an import statement with a package name and a list of imported names. It is used to check if a given `SSymName` is imported by this import statement.
+
+3. What is the significance of the `ImportAllWildcard` constant in the `SSymName` object?
+   The `ImportAllWildcard` constant represents the wildcard character used to signify importing all names from a namespace. It is used in the `isImportedBy` method of `SSymName` to check if a given `ImportItem` imports all names from the same package.

@@ -1,0 +1,44 @@
+[View code on GitHub](sigmastate-interpreterhttps://github.com/ScorexFoundation/sigmastate-interpreter/common/shared/src/main/scala/scalan/util/GraphUtil.scala)
+
+# GraphUtil Code Explanation
+
+The `GraphUtil` object contains two methods that implement a depth-first search algorithm to traverse a graph and return a set of reachable nodes or a topologically ordered sequence of reachable nodes. 
+
+The `depthFirstSetFrom` method takes two parameters: a `starts` buffer containing the starting nodes for the search, and a `neighbours` function representing the adjacency matrix of the graph. The method returns a `DSet` of nodes reachable from the `starts` including `starts` themselves. The `neighbours` function takes a node `s` and returns a `DBuffer` of its neighbors. The method uses a recursive `visit` function to traverse the graph starting from each node in the `starts` buffer. The `visited` set keeps track of the nodes that have already been visited to avoid revisiting them. 
+
+The `depthFirstOrderFrom` method also takes a `starts` buffer and a `neighbours` function as parameters. It returns a topologically ordered `DBuffer` of nodes reachable from the `starts` including `starts` themselves. The method uses a similar recursive `visit` function as the `depthFirstSetFrom` method, but it also appends each visited node to a `res` buffer after visiting all of its neighbors. This ensures that the nodes are added to the result buffer in the correct order. 
+
+Both methods use the `cfor` loop from the `debox` library to iterate over the nodes in the `starts` buffer and the neighbors of each visited node. The `@specialized(Int)` annotation on the type parameter `A` ensures that the method is optimized for `Int` types. The `ClassTag` context bound on the type parameter `A` allows the method to create new instances of the type `A` at runtime. 
+
+These methods can be used in a larger project to analyze graphs and extract information about their structure. For example, they could be used to find all the nodes that are reachable from a given set of starting nodes, or to order the nodes in a graph based on their dependencies. The methods could also be extended to handle weighted graphs or directed graphs by modifying the `neighbours` function. 
+
+Example usage:
+
+```
+import scalan.util.GraphUtil
+
+val graph = Map(
+  1 -> List(2, 3),
+  2 -> List(4),
+  3 -> List(4),
+  4 -> List()
+)
+
+val starts = debox.Buffer.of(1)
+val neighbours = (n: Int) => debox.Buffer.fromIterable(graph.getOrElse(n, List()))
+
+val reachableNodes = GraphUtil.depthFirstSetFrom(starts)(neighbours)
+val orderedNodes = GraphUtil.depthFirstOrderFrom(starts, neighbours)
+
+println(reachableNodes) // DSet(1, 2, 3, 4)
+println(orderedNodes) // DBuffer(4, 2, 3, 1)
+```
+## Questions: 
+ 1. What is the purpose of the `GraphUtil` object?
+- The `GraphUtil` object provides two methods for building and ordering a set of reachable nodes in a graph using a depth first search algorithm.
+
+2. What is the input format for the `depthFirstSetFrom` method?
+- The `depthFirstSetFrom` method takes in a starting set of nodes and a function representing the adjacency matrix of the graph, where the type of value representing the node should implement equality which is used in debox.Set.
+
+3. What is the output format for the `depthFirstOrderFrom` method?
+- The `depthFirstOrderFrom` method returns a topologically ordered sequence of nodes reachable from the starting nodes, including the starting nodes themselves, in the form of a DBuffer.
