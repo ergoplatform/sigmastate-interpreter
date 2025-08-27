@@ -1,11 +1,11 @@
 package sigma.serialization
 
 import debox.cfor
+import sigma.VersionContext
 import sigma.ast.SCollectionType.{CollectionTypeCode, NestedCollectionTypeCode}
 import sigma.ast._
-import sigma.serialization.{CoreByteReader, CoreByteWriter, InvalidTypePrefix}
 import sigma.util.safeNewArray
-import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckTypeCode}
+import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckPrimitiveTypeCodeV6, CheckTypeCode, CheckTypeCodeV6}
 
 import java.nio.charset.StandardCharsets
 
@@ -13,8 +13,14 @@ import java.nio.charset.StandardCharsets
 class TypeSerializer {
   import TypeSerializer._
 
-  def getEmbeddableType(code: Int): SType = {
-    CheckPrimitiveTypeCode(code.toByte)
+  private def getEmbeddableType(code: Int): SType = {
+    // the #1007 check replaced with one with identical behavior but different opcode (1017), to activate
+    //  ReplacedRule(1007 -> 1017) during 6.0 activation
+    if (VersionContext.current.isV6Activated) {
+      CheckPrimitiveTypeCodeV6(code.toByte)
+    } else {
+      CheckPrimitiveTypeCode(code.toByte)
+    }
     embeddableIdToType(code)
   }
 
@@ -101,6 +107,18 @@ class TypeSerializer {
         // `Tuple` type with more than 4 items `(Int, Byte, Box, Boolean, Int)`
         serializeTuple(tup, w)
     }
+    // implemented in 6.0, https://github.com/ergoplatform/sigmastate-interpreter/issues/847
+    case SFunc(tDom, tRange, tpeParams) if VersionContext.current.isV3OrLaterErgoTreeVersion =>
+      w.put(SFunc.FuncTypeCode)
+      w.putUByte(tDom.length)
+      tDom.foreach { st =>
+        serialize(st, w)
+      }
+      serialize(tRange, w)
+      w.putUByte(tpeParams.length)
+      tpeParams.foreach { tp =>
+        serialize(tp.ident, w)
+      }
     case typeIdent: STypeVar => {
       w.put(typeIdent.typeCode)
       val bytes = typeIdent.name.getBytes(StandardCharsets.UTF_8)
@@ -189,8 +207,29 @@ class TypeSerializer {
         case SHeader.typeCode => SHeader
         case SPreHeader.typeCode => SPreHeader
         case SGlobal.typeCode => SGlobal
+        // SFunc serialization implemented in 6.0, https://github.com/ergoplatform/sigmastate-interpreter/issues/847
+        case SFunc.FuncTypeCode if VersionContext.current.isV3OrLaterErgoTreeVersion =>
+          val tdLength = r.getUByte()
+
+          val tDom = (1 to tdLength).map { _ =>
+            deserialize(r, depth + 1)
+          }
+          val tRange = deserialize(r, depth + 1)
+          val tpeParamsLength = r.getUByte()
+          val tpeParams = (1 to tpeParamsLength).map { _ =>
+            val ident = deserialize(r, depth + 1)
+            require(ident.isInstanceOf[STypeVar])
+            STypeParam(ident.asInstanceOf[STypeVar])
+          }
+          SFunc(tDom, tRange, tpeParams)
         case _ =>
-          CheckTypeCode(c.toByte)
+          // the #1008 check replaced with one with identical behavior but different opcode (1018), to activate
+          //  ReplacedRule(1008 -> 1018) during 6.0 activation
+          if (VersionContext.current.isV6Activated) {
+            CheckTypeCodeV6(c.toByte)
+          } else {
+            CheckTypeCode(c.toByte)
+          }
           NoType
       }
     }
@@ -215,6 +254,16 @@ class TypeSerializer {
 object TypeSerializer extends TypeSerializer {
   /** The list of embeddable types, i.e. types that can be combined with type constructor for optimized encoding.
     * For each embeddable type `T`, and type constructor `C`, the type `C[T]` can be represented by single byte. */
-  val embeddableIdToType = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp)
+    def embeddableIdToType: Array[SType] = {
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+        embeddableV6
+      } else {
+        embeddableV5
+      }
+    }
+
+  private val embeddableV5 = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp)
+
+  private val embeddableV6 = Array[SType](null, SBoolean, SByte, SShort, SInt, SLong, SBigInt, SGroupElement, SSigmaProp, SUnsignedBigInt)
 
 }

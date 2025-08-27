@@ -3,8 +3,9 @@ package sigma.serialization
 import org.scalacheck.Arbitrary._
 import org.scalatest.Assertion
 import sigma.ast._
+import sigmastate.CrossVersionProps
 
-class TypeSerializerSpecification extends SerializationSpecification {
+class TypeSerializerSpecification extends SerializationSpecification with CrossVersionProps {
 
   private def roundtrip[T <: SType](tpe: T, expected: Array[Byte]): Assertion = {
     val w = SigmaSerializer.startWriter()

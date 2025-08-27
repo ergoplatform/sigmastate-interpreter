@@ -8,7 +8,6 @@ import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.{choose, frequency}
 import org.scalacheck.util.Buildable
 import org.scalacheck.{Arbitrary, Gen}
-import sigma.data._
 import scorex.crypto.authds.{ADDigest, ADKey}
 import scorex.util.encode.{Base58, Base64}
 import scorex.util.{ModifierId, bytesToId}
@@ -27,6 +26,7 @@ import sigma.util.Extensions.EcpOps
 import sigma.validation.{ChangedRule, DisabledRule, EnabledRule, ReplacedRule, RuleStatus}
 import sigma.validation.ValidationRules.FirstRuleId
 import ErgoTree.ZeroHeader
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CBox, CHeader, COR, CTHRESHOLD, Digest32Coll, ProveDHTuple, ProveDlog, RType, SigmaBoolean}
 import sigma.eval.Extensions.{EvalIterableOps, SigmaBooleanOps}
 import sigma.eval.SigmaDsl
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -42,7 +42,9 @@ trait ObjectGenerators extends TypeGenerators
   with ConcreteCollectionGenerators
   with TestsBase {
 
-  val ThresholdLimit = 10
+  private val ThresholdLimit = 10
+
+  private val MaxBigIntValue = new BigInteger("7F" + "ff" * 31, 16)
 
   implicit lazy val statusArb: Arbitrary[RuleStatus] = Arbitrary(statusGen)
   implicit lazy val arbMapCollection: Arbitrary[MapCollection[SInt.type, SInt.type]] = Arbitrary(mapCollectionGen)
@@ -76,13 +78,15 @@ trait ObjectGenerators extends TypeGenerators
   implicit lazy val arbBoxConstant: Arbitrary[BoxConstant] = Arbitrary(boxConstantGen)
   implicit lazy val arbAvlTreeConstant: Arbitrary[AvlTreeConstant] = Arbitrary(avlTreeConstantGen)
   implicit lazy val arbBigIntConstant: Arbitrary[BigIntConstant] = Arbitrary(bigIntConstGen)
+  implicit lazy val arbUnsignedBigIntConstant: Arbitrary[UnsignedBigIntConstant] = Arbitrary(unsignedBigIntConstGen)
   implicit lazy val arbGetVarBox: Arbitrary[BoxValue] = Arbitrary(getVar[SBox.type])
   implicit lazy val arbGetVarAvlTree : Arbitrary[AvlTreeValue]   = Arbitrary(getVarAvlTreeGen)
   implicit lazy val arbProveDlog     : Arbitrary[ProveDlog]      = Arbitrary(proveDlogGen)
   implicit lazy val arbProveDHT: Arbitrary[ProveDHTuple] = Arbitrary(proveDHTGen)
   implicit lazy val arbRegisterIdentifier: Arbitrary[RegisterId] = Arbitrary(registerIdentifierGen)
-  implicit lazy val arbBigInteger: Arbitrary[BigInteger] = Arbitrary(Arbitrary.arbBigInt.arbitrary.map(_.bigInteger))
+  implicit lazy val arbBigInteger: Arbitrary[BigInteger] = Arbitrary(Arbitrary.arbBigInt.arbitrary.map(_.bigInteger).map(_.mod(MaxBigIntValue)))
   implicit lazy val arbBigInt: Arbitrary[BigInt] = Arbitrary(arbBigInteger.arbitrary.map(SigmaDsl.BigInt(_)))
+  implicit lazy val arbUnsignedBigInt: Arbitrary[UnsignedBigInt] = Arbitrary(arbBigInteger.arbitrary.map(_.abs()).map(SigmaDsl.UnsignedBigInt(_)))
   implicit lazy val arbEcPointType: Arbitrary[dlogGroup.ElemType] = Arbitrary(Gen.const(()).flatMap(_ => CryptoConstants.dlogGroup.createRandomGenerator()))
   implicit lazy val arbGroupElement: Arbitrary[GroupElement] = Arbitrary(arbEcPointType.arbitrary.map(SigmaDsl.GroupElement(_)))
   implicit lazy val arbSigmaBoolean: Arbitrary[SigmaBoolean] = Arbitrary(Gen.oneOf(proveDHTGen, proveDHTGen))
@@ -142,6 +146,8 @@ trait ObjectGenerators extends TypeGenerators
     arbString.arbitrary.map { v => mkConstant[SString.type](v, SString) }
   lazy val bigIntConstGen: Gen[BigIntConstant] =
     arbBigInt.arbitrary.map { v => mkConstant[SBigInt.type](v, SBigInt) }
+  lazy val unsignedBigIntConstGen: Gen[UnsignedBigIntConstant] =
+    arbUnsignedBigInt.arbitrary.map { v => mkConstant[SUnsignedBigInt.type](v, SUnsignedBigInt) }
 
   lazy val byteArrayConstGen: Gen[CollectionConstant[SByte.type]] = for {
     bytes <- arrayOfRange(1, 100, arbByte.arbitrary)
@@ -305,12 +311,14 @@ trait ObjectGenerators extends TypeGenerators
     case SInt => arbInt
     case SLong => arbLong
     case SBigInt => arbBigInt
+    case SUnsignedBigInt => arbUnsignedBigInt
     case SGroupElement => arbGroupElement
     case SSigmaProp => arbSigmaProp
     case SBox => arbBox
     case SAvlTree => arbAvlTree
     case SAny => arbAnyVal
     case SUnit => arbUnit
+    case SHeader => arbHeader
     case opt: SOption[a] =>
       Arbitrary(frequency((5, None), (5, for (x <- wrappedTypeGen(opt.elemType)) yield Some(x))))
   }).asInstanceOf[Arbitrary[T#WrappedType]].arbitrary
@@ -324,6 +332,11 @@ trait ObjectGenerators extends TypeGenerators
       longConstGen,
       booleanConstGen,
       bigIntConstGen,
+      if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+        unsignedBigIntConstGen
+      } else {
+        bigIntConstGen
+      },
       groupElementConstGen,
       getVar[SInt.type],
       getVar[SLong.type],
@@ -422,7 +435,7 @@ trait ObjectGenerators extends TypeGenerators
 
   import ValidationRules._
 
-  val numRules = currentSettings.size
+  def numRules = currentSettings.size
 
   val replacedRuleIdGen = Gen.chooseNum((FirstRuleId + numRules).toShort, Short.MaxValue)
 
@@ -560,12 +573,13 @@ trait ObjectGenerators extends TypeGenerators
     )
   } yield node
 
-  def numExprTreeGen: Gen[Value[SNumericType]] =
+  def numExprTreeGen: Gen[Value[SNumericType]] = {
     Gen.oneOf(arbByteConstants.arbitrary,
       arbIntConstants.arbitrary,
       arbLongConstants.arbitrary,
       arbBigIntConstant.arbitrary,
       Gen.delay(numExprTreeNodeGen))
+  }
 
   def comparisonExprTreeNodeGen: Gen[Value[SBoolean.type]] = for {
     left <- numExprTreeNodeGen
@@ -694,7 +708,6 @@ trait ObjectGenerators extends TypeGenerators
   } yield ErgoTree.withSegregation(ZeroHeader, prop)
 
   def headerGen(stateRoot: AvlTree, parentId: Coll[Byte]): Gen[Header] = for {
-    id <- modifierIdBytesGen
     version <- arbByte.arbitrary
     adProofsRoot <- digest32Gen
     transactionRoot <- digest32Gen
@@ -707,8 +720,10 @@ trait ObjectGenerators extends TypeGenerators
     powNonce <- nonceBytesGen
     powDistance <- arbBigInt.arbitrary
     votes <- minerVotesGen
-  } yield CHeader(id, version, parentId, adProofsRoot, stateRoot, transactionRoot, timestamp, nBits,
-    height, extensionRoot, minerPk.toGroupElement, powOnetimePk.toGroupElement, powNonce, powDistance, votes)
+    unparsedBytes <- collOfRange(0, 32, arbByte.arbitrary)
+  } yield CHeader(version, parentId, adProofsRoot, stateRoot.digest, transactionRoot, timestamp, nBits,
+    height, extensionRoot, minerPk.toGroupElement, powOnetimePk.toGroupElement, powNonce, powDistance, votes,
+    if(version > HeaderVersion.Interpreter60Version){ unparsedBytes } else {Colls.emptyColl[Byte]})
 
   lazy val headerGen: Gen[Header] = for {
     stateRoot <- avlTreeGen

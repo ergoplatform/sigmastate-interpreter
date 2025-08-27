@@ -2,6 +2,8 @@ package sigma
 
 import sigma.kiama.rewriting.Rewriter.{everywherebu, rewrite, rule}
 
+import scala.annotation.tailrec
+
 package object ast {
 
   /** Type alias for a substitution of type variables with their corresponding types. */
@@ -33,6 +35,7 @@ package object ast {
   private val unifiedWithoutSubst = Some(EmptySubst)
 
   /** Finds a substitution `subst` of type variables such that unifyTypes(applySubst(t1, subst), t2) shouldBe Some(emptySubst) */
+  @tailrec
   def unifyTypes(t1: SType, t2: SType): Option[STypeSubst] = (t1, t2) match {
     case (_ @ STypeVar(n1), _ @ STypeVar(n2)) =>
       if (n1 == n2) unifiedWithoutSubst else None
@@ -136,6 +139,12 @@ package object ast {
     def isNumTypeOrNoType: Boolean = isNumType || tpe == NoType
 
     def asNumType: SNumericType = tpe.asInstanceOf[SNumericType]
+
+    /** Cast this type to numeric type or else throws the given error. */
+    def asNumTypeOrElse(error: => Exception): SNumericType = tpe match {
+      case nt: SNumericType => nt
+      case _ => throw error
+    }
 
     def asFunc: SFunc = tpe.asInstanceOf[SFunc]
 

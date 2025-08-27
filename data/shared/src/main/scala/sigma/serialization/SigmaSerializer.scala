@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import scorex.util.ByteArrayBuilder
 import scorex.util.serialization._
 import sigma.data.SigmaConstants
+import sigma.serialization.SigmaByteWriter.{FixedCostCallback, PerItemCostCallback}
 import sigma.serialization.ValueCodes.OpCode
 
 object SigmaSerializer {
@@ -51,21 +52,25 @@ object SigmaSerializer {
   def startWriter(): SigmaByteWriter = {
     val b = new ByteArrayBuilder()
     val wi = new VLQByteBufferWriter(b)
-    val w = new SigmaByteWriter(wi, constantExtractionStore = None)
+    val w = new SigmaByteWriter(wi, constantExtractionStore = None, addFixedCostCallbackOpt = None, addPerItemCostCallbackOpt = None)
     w
   }
 
-  def startWriter(constantExtractionStore: ConstantStore): SigmaByteWriter = {
+  def startWriter(
+      constantExtractionStore: Option[ConstantStore],
+      addFixedCostCallback: Option[FixedCostCallback] = None,
+      addPerItemCostCallback: Option[PerItemCostCallback] = None
+  ): SigmaByteWriter = {
     val b = new ByteArrayBuilder()
     val wi = new VLQByteBufferWriter(b)
-    val w = new SigmaByteWriter(wi, constantExtractionStore = Some(constantExtractionStore))
+    val w = new SigmaByteWriter(wi, constantExtractionStore = constantExtractionStore, addFixedCostCallback, addPerItemCostCallback)
     w
   }
 }
 
 abstract class SigmaSerializer[TFamily, T <: TFamily] extends Serializer[TFamily, T, SigmaByteReader, SigmaByteWriter] {
 
-  def error(msg: String) = throw new SerializerException(msg, None)
+  def error(msg: String) = throw new SerializerException(msg)
 
   final def toBytes(obj: T): Array[Byte] = {
     val w = SigmaSerializer.startWriter()

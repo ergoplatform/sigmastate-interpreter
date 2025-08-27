@@ -14,8 +14,10 @@ import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeConte
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigmastate.interpreter.CErgoTreeEvaluator
 import sigma.ast.syntax.ValueOps
+import sigma.compiler.{CompilerResult, CompilerSettings, SigmaCompiler}
+import sigma.compiler.ir.IRContext
 import sigma.interpreter.ContextExtension
-import sigmastate.lang.{CompilerResult, CompilerSettings, LangTests, SigmaCompiler}
+import sigmastate.lang.LangTests
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.CompilerTestsBase
 import sigma.{ContractsTestkit, Context => DContext}

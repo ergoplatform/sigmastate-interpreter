@@ -7,10 +7,9 @@ import sigma.ast.SourceContext
   *
   * @param message the error message
   * @param source an optional source context with location information
-  * @param cause an optional cause for the exception
   */
-class CompilerException(message: String, val source: Option[SourceContext] = None, cause: Option[Throwable] = None)
-    extends SigmaException(message, cause) {
+class CompilerException(message: String, val source: Option[SourceContext] = None)
+    extends SigmaException(message, None) {
 
   override def getMessage: String = source.map { srcCtx =>
     val lineNumberStrPrefix = s"line ${srcCtx.line}: "
@@ -43,8 +42,8 @@ class TyperException(message: String, source: Option[SourceContext] = None)
 class BuilderException(message: String, source: Option[SourceContext] = None)
   extends CompilerException(message, source)
 
-class GraphBuildingException(message: String, source: Option[SourceContext], cause: Option[Throwable] = None)
-    extends CompilerException(message, source, cause)
+class GraphBuildingException(message: String, source: Option[SourceContext])
+    extends CompilerException(message, source)
 
 
 

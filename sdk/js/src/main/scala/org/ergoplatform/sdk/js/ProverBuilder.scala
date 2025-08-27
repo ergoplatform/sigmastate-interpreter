@@ -6,6 +6,7 @@ import org.ergoplatform.sdk.SecretString
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 import Isos._
+import sigma.data.js.{Isos => DataIsos}
 import sigma.eval.SigmaDsl
 
 /** Equivalent of [[sdk.ProverBuilder]] available from JS.
@@ -66,10 +67,10 @@ class ProverBuilder(parameters: BlockchainParameters, network: Byte) extends js.
     */
   def withDHTSecret(g: String, h: String, u: String, v: String, x: js.BigInt): ProverBuilder = {
     _builder.withDHTData(
-      isoStringToGroupElement.to(g),
-      isoStringToGroupElement.to(h),
-      isoStringToGroupElement.to(u),
-      isoStringToGroupElement.to(v),
+      DataIsos.isoStringToGroupElement.to(g),
+      DataIsos.isoStringToGroupElement.to(h),
+      DataIsos.isoStringToGroupElement.to(u),
+      DataIsos.isoStringToGroupElement.to(v),
       SigmaDsl.toBigInteger(sigma.js.Isos.isoBigInt.to(x))
     )
     this

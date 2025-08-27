@@ -10,9 +10,12 @@ import sigma.ast.syntax.SValue
 import sigmastate._
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import SigmaPredef.PredefinedFuncRegistry
+import sigma.VersionContext
 import sigma.ast.syntax._
+import sigma.compiler.phases.SigmaBinder
 import sigma.eval.SigmaDsl
 import sigma.exceptions.BinderException
+import sigmastate.helpers.SigmaPPrint
 
 class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with LangTests {
   import StdSigmaBuilder._
@@ -26,6 +29,17 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     res.sourceContext.isDefined shouldBe true
     assertSrcCtxForAllNodes(res)
     res
+  }
+
+  /** Checks that parsing and binding results in the expected value.
+    * @return the inferred type of the expression
+    */
+  def checkBound(env: ScriptEnv, x: String, expected: SValue) = {
+    val bound = bind(env, x)
+    if (expected != bound) {
+      SigmaPPrint.pprintln(bound, width = 100)
+    }
+    bound shouldBe expected
   }
 
   private def fail(env: ScriptEnv, x: String, expectedLine: Int, expectedCol: Int): Unit = {
@@ -202,4 +216,15 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     e.source shouldBe Some(SourceContext(2, 5, "val x = 10"))
   }
 
+  property("predefined `serialize` should be transformed to MethodCall") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      checkBound(env, "serialize(1)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SInt)),
+          Array(IntConstant(1)),
+          Map()
+        ))
+    }
+  }
 }

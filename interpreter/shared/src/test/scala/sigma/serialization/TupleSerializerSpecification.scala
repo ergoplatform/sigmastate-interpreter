@@ -1,8 +1,9 @@
 package sigma.serialization
 
 import sigma.ast.{FalseLeaf, IntConstant, Tuple}
+import sigmastate.CrossVersionProps
 
-class TupleSerializerSpecification extends TableSerializationSpecification {
+class TupleSerializerSpecification extends TableSerializationSpecification with CrossVersionProps {
 
   property("Tuple: Serializer round trip ") {
     forAll(tupleGen(1, 10)) { tuple: Tuple =>

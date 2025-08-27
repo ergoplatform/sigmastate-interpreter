@@ -1,15 +1,15 @@
 logLevel := Level.Warn
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.9")
-addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.9.0")
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.8")
-addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.3.8")
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.17")
-addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.2.1")
-addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.3.1")
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1")
+addDependencyTreePlugin
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.3.1")
+addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.3.15")
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.12.2")
+addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.3.1")
+addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.1.0")
 
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.1")
-addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "1.13.2")
+addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
+addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "1.18.2")
 addSbtPlugin("ch.epfl.scala"      % "sbt-scalajs-bundler"      % "0.21.1")
-addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta42")
+addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta44")

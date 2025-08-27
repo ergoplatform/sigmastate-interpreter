@@ -64,8 +64,7 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
         }
       }
       VersionContext.withVersions(VersionContext.JitActivationVersion, VersionContext.JitActivationVersion) {
-// TODO v5.0: make it work
-//        equalLengthMapped(pairs, squared(inc))  // problem fixed in v5.0
+        equalLengthMapped(pairs, squared(inc))  // problem fixed in v5.0
       }
 
       equalLength(pairs.append(pairs))
@@ -76,8 +75,7 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
         }
       }
       VersionContext.withVersions(VersionContext.JitActivationVersion, VersionContext.JitActivationVersion) {
-// TODO v5.0: make it work
-//        equalLengthMapped(pairs.append(pairs), squared(inc)) // problem fixed in v5.0
+        equalLengthMapped(pairs.append(pairs), squared(inc)) // problem fixed in v5.0
       }
     }
   }
@@ -383,6 +381,32 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
         res.toArray shouldBe col.toArray.distinct
         val pairs = col.zip(col)
         pairs.distinct.toArray shouldBe pairs.toArray.distinct
+    }
+  }
+
+  property("Coll.startsWith") {
+    val minSuccess = minSuccessful(50)
+    forAll(collGen, minSuccess) { col =>
+      val n = col.length / 2
+      val prefix = col.take(n)
+      val pairs = col.zip(col)
+      pairs.startsWith(prefix.zip(prefix)) shouldBe true
+      col.startsWith(prefix) shouldBe true
+      val pairOfCols = new PairOfCols[Int, Int](col, col)
+      pairOfCols.startsWith(pairOfCols.take(n)) shouldBe true
+    }
+  }
+
+  property("Coll.endsWith") {
+    val minSuccess = minSuccessful(50)
+    forAll(collGen, minSuccess) { col =>
+      val n = col.length / 2
+      val suffix = col.slice(n, col.length)
+      col.endsWith(suffix) shouldBe true
+      val pairs = col.zip(col)
+      pairs.endsWith(suffix.zip(suffix)) shouldBe true
+      val pairOfCols = new PairOfCols[Int, Int](col, col)
+      pairOfCols.endsWith(pairOfCols.slice(n, col.length)) shouldBe true
     }
   }
 

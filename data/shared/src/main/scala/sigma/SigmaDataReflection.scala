@@ -7,7 +7,7 @@ import sigma.ast.syntax._
 import sigma.data.KeyValueColl
 import sigma.eval.ErgoTreeEvaluator
 import sigma.reflection.ReflectionData.registerClassEntry
-import sigma.reflection.{ReflectionData, mkConstructor, mkMethod}
+import sigma.reflection.{ReflectionData, mkConstructor, mkField, mkMethod}
 import sigma.serialization.ValueCodes.OpCode
 
 /** Reflection metadata for `interpreter` module.
@@ -82,6 +82,22 @@ object SigmaDataReflection {
     constructors = Array(
       mkConstructor(Array(classOf[Value[_]])) { args =>
         new ByteArrayToBigInt(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ByteArrayToLong],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ByteArrayToLong(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[LongToByteArray],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new LongToByteArray(args(0).asInstanceOf[Value[SLong.type]])
       }
     )
   )
@@ -220,12 +236,6 @@ object SigmaDataReflection {
   { val clazz = SAvlTreeMethods.getClass
     registerClassEntry(clazz,
       methods = Map(
-        mkMethod(clazz, "update_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
-          obj.asInstanceOf[SAvlTreeMethods.type].update_eval(args(0).asInstanceOf[MethodCall],
-            args(1).asInstanceOf[AvlTree],
-            args(2).asInstanceOf[KeyValueColl],
-            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
-        },
         mkMethod(clazz, "contains_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
           obj.asInstanceOf[SAvlTreeMethods.type].contains_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[AvlTree],
@@ -252,6 +262,18 @@ object SigmaDataReflection {
         },
         mkMethod(clazz, "insert_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
           obj.asInstanceOf[SAvlTreeMethods.type].insert_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[AvlTree],
+            args(2).asInstanceOf[KeyValueColl],
+            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "update_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SAvlTreeMethods.type].update_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[AvlTree],
+            args(2).asInstanceOf[KeyValueColl],
+            args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "insertOrUpdate_eval", Array[Class[_]](classOf[MethodCall], classOf[AvlTree], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SAvlTreeMethods.type].insertOrUpdate_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[AvlTree],
             args(2).asInstanceOf[KeyValueColl],
             args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
@@ -309,6 +331,18 @@ object SigmaDataReflection {
         mkMethod(clazz, "flatMap_eval", Array[Class[_]](classOf[MethodCall], classOf[Coll[_]], classOf[Function1[_,_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
           obj.asInstanceOf[SCollectionMethods.type].flatMap_eval(args(0).asInstanceOf[MethodCall],
             args(1).asInstanceOf[Coll[Any]], args(2).asInstanceOf[Any => Coll[Any]])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "reverse_eval", Array[Class[_]](classOf[MethodCall], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SCollectionMethods.type].reverse_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[Coll[Any]])(args(2).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "startsWith_eval", Array[Class[_]](classOf[MethodCall], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SCollectionMethods.type].startsWith_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[Coll[Any]], args(2).asInstanceOf[Coll[Any]])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "endsWith_eval", Array[Class[_]](classOf[MethodCall], classOf[Coll[_]], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SCollectionMethods.type].endsWith_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[Coll[Any]], args(2).asInstanceOf[Coll[Any]])(args(3).asInstanceOf[ErgoTreeEvaluator])
         }
       )
     )
@@ -322,6 +356,26 @@ object SigmaDataReflection {
             args(1).asInstanceOf[SigmaDslBuilder],
             args(2).asInstanceOf[Coll[Byte]],
             args(3).asInstanceOf[Coll[Byte]])(args(4).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "serialize_eval", Array[Class[_]](classOf[MethodCall], classOf[SigmaDslBuilder], classOf[Object], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SGlobalMethods.type].serialize_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[SigmaDslBuilder],
+            args(2).asInstanceOf[SType#WrappedType])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "deserializeTo_eval", Array[Class[_]](classOf[MethodCall], classOf[SigmaDslBuilder], classOf[Coll[_]], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SGlobalMethods.type].deserializeTo_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[SigmaDslBuilder],
+            args(2).asInstanceOf[Coll[Byte]])(args(3).asInstanceOf[ErgoTreeEvaluator])
+        },
+        mkMethod(clazz, "powHit_eval", Array[Class[_]](classOf[MethodCall], classOf[SigmaDslBuilder], classOf[Int], classOf[Coll[_]], classOf[Coll[_]], classOf[Coll[_]], classOf[Int], classOf[ErgoTreeEvaluator])) { (obj, args) =>
+          obj.asInstanceOf[SGlobalMethods.type].powHit_eval(args(0).asInstanceOf[MethodCall],
+            args(1).asInstanceOf[SigmaDslBuilder],
+            args(2).asInstanceOf[Int],
+            args(3).asInstanceOf[Coll[Byte]],
+            args(4).asInstanceOf[Coll[Byte]],
+            args(5).asInstanceOf[Coll[Byte]],
+            args(6).asInstanceOf[Int]
+          )(args(7).asInstanceOf[ErgoTreeEvaluator])
         }
       )
     )
@@ -633,6 +687,146 @@ object SigmaDataReflection {
       mkConstructor(Array(classOf[Value[_]], classOf[Value[_]], classOf[Value[_]])) { args =>
         new Slice(args(0).asInstanceOf[CollectionValue[SType]],
           args(1).asInstanceOf[IntValue], args(2).asInstanceOf[IntValue])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[GetVar[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[Byte], classOf[SOption[_]])) { args =>
+        new GetVar[SType](args(0).asInstanceOf[Byte], args(1).asInstanceOf[SOption[SType]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[DeserializeRegister[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[RegisterId], classOf[SType], classOf[SOption[_]])) { args =>
+        new DeserializeRegister[SType](
+          args(0).asInstanceOf[RegisterId],
+          args(1).asInstanceOf[SType],
+          args(2).asInstanceOf[Option[Value[SType]]]
+        )
+      }
+    )
+  )
+
+  registerClassEntry(classOf[LongToByteArray],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new LongToByteArray(args(0).asInstanceOf[Value[SLong.type]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ValUse[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[Int], classOf[SType])) { args =>
+        new ValUse(args(0).asInstanceOf[Int], args(1).asInstanceOf[SType])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ByteArrayToLong],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ByteArrayToLong(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ConstantNode[_]],
+    constructors = Array(
+      mkConstructor(Array(classOf[java.lang.Object], classOf[SType])) { args =>
+        ConstantNode(args(0).asInstanceOf[SType#WrappedType], args(1).asInstanceOf[SType])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[CreateProveDlog],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new CreateProveDlog(args(0).asInstanceOf[Value[SGroupElement.type]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[DecodePoint],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new DecodePoint(args(0).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[ExtractBytes],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new ExtractBytes(args(0).asInstanceOf[Value[SBox.type]])
+      }
+    )
+  )
+
+  { val clazz = sigma.ast.Global.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.GroupGenerator.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = Height.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Inputs.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.LastBlockUtxoRootHash.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = MinerPubkey.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Outputs.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  { val clazz = sigma.ast.Self.getClass
+    registerClassEntry(clazz,
+      fields = Map( mkField(clazz, "MODULE$", clazz) )
+    )
+  }
+
+  registerClassEntry(classOf[Xor],
+    constructors = Array(
+      mkConstructor(Array(classOf[ast.Value[_]], classOf[ast.Value[_]])) { args =>
+        new Xor(args(0).asInstanceOf[Value[SByteArray]], args(1).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
+  registerClassEntry(classOf[XorOf],
+    constructors = Array(
+      mkConstructor(Array(classOf[Value[_]])) { args =>
+        new XorOf(args(0).asInstanceOf[Value[SCollection[SBoolean.type]]])
       }
     )
   )

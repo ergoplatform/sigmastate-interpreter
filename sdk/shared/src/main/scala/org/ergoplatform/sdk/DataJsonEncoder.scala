@@ -16,6 +16,7 @@ import scorex.util.encode.Base16
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
 import sigma.ast._
+import sigma.crypto.BigIntegers
 import sigma.eval.SigmaDsl
 import sigma.serialization.SerializerException
 import sigma.serialization.{DataSerializer, SigmaSerializer}
@@ -53,6 +54,8 @@ object DataJsonEncoder {
     case SLong => v.asInstanceOf[Long].asJson
     case SBigInt =>
       encodeBytes(v.asInstanceOf[BigInt].toBytes.toArray)
+    case SUnsignedBigInt =>
+      encodeBytes(v.asInstanceOf[UnsignedBigInt].toBytes.toArray)
     case SString =>
       encodeBytes(v.asInstanceOf[String].getBytes)
     case tColl: SCollectionType[a] =>
@@ -122,6 +125,10 @@ object DataJsonEncoder {
       val w = SigmaSerializer.startWriter()
       DataSerializer.serialize(v, tpe, w)
       encodeBytes(w.toBytes)
+    case SHeader =>
+      val w = SigmaSerializer.startWriter()
+      DataSerializer.serialize(v, tpe, w)
+      encodeBytes(w.toBytes)
     case SAvlTree =>
       val w = SigmaSerializer.startWriter()
       DataSerializer.serialize(v, tpe, w)
@@ -167,6 +174,8 @@ object DataJsonEncoder {
       case SLong => json.asNumber.get.toLong.get
       case SBigInt =>
         SigmaDsl.BigInt(new BigInteger(decodeBytes(json)))
+      case SUnsignedBigInt =>
+        SigmaDsl.UnsignedBigInt(BigIntegers.fromUnsignedByteArray(decodeBytes(json)))
       case SString =>
         new String(decodeBytes(json))
       case tColl: SCollectionType[a] =>
@@ -203,6 +212,10 @@ object DataJsonEncoder {
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
         DataSerializer.deserialize(SSigmaProp, r)
+      case SHeader => // for Sigma < 6.0 , exception will be thrown by DataSerializer
+        val str = decodeBytes(json)
+        val r = SigmaSerializer.startReader(str)
+        DataSerializer.deserialize(SHeader, r)
       case SBox =>
         val value = decodeData(json.hcursor.downField(s"value").focus.get, SLong)
         val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(decodeBytes(json.hcursor.downField(s"ergoTree").focus.get))

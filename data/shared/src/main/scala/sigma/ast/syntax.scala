@@ -40,6 +40,7 @@ object syntax {
   type LongConstant = Constant[SLong.type]
   type StringConstant = Constant[SString.type]
   type BigIntConstant = Constant[SBigInt.type]
+  type UnsignedBigIntConstant = Constant[SUnsignedBigInt.type]
   type BoxConstant = Constant[SBox.type]
   type GroupElementConstant = Constant[SGroupElement.type]
   type SigmaPropConstant = Constant[SSigmaProp.type]

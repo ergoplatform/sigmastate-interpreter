@@ -190,7 +190,7 @@ object Operations {
   }
 
   object DeserializeRegisterInfo extends InfoObject {
-    private val func = predefinedOps.funcs("executeFromSelfReg")
+    private val func = predefinedOps.funcs("executeFromSelfRegWithDefault")
     val idArg: ArgInfo = func.argInfo("id")
     val defaultArg: ArgInfo = func.argInfo("default")
     val argInfos: Seq[ArgInfo] = Array(idArg, defaultArg)

@@ -9,20 +9,19 @@ import scorex.crypto.hash.{Blake2b256, Digest32}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast._
 import sigmastate._
-import sigmastate.eval.IRContext
 import sigmastate.eval._
 import sigma.Extensions.ArrayOps
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 import sigma.ast.syntax._
-import sigma.Coll
+import sigma.{AvlTree, Coll, Colls, Context}
 import sigma.ast.SAvlTree
 import sigma.ast.syntax.{GetVarByteArray, OptionValueOps}
+import sigma.compiler.ir.IRContext
 import sigma.data.{AvlTreeData, AvlTreeFlags, CSigmaProp, TrivialProp}
 import sigma.eval.SigmaDsl
 import sigma.interpreter.ProverResult
-import sigma.{AvlTree, Context}
 import sigmastate.eval.Extensions.AvlTreeOps
 
 
@@ -30,7 +29,7 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps { suite =>
   import org.ergoplatform.dsl.AvlTreeHelpers._
   lazy val spec = TestContractSpec(suite)(new TestingIRContext)
-  lazy val prover = spec.ProvingParty("Alice")
+  lazy val prover                         = spec.ProvingParty("Alice")
   private implicit lazy val IR: IRContext = spec.IR
 
   private val reg1 = ErgoBox.nonMandatoryRegisters(0)
@@ -38,9 +37,6 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
 
   def genKey(str: String): ADKey = ADKey @@@ Blake2b256("key: " + str)
   def genValue(str: String): ADValue = ADValue @@@ Blake2b256("val: " + str)
-
-  val inKey = genKey("init key")
-  val inValue = genValue("init value")
 
   property("avl tree - removals") {
     case class AvlTreeContract[Spec <: ContractSpec]
@@ -204,7 +200,7 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
 
     val treeData = new AvlTreeData(digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
 
-    val env = Map("key" -> key, "proof" -> proof)
+    val env = Map("key" -> Colls.fromArray(key), "proof" -> Colls.fromArray(proof))
     val prop = compile(env, """SELF.R4[AvlTree].get.contains(key, proof)""").asBoolValue.toSigmaProp
 
     val propExp = IR.builder.mkMethodCall(
@@ -374,7 +370,7 @@ class AVLTreeScriptsSpecification extends CompilerTestingCommons
     val treeData = SigmaDsl.avlTree(new AvlTreeData(digest.toColl, AvlTreeFlags.ReadOnly, 32, None))
 
     val env = Map("proofId" -> proofId.toLong,
-                  "keys" -> ConcreteCollection.fromItems(genKey("3"), genKey("4"), genKey("5")))
+                  "keys" -> Colls.fromItems(Colls.fromArray(genKey("3")), Colls.fromArray(genKey("4")), Colls.fromArray(genKey("5"))))
     val prop = compile(env,
       """{
         |  val tree = SELF.R4[AvlTree].get

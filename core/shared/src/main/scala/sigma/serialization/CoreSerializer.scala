@@ -9,7 +9,7 @@ import java.nio.ByteBuffer
 /** Implementation of [[Serializer]] provided by `sigma-core` module. */
 abstract class CoreSerializer[TFamily, T <: TFamily] extends Serializer[TFamily, T, CoreByteReader, CoreByteWriter] {
 
-  def error(msg: String) = throw SerializerException(msg, None)
+  def error(msg: String) = throw SerializerException(msg)
 
   /** Serializes the given 'obj' to a new array of bytes using this serializer. */
   final def toBytes(obj: T): Array[Byte] = {

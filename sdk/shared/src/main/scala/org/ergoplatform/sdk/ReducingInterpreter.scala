@@ -34,8 +34,10 @@ class ReducingInterpreter(params: BlockchainParameters) extends ErgoLikeInterpre
     val initCost = context.initCost
     val remainingLimit = context.costLimit - initCost
     if (remainingLimit <= 0)
-      throw new CostLimitException(initCost,
-        s"Estimated execution cost $initCost exceeds the limit ${context.costLimit}", None)
+      throw new CostLimitException(
+        initCost,
+        s"Estimated execution cost $initCost exceeds the limit ${context.costLimit}"
+      )
     val ctxUpdInitCost = context.withInitCost(initCost)
     val res = fullReduction(ergoTree, ctxUpdInitCost, env)
     ReducedInputData(res, ctxUpdInitCost.extension)

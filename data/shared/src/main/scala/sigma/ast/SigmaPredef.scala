@@ -2,15 +2,22 @@ package sigma.ast
 
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
 import org.ergoplatform.{ErgoAddressEncoder, P2PKAddress}
+import org.ergoplatform.ErgoBox.RegisterId
 import scorex.util.encode.{Base16, Base58, Base64}
+import sigma.data._
+import sigma.{Colls}
 import sigma.ast.SCollection.{SByteArray, SIntArray}
 import sigma.ast.SOption.SIntOption
-import sigma.ast.SigmaPropConstant
 import sigma.ast.syntax._
 import sigma.data.Nullable
+import sigma.data.RType.asType
+import sigma.Evaluation.stypeToRType
+import scala.reflect.ClassTag
 import sigma.exceptions.InvalidArguments
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.ValueSerializer
+
+import java.math.BigInteger
 
 object SigmaPredef {
 
@@ -134,15 +141,16 @@ object SigmaPredef {
           Seq(ArgInfo("condition", "boolean value to embed in SigmaProp value")))
     )
 
-    val GetVarFunc = PredefinedFunc("getVar",
-      Lambda(Array(paramT), Array("varId" -> SByte), SOption(tT), None),
+    val GetVarFromInputFunc = PredefinedFunc("getVarFromInput",
+      Lambda(Array(paramT), Array("inputId" -> SShort, "varId" -> SByte), SOption(tT), None),
       PredefFuncInfo(
-        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(id: Constant[SNumericType]@unchecked)) =>
-          mkGetVar(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
+        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked)) =>
+          mkMethodCall(Context, SContextMethods.getVarFromInputMethod, IndexedSeq(SShort.downcast(inputId.value.asInstanceOf[AnyVal]), SByte.downcast(varId.value.asInstanceOf[AnyVal])), Map(tT -> rtpe))
         }),
-      OperationInfo(GetVar,
+      OperationInfo(MethodCall,
         "Get context variable with given \\lst{varId} and type.",
-        Seq(ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
+        Seq(ArgInfo("inputId", "\\lst{Byte} index of input to read context variable from"),
+            ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
     )
 
     def PKFunc(networkPrefix: NetworkPrefix) = PredefinedFunc("PK",
@@ -177,6 +185,33 @@ object SigmaPredef {
       }),
       OperationInfo(Constant, "Deserializes values from Base58 encoded binary data at compile time into a value of type T.",
           Seq(ArgInfo("", "")))
+    )
+
+    val BigIntFromStringFunc = PredefinedFunc("bigInt",
+      Lambda(Array("input" -> SString), SBigInt, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: EvaluatedValue[SString.type]@unchecked)) =>
+          BigIntConstant(new BigInteger(arg.value))
+        }),
+      OperationInfo(Constant,
+        """Parsing string literal argument as a 256-bit signed big integer.""".stripMargin,
+        Seq(ArgInfo("", "")))
+    )
+
+    val UBigIntFromStringFunc = PredefinedFunc("unsignedBigInt",
+      Lambda(Array("input" -> SString), SUnsignedBigInt, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: EvaluatedValue[SString.type]@unchecked)) =>
+          val bi = new BigInteger(arg.value)
+          if (bi.compareTo(BigInteger.ZERO) >= 0) {
+            UnsignedBigIntConstant(bi)
+          } else {
+            throw new InvalidArguments(s"Negative argument for unsignedBigInt()")
+          }
+        }),
+      OperationInfo(Constant,
+        """Parsing string literal argument as a 256-bit unsigned big integer.""".stripMargin,
+        Seq(ArgInfo("", "")))
     )
 
     val FromBase16Func = PredefinedFunc("fromBase16",
@@ -353,13 +388,23 @@ object SigmaPredef {
         ArgInfo("newValues", "new values to be injected into the corresponding positions in ErgoTree.constants array")))
     )
 
+    val GetVarFunc = PredefinedFunc("getVar",
+      Lambda(Array(paramT), Array("varId" -> SByte), SOption(tT), None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, SOption(rtpe), _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          mkGetVar(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
+        }),
+      OperationInfo(GetVar,
+        "Get context variable with given \\lst{varId} and type.",
+        Seq(ArgInfo("varId", "\\lst{Byte} identifier of context variable")))
+    )
+
     val ExecuteFromVarFunc = PredefinedFunc("executeFromVar",
-      Lambda(
-        Seq(paramT),
-        Array("id" -> SByte),
-        tT, None
-      ),
-      PredefFuncInfo(undefined),
+      Lambda(Array(paramT), Array("id" -> SByte), tT, None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          mkDeserializeContext(SByte.downcast(id.value.asInstanceOf[AnyVal]), rtpe)
+        }),
       OperationInfo(DeserializeContext,
         """Extracts context variable as \lst{Coll[Byte]}, deserializes it to script
          | and then executes this script in the current context.
@@ -371,23 +416,117 @@ object SigmaPredef {
         Seq(ArgInfo("id", "identifier of the context variable")))
     )
 
-    val ExecuteFromSelfRegFunc = PredefinedFunc("executeFromSelfReg",
+    val ExecuteFromSelfRegWithDefaultFunc = PredefinedFunc("executeFromSelfRegWithDefault",
       Lambda(
         Seq(paramT),
-        Array("id" -> SByte, "default" -> SOption(tT)),
+        Array("id" -> SInt, "default" -> tT),
         tT, None
       ),
-      PredefFuncInfo(undefined),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked, default)) =>
+          val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
+          if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
+            default.v
+          } else {
+            val r: RegisterId = org.ergoplatform.ErgoBox.registerByIndex(idx)
+            val d = Some(default.asValue[rtpe.type])
+            mkDeserializeRegister[rtpe.type](r, rtpe, d)
+          }
+        }),
       OperationInfo(DeserializeRegister,
         """Extracts SELF register as \lst{Coll[Byte]}, deserializes it to script
          | and then executes this script in the current context.
          | The original \lst{Coll[Byte]} of the script is available as \lst{SELF.getReg[Coll[Byte]](id)}.
          | Type parameter \lst{T} result type of the deserialized script.
          | Throws an exception if the actual script type doesn't conform to \lst{T}.
-         | Returns a result of the script execution in the current context
+         | Returns a result of the script execution in the current context or the default value
+         | provided when the specified register is unavailable
         """.stripMargin,
         Seq(ArgInfo("id", "identifier of the register"),
           ArgInfo("default", "optional default value, if register is not available")))
+    )
+
+    val SerializeFunc = PredefinedFunc("serialize",
+      Lambda(Seq(paramT), Array("value" -> tT), SByteArray, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (_, args @ Seq(value)) =>
+          MethodCall.typed[Value[SCollection[SByte.type]]](
+            Global,
+            SGlobalMethods.serializeMethod.withConcreteTypes(Map(tT -> value.tpe)),
+            args.toIndexedSeq,
+            Map()
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Serializes the given `value` into bytes using the default serialization format.
+        """.stripMargin,
+        Seq(ArgInfo("value", "value to serialize"))
+      )
+    )
+
+    val DeserializeToFunc = PredefinedFunc("deserializeTo",
+      Lambda(Seq(paramT), Array("bytes" -> SByteArray), tT, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (u, args) =>
+          val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
+          MethodCall(
+            Global,
+            SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> resType)),
+            args.toIndexedSeq,
+            Map(tT -> resType)
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Deserializes provided bytes into a value of given type using the default serialization format.
+        """.stripMargin,
+        Seq(ArgInfo("bytes", "bytes to deserialize"))
+      )
+    )
+
+    val FromBigEndianBytesFunc = PredefinedFunc("fromBigEndianBytes",
+      Lambda(Seq(paramT), Array("bytes" -> SByteArray), tT, None),
+      irInfo = PredefFuncInfo(
+        irBuilder = { case (u, args) =>
+          val resType = u.opType.tRange.asInstanceOf[SFunc].tRange
+          MethodCall(
+            Global,
+            SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(tT -> resType)),
+            args.toIndexedSeq,
+            Map(tT -> resType)
+          )
+        }),
+      docInfo = OperationInfo(MethodCall,
+        """Deserializes provided big endian bytes into a numeric value of given type.
+        """.stripMargin,
+        Seq(ArgInfo("bytes", "bytes to deserialize"))
+      )
+    )
+
+    val ExecuteFromSelfRegFunc = PredefinedFunc("executeFromSelfReg",
+      Lambda(
+        Seq(paramT),
+        Array("id" -> SInt),
+        tT, None
+      ),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
+          if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
+            throw new InvalidArguments(s"Invalid register specified $id")
+          }
+
+          val r: RegisterId = org.ergoplatform.ErgoBox.registerByIndex(idx)
+          mkDeserializeRegister[rtpe.type](r, rtpe, None)
+        }),
+      OperationInfo(DeserializeRegister,
+        """Extracts SELF register as \lst{Coll[Byte]}, deserializes it to script
+          | and then executes this script in the current context.
+          | The original \lst{Coll[Byte]} of the script is available as \lst{SELF.getReg[Coll[Byte]](id)}.
+          | Type parameter \lst{T} result type of the deserialized script.
+          | Throws an exception if the actual script type doesn't conform to \lst{T}.
+          | Returns a result of the script execution in the current context
+        """.stripMargin,
+        Seq(ArgInfo("id", "identifier of the register")))
     )
 
     val globalFuncs: Map[String, PredefinedFunc] = Seq(
@@ -402,6 +541,8 @@ object SigmaPredef {
       SigmaPropFunc,
       GetVarFunc,
       DeserializeFunc,
+      BigIntFromStringFunc,
+      UBigIntFromStringFunc,
       FromBase16Func,
       FromBase64Func,
       FromBase58Func,
@@ -416,7 +557,12 @@ object SigmaPredef {
       AvlTreeFunc,
       SubstConstantsFunc,
       ExecuteFromVarFunc,
-      ExecuteFromSelfRegFunc
+      ExecuteFromSelfRegFunc,
+      ExecuteFromSelfRegWithDefaultFunc,
+      SerializeFunc,
+      DeserializeToFunc,
+      GetVarFromInputFunc,
+      FromBigEndianBytesFunc
     ).map(f => f.name -> f).toMap
 
     def comparisonOp(symbolName: String, opDesc: ValueCompanion, desc: String, args: Seq[ArgInfo]) = {
@@ -530,7 +676,7 @@ object SigmaPredef {
 
     val funcs: Map[String, PredefinedFunc] = globalFuncs ++ infixFuncs ++ unaryFuncs
 
-    /** WARNING: This operations are not used in frontend, and should be be used.
+    /** WARNING: This operations are not used in frontend, and should not be used.
       * They are used in SpecGen only the source of metadata for the corresponding ErgoTree nodes.
       */
     val specialFuncs: Map[String, PredefinedFunc] = Seq(

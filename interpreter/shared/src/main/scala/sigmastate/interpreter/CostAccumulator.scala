@@ -62,7 +62,9 @@ class CostAccumulator(initialCost: JitCost, costLimit: Option[JitCost]) {
       val accumulatedCost = currentScope.currentCost
       if (accumulatedCost > limit) {
         throw new CostLimitException(
-          accumulatedCost.value, CostLimitException.msgCostLimitError(accumulatedCost, limit), None)
+          accumulatedCost.value,
+          CostLimitException.msgCostLimitError(accumulatedCost, limit)
+        )
       }
     }
   }

@@ -1,7 +1,7 @@
 declare module "sigmastate-js/main" {
     import {
         Amount,
-        Box,
+        Box as FBox,
         EIP12UnsignedInput,
         NonMandatoryRegisters, SignedTransaction, TokenAmount,
         UnsignedTransaction
@@ -173,6 +173,10 @@ declare module "sigmastate-js/main" {
         valueLengthOpt: number | undefined;
     }
 
+    export declare class Box {
+        box: FBox<Amount, NonMandatoryRegisters>;
+    }
+
     export declare class PreHeader {
         /** Block version, to be increased on every soft and hardfork. */
         version: number;
@@ -300,6 +304,8 @@ declare module "sigmastate-js/main" {
         static ofGroupElement(pointHex: string): Value<GroupElement>;
 
         static ofSigmaProp(pointHex: string): Value<SigmaProp>;
+
+        static ofBox(box: FBox<Amount, NonMandatoryRegisters>): Value<Box>;
 
         static pairOf<R, L>(left: Value<R>, right: Value<L>): Value<[R, L]>;
 
@@ -498,7 +504,7 @@ declare module "sigmastate-js/main" {
             stateCtx: BlockchainStateContext,
             unsignedTx: UnsignedTransaction,
             boxesToSpend: EIP12UnsignedInput[],
-            dataInputs: Box<Amount, NonMandatoryRegisters>[],
+            dataInputs: FBox<Amount, NonMandatoryRegisters>[],
             tokensToBurn: TokenAmount<Amount>[],
             baseCost: number): ReducedTransaction;
 
