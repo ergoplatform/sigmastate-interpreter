@@ -324,8 +324,8 @@ class Context {
   /** A collection of outputs of the current transaction. */
   def OUTPUTS: Coll[Box]
   
-  /** Authenticated dynamic dictionary digest representing Utxo state before
-    * current state. 
+  /** 
+    * Digest of AVL+ tree over UTXO set corresponding to the moment AFTER last block application. 
     */
   def LastBlockUtxoRootHash: AvlTree
   

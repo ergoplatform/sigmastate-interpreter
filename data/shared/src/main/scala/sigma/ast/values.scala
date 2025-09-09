@@ -1345,13 +1345,14 @@ case class MethodCall(
           argsBuf(len + i) = extra(i)
         }
         var res: Any = null
-        if(method.objType.typeId == SPreHeader.typeId && !E.context.softFieldsAllowed) {
-          if(method.methodId == SPreHeaderMethods.timestampMethod.methodId ||
-              method.methodId == SPreHeaderMethods.minerPkMethod.methodId ||
-              method.methodId == SPreHeaderMethods.votesMethod.methodId) {
-            throw new SoftFieldAccessException(method.name)
-          }
+
+        // Check if accessing soft fields of PreHeader when soft fields are not allowed
+        if (method.objType.typeId == SPreHeader.typeId &&
+              !E.context.softFieldsAllowed &&
+              SPreHeaderMethods.softMethodIds.contains(method.methodId)) {
+          throw new SoftFieldAccessException(method.name)
         }
+
         E.addFixedCost(fixed, method.opDesc) {
           res = method.invokeFixed(objV, argsBuf)
         }
