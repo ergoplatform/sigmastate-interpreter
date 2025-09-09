@@ -539,6 +539,19 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     )
   }
 
+  property("preheader soft fields access - MinerPubKey AST node") {
+    val prop = mkTestErgoTree(EQ(SizeOf(MinerPubkey), 33))
+    val msg = Array.fill(32)(Random.nextInt(100).toByte)
+    val proof = NoProof
+    val env = testingContext(614401, softFieldsAllowed = true)
+    verifier.verify(prop, env, proof, msg).map(_._1).getOrElse(false) shouldBe true
+
+    assertExceptionThrown(
+      verifier.verify(prop, testingContext(614401, softFieldsAllowed = false), proof, msg).get,
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+  }
+
   property("header.id") {
     testEval(
       """ {
