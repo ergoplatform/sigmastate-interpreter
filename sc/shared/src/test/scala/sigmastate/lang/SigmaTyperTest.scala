@@ -194,6 +194,18 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
   property("types") {
+    an[TyperException] should be thrownBy {
+      typecheck(env, "{val X: Boolean = 10}") shouldBe SBoolean
+    }
+
+    val code =
+      s"""{
+         |  val price: Long  = 1.toBigInt
+         |  price
+         |}""".stripMargin
+
+    typefail(env, code, 2, 7)
+
     typecheck(env, "{val X: Int = 10; 3 > 2}") shouldBe SBoolean
     typecheck(env, "{val X: (Int, Boolean) = (10, true); 3 > 2}") shouldBe SBoolean
     typecheck(env, "{val X: Coll[Int] = Coll(1,2,3); X.size}") shouldBe SInt

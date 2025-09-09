@@ -1,6 +1,7 @@
 import scala.language.postfixOps
 import scala.sys.process.*
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleSplitStyle}
+import sbt.Keys.localStaging
 
 organization := "org.scorexfoundation"
 
@@ -26,9 +27,9 @@ lazy val commonSettings = Seq(
     }
   },
   javacOptions ++= javacReleaseOption,
-  resolvers += Resolver.sonatypeRepo("public"),
+  resolvers ++= Resolver.sonatypeOssRepos("releases"),
   licenses := Seq("CC0" -> url("https://creativecommons.org/publicdomain/zero/1.0/legalcode")),
-  homepage := Some(url("https://github.com/ScorexFoundation/sigmastate-interpreter")),
+  homepage := Some(url("https://github.com/ergoplatform/sigmastate-interpreter")),
   description := "Interpreter of a Sigma-State language",
   pomExtra :=
       <developers>
@@ -49,11 +50,15 @@ lazy val commonSettings = Seq(
         </developer>
       </developers>,
   publishMavenStyle := true,
-  publishTo := sonatypePublishToBundle.value,
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
+  },
   scmInfo := Some(
       ScmInfo(
-          url("https://github.com/ScorexFoundation/sigmastate-interpreter"),
-          "scm:git@github.com:ScorexFoundation/sigmastate-interpreter.git"
+          url("https://github.com/ergoplatform/sigmastate-interpreter"),
+          "scm:git@github.com:ergoplatform/sigmastate-interpreter.git"
       )
   )
 )
@@ -388,7 +393,7 @@ credentials ++= (for {
 credentials ++= (for {
   username <- Option(System.getenv().get("SONATYPE_USERNAME"))
   password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
-} yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq
+} yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)).toSeq
 
 
 // PGP key for signing a release build published to sonatype

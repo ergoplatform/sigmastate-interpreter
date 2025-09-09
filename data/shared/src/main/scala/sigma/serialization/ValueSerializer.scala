@@ -1,6 +1,7 @@
 package sigma.serialization
 
 import org.ergoplatform.validation.ValidationRules.CheckValidOpCode
+import sigma.VersionContext
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.ast._
@@ -150,10 +151,18 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     OneArgumentOperationSerializer(BitInversion, mkBitInversion[SNumericType])
   ))
 
-  private def serializable(v: Value[SType]): Value[SType] = v match {
-    case upcast: Upcast[SNumericType, _]@unchecked =>
-      upcast.input
-    case _ => v
+  private def serializable(v: Value[SType]): Value[SType] = {
+    // starting with v3 trees, we preserve tree tree as is during
+    // serialization, before, serializer strips leading Upcast
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      v
+    } else {
+      v match {
+        case upcast: Upcast[SNumericType, _] @unchecked =>
+          upcast.input
+        case _ => v
+      }
+    }
   }
 
   override def getSerializer(opCode: OpCode): ValueSerializer[_ <: Value[SType]] = {

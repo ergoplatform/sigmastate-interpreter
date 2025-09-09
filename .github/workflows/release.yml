@@ -11,6 +11,8 @@ jobs:
   publish_release:
     name: Publish release to Sonatype
     runs-on: ubuntu-latest
+    permissions:
+          id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +52,7 @@ jobs:
           GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
 
       - name: Publish release ${{ github.ref }}
-        run: sbt +publishSigned sonatypeBundleRelease
+        run: sbt +publishSigned sonaRelease
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
