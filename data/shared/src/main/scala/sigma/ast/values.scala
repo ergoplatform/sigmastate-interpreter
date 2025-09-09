@@ -1440,7 +1440,9 @@ object Lambda extends ValueCompanion {
       body: Value[SType]): Lambda = Lambda(Nil, args, NoType, Some(body))
 }
 
-/** When interpreted evaluates to a ByteArrayConstant built from Context.minerPubkey */
+/** When interpreted evaluates to a ByteArrayConstant built from Context.minerPubkey
+  * @note throws exception if soft field access is not allowed in current context
+  */
 case object MinerPubkey extends NotReadyValueByteArray with ValueCompanion {
   override def opCode: OpCode = OpCodes.MinerPubkeyCode
   /** Cost of calling Context.minerPubkey Scala method. */
@@ -1449,7 +1451,7 @@ case object MinerPubkey extends NotReadyValueByteArray with ValueCompanion {
   override def companion = this
   protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
     addCost(this.costKind)
-    E.context.minerPubKey
+    E.context.minerPubKey // exception is thrown here if soft field access not allowed
   }
 }
 

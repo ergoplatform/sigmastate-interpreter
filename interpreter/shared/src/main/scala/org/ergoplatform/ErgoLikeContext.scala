@@ -44,6 +44,7 @@ import sigmastate.interpreter.InterpreterContext
   *                               - in v4.0 must be 1
   *                               - in v5.x must be 2
   *                               etc.
+  * @param softFieldsAllowed      - whether soft fields of `preHeader` could be accessed during execution
   */
 class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
                       val headers: Coll[Header],

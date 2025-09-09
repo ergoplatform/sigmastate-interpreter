@@ -33,5 +33,10 @@ object CostLimitException {
       limit: JitCost) = s"Estimated execution cost $cost exceeds the limit $limit"
 }
 
+/**
+  * Exception thrown when a soft field is accessed when disallowed.
+  *
+  * @param fieldName the name of the soft field of a block header that was accessed
+  */
 class SoftFieldAccessException(fieldName: String)
   extends SigmaException(s"Soft field $fieldName accessed when disallowed", None)
