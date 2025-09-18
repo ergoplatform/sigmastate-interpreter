@@ -138,6 +138,8 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
   property("Byte methods - 6.0 features") {
 
+    // checked w. https://bitwisecmd.com/
+
     lazy val bitOr = newFeature(
       { (x: (Byte, Byte)) => (x._1 | x._2).toByteExact },
       "{ (x: (Byte, Byte)) => x._1.bitwiseOr(x._2) }",
@@ -154,7 +156,14 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
     verifyCases(
       Seq(
-        (1.toByte, 2.toByte) -> new Expected(ExpectedResult(Success(3.toByte), None))
+        (1.toByte, 2.toByte) -> new Expected(ExpectedResult(Success(3.toByte), None)),
+        (Byte.MinValue, 1.toByte) -> new Expected(ExpectedResult(Success((Byte.MinValue + 1).toByte), None)),
+        (Byte.MaxValue, (-1).toByte) -> new Expected(ExpectedResult(Success((-1).toByte), None)),
+        (0.toByte, 0.toByte) -> new Expected(ExpectedResult(Success(0.toByte), None)),
+        (100.toByte, 50.toByte) -> new Expected(ExpectedResult(Success(118.toByte), None)),
+        ((-50).toByte, (-30).toByte) -> new Expected(ExpectedResult(Success((-18).toByte), None)),
+        (Byte.MaxValue, Byte.MaxValue) -> new Expected(ExpectedResult(Success((Byte.MaxValue).toByte), None)),
+        (Byte.MinValue, Byte.MinValue) -> new Expected(ExpectedResult(Success(Byte.MinValue.toByte), None))
       ),
       bitOr
     )
@@ -196,7 +205,14 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
     verifyCases(
       Seq(
-        (3.toByte, 5.toByte) -> new Expected(ExpectedResult(Success(1.toByte), None))
+        (3.toByte, 5.toByte) -> new Expected(ExpectedResult(Success(1.toByte), None)),
+        (15.toByte, 7.toByte) -> new Expected(ExpectedResult(Success(7.toByte), None)),
+        (255.toByte, 128.toByte) -> new Expected(ExpectedResult(Success(128.toByte), None)),
+        (0.toByte, 0.toByte) -> new Expected(ExpectedResult(Success(0.toByte), None)),
+        (255.toByte, 255.toByte) -> new Expected(ExpectedResult(Success(255.toByte), None)),
+        (1.toByte, 3.toByte) -> new Expected(ExpectedResult(Success(1.toByte), None)),
+        (240.toByte, 15.toByte) -> new Expected(ExpectedResult(Success(0.toByte), None)),
+        (170.toByte, 85.toByte) -> new Expected(ExpectedResult(Success(0.toByte), None))
       ),
       bitAnd
     )
@@ -217,7 +233,11 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
     verifyCases(
       Seq(
-        (3.toByte, 5.toByte) -> new Expected(ExpectedResult(Success(6.toByte), None))
+        (3.toByte, 5.toByte) -> new Expected(ExpectedResult(Success(6.toByte), None)),
+        (0.toByte, 0.toByte) -> new Expected(ExpectedResult(Success(0.toByte), None)),
+        (Byte.MaxValue, 0.toByte) -> new Expected(ExpectedResult(Success(Byte.MaxValue), None)),
+        (Byte.MinValue, Byte.MaxValue) -> new Expected(ExpectedResult(Success((-1).toByte), None)),
+        (100.toByte, 55.toByte) -> new Expected(ExpectedResult(Success(83.toByte), None))
       ),
       bitXor
     )
@@ -267,7 +287,16 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       Seq(
         83.toByte -> new Expected(ExpectedResult(Success(Coll(false, true, false, true, false, false, true, true)), None)),
         -55.toByte -> new Expected(ExpectedResult(Success(Coll(true, true, false, false, true, false, false, true)), None)),
-        -1.toByte -> new Expected(ExpectedResult(Success(Coll(true, true, true, true, true, true, true, true)), None))
+        -1.toByte -> new Expected(ExpectedResult(Success(Coll(true, true, true, true, true, true, true, true)), None)),
+        0.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, false, false, false, false, false)), None)),
+        1.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, false, false, false, false, true)), None)),
+        2.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, false, false, false, true, false)), None)),
+        4.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, false, false, true, false, false)), None)),
+        8.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, false, true, false, false, false)), None)),
+        16.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, false, true, false, false, false, false)), None)),
+        32.toByte -> new Expected(ExpectedResult(Success(Coll(false, false, true, false, false, false, false, false)), None)),
+        64.toByte -> new Expected(ExpectedResult(Success(Coll(false, true, false, false, false, false, false, false)), None)),
+        -128.toByte -> new Expected(ExpectedResult(Success(Coll(true, false, false, false, false, false, false, false)), None))
       ),
       toBits
     )

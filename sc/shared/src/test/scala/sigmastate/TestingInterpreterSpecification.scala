@@ -338,7 +338,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   }
 
   property("Evaluate powHit") {
-    val source =
+    val source1 =
       """
         |{
         | val b = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614943")
@@ -351,10 +351,25 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
         | Global.powHit(k, msg, nonce, h, N) <= b // hit == b in this example
         |}
         |""".stripMargin
+    val source2 =
+      """
+        |{
+        | val b = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614944") // b + 1
+        | val k = 32
+        | val N = 1024 * 1024
+        | val msg = fromBase16("0a101b8c6a4f2e")
+        | val nonce = fromBase16("000000000000002c")
+        | val h = fromBase16("00000000")
+        |
+        | Global.powHit(k, msg, nonce, h, N) < b // hit < b in this example
+        |}
+        |""".stripMargin
     if (ergoTreeVersionInTests >= V6SoftForkVersion) {
-      testEval(source)
+      testEval(source1)
+      testEval(source2)
     } else {
-      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source)
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source1)
+      an [sigmastate.exceptions.MethodNotFound] should be thrownBy testEval(source2)
     }
   }
 
@@ -492,8 +507,9 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   }
 
   property("deserialize") {
-    val str = Base58.encode(ValueSerializer.serialize(ByteArrayConstant(Array[Byte](2))))
-    testEval(s"""deserialize[Coll[Byte]]("$str")(0) == 2""")
+    val bytes = Array[Byte](2, 3, 5, 7, 11)
+    val str = Base58.encode(ValueSerializer.serialize(ByteArrayConstant(bytes)))
+    testEval(s"""deserialize[Coll[Byte]]("$str") == Coll[Byte](2.toByte, 3.toByte, 5.toByte, 7.toByte, 11.toByte)""")
   }
 
   property("header.id") {

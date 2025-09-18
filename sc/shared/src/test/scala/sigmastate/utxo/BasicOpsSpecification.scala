@@ -11,7 +11,7 @@ import scorex.util.encode.Base16
 import scorex.utils.Ints
 import scorex.util.serialization.VLQByteBufferWriter
 import scorex.utils.Longs
-import sigma.{Coll, Colls, GroupElement, SigmaTestingData, VersionContext}
+import sigma.{Coll, Colls, GroupElement, SigmaException, SigmaTestingData, VersionContext}
 import sigma.Extensions.ArrayOps
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
@@ -607,6 +607,69 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("modInverse - zero modulus") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("3")
+           |   val m = unsignedBigInt("0")
+           |   bi.modInverse(m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      // On JVM, InvocationTargetException wrapping "modulus not positive inside" error is thrown
+      // Checked against Exception as InvocationTargetException is not projected into JS
+      an[Exception] should be thrownBy miTest()
+    }
+  }
+
+  property("modInverse - non-coprime numbers") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("2")
+           |   val m = unsignedBigInt("4")
+           |   bi.modInverse(m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      an[Exception] should be thrownBy miTest()
+    }
+  }
+
+  property("modInverse - large numbers") {
+    val bigModulus = CryptoConstants.groupOrder.subtract(BigInteger.ONE)
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("${bigModulus.toString}")
+           |   val m = unsignedBigInt("${CryptoConstants.groupOrder.toString}")
+           |   bi.modInverse(m) == unsignedBigInt("${bigModulus.toString}")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
   property("modInverse - zero") {
     def miTest() = {
       test("modInverse", env, ext,
@@ -648,6 +711,112 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("modPlus - zero modulus") {
+    def miTest() = {
+      test("mod plus zero modulus", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = unsignedBigInt("0")
+           |   bi1.plusMod(bi2, m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      an[Exception] should be thrownBy miTest()
+    }
+  }
+
+  property("modPlus - identity") {
+    def miTest() = {
+      test("mod plus identity", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("0")
+           |   val m = unsignedBigInt("575879797")
+           |   bi1.plusMod(bi2, m) == bi1.mod(m)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("modPlus - commutative") {
+    def miTest() = {
+      test("mod plus commutative", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = unsignedBigInt("575879797")
+           |   bi1.plusMod(bi2, m) == bi2.plusMod(bi1, m)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("modPlus - modulus one") {
+    def miTest() = {
+      test("mod plus modulus one", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = unsignedBigInt("1")
+           |   bi1.plusMod(bi2, m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("modPlus - addition eq modulus") {
+    def miTest() = {
+      test("addition eq mod", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("575879796")
+           |   val bi2 = unsignedBigInt("1")
+           |   val m = unsignedBigInt("575879797")
+           |   val result = bi1.plusMod(bi2, m)
+           |   result < m && result == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
   property("mod ops - subtract") {
     def miTest() = {
       test("subtractMod", env, ext,
@@ -656,6 +825,173 @@ class BasicOpsSpecification extends CompilerTestingCommons
            |   val bi2 = unsignedBigInt("4")
            |   val m = unsignedBigInt("575879797")
            |   bi1.subtractMod(bi2, m) == unsignedBigInt("575879795")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract with zero modulus") {
+    def miTest() = {
+      test("subtractModZero", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("2")
+           |   val bi2 = unsignedBigInt("4")
+           |   val m = unsignedBigInt("0")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      an[Exception] should be thrownBy miTest()
+    }
+  }
+
+  property("mod ops - subtract with identity") {
+    def miTest() = {
+      test("subtractModIdentity", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("5")
+           |   val bi2 = unsignedBigInt("0")
+           |   val m = unsignedBigInt("10")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("5")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract with negative result") {
+    def miTest() = {
+      test("subtractModNegative", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("3")
+           |   val bi2 = unsignedBigInt("7")
+           |   val m = unsignedBigInt("10")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("6")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("Unsigned biginteger negation") {
+      def miTest() = {
+        test("negation", env, ext,
+          s"""{
+             |   val bi1 = unsignedBigInt("3")
+             |   -bi1 < 0
+             |}""".stripMargin,
+          null,
+          true
+        )
+      }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy miTest()
+    } else {
+      a[SigmaException] should be thrownBy miTest()
+    }
+  }
+
+  property("mod ops - subtract with large numbers") {
+    def miTest() = {
+      test("subtractModLarge", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("1000000000000000000000000")
+           |   val bi2 = unsignedBigInt("1")
+           |   val m = unsignedBigInt("1000000000000000000000001")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("999999999999999999999999")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract with modulus one") {
+    def miTest() = {
+      test("subtractModOne", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("5")
+           |   val bi2 = unsignedBigInt("3")
+           |   val m = unsignedBigInt("1")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract with equal values") {
+    def miTest() = {
+      test("subtractModEqual", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("5")
+           |   val bi2 = unsignedBigInt("5")
+           |   val m = unsignedBigInt("10")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("0")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract with maximum values") {
+    def miTest() = {
+      test("subtractModMax", env, ext,
+        s"""{
+           |   val maxVal = unsignedBigInt("${CryptoConstants.groupOrder.toString}")
+           |   val bi1 = maxVal
+           |   val bi2 = unsignedBigInt("1")
+           |   val m = maxVal
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("${CryptoConstants.groupOrder.subtract(BigInteger.ONE).toString}")
            |}""".stripMargin,
         null,
         true
@@ -3144,30 +3480,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     )
   }
 
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should always be positive") {
-    test("BATBI1", env, ext,
-      "{ byteArrayToBigInt(Coll[Byte](-1.toByte)) > 0 }",
-      GT(ByteArrayToBigInt(ConcreteCollection.fromItems(ByteConstant(-1))), BigIntConstant(0)).toSigmaProp,
-      onlyPositive = true
-    )
-  }
-
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should not exceed dlog group order q (it is NOT ModQ integer)") {
-    val q = CryptoConstants.dlogGroup.q
-    val bytes = q.add(BigInteger.valueOf(1L)).toByteArray
-    val itemsStr = bytes.map(v => s"$v.toByte").mkString(",")
-    assertExceptionThrown(
-      test("BATBI1", env, ext,
-        s"{ byteArrayToBigInt(Coll[Byte]($itemsStr)) > 0 }",
-        GT(ByteArrayToBigInt(ConcreteCollection.fromSeq(bytes.map(ByteConstant(_)))), BigIntConstant(0)).toSigmaProp,
-        onlyPositive = true
-      ),
-      e => rootCause(e).isInstanceOf[ArithmeticException]
-    )
-  }
-
   property("ByteArrayToBigInt: range check") {
     def check(b: BigInteger, shouldThrow: Boolean) = {
       val bytes = b.toByteArray
@@ -3253,6 +3565,23 @@ class BasicOpsSpecification extends CompilerTestingCommons
           Array(IntConstant(2))
         ),
         IntConstant(3)).toSigmaProp
+    )
+  }
+
+  property("user defined function returning boolean") {
+    test("boolfn", env, ext,
+      "{ def isEven(n: Int) = n % 2 == 0; isEven(4) == true }",
+      Apply(
+        FuncValue(Array((1, SInt)), EQ(Modulo(ValUse(1, SInt), IntConstant(2)), IntConstant(0))),
+        Array(IntConstant(4))).toSigmaProp
+    )
+  }
+
+  property("user defined function with nested functions") {
+    test("nestedFn", env, ext,
+      "{ def outer(x: Int) = { def inner(y: Int) = x + y; inner(3) }; outer(2) == 5 }",
+      null,
+      true
     )
   }
 

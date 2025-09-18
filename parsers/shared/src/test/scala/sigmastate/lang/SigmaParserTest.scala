@@ -606,6 +606,7 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     parse("1L.toInt") shouldBe Select(LongConstant(1), "toInt")
     parse("1.toLong") shouldBe Select(IntConstant(1), "toLong")
     parse("1.toBigInt") shouldBe Select(IntConstant(1), "toBigInt")
+    parse("1.toUnsignedBigInt") shouldBe Select(IntConstant(1), "toUnsignedBigInt")
   }
 
   property("string literals") {

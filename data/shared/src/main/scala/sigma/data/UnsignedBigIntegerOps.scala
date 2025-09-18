@@ -45,12 +45,14 @@ object UnsignedBigIntNumericOps {
     def plus(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = x.add(y)
     def minus(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = x.subtract(y)
     def times(x: UnsignedBigInt, y: UnsignedBigInt): UnsignedBigInt = x.multiply(y)
-    def negate(x: UnsignedBigInt): UnsignedBigInt = ???
     def fromInt(x: Int): UnsignedBigInt = x.toUnsignedBigInt
     def toInt(x: UnsignedBigInt): Int = x.toInt
     def toLong(x: UnsignedBigInt): Long = x.toLong
     def toFloat(x: UnsignedBigInt): Float = x.toFloat
     def toDouble(x: UnsignedBigInt): Double = x.toDouble
+    def negate(x: UnsignedBigInt): UnsignedBigInt = {
+      throw new SigmaException("negate not supported for UnsignedBigInt")
+    }
   }
 
   /**
