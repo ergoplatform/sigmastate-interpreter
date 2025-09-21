@@ -775,6 +775,44 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("Bulletproof modular inverse operations") {
+    // Test modular inverse operations needed for bulletproofs
+    def modularInverseTest() = {
+      test("bulletproof modular inverse", env, ext,
+        s"""{
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   
+           |   // Test values that have modular inverses
+           |   val testVal1 = unsignedBigInt("123456789")
+           |   val testVal2 = unsignedBigInt("987654321")
+           |   
+           |   // Test modular inverses
+           |   val inv1 = testVal1.modInverse(q)
+           |   val inv2 = testVal2.modInverse(q)
+           |   
+           |   // Verify that a * a^-1 ≡ 1 mod q
+           |   val identity1 = testVal1.multiplyMod(inv1, q) == unsignedBigInt("1")
+           |   val identity2 = testVal2.multiplyMod(inv2, q) == unsignedBigInt("1")
+           |   
+           |   // Test that inverses are unique and valid
+           |   val inv1Valid = inv1 == testVal1.modInverse(q)
+           |   val inv2Valid = inv2 == testVal2.modInverse(q)
+           |   val allInRange = inv1 < q && inv2 < q
+           |   
+           |   sigmaProp(identity1 && identity2 && inv1Valid && inv2Valid && allInRange)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy modularInverseTest()
+    } else {
+      modularInverseTest()
+    }
+  }
+
   property("Bulletproof vector approximation") {
     // Test basic operations that can be used for vector approximations
     def vectorTest() = {
@@ -812,6 +850,89 @@ class BasicOpsSpecification extends CompilerTestingCommons
     // For older versions, we skip the test since the operations may not be available
     if (ergoTreeVersionInTests >= V6SoftForkVersion) {
       vectorTest()
+    }
+  }
+
+  property("Bulletproof vector operations") {
+    // Test vector operations needed for bulletproofs
+    def vectorOpsTest() = {
+      test("bulletproof vector ops", env, ext,
+        s"""{
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   
+           |   // Test vector components
+           |   val y = unsignedBigInt("2")
+           |   val z = unsignedBigInt("3")
+           |   
+           |   // Compute powers for vector components
+           |   val y2 = y.multiplyMod(y, q)
+           |   val y3 = y2.multiplyMod(y, q)
+           |   val y4 = y3.multiplyMod(y, q)
+           |   
+           |   // Test vector addition and scaling
+           |   val vecSum1 = y.plusMod(y2, q)
+           |   val vecSum2 = y2.plusMod(y3, q)
+           |   val scaledVec = y.multiplyMod(z, q)
+           |   
+           |   // Test vector properties
+           |   val sumsValid = vecSum1 == y.plusMod(y2, q) && vecSum2 == y2.plusMod(y3, q)
+           |   val scalingValid = scaledVec == y.multiplyMod(z, q)
+           |   val allInRange = y2 < q && y3 < q && y4 < q && vecSum1 < q && vecSum2 < q && scaledVec < q
+           |   
+           |   sigmaProp(sumsValid && scalingValid && allInRange)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy vectorOpsTest()
+    } else {
+      vectorOpsTest()
+    }
+  }
+
+  property("Bulletproof polynomial computation") {
+    // Test polynomial computations needed for bulletproofs
+    def polynomialTest() = {
+      test("bulletproof polynomial ops", env, ext,
+        s"""{
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   
+           |   // Test values for polynomial computation
+           |   val z = unsignedBigInt("3")
+           |   
+           |   // Compute polynomial terms
+           |   val zSquared = z.multiplyMod(z, q)
+           |   val zCubed = zSquared.multiplyMod(z, q)
+           |   
+           |   // Test polynomial identity: z^3 = z * z^2
+           |   val cubicValid = zCubed == z.multiplyMod(zSquared, q)
+           |   
+           |   // Test polynomial subtraction: z - z^2
+           |   val zMinusZSquared = z.subtractMod(zSquared, q)
+           |   val subtractionValid = zMinusZSquared == z.subtractMod(zSquared, q)
+           |   
+           |   // Test polynomial addition: z + z^2 + z^3
+           |   val sum1 = z.plusMod(zSquared, q)
+           |   val totalSum = sum1.plusMod(zCubed, q)
+           |   val additionValid = totalSum == sum1.plusMod(zCubed, q)
+           |   
+           |   // Test all values are in range
+           |   val allInRange = zSquared < q && zCubed < q && zMinusZSquared < q && totalSum < q
+           |   
+           |   sigmaProp(cubicValid && subtractionValid && additionValid && allInRange)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy polynomialTest()
+    } else {
+      polynomialTest()
     }
   }
 
