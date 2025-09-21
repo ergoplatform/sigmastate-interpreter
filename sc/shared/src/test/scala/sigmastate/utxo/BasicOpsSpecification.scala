@@ -789,13 +789,19 @@ class BasicOpsSpecification extends CompilerTestingCommons
            |   val y2 = y.multiplyMod(y, q)  // y^2
            |   val y3 = y2.multiplyMod(y, q) // y^3
            |   
+           |   // Test vector addition operations
+           |   val sum1 = y.plusMod(y2, q)    // y + y^2
+           |   val sum2 = y2.plusMod(y3, q)   // y^2 + y^3
+           |   
            |   // Test that we can compute powers and basic properties
            |   val y2Valid = y2 == y.multiplyMod(y, q)
            |   val y3Valid = y3 == y2.multiplyMod(y, q)
-           |   val allInRange = y2 < q && y3 < q
+           |   val sum1Valid = sum1 == y.plusMod(y2, q)
+           |   val sum2Valid = sum2 == y2.plusMod(y3, q)
+           |   val allInRange = y2 < q && y3 < q && sum1 < q && sum2 < q
            |   val allNonZero = y2 != unsignedBigInt("0") && y3 != unsignedBigInt("0")
            |   
-           |   sigmaProp(y2Valid && y3Valid && allInRange && allNonZero)
+           |   sigmaProp(y2Valid && y3Valid && sum1Valid && sum2Valid && allInRange && allNonZero)
            |}""".stripMargin,
         null,
         true
