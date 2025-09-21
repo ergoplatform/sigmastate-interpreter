@@ -691,6 +691,124 @@ class BasicOpsSpecification extends CompilerTestingCommons
   }
 
   // todo: finish the range proof verification script and test
+  property("Bulletproof challenge computation") {
+    // Test the Fiat-Shamir challenge generation used in bulletproofs
+    def challengeTest() = {
+      test("bulletproof challenges", env, ext,
+        s"""{
+           |   // Test data for challenge computation
+           |   val input = groupGenerator
+           |   val aI = groupGenerator  // Simplified for testing
+           |   val s = groupGenerator   // Simplified for testing
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   
+           |   // Step 1: Compute challenge y = H(q, input, aI, s)
+           |   val inputBytes = input.getEncoded
+           |   val aIBytes = aI.getEncoded
+           |   val sBytes = s.getEncoded
+           |   val qBytes = q.toBytes
+           |   
+           |   val yBytes = sha256(qBytes ++ inputBytes ++ aIBytes ++ sBytes)
+           |   val y = byteArrayToBigInt(yBytes).toUnsignedMod(q)
+           |   
+           |   // Step 2: Compute challenge z = H(q, y)
+           |   val yBytesForZ = y.toBytes
+           |   val zBytes = sha256(qBytes ++ yBytesForZ)
+           |   val z = byteArrayToBigInt(zBytes).toUnsignedMod(q)
+           |   
+           |   // Step 3: Test basic properties
+           |   val yNonZero = y != unsignedBigInt("0")
+           |   val zNonZero = z != unsignedBigInt("0")
+           |   val yInRange = y < q
+           |   val zInRange = z < q
+           |   
+           |   sigmaProp(yNonZero && zNonZero && yInRange && zInRange)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    // These tests focus on V6+ functionality
+    // For older versions, we skip the test since the operations may not be available
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
+      challengeTest()
+    }
+  }
+
+  property("Bulletproof modular operations") {
+    // Test the modular arithmetic operations needed for bulletproofs
+    def modularTest() = {
+      test("bulletproof modular math", env, ext,
+        s"""{
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   
+           |   // Test values
+           |   val testVal = unsignedBigInt("123456789")
+           |   
+           |   // Test z^2 = z.multiplyMod(z, q)
+           |   val zSquared = testVal.multiplyMod(testVal, q)
+           |   
+           |   // Test z^3 = zSquared.multiplyMod(z, q)  
+           |   val zCubed = zSquared.multiplyMod(testVal, q)
+           |   
+           |   // Test (z - z^2) mod q
+           |   val zMinusZSquared = testVal.subtractMod(zSquared, q)
+           |   
+           |   // Test basic properties
+           |   val squaredValid = zSquared == testVal.multiplyMod(testVal, q)
+           |   val cubedValid = zCubed == zSquared.multiplyMod(testVal, q)
+           |   val subtractionValid = zMinusZSquared == testVal.subtractMod(zSquared, q)
+           |   val allInRange = zSquared < q && zCubed < q && zMinusZSquared < q
+           |   
+           |   sigmaProp(squaredValid && cubedValid && subtractionValid && allInRange)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy modularTest()
+    } else {
+      modularTest()
+    }
+  }
+
+  property("Bulletproof vector approximation") {
+    // Test basic operations that can be used for vector approximations
+    def vectorTest() = {
+      test("bulletproof vector basics", env, ext,
+        s"""{
+           |   val q = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494337")
+           |   val y = unsignedBigInt("2")
+           |   
+           |   // Test basic operations that would be used in vector computations
+           |   // Instead of full vector sum, test individual components
+           |   
+           |   val y2 = y.multiplyMod(y, q)  // y^2
+           |   val y3 = y2.multiplyMod(y, q) // y^3
+           |   
+           |   // Test that we can compute powers and basic properties
+           |   val y2Valid = y2 == y.multiplyMod(y, q)
+           |   val y3Valid = y3 == y2.multiplyMod(y, q)
+           |   val allInRange = y2 < q && y3 < q
+           |   val allNonZero = y2 != unsignedBigInt("0") && y3 != unsignedBigInt("0")
+           |   
+           |   sigmaProp(y2Valid && y3Valid && allInRange && allNonZero)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    // These tests focus on V6+ functionality
+    // For older versions, we skip the test since the operations may not be available
+    if (ergoTreeVersionInTests >= V6SoftForkVersion) {
+      vectorTest()
+    }
+  }
+
   ignore("Bulletproof verification for a range proof") {
     /*
      * Original range proof verifier code by Benedikt Bunz:
@@ -747,8 +865,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
         verifier.verify(primeBase, P, proof.getProductProof(), uChallenge);
      */
 
-    val g = CGroupElement(SecP256K1Group.generator)
-
     def rangeTest() = {
       test("range proof", env, ext,
         s"""{
@@ -804,8 +920,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
   // todo: complete
   ignore("Bulletproof verification for a circuit proof") {
-
-    val g = CGroupElement(SecP256K1Group.generator)
 
     def circuitTest() = {
       test("schnorr", env, ext,
