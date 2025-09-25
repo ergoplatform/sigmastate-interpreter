@@ -1,21 +1,22 @@
 package sigmastate.utxo
 
 import org.ergoplatform._
-import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, Lookup}
 import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import sigma.ast._
 import sigma.data.{AvlTreeData, AvlTreeFlags, Digest32Coll}
+import sigma.Colls
 import sigma.eval.SigmaDsl
-import sigma.{Colls, Evaluation}
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.CompilerCrossVersionProps
+import sigma.Extensions.ArrayOps
 
 class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
   override val printVersions: Boolean = false
-  implicit lazy val IR = new TestingIRContext {
+  implicit lazy val IR: TestingIRContext = new TestingIRContext {
   }
 
   val env = Map.empty[String, Any]
@@ -48,7 +49,7 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     compiledScript should not be null
   }
 
-  property("script hash verification with AVL+ tree whitelist for output #0 - simplified") {
+  property("script hash verification with AVL+ tree whitelist for output #0") {
     // Test that the script compiles correctly
     val compiledScript = compile(env, 
       """{
@@ -68,11 +69,23 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
         |  val expectedTokenId = getVar[Coll[Byte]](2).get
         |  val correctTokenId = CONTEXT.dataInputs(0).tokens(0)._1 == expectedTokenId
         |  
-        |  // For now, just test the basic functionality without AVL tree
-        |  // Verify basic conditions
+        |  // Get output #0 script hash
+        |  val output0ScriptHash = blake2b256(OUTPUTS(0).propositionBytes)
+        |  
+        |  // Get AVL tree whitelist from R5 of data input
+        |  val whitelistTree = CONTEXT.dataInputs(0).R5[AvlTree].get
+        |  
+        |  // Get proof for output #0 script hash from context variable #3
+        |  val proof = getVar[Coll[Byte]](3).get
+        |  
+        |  // Check if output #0 script hash is in whitelist
+        |  val isWhitelisted = whitelistTree.get(output0ScriptHash, proof).isDefined
+        |  
+        |  // Verify all conditions
         |  sigmaProp(computedHash == expectedHash && 
         |            hasSingletonToken && 
-        |            correctTokenId)
+        |            correctTokenId &&
+        |            isWhitelisted)
         |}""".stripMargin)
     
     // If we get here without exceptions, the script compiles correctly
@@ -97,10 +110,22 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     // Create a token ID for the data input
     val tokenId = Digest32Coll @@ Colls.fromArray(Blake2b256("singleton_token"))
     
-    // Create data input without AVL tree for now
+    // Create AVL tree whitelist with script hashes
+    val whitelistedScriptHash = Blake2b256(whitelistedTree.bytes)
+    val nonWhitelistedScriptHash = Blake2b256(nonWhitelistedTree.bytes)
+    
+    // Create AVL prover and add whitelisted script hash
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    avlProver.performOneOperation(Insert(ADKey @@@ whitelistedScriptHash, ADValue @@ "allowed".getBytes))
+    avlProver.generateProof() // Generate initial proof
+    
+    val treeData = SigmaDsl.avlTree(new AvlTreeData(avlProver.digest.toArray.toColl, AvlTreeFlags.ReadOnly, 32, None))
+    
+    // Create data input with script hash and AVL tree whitelist
     val dataInput = testBox(0, TrueTree, 0, Seq((tokenId, 1L)), 
       Map(
-        ErgoBox.R4 -> ByteArrayConstant(scriptHash)
+        ErgoBox.R4 -> ByteArrayConstant(scriptHash),
+        ErgoBox.R5 -> AvlTreeConstant(treeData)
       )
     )
     
@@ -110,6 +135,11 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     // Test case 1: Output #0 is whitelisted (should succeed)
     val spendingTx1 = createTransaction(IndexedSeq(dataInput), IndexedSeq(whitelistedOutput, nonWhitelistedOutput))
     val selfBox = testBox(20, ErgoTree.fromProposition(ergoTreeHeaderInTests, compiledScript.asInstanceOf[Value[SSigmaProp.type]]), 0)
+    
+    // Generate proof for whitelisted script hash
+    avlProver.performOneOperation(Lookup(ADKey @@@ whitelistedScriptHash))
+    val whitelistProof = avlProver.generateProof()
+    
     val ctx1 = ErgoLikeContextTesting(
       currentHeight = 50,
       lastBlockUtxoRoot = AvlTreeData.dummy,
@@ -124,6 +154,7 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     val testProver = prover
       .withContextExtender(1, ByteArrayConstant(scriptToVerify))
       .withContextExtender(2, ByteArrayConstant(tokenId.toArray))
+      .withContextExtender(3, ByteArrayConstant(whitelistProof))
     
     val pr1 = testProver.prove(selfBox.ergoTree, ctx1, fakeMessage)
     pr1.isSuccess shouldBe true  // Should succeed because output #0 is whitelisted
@@ -133,6 +164,11 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     
     // Test case 2: Output #0 is NOT whitelisted (should fail)
     val spendingTx2 = createTransaction(IndexedSeq(dataInput), IndexedSeq(nonWhitelistedOutput, whitelistedOutput))
+    
+    // Generate proof for non-whitelisted script hash (should fail lookup)
+    avlProver.performOneOperation(Lookup(ADKey @@@ nonWhitelistedScriptHash))
+    val nonWhitelistProof = avlProver.generateProof()
+    
     val ctx2 = ErgoLikeContextTesting(
       currentHeight = 50,
       lastBlockUtxoRoot = AvlTreeData.dummy,
@@ -144,7 +180,12 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
       activatedVersionInTests
     )
     
-    val pr2 = testProver.prove(selfBox.ergoTree, ctx2, fakeMessage)
+    val testProver2 = prover
+      .withContextExtender(1, ByteArrayConstant(scriptToVerify))
+      .withContextExtender(2, ByteArrayConstant(tokenId.toArray))
+      .withContextExtender(3, ByteArrayConstant(nonWhitelistProof))
+    
+    val pr2 = testProver2.prove(selfBox.ergoTree, ctx2, fakeMessage)
     pr2.isSuccess shouldBe false  // Should fail because output #0 is not whitelisted
   }
 
