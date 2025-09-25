@@ -49,7 +49,7 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
     compiledScript should not be null
   }
 
-  property("script hash verification with AVL+ tree whitelist for output #0") {
+  property("script hash verification with AVL+ tree whitelist for output #0 with token transfer") {
     // Test that the script compiles correctly
     val compiledScript = compile(env, 
       """{
@@ -81,11 +81,17 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
         |  // Check if output #0 script hash is in whitelist
         |  val isWhitelisted = whitelistTree.get(output0ScriptHash, proof).isDefined
         |  
+        |  // Verify token transfer: ensure output #0 first token id matches self's first token id and amounts are the same
+        |  val selfFirstToken = SELF.tokens(0)
+        |  val output0FirstToken = OUTPUTS(0).tokens(0)
+        |  val tokensTransferredCorrectly = selfFirstToken._1 == output0FirstToken._1 && selfFirstToken._2 == output0FirstToken._2
+        |  
         |  // Verify all conditions
         |  sigmaProp(computedHash == expectedHash && 
         |            hasSingletonToken && 
         |            correctTokenId &&
-        |            isWhitelisted)
+        |            isWhitelisted &&
+        |            tokensTransferredCorrectly)
         |}""".stripMargin)
     
     // If we get here without exceptions, the script compiles correctly
@@ -129,12 +135,17 @@ class GlobalTransferPoliciesSpecification extends CompilerTestingCommons
       )
     )
     
-    val whitelistedOutput = testBox(10, whitelistedTree, 0)  // Whitelisted script
-    val nonWhitelistedOutput = testBox(10, nonWhitelistedTree, 0)  // Non-whitelisted script
+    // Create self box with tokens to be transferred
+    val selfTokenId = Digest32Coll @@ Colls.fromArray(Blake2b256("transfer_token"))
+    val selfTokens = Seq((selfTokenId, 100L)) // 100 tokens to transfer
+    
+    // Output boxes with tokens transferred from self box
+    val whitelistedOutput = testBox(10, whitelistedTree, 0, selfTokens)  // Whitelisted script with tokens
+    val nonWhitelistedOutput = testBox(10, nonWhitelistedTree, 0, selfTokens)  // Non-whitelisted script with tokens
     
     // Test case 1: Output #0 is whitelisted (should succeed)
     val spendingTx1 = createTransaction(IndexedSeq(dataInput), IndexedSeq(whitelistedOutput, nonWhitelistedOutput))
-    val selfBox = testBox(20, ErgoTree.fromProposition(ergoTreeHeaderInTests, compiledScript.asInstanceOf[Value[SSigmaProp.type]]), 0)
+    val selfBox = testBox(20, ErgoTree.fromProposition(ergoTreeHeaderInTests, compiledScript.asInstanceOf[Value[SSigmaProp.type]]), 0, selfTokens)
     
     // Generate proof for whitelisted script hash
     avlProver.performOneOperation(Lookup(ADKey @@@ whitelistedScriptHash))
