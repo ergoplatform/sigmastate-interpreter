@@ -202,11 +202,289 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       )
   }
 
-  property("eq") {
-    println("sv: " + VersionContext.current.activatedVersion)
-    println("tv: " + VersionContext.current.ergoTreeVersion)
-    val bs = "10010400d801d601b2a5730000d1ed93c2a7c2720193e4dc640ae4c67201046402e4c67201050ee4c67201070ee4c67201060e"
-    println(ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(Base16.decode(bs).get))
+  property("MethodCall deserialization round trip for Box.getReg with explicit type args") {
+    def code = {
+      val box = arbBoxConstant.arbitrary.sample.get
+      val expr = MethodCall(box,
+        SBoxMethods.getRegMethodV6.withConcreteTypes(Map(tT -> SInt)),
+        Vector(IntConstant(4)),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Context.getVarFromInput with explicit type args") {
+    def code = {
+      val expr = MethodCall(Context,
+        SContextMethods.getVarFromInputMethod.withConcreteTypes(Map(tT -> SInt)),
+        Vector(ShortConstant(1), ByteConstant(0)),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Global.deserializeTo with explicit type args") {
+    def code = {
+      val bytes = ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))
+      val expr = MethodCall(Global,
+        SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SInt)),
+        Vector(bytes),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Global.fromBigEndianBytes with explicit type args") {
+    def code = {
+      val bytes = ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))
+      val expr = MethodCall(Global,
+        SGlobalMethods.FromBigEndianBytesMethod.withConcreteTypes(Map(tT -> SInt)),
+        Vector(bytes),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Global.some with explicit type args") {
+    def code = {
+      val value = IntConstant(42)
+      val expr = MethodCall(Global,
+        SGlobalMethods.someMethod.withConcreteTypes(Map(tT -> SInt)),
+        Vector(value),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for Global.none with explicit type args") {
+    def code = {
+      val expr = MethodCall(Global,
+        SGlobalMethods.noneMethod.withConcreteTypes(Map(tT -> SInt)),
+        Vector(),
+        Map(tT -> SInt)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall with multiple explicit type arguments") {
+    def code = {
+      // Test with methods that have multiple type parameters (if any exist)
+      // For now, test with single type parameter methods using different types
+      val bytes = ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))
+      val expr = MethodCall(Global,
+        SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SByteArray)),
+        Vector(bytes),
+        Map(tT -> SByteArray)
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall with complex explicit type arguments") {
+    def code = {
+      // Test with nested generic types
+      val box = arbBoxConstant.arbitrary.sample.get
+      val expr = MethodCall(box,
+        SBoxMethods.getRegMethodV6.withConcreteTypes(Map(tT -> SOption(SInt))),
+        Vector(IntConstant(4)),
+        Map(tT -> SOption(SInt))
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, (VersionContext.V6SoftForkVersion - 1).toByte) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall empty arguments validation for V3+ trees") {
+    // Test that empty arguments assertion is triggered for V3+ ErgoTree versions
+    val expr = MethodCall(Outputs,
+      SCollectionMethods.SizeMethod.withConcreteTypes(Map(SCollection.tIV -> SBox)),
+      Vector(),
+      Map()
+    )
+
+    // Should work for V3+ trees
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      roundTripTest(expr)
+    }
+
+    // Should also work for pre-V3 trees (no assertion)
+    VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, (VersionContext.V6SoftForkVersion - 1).toByte) {
+      roundTripTest(expr)
+    }
+  }
+
+  property("MethodCall with explicit type args fails for pre-V3 trees") {
+    // Test specific methods that should fail for pre-V3 trees
+    val methods = Seq(
+      ("Box.getReg", () => {
+        val box = arbBoxConstant.arbitrary.sample.get
+        MethodCall(box,
+          SBoxMethods.getRegMethodV6.withConcreteTypes(Map(tT -> SInt)),
+          Vector(IntConstant(4)),
+          Map(tT -> SInt)
+        )
+      }),
+      ("Global.deserializeTo", () => {
+        val bytes = ByteArrayConstant(Array(1.toByte, 2.toByte, 3.toByte))
+        MethodCall(Global,
+          SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(tT -> SInt)),
+          Vector(bytes),
+          Map(tT -> SInt)
+        )
+      }),
+      ("Global.some", () => {
+        val value = IntConstant(42)
+        MethodCall(Global,
+          SGlobalMethods.someMethod.withConcreteTypes(Map(tT -> SInt)),
+          Vector(value),
+          Map(tT -> SInt)
+        )
+      })
+    )
+
+    methods.foreach { case (methodName, exprBuilder) =>
+      withClue(s"Method $methodName should fail for pre-V3 trees: ") {
+        a[ValidationException] should be thrownBy {
+          VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, (VersionContext.V6SoftForkVersion - 1).toByte) {
+            val expr = exprBuilder()
+            roundTripTest(expr)
+          }
+        }
+      }
+    }
   }
 
 }
