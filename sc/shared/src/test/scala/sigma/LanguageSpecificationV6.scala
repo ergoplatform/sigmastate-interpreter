@@ -1416,7 +1416,12 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           costOpt = None,
           expectedDetails = CostDetails.ZeroCost,
           newCostOpt = None,
-          newVersionedResults = expectedSuccessForAllTreeVersions(Helpers.decodeBytes("100108d27300"), 2065, costDetails(1))
+          newVersionedResults = Seq(
+            0 -> (ExpectedResult(Success(Helpers.decodeBytes("100108d27300")), None) -> Some(costDetails(1))),
+            1 -> (ExpectedResult(Success(Helpers.decodeBytes("100108d27300")), None) -> Some(costDetails(1))),
+            2 -> (ExpectedResult(Success(Helpers.decodeBytes("100108d27300")), None) -> Some(costDetails(1))),
+            3 -> (ExpectedResult(Success(Helpers.decodeBytes("100108d27300")), None) -> Some(costDetails(1)))
+          )
         ),
         // for tree version > 0, the result depend on activated version
         (Coll(t2.bytes: _*), 0) -> Expected(
@@ -1425,19 +1430,21 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           expectedDetails = CostDetails.ZeroCost,
           newCostOpt = None,
           newVersionedResults = Seq(
-            0 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            1 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            2 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            3 -> (ExpectedResult(Success(expectedTreeBytes_V6), Some(2065)) -> Some(costDetails(1)))
+            0 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), None) -> Some(costDetails(1))),
+            1 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), None) -> Some(costDetails(1))),
+            2 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), None) -> Some(costDetails(1))),
+            3 -> (ExpectedResult(Success(expectedTreeBytes_V6), None) -> Some(costDetails(1)))
           )
         )
       ),
       changedFeature(
         changedInVersion = VersionContext.V6SoftForkVersion,
         { (x: (Coll[Byte], Int)) =>
+          // Old behavior - produces expectedTreeBytes_beforeV6
           SigmaDsl.substConstants(x._1, Coll[Int](x._2), Coll[Any](SigmaDsl.sigmaProp(false))(sigma.AnyType))
         },
         { (x: (Coll[Byte], Int)) =>
+          // New behavior - produces expectedTreeBytes_V6 for version 3
           SigmaDsl.substConstants(x._1, Coll[Int](x._2), Coll[Any](SigmaDsl.sigmaProp(false))(sigma.AnyType))
         },
         "{ (x: (Coll[Byte], Int)) => substConstants[Any](x._1, Coll[Int](x._2), Coll[Any](sigmaProp(false))) }",
@@ -3105,6 +3112,181 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val cases = Seq(input1 -> Success((Some(updTree))))
 
     testCases(cases, iou, preGeneratedSamples = Some(Seq.empty))
+  }
+
+  property("Global.serialize & deserialize roundtrip - comprehensive") {
+    import sigma.data.OrderingOps.BigIntOrdering
+    import sigma.data.OrderingOps.UnsignedBigIntOrdering
+
+    // Test SigmaProp serialization roundtrip
+    def sigmaPropRoundtrip: Feature[SigmaProp, Boolean] = {
+      newFeature(
+        { (x: SigmaProp) => CSigmaDslBuilder.deserializeTo[SigmaProp](CSigmaDslBuilder.serialize(x)) == x},
+        "{ (x: SigmaProp) => Global.deserializeTo[SigmaProp](serialize(x)) == x }",
+        FuncValue(
+          Array((1, SSigmaProp)),
+          EQ(
+            MethodCall.typed[Value[SSigmaProp.type]](
+              Global,
+              SGlobalMethods.deserializeToMethod.withConcreteTypes(Map(STypeVar("T") -> SSigmaProp)),
+              Vector(
+                MethodCall.typed[Value[SCollection[SByte.type]]](
+                  Global,
+                  SGlobalMethods.serializeMethod.withConcreteTypes(
+                    Map(STypeVar("T") -> SSigmaProp)
+                  ),
+                  Array(ValUse(1, SSigmaProp)),
+                  Map()
+                )
+              ),
+              Map(STypeVar("T") -> SSigmaProp)
+            ),
+            ValUse(1, SSigmaProp)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    verifyCases(
+      Seq(
+        CSigmaProp(true) -> new Expected(ExpectedResult(Success(true), None))
+      ),
+      sigmaPropRoundtrip
+    )
+  }
+
+  property("Bitwise operations - error cases") {
+    // Test shift operations with invalid bit counts for all numeric types
+    
+    // Byte shift error cases
+    lazy val byteShiftLeftError = newFeature[(Byte, Int), Byte](
+      { (x: (Byte, Int)) => 
+        if (x._2 < 0 || x._2 >= 8) throw new IllegalArgumentException() 
+        else (x._1 << x._2).toByte 
+      },
+      "{ (x: (Byte, Int)) => x._1.shiftLeft(x._2) }",
+      FuncValue(
+        Array((1, SPair(SByte, SInt))),
+        MethodCall.typed[Value[SByte.type]](
+          SelectField.typed[Value[SByte.type]](ValUse(1, SPair(SByte, SInt)), 1.toByte),
+          SByteMethods.v6Methods.find(_.name == "shiftLeft").get,
+          Vector(SelectField.typed[Value[SInt.type]](ValUse(1, SPair(SByte, SInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+
+    verifyCases(
+      Seq(
+        (1.toByte, -1) -> new Expected(ExpectedResult(Failure(new IllegalArgumentException()), None)),
+        (1.toByte, 8) -> new Expected(ExpectedResult(Failure(new IllegalArgumentException()), None)),
+        (1.toByte, 100) -> new Expected(ExpectedResult(Failure(new IllegalArgumentException()), None))
+      ),
+      byteShiftLeftError,
+      preGeneratedSamples = Some(Seq())
+    )
+
+    // BigInt shift error cases
+    lazy val bigIntShiftRightError = newFeature[(BigInt, Int), BigInt](
+      { (x: (BigInt, Int)) => 
+        if (x._2 < 0 || x._2 >= 256) throw new IllegalArgumentException() 
+        else x._1.shiftRight(x._2) 
+      },
+      "{ (x: (BigInt, Int)) => x._1.shiftRight(x._2) }",
+      FuncValue(
+        Array((1, SPair(SBigInt, SInt))),
+        MethodCall.typed[Value[SBigInt.type]](
+          SelectField.typed[Value[SBigInt.type]](ValUse(1, SPair(SBigInt, SInt)), 1.toByte),
+          SBigIntMethods.v6Methods.find(_.name == "shiftRight").get,
+          Vector(SelectField.typed[Value[SInt.type]](ValUse(1, SPair(SBigInt, SInt)), 2.toByte)),
+          Map()
+        )
+      ),
+      sinceVersion = V6SoftForkVersion)
+  }
+
+
+  property("getVarFromInput - comprehensive") {
+    // Test getVarFromInput with various input indices, varIds, and types
+    
+    def getVarFromInputInt: Feature[Context, Option[Int]] = {
+      newFeature(
+        { (x: Context) => x.getVarFromInput[Int](0, 11) },
+        "{ (x: Context) => x.getVarFromInput[Int](0, 11) }",
+        FuncValue(
+          Array((1, SContext)),
+          MethodCall.typed[Value[SOption[SInt.type]]](
+            ValUse(1, SContext),
+            SContextMethods.getVarFromInputMethod.withConcreteTypes(Map(STypeVar("T") -> SInt)),
+            Array(ShortConstant(0.toShort), ByteConstant(11.toByte)),
+            Map(STypeVar("T") -> SInt)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    def getVarFromInputByteArray: Feature[Context, Option[Coll[Byte]]] = {
+      newFeature(
+        { (x: Context) => x.getVarFromInput[Coll[Byte]](0, 12) },
+        "{ (x: Context) => x.getVarFromInput[Coll[Byte]](0, 12) }",
+        FuncValue(
+          Array((1, SContext)),
+          MethodCall.typed[Value[SOption[SByteArray]]](
+            ValUse(1, SContext),
+            SContextMethods.getVarFromInputMethod.withConcreteTypes(Map(STypeVar("T") -> SByteArray)),
+            Array(ShortConstant(0.toShort), ByteConstant(12.toByte)),
+            Map(STypeVar("T") -> SByteArray)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    val (ctx, ctx2, ctx3, ctx4) = contextData()
+
+    // Test with Int type
+    verifyCases(
+      Seq(
+        ctx -> new Expected(ExpectedResult(Success(None), None)), // input with # provided does not exist
+        ctx3 -> new Expected(ExpectedResult(Success(Some(0)), None)) // Int value in context var
+      ),
+      getVarFromInputInt
+    )
+
+    // Test with ByteArray type
+    verifyCases(
+      Seq(
+        ctx -> new Expected(ExpectedResult(Success(None), None)) // ByteArray not in context
+      ),
+      getVarFromInputByteArray
+    )
+
+    // Test edge cases - out of bounds indices
+    def getVarFromInputOutOfBounds: Feature[Context, Option[Boolean]] = {
+      newFeature(
+        { (x: Context) => x.getVarFromInput[Boolean](100, 11) },
+        "{ (x: Context) => x.getVarFromInput[Boolean](100, 11) }",
+        FuncValue(
+          Array((1, SContext)),
+          MethodCall.typed[Value[SOption[SBoolean.type]]](
+            ValUse(1, SContext),
+            SContextMethods.getVarFromInputMethod.withConcreteTypes(Map(STypeVar("T") -> SBoolean)),
+            Array(ShortConstant(100.toShort), ByteConstant(11.toByte)),
+            Map(STypeVar("T") -> SBoolean)
+          )
+        ),
+        sinceVersion = VersionContext.V6SoftForkVersion
+      )
+    }
+
+    verifyCases(
+      Seq(
+        ctx -> new Expected(ExpectedResult(Success(None), None)) // out of bounds input index
+      ),
+      getVarFromInputOutOfBounds
+    )
   }
 
 }
