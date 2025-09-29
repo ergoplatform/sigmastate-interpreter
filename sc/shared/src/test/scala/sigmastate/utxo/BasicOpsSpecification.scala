@@ -1878,6 +1878,29 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("getVarFromInput - type safety") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5),
+        2.toByte -> ByteConstant(10)
+      ).toSeq
+      test("R1", env, customExt,
+        """{
+        |  val intVar = CONTEXT.getVarFromInput[Int](0, 1)
+        |  val byteVar = CONTEXT.getVarFromInput[Byte](0, 2)
+        |  sigmaProp(intVar.isDefined && byteVar.isDefined)
+        |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getVarTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getVarTest()
+    }
+  }
+
   property("Coll.reverse"){
     def reverseTest() = test("reverse", env, ext,
       """{
@@ -3934,6 +3957,151 @@ class BasicOpsSpecification extends CompilerTestingCommons
       someTest()
     } else {
       an[Exception] should be thrownBy someTest()
+    }
+  }
+
+  property("UnsignedBigInt - division with zero divisor") {
+    def divisionTest() = test("division", env, ext,
+      s"""{
+       |  val a = unsignedBigInt(\"10\")
+       |  val b = unsignedBigInt(\"0\")
+       |  val res = a / b
+       |  res > 0
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy divisionTest()
+    } else {
+      an[Exception] should be thrownBy divisionTest()
+    }
+  }
+
+  property("UnsignedBigInt - comparison edge cases") {
+    def comparisonTest() = test("comparison", env, ext,
+      s"""{
+       |  val a = unsignedBigInt(\"${CryptoConstants.groupOrder}\")
+       |  val b = unsignedBigInt(\"${CryptoConstants.groupOrder.subtract(BigInteger.ONE)}\")
+       |  val c = unsignedBigInt(\"0\")
+       |  a > b && b > c && a > c
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy comparisonTest()
+    } else {
+      comparisonTest()
+    }
+  }
+
+  property("UnsignedBigInt - bitwise operations with zero") {
+    def bitwiseTest() = test("bitwise", env, ext,
+      s"""{
+       |  val a = unsignedBigInt(\"${CryptoConstants.groupOrder}\")
+       |  val zero = unsignedBigInt(\"0\")
+       |  val allOnes = unsignedBigInt(\"${CryptoConstants.groupOrder.subtract(BigInteger.ONE)}\")
+       |  
+       |  val andZero = a.bitwiseAnd(zero) == zero
+       |  val orZero = a.bitwiseOr(zero) == a
+       |  val xorZero = a.bitwiseXor(zero) == a
+       |  val andAllOnes = a.bitwiseAnd(allOnes) == allOnes
+       |  
+       |  andZero && orZero && xorZero && andAllOnes
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy bitwiseTest()
+    } else {
+      bitwiseTest()
+    }
+  }
+
+  property("UnsignedBigInt - shift operations boundary conditions") {
+    def shiftTest() = test("shift", env, ext,
+      s"""{
+       |  val one = unsignedBigInt(\"1\")
+       |  val maxShift = 255
+       |  val result = one.shiftLeft(maxShift)
+       |  result.shiftRight(maxShift) == one
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy shiftTest()
+    } else {
+      shiftTest()
+    }
+  }
+
+  property("UnsignedBigInt - modulo operations with one") {
+    def modTest() = test("mod", env, ext,
+      s"""{
+       |  val a = unsignedBigInt(\"${CryptoConstants.groupOrder}\")
+       |  val one = unsignedBigInt(\"1\")
+       |  val modOne = a.mod(one) == unsignedBigInt(\"0\")
+       |  val modInverseOne = one.modInverse(one) == unsignedBigInt(\"0\")
+       |  modOne && modInverseOne
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy modTest()
+    } else {
+      modTest()
+    }
+  }
+
+  property("UnsignedBigInt - conversion edge cases") {
+    val maxSignedValue = CryptoConstants.groupOrder.divide(new BigInteger("2")).subtract(BigInteger.ONE)
+    def conversionTest() = test("conversion", env, ext,
+      s"""{
+       |  val maxSigned = bigInt(\"${maxSignedValue}\")
+       |  val unsignedMax = maxSigned.toUnsigned
+       |  val backToSigned = unsignedMax.toSigned
+       |  maxSigned == backToSigned
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("Coll - complex operations with UnsignedBigInt") {
+    def collTest() = test("coll", env, ext,
+      s"""{
+       |  val values = Coll(
+       |    unsignedBigInt(\"10\"),
+       |    unsignedBigInt(\"20\"), 
+       |    unsignedBigInt(\"30\")
+       |  )
+       |  val sum = values.fold(unsignedBigInt(\"0\"), { (a: UnsignedBigInt, b: UnsignedBigInt) => a + b })
+       |  val product = values.fold(unsignedBigInt(\"1\"), { (a: UnsignedBigInt, b: UnsignedBigInt) => a * b })
+       |  sum == unsignedBigInt(\"60\") && product == unsignedBigInt(\"6000\")
+       | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy collTest()
+    } else {
+      collTest()
     }
   }
 
