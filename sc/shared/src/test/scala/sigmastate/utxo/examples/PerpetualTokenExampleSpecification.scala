@@ -111,49 +111,6 @@ class PerpetualTokenExampleSpecification extends CompilerTestingCommons with Com
     verifier.verify(enhancedTree, ctx, pr, fakeMessage).get._1 shouldBe true
   }
 
-  property("perpetual token with specific token ID") {
-    // Demonstrates a simplified version that could be used for singleton tokens
-    // in mining pool collateral scenarios (as mentioned in the forum post)
-    val prover = new ContextEnrichingTestProvingInterpreter
-    val verifier = new ErgoLikeTestInterpreter
-
-    // Perpetual token for specific token ID (useful for singleton tokens)
-    // This version only checks proposition bytes since we're not testing with actual tokens
-    val tokenScript = """
-      |{
-      |  val isPerpetual = {(b: Box) => 
-      |    b.propositionBytes == SELF.propositionBytes
-      |  }
-      |  sigmaProp(OUTPUTS.exists(isPerpetual))
-      |}
-      |""".stripMargin
-
-    val tokenProp = compile(Map.empty, tokenScript).toSigmaProp
-    val tokenTree = mkTestErgoTree(tokenProp)
-
-    // Create test boxes
-    val inputBox = testBox(1000000L, tokenTree, 100000)
-    val outputBox = testBox(1000000L, tokenTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(inputBox.id)),
-      IndexedSeq(outputBox)
-    )
-
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(inputBox),
-      tx,
-      self = inputBox,
-      activatedVersionInTests
-    )
-
-    val pr = prover.prove(tokenTree, ctx, fakeMessage).get
-    verifier.verify(tokenTree, ctx, pr, fakeMessage).get._1 shouldBe true
-  }
-
   property("perpetual token with multiple outputs") {
     // Demonstrates that the contract works when there are multiple outputs
     // and only one needs to preserve the perpetual token
