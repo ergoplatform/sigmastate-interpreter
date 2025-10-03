@@ -32,7 +32,7 @@ class DailyWithdrawalLimitExampleSpecification extends CompilerTestingCommons wi
     |  
     |  // Calculate withdrawal amount (sum of all outputs except the remaining one)
     |  val withdrawalAmount = OUTPUTS.fold(0L, { (acc: Long, box: Box) => 
-    |    if (box == remainingOutput) acc else acc + box.value 
+    |    if (box.id == remainingOutput.id) acc else acc + box.value 
     |  })
     |  
     |  // Calculate remaining limit for this transaction
@@ -416,5 +416,109 @@ class DailyWithdrawalLimitExampleSpecification extends CompilerTestingCommons wi
     // So the contract would incorrectly think we're withdrawing 5.0 ERG
     val pr = prover.prove(dailyLimitTree, ctx, fakeMessage).get
     verifier.verify(dailyLimitTree, ctx, pr, fakeMessage).get._1 shouldBe true
+  }
+
+  property("daily withdrawal limit across multiple epochs") {
+    val prover = new ContextEnrichingTestProvingInterpreter
+    val verifier = new ErgoLikeTestInterpreter
+
+    // Test scenario: Simulate multiple epochs by testing different period start blocks
+    // This tests that the contract correctly handles period transitions
+
+    // Test case 1: Same period withdrawal
+    val samePeriodBox = testBox(
+      value = 5000000L,
+      ergoTree = dailyLimitTree,
+      creationHeight = 100000,
+      additionalRegisters = Map(
+        R4 -> LongConstant(800000L), // 0.8 ERG remaining
+        R5 -> IntConstant(100000)     // Period start block
+      )
+    )
+
+    val samePeriodWithdrawal = 200000L
+    val samePeriodRemainingBox = testBox(
+      value = samePeriodBox.value - samePeriodWithdrawal,
+      ergoTree = dailyLimitTree,
+      creationHeight = 100100,
+      additionalRegisters = Map(
+        R4 -> LongConstant(600000L), // 0.6 ERG remaining (0.8 - 0.2)
+        R5 -> IntConstant(100000)     // Same period
+      )
+    )
+    val samePeriodWithdrawalBox = testBox(
+      value = samePeriodWithdrawal,
+      ergoTree = TrueTree,
+      creationHeight = 100100
+    )
+
+    val samePeriodDummyInput = testBox(1000000L, TrueTree, 100000)
+
+    val samePeriodTx = UnsignedErgoLikeTransaction(
+      IndexedSeq(new UnsignedInput(samePeriodBox.id), new UnsignedInput(samePeriodDummyInput.id)),
+      IndexedSeq(samePeriodRemainingBox, samePeriodWithdrawalBox)
+    )
+
+    val samePeriodCtx = ErgoLikeContextTesting(
+      currentHeight = 100100, // Within same period (100000 + 100 < 720)
+      lastBlockUtxoRoot = AvlTreeData.dummy,
+      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
+      boxesToSpend = IndexedSeq(samePeriodBox, samePeriodDummyInput),
+      samePeriodTx,
+      self = samePeriodBox,
+      activatedVersionInTests
+    )
+
+    // Same period should succeed
+    val samePeriodPr = prover.prove(dailyLimitTree, samePeriodCtx, fakeMessage).get
+    verifier.verify(dailyLimitTree, samePeriodCtx, samePeriodPr, fakeMessage).get._1 shouldBe true
+
+    // Test case 2: New period withdrawal with reset limit
+    val newPeriodBox = testBox(
+      value = 5000000L,
+      ergoTree = dailyLimitTree,
+      creationHeight = 100000,
+      additionalRegisters = Map(
+        R4 -> LongConstant(100000L), // 0.1 ERG remaining (will reset to 1.0 in new period)
+        R5 -> IntConstant(100000)     // Old period start block
+      )
+    )
+
+    val newPeriodWithdrawal = 800000L // 0.8 ERG withdrawal (within new period limit of 1.0 ERG)
+    val newPeriodRemainingBox = testBox(
+      value = newPeriodBox.value - newPeriodWithdrawal,
+      ergoTree = dailyLimitTree,
+      creationHeight = 100721,
+      additionalRegisters = Map(
+        R4 -> LongConstant(200000L), // 0.2 ERG remaining (1.0 - 0.8)
+        R5 -> IntConstant(100721)     // New period start block
+      )
+    )
+    val newPeriodWithdrawalBox = testBox(
+      value = newPeriodWithdrawal,
+      ergoTree = TrueTree,
+      creationHeight = 100721
+    )
+
+    val newPeriodDummyInput = testBox(1000000L, TrueTree, 100721)
+
+    val newPeriodTx = UnsignedErgoLikeTransaction(
+      IndexedSeq(new UnsignedInput(newPeriodBox.id), new UnsignedInput(newPeriodDummyInput.id)),
+      IndexedSeq(newPeriodRemainingBox, newPeriodWithdrawalBox)
+    )
+
+    val newPeriodCtx = ErgoLikeContextTesting(
+      currentHeight = 100721, // New period (100000 + 721 >= 720)
+      lastBlockUtxoRoot = AvlTreeData.dummy,
+      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
+      boxesToSpend = IndexedSeq(newPeriodBox, newPeriodDummyInput),
+      newPeriodTx,
+      self = newPeriodBox,
+      activatedVersionInTests
+    )
+
+    // New period should succeed (limit reset to 1.0 ERG)
+    val newPeriodPr = prover.prove(dailyLimitTree, newPeriodCtx, fakeMessage).get
+    verifier.verify(dailyLimitTree, newPeriodCtx, newPeriodPr, fakeMessage).get._1 shouldBe true
   }
 }
