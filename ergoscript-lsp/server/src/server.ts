@@ -29,7 +29,7 @@ import {
     TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import { ERGOSCRIPT_KEYWORDS, ERGOSCRIPT_BUILTINS, ERGOSCRIPT_TYPES, CONTEXT_VARIABLES } from './builtins';
+import { ERGOSCRIPT_KEYWORDS, ERGOSCRIPT_BUILTINS, ERGOSCRIPT_TYPES, CONTEXT_VARIABLES } from './utils/builtins';
 
 // Create a connection for the server
 const connection = createConnection(ProposedFeatures.all);
