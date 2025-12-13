@@ -199,6 +199,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
     publish / skip := true
   )
   .jvmSettings(
@@ -246,13 +247,14 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     publish / skip := true
   )
   .jvmSettings( crossScalaSettings )
-  .jsSettings(
-    crossScalaSettingsJS,
-    useYarn := true
+  .settings(
+    commonSettings ++ testSettings2,
+    commonDependenies2,
+    testingDependencies2,
+    scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
+    publish / skip := true
   )
-lazy val dataJS = data.js
-    .enablePlugins(ScalaJSBundlerPlugin)
-
 lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
   .in(file("interpreter"))
   .dependsOn(core % allConfigDependency, data % allConfigDependency)
@@ -264,13 +266,14 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     publish / skip := true
   )
   .jvmSettings( crossScalaSettings )
-  .jsSettings(
-    crossScalaSettingsJS,
-    useYarn := true
+  .settings(
+    commonSettings ++ testSettings2,
+    commonDependenies2,
+    testingDependencies2,
+    scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
+    publish / skip := true
   )
-lazy val interpreterJS = interpreter.js
-    .enablePlugins(ScalaJSBundlerPlugin)
-
 lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     .in(file("parsers"))
     .dependsOn(interpreter % allConfigDependency)
@@ -284,17 +287,20 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     .jvmSettings(
       crossScalaSettings
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      useYarn := true
-    )
-lazy val parsersJS = parsers.js
-    .enablePlugins(ScalaJSBundlerPlugin)
     .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
+    )
+    .jsSettings(
       scalaJSLinkerConfig ~= { conf =>
         conf.withSourceMap(false)
-      },
+      }
     )
+    
 
 lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     .in(file("sdk"))
@@ -309,18 +315,21 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     .jvmSettings(
       crossScalaSettings
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      useYarn := true
-    )
-lazy val sdkJS = sdk.js
-    .enablePlugins(ScalaJSBundlerPlugin)
     .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
+    )
+    .jsSettings(
       scalaJSLinkerConfig ~= { conf =>
         conf.withSourceMap(false)
             .withModuleKind(ModuleKind.CommonJSModule)
-      },
+      }
     )
+    
 
 lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .in(file("sc"))
@@ -342,12 +351,13 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
       crossScalaSettings,
       libraryDependencies ++= Seq(scalameter)
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scala-js-macrotask-executor" % "1.0.0"
-      ),
-      useYarn := true
+    .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
     )
 lazy val scJS = sc.js
     .enablePlugins(ScalaJSBundlerPlugin)
@@ -383,6 +393,10 @@ lazy val lsp = (project in file("lsp"))
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x => MergeStrategy.first
     },
+    publish / skip := true
+  )
+  .settings(
+    supertaggedDependency, // Ensure supertagged is included for LSP server
     publish / skip := true
   )
 
