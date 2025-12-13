@@ -23,14 +23,16 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
 
   /** Creates a simple ErgoTree from a public key */
   def createSimpleTree(seed: Byte = 1.toByte): ErgoTree = {
-    val pkBytes = Array.fill(33)(seed)
+    // Use a valid compressed secp256k1 point
+    // First byte should be 0x02 or 0x03, followed by 32 bytes
+    val pkBytes = (if (seed % 2 == 0) 0x02.toByte else 0x03.toByte) +: Array.fill(32)(seed)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     ErgoTree.fromProposition(SigmaPropConstant(pk))
   }
 
   /** Creates an ErgoTree with constant segregation */
   def createTreeWithSegregation(seed: Byte = 1.toByte): ErgoTree = {
-    val pkBytes = Array.fill(33)(seed)
+    val pkBytes = (if (seed % 2 == 0) 0x02.toByte else 0x03.toByte) +: Array.fill(32)(seed)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     ErgoTree.withSegregation(ErgoTree.ZeroHeader, prop)
@@ -41,7 +43,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   // ============================================================================
 
   property("compareWithoutHeader should return true for same proposition with different headers") {
-    val pkBytes = Array.fill(33)(1.toByte)
+    val pkBytes = 0x03.toByte +: Array.fill(32)(1.toByte)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     
@@ -108,7 +110,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   // ============================================================================
 
   property("hashWithoutHeader should be consistent for same logic") {
-    val pkBytes = Array.fill(33)(1.toByte)
+    val pkBytes = 0x03.toByte +: Array.fill(32)(1.toByte)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     
@@ -283,7 +285,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   // ============================================================================
 
   property("comparison and hashing should be consistent") {
-    val pkBytes = Array.fill(33)(1.toByte)
+    val pkBytes = 0x03.toByte +: Array.fill(32)(1.toByte)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     
@@ -302,7 +304,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
 
   property("real-world scenario: comparing box proposition with expected script") {
     // Simulate a smart contract scenario
-    val pkBytes = Array.fill(33)(1.toByte)
+    val pkBytes = 0x03.toByte +: Array.fill(32)(1.toByte)
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val expectedProp = SigmaPropConstant(pk)
 
