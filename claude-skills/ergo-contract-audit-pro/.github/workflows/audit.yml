@@ -1,0 +1,178 @@
+name: Ergo Contract Audit CI/CD
+
+on:
+  pull_request:
+    paths:
+      - '**.es'
+      - '**ergoscript**'
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    name: Audit ErgoScript Contracts
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install Dependencies
+        run: |
+          pip install -r claude-skills/ergo-contract-audit-pro/requirements.txt
+      
+      - name: Find ErgoScript Contracts
+        id: find-contracts
+        run: |
+          contracts=$(find . -name "*.es" -o -path "*/ergoscript/*")
+          echo "contracts<<EOF" >> $GITHUB_OUTPUT
+          echo "$contracts" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Run Audit on All Contracts
+        id: audit
+        run: |
+          mkdir -p audit-reports
+          exit_code=0
+          
+          while IFS= read -r contract; do
+            if [ ! -z "$contract" ]; then
+              echo "🔍 Auditing: $contract"
+              python3 claude-skills/ergo-contract-audit-pro/scripts/audit_contract.py \
+                "$contract" \
+                --ml-enhanced \
+                --economic-analysis \
+                --output "audit-reports/$(basename $contract .es).json" \
+                --min-severity MEDIUM || exit_code=$?
+            fi
+          done <<< "${{ steps.find-contracts.outputs.contracts }}"
+          
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+      
+      - name: Generate Summary Report
+        if: always()
+        run: |
+          python3 << 'EOF'
+          import json
+          import glob
+          from pathlib import Path
+          
+          reports = glob.glob("audit-reports/*.json")
+          total_critical = 0
+          total_high = 0
+          total_medium = 0
+          total_low = 0
+          
+          print("# 🔐 Ergo Contract Audit Summary\n")
+          print(f"**Contracts Analyzed:** {len(reports)}\n")
+          
+          for report_file in reports:
+              with open(report_file) as f:
+                  report = json.load(f)
+              
+              contract_name = Path(report_file).stem
+              findings = report.get('findings', [])
+              risk_score = report.get('risk_score', 0)
+              
+              critical = sum(1 for f in findings if f['severity'] == 'CRITICAL')
+              high = sum(1 for f in findings if f['severity'] == 'HIGH')
+              medium = sum(1 for f in findings if f['severity'] == 'MEDIUM')
+              low = sum(1 for f in findings if f['severity'] == 'LOW')
+              
+              total_critical += critical
+              total_high += high
+              total_medium += medium
+              total_low += low
+              
+              risk_emoji = "🚨" if risk_score >= 80 else "⚠️" if risk_score >= 50 else "✅"
+              print(f"## {risk_emoji} {contract_name}")
+              print(f"**Risk Score:** {risk_score}/100")
+              print(f"- 🚨 Critical: {critical}")
+              print(f"- ⚠️ High: {high}")
+              print(f"- ℹ️ Medium: {medium}")
+              print(f"- 📝 Low: {low}\n")
+          
+          print("\n## 📊 Total Findings")
+          print(f"- 🚨 **Critical:** {total_critical}")
+          print(f"- ⚠️ **High:** {total_high}")
+          print(f"- ℹ️ **Medium:** {total_medium}")
+          print(f"- 📝 **Low:** {total_low}")
+          print(f"\n**Total Issues:** {total_critical + total_high + total_medium + total_low}")
+          EOF
+      
+      - name: Upload Audit Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports
+          path: audit-reports/
+          retention-days: 90
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reports = fs.readdirSync('audit-reports');
+            
+            let comment = '# 🔐 Ergo Contract Audit Results\n\n';
+            
+            for (const reportFile of reports) {
+              const report = JSON.parse(fs.readFileSync(`audit-reports/${reportFile}`));
+              const contractName = reportFile.replace('.json', '');
+              
+              comment += `## ${contractName}\n`;
+              comment += `**Risk Score:** ${report.risk_score}/100\n\n`;
+              
+              const criticalCount = report.findings.filter(f => f.severity === 'CRITICAL').length;
+              const highCount = report.findings.filter(f => f.severity === 'HIGH').length;
+              
+              if (criticalCount > 0 || highCount > 0) {
+                comment += '### 🚨 Security Issues Found:\n';
+                
+                report.findings.slice(0, 5).forEach(finding => {
+                  comment += `- **${finding.severity}**: ${finding.name} (Line ${finding.line})\n`;
+                  comment += `  - ${finding.description}\n`;
+                });
+                
+                if (report.findings.length > 5) {
+                  comment += `\n_...and ${report.findings.length - 5} more issues._\n`;
+                }
+              } else {
+                comment += '✅ No critical or high severity issues found.\n';
+              }
+              
+              comment += '\n';
+            }
+            
+            comment += '\n📥 Full audit reports are available in the workflow artifacts.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: Fail on Critical Issues
+        if: steps.audit.outputs.exit_code != '0'
+        run: |
+          echo "❌ Critical security issues found! Please review the audit report."
+          exit 1
+      
+      - name: Success
+        if: steps.audit.outputs.exit_code == '0'
+        run: |
+          echo "✅ All contracts passed security audit!"
