@@ -366,8 +366,28 @@ lazy val scJS = sc.js
     )
 
 
+// ErgoScript Language Server Protocol (LSP) implementation
+lazy val lsp = (project in file("lsp"))
+  .dependsOn(sc.jvm, parsers.jvm, interpreter.jvm, data.jvm, core.jvm)
+  .settings(
+    commonSettings,
+    scalaVersion := scala213,
+    name := "ergoscript-lsp",
+    libraryDependencies ++= Seq(
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.21.1",
+      scalatest, scalactic
+    ),
+    assembly / mainClass := Some("sigma.lsp.Main"),
+    assembly / assemblyJarName := "ergoscript-lsp.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
+    publish / skip := true
+  )
+
 lazy val sigma = (project in file("."))
-  .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
+  .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm, lsp)
   .settings(libraryDefSettings, rootSettings)
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
