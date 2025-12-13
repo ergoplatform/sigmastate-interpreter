@@ -35,8 +35,8 @@ export class SignatureProvider {
             return null;
         }
 
-        const params = paramMatch[1].split(',').map(p => p.trim());
-        const parameters: ParameterInformation[] = params.map(param => ({
+        const paramList = paramMatch[1].split(',').map(p => p.trim());
+        const parameters: ParameterInformation[] = paramList.map(param => ({
             label: param,
             documentation: `Parameter: ${param}`
         }));
