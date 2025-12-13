@@ -36,6 +36,9 @@ jobs:
           jvm: temurin:1.8
           apps: sbt
 
+      - name: Ensure SBT in PATH
+        run: echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
+
       - name: Cache sbt
         uses: actions/cache@v4
         with:
@@ -91,6 +94,9 @@ jobs:
         with:
           jvm: temurin:1.8
           apps: sbt
+
+      - name: Ensure SBT in PATH
+        run: echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
 
 
       - name: Cache sbt
