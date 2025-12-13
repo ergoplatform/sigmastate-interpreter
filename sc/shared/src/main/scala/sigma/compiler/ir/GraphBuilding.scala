@@ -741,6 +741,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val res = sigmaDslBuilder.sha256(inputV)
         res
 
+      case StripErgoTreeHeader(In(input)) =>
+        val inputV = asRep[Coll[Byte]](input)
+        val res = inputV.slice(1, inputV.length)
+        res
+
       case SizeOf(In(xs)) =>
         xs.elem.asInstanceOf[Any] match {
           case _: CollElem[a,_] =>

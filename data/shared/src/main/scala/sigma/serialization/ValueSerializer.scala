@@ -109,6 +109,7 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     SimpleTransformerSerializer[SByteArray, SBigInt.type](ByteArrayToBigInt, mkByteArrayToBigInt),
     SimpleTransformerSerializer[SByteArray, SByteArray](CalcBlake2b256, mkCalcBlake2b256),
     SimpleTransformerSerializer[SByteArray, SByteArray](CalcSha256, mkCalcSha256),
+    SimpleTransformerSerializer[SByteArray, SByteArray](StripErgoTreeHeader, mkStripErgoTreeHeader),
     SimpleTransformerSerializer[SByteArray, SGroupElement.type](DecodePoint, mkDecodePoint),
     SimpleTransformerSerializer[SOption[SType], SType](OptionGet, mkOptionGet),
     SimpleTransformerSerializer[SOption[SType], SBoolean.type](OptionIsDefined, mkOptionIsDefined),

@@ -81,7 +81,12 @@ class SigmaTyper(val builder: SigmaBuilder,
               val srcCtx = i.sourceContext
               processGlobalMethod(srcCtx, method, IndexedSeq())
             case _ =>
-              error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
+              predefFuncRegistry.funcs.get(n) match {
+                case Some(func) =>
+                  mkIdent(n, func.declaration.tpe)
+                case None =>
+                  error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
+              }
           }
       }
 
