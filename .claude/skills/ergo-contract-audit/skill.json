@@ -1,0 +1,178 @@
+{
+  "name": "Ergo Contract Audit",
+  "version": "1.0.0",
+  "description": "Comprehensive security auditing skill for ErgoScript smart contracts on the Ergo blockchain",
+  "type": "security-analysis",
+  "category": "blockchain",
+  "expertise": [
+    "ErgoScript",
+    "Sigma Protocols",
+    "eUTXO Model",
+    "Smart Contract Security",
+    "Zero-Knowledge Proofs",
+    "Cryptographic Protocols"
+  ],
+  "capabilities": [
+    "vulnerability-detection",
+    "code-review",
+    "security-analysis",
+    "best-practice-validation",
+    "test-recommendation",
+    "attack-vector-enumeration"
+  ],
+  "severity_levels": {
+    "critical": "Funds can be stolen or permanently locked",
+    "high": "Significant security issue or DoS vulnerability",
+    "medium": "Potential vulnerability requiring attention",
+    "low": "Minor issue or code quality concern",
+    "info": "Best practice recommendation or optimization"
+  },
+  "vulnerability_categories": [
+    "arithmetic-overflow-underflow",
+    "value-conservation",
+    "spending-condition-bypass",
+    "state-transition-errors",
+    "register-access-violations",
+    "token-management-issues",
+    "cryptographic-misuse",
+    "collection-operation-errors",
+    "context-manipulation",
+    "gas-inefficiency"
+  ],
+  "supported_patterns": [
+    "time-locked-contracts",
+    "multi-signature-wallets",
+    "token-sales",
+    "crowdfunding-campaigns",
+    "finite-state-machines",
+    "oracle-integrations",
+    "atomic-swaps",
+    "nft-contracts",
+    "dao-governance",
+    "defi-protocols"
+  ],
+  "documentation": {
+    "main": "skill.md",
+    "usage": "USAGE.md",
+    "quickstart": "README.md",
+    "examples": "examples/"
+  },
+  "examples": [
+    {
+      "name": "Time-Lock Contract",
+      "file": "examples/01-timelock-audit.md",
+      "complexity": "beginner",
+      "vulnerabilities_found": ["register-access-safety"],
+      "severity": "medium"
+    },
+    {
+      "name": "Multi-Signature Wallet",
+      "file": "examples/02-multisig-audit.md",
+      "complexity": "intermediate",
+      "vulnerabilities_found": ["missing-validation", "no-key-rotation"],
+      "severity": "high"
+    },
+    {
+      "name": "Token Sale Contract",
+      "file": "examples/03-token-sale-audit.md",
+      "complexity": "intermediate",
+      "vulnerabilities_found": [
+        "arithmetic-overflow",
+        "arithmetic-underflow",
+        "missing-bounds-checking",
+        "token-id-validation"
+      ],
+      "severity": "critical"
+    },
+    {
+      "name": "Crowdfunding FSM",
+      "file": "examples/04-crowdfunding-audit.md",
+      "complexity": "advanced",
+      "vulnerabilities_found": [
+        "missing-state-identifier",
+        "no-contributor-tracking",
+        "race-conditions",
+        "bounds-violations"
+      ],
+      "severity": "critical"
+    }
+  ],
+  "prerequisites": {
+    "knowledge": [
+      "ErgoScript syntax basics",
+      "eUTXO model understanding",
+      "Blockchain fundamentals"
+    ],
+    "tools": [
+      "Ergo Playgrounds (recommended)",
+      "AppKit or Fleet SDK (optional)",
+      "escript.online (optional)"
+    ]
+  },
+  "output_format": {
+    "report_sections": [
+      "executive-summary",
+      "contract-analysis",
+      "detailed-findings",
+      "improved-version",
+      "security-checklist",
+      "testing-recommendations",
+      "risk-assessment",
+      "deployment-recommendation"
+    ],
+    "finding_structure": {
+      "severity": "critical|high|medium|low|info",
+      "location": "line number or section",
+      "description": "clear explanation",
+      "impact": "what can go wrong",
+      "recommendation": "how to fix",
+      "code_example": "vulnerable and fixed versions"
+    }
+  },
+  "references": {
+    "official_docs": "https://docs.ergoplatform.com/dev/scs/ergoscript/",
+    "best_practices": "https://docs.ergoplatform.com/dev/scs/ergoscript/#best-practices",
+    "sigma_protocols": "https://docs.ergoplatform.com/dev/scs/sigma/",
+    "eutxo_model": "https://docs.ergoplatform.com/dev/protocol/eutxo/",
+    "language_spec": "https://docs.ergoplatform.com/dev/scs/sigma/lang-spec/",
+    "local_spec": "../../../docs/LangSpec.md"
+  },
+  "community": {
+    "discord": "https://discord.gg/ergo-platform-668903786361651200",
+    "telegram": "https://t.me/ergo_dev",
+    "forum": "https://www.ergoforum.org/"
+  },
+  "limitations": [
+    "Static analysis only - does not execute contracts",
+    "Pattern-based detection - may not catch novel vulnerabilities",
+    "Should be complemented with testing and professional audits for high-value contracts",
+    "Does not provide formal verification"
+  ],
+  "best_for": [
+    "Pre-deployment security review",
+    "Learning about ErgoScript security",
+    "Identifying common vulnerabilities",
+    "Code review process",
+    "Security research and education"
+  ],
+  "not_suitable_for": [
+    "Real-time exploit detection",
+    "Automated formal verification",
+    "Contract execution testing",
+    "Sole security measure for high-value contracts"
+  ],
+  "tags": [
+    "ergo",
+    "ergoscript",
+    "smart-contracts",
+    "security",
+    "audit",
+    "blockchain",
+    "sigma-protocols",
+    "eutxo",
+    "vulnerability-detection"
+  ],
+  "author": "Ergo Security Research Community",
+  "license": "MIT",
+  "last_updated": "2025-12-13"
+}
