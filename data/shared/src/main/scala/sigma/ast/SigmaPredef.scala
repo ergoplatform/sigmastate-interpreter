@@ -319,6 +319,43 @@ object SigmaPredef {
         Seq(ArgInfo("input", "value to convert")))
     )
 
+    val DebugFunc = PredefinedFunc("debug",
+      Lambda(Seq(paramT), Array("value" -> tT, "label" -> SString), tT, None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, tpe, _)), args) =>
+          // Extract value and optional label
+          val value = args.head
+          val label = if (args.length > 1) args(1) match {
+            case StringConstant(s) => s
+            case _ => ""
+          } else ""
+          
+          // Output debug information
+          val output = if (label.nonEmpty) {
+            s"DEBUG [$label]: ${value.toString} (type: ${value.tpe})"
+          } else {
+            s"DEBUG: ${value.toString} (type: ${value.tpe})"
+          }
+          println(output)
+          
+          // Return the value unchanged (pass-through)
+          value
+        }),
+      OperationInfo(MethodCall,
+        """Debug utility function that outputs the value and optional label during script execution.
+          |The function returns the input value unchanged, allowing it to be used inline.
+          |This is a development/debugging tool and should not be used in production scripts.
+          |
+          |Example:
+          |```
+          |val price = debug(SELF.R5[Long].get, "ergPricePerToken")
+          |```
+        """.stripMargin,
+        Seq(
+          ArgInfo("value", "value of any type to output for debugging"),
+          ArgInfo("label", "optional string label to identify the debug output")))
+    )
+
     val ProveDHTupleFunc = PredefinedFunc("proveDHTuple",
       Lambda(Array("g" -> SGroupElement, "h" -> SGroupElement, "u" -> SGroupElement, "v" -> SGroupElement), SSigmaProp, None),
       PredefFuncInfo(
@@ -552,6 +589,7 @@ object SigmaPredef {
       ByteArrayToLongFunc,
       DecodePointFunc,
       LongToByteArrayFunc,
+      DebugFunc,
       ProveDHTupleFunc,
       ProveDlogFunc,
       AvlTreeFunc,
