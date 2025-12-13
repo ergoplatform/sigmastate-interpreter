@@ -108,4 +108,30 @@ class DebugFuncTest extends AnyPropSpec
     typecheck(env, "{ val arr = debug(Coll(1,2,3), \"array\"); arr.map({ (x: Int) => x + 1 }) }") shouldBe SCollection(SInt)
     typecheck(env, "{ val opt = debug(getVar[Int](1), \"var\"); opt.isDefined }") shouldBe SBoolean
   }
+
+  property("debug() with nested calls") {
+    typecheck(env, "debug(debug(10, \"inner\"), \"outer\")") shouldBe SInt
+    typecheck(env, "{ val x = debug(debug(5, \"a\") + debug(3, \"b\"), \"sum\"); x }") shouldBe SInt
+  }
+
+  property("debug() with empty label") {
+    typecheck(env, "debug(42, \"\")") shouldBe SInt
+    typecheck(env, "debug(HEIGHT, \"\")") shouldBe SInt
+  }
+
+  property("debug() in map/filter operations") {
+    typecheck(env, "Coll(1,2,3).map({ (x: Int) => debug(x, \"item\") })") shouldBe SCollection(SInt)
+    typecheck(env, "Coll(1,2,3).filter({ (x: Int) => debug(x > 1, \"check\") })") shouldBe SCollection(SInt)
+  }
+
+  property("debug() with ergoTree properties") {
+    typecheck(env, "debug(SELF.value, \"box value\")") shouldBe SLong
+    typecheck(env, "debug(SELF.propositionBytes, \"script bytes\")") shouldBe SByteArray
+    typecheck(env, "debug(SELF.tokens.size, \"tokens count\")") shouldBe SInt
+  }
+
+  property("debug() type preservation in lambda") {
+    typecheck(env, "{ val f = { (x: Int) => debug(x * 2, \"doubled\") }; f(5) }") shouldBe SInt
+    typecheck(env, "{ val g = { (x: Long) => debug(x + 1L, \"incremented\") }; g(10L) }") shouldBe SLong
+  }
 }
