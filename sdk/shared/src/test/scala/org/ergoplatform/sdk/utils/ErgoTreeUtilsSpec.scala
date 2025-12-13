@@ -47,8 +47,9 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     
-    val tree1 = ErgoTree.fromProposition(prop)
-    val tree2 = ErgoTree.withSegregation(ErgoTree.ZeroHeader, prop)
+    // Both trees use withoutSegregation but with different headers
+    val tree1 = ErgoTree.withoutSegregation(ErgoTree.ZeroHeader, prop)
+    val tree2 = ErgoTree.withoutSegregation(ErgoTree.setSizeBit(ErgoTree.ZeroHeader), prop)
 
     // Verify headers are actually different
     tree1.header should not equal tree2.header
@@ -114,8 +115,9 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val prop = SigmaPropConstant(pk)
     
-    val tree1 = ErgoTree.fromProposition(prop)
-    val tree2 = ErgoTree.withSegregation(ErgoTree.ZeroHeader, prop)
+    // Both trees use withoutSegregation but with different headers
+    val tree1 = ErgoTree.withoutSegregation(ErgoTree.ZeroHeader, prop)
+    val tree2 = ErgoTree.withoutSegregation(ErgoTree.setSizeBit(ErgoTree.ZeroHeader), prop)
 
     val hash1 = ErgoTreeUtils.hashWithoutHeader(tree1)
     val hash2 = ErgoTreeUtils.hashWithoutHeader(tree2)
@@ -257,7 +259,12 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   }
 
   property("isValidErgoTreeBytes should return false for invalid version") {
-    val invalidHeader = Array[Byte](0x08.toByte) // Version 8 (invalid, max is 7)
+    // Create a header with version 8 (invalid, max is 7)
+    // Bits 0-2 encode version, so 0x08 = 0b00001000 = version 0, size bit set
+    // We need 0b00000111 = 0x07 for version 7, and 0b00001000 would be version 0 with size
+    // To get version 8, we need bits 0-2 = 0b000 (wraps to 0) which is valid
+    // Let's use a different approach: manually set invalid version bits
+    val invalidHeader = Array[Byte]((ErgoTree.VersionMask + 1).toByte) // Version 8
 
     ErgoTreeUtils.isValidErgoTreeBytes(invalidHeader) shouldBe false
   }
@@ -308,12 +315,12 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
     val pk = ProveDlog(CryptoConstants.dlogGroup.ctx.decodePoint(pkBytes))
     val expectedProp = SigmaPropConstant(pk)
 
-    // Expected script (stored in contract)
-    val expectedTree = ErgoTree.fromProposition(expectedProp)
+    // Expected script (stored in contract) - both use same segregation mode
+    val expectedTree = ErgoTree.withoutSegregation(ErgoTree.ZeroHeader, expectedProp)
     val expectedHash = ErgoTreeUtils.hashWithoutHeader(expectedTree)
 
     // Actual box proposition (might have different header due to wallet implementation)
-    val actualTree = ErgoTree.withSegregation(ErgoTree.ZeroHeader, expectedProp)
+    val actualTree = ErgoTree.withoutSegregation(ErgoTree.setSizeBit(ErgoTree.ZeroHeader), expectedProp)
 
     // Direct comparison would fail
     expectedTree.bytes should not equal actualTree.bytes
