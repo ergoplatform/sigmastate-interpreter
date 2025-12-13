@@ -101,9 +101,9 @@ val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 val fastparse          = "com.lihaoyi" %% "fastparse" % "2.3.3"
 val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
-
+  
 val supertaggedDependency =
-  libraryDependencies += "org.rudogma" %% "supertagged" % "2.0-RC2"
+  libraryDependencies += "org.rudogma" %% "supertagged" % "1.4"
 
 val scalaCompat        = "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0"
 lazy val scodecBitsDependency =
