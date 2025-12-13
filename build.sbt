@@ -91,8 +91,6 @@ val scrypto            = "org.scorexfoundation" %% "scrypto" % "3.0.0"
 val scryptoDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.0.0"
 
-libraryDependencies += "org.scorexfoundation" %% "core" % "6.0.2"
-
 val scorexUtil         = "org.scorexfoundation" %% "scorex-util" % "0.2.1"
 val scorexUtilDependency =
   libraryDependencies += "org.scorexfoundation" %% "scorex-util" % "0.2.1"
