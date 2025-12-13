@@ -52,7 +52,9 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} test
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} test
 
       - name: Publish a snapshot ${{ github.ref }}
         if: env.HAS_SECRETS == 'true'
@@ -112,7 +114,9 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests and collect coverage
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
 
       - name: Publish a JVM snapshot ${{ github.ref }}
         if: env.HAS_SECRETS == 'true'
@@ -122,7 +126,9 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
       - name: JS Build
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} scJS/fastOptJS
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} scJS/fastOptJS
 
       - name: Runs JS tests
         run: npm run test
