@@ -288,7 +288,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
     val prop = SigmaPropConstant(pk)
     
     val tree1 = ErgoTree.fromProposition(prop)
-    val tree2 = ErgoTreeUtils.withSegregation(ErgoTree.ZeroHeader, prop)
+    val tree2 = ErgoTree.withSegregation(ErgoTree.ZeroHeader, prop)
 
     // If comparison says they're equal
     if (ErgoTreeUtils.compareWithoutHeader(tree1, tree2)) {
