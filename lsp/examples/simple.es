@@ -4,3 +4,7 @@
 {
   sigmaProp(HEIGHT > 100000)
 }
+
+{
+  SELF.
+}

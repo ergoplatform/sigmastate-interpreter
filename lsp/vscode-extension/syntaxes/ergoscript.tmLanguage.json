@@ -1,0 +1,138 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ErgoScript",
+  "scopeName": "source.ergoscript",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#constants" },
+    { "include": "#globals" },
+    { "include": "#functions" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.ergoscript",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.ergoscript",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ergoscript",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ergoscript",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.ergoscript",
+          "match": "\\b0[xX][0-9a-fA-F]+[Ll]?\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.ergoscript",
+          "match": "\\b[0-9]+[Ll]?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ergoscript",
+          "match": "\\b(if|else|def|val|return)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.ergoscript",
+          "match": "\\b(&&|\\|\\|)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.ergoscript",
+          "match": "\\b(Int|Long|BigInt|Byte|Short|Boolean|String|Unit|Box|Coll|Option|SigmaProp|GroupElement|AvlTree|Header|PreHeader|Context)\\b"
+        },
+        {
+          "name": "storage.type.tuple.ergoscript",
+          "match": "\\([^)]*\\)"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.ergoscript",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.none.ergoscript",
+          "match": "\\b(None)\\b"
+        }
+      ]
+    },
+    "globals": {
+      "patterns": [
+        {
+          "name": "variable.language.ergoscript",
+          "match": "\\b(SELF|INPUTS|OUTPUTS|HEIGHT|CONTEXT|LastBlockUtxoRootHash|MinerPubKey|getVar)\\b"
+        },
+        {
+          "name": "variable.other.register.ergoscript",
+          "match": "\\b(R[0-9])\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.ergoscript",
+          "match": "\\b(sigmaProp|atLeast|allOf|anyOf|blake2b256|sha256|proveDlog|proveDHTuple|byteArrayToBigInt|byteArrayToLong|longToByteArray|decodePoint|min|max|Some|substConstants|executeFromSelfReg)\\b"
+        },
+        {
+          "name": "support.function.collection.ergoscript",
+          "match": "\\b(map|filter|fold|foldLeft|exists|forall|flatMap|zip|indexOf|slice|append|size|getOrElse|isDefined|isEmpty|get)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.ergoscript",
+          "match": "(==|!=|>=|<=|>|<)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.ergoscript",
+          "match": "(\\+|-|\\*|/|%)"
+        },
+        {
+          "name": "keyword.operator.assignment.ergoscript",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arrow.ergoscript",
+          "match": "(=>|->)"
+        }
+      ]
+    }
+  }
+}

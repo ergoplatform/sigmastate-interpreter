@@ -8,26 +8,25 @@ import scala.jdk.CollectionConverters._
 
 /**
  * ErgoScript Language Server implementation.
- * 
- * Provides language intelligence features for ErgoScript:
+ * * Provides language intelligence features for ErgoScript:
  * - Syntax and type error diagnostics
  * - Autocomplete for global variables, functions, and methods
  * - Hover documentation
  * - Go to definition
  * - Signature help
  */
-class ErgoScriptLanguageServer extends LanguageServer with LanguageClientAware {
+class ErgoScriptLanguageServer extends LanguageServer {
   
   private var client: LanguageClient = _
   private val documents = mutable.Map[String, String]()
-  private val textDocumentService = new ErgoScriptTextDocumentService(this)
-  private val workspaceService = new ErgoScriptWorkspaceService()
+  private lazy val textDocumentService = new ErgoScriptTextDocumentService(this)
+  private lazy val workspaceService = new ErgoScriptWorkspaceService()
 
   /**
    * Connect to the language client (editor).
    */
-  def connect(client: LanguageClient): Unit = {
-    this.client = client
+  def connect(languageClient: LanguageClient): Unit = {
+    this.client = languageClient
   }
 
   /**
@@ -124,6 +123,14 @@ class ErgoScriptLanguageServer extends LanguageServer with LanguageClientAware {
    */
   override def exit(): Unit = {
     System.exit(0)
+  }
+
+  /**
+   * FIX: Explicitly override cancelProgress to prevent "Duplicate RPC method" error.
+   * This resolves a conflict between the Java default method and Scala's generated bridge method.
+   */
+  override def cancelProgress(params: WorkDoneProgressCancelParams): Unit = {
+    // No-op implementation is fine
   }
 
   override def getTextDocumentService: TextDocumentService = textDocumentService

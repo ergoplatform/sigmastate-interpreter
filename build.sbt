@@ -374,7 +374,7 @@ lazy val lsp = (project in file("lsp"))
     scalaVersion := scala213,
     name := "ergoscript-lsp",
     libraryDependencies ++= Seq(
-      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.21.1",
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.13.0",
       scalatest, scalactic
     ),
     assembly / mainClass := Some("sigma.lsp.Main"),
@@ -424,4 +424,6 @@ pgpPublicRing := file("ci/pubring.asc")
 pgpSecretRing := file("ci/secring.asc")
 pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray)
 usePgpKeyHex("C1FD62B4D44BDF702CDF2B726FF59DA944B150DD")
+
+dependencyOverrides += "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.13.0"
 

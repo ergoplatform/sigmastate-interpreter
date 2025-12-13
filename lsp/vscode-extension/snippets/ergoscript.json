@@ -1,0 +1,151 @@
+{
+  "Simple Contract": {
+    "prefix": "contract",
+    "body": [
+      "{",
+      "  val ${1:condition} = ${2:SELF.value > 0L}",
+      "  sigmaProp(${1:condition})",
+      "}"
+    ],
+    "description": "Basic ErgoScript contract template"
+  },
+  "Value Check": {
+    "prefix": "value",
+    "body": [
+      "val ${1:output} = OUTPUTS(${2:0})",
+      "val ${3:valuePreserved} = ${1:output}.value >= SELF.value",
+      "sigmaProp(${3:valuePreserved})"
+    ],
+    "description": "Check output value preservation"
+  },
+  "Multisig (2 of 3)": {
+    "prefix": "multisig",
+    "body": [
+      "{",
+      "  val pk1 = PK(\"${1:pk1_address}\")",
+      "  val pk2 = PK(\"${2:pk2_address}\")",
+      "  val pk3 = PK(\"${3:pk3_address}\")",
+      "  atLeast(2, Coll(pk1, pk2, pk3))",
+      "}"
+    ],
+    "description": "2-of-3 multisig template"
+  },
+  "Timelock": {
+    "prefix": "timelock",
+    "body": [
+      "{",
+      "  val deadline = ${1:1000000}",
+      "  val ownerPk = PK(\"${2:owner_address}\")",
+      "  ",
+      "  val timeCondition = HEIGHT >= deadline",
+      "  sigmaProp(timeCondition) && ownerPk",
+      "}"
+    ],
+    "description": "Time-locked contract template"
+  },
+  "Token Check": {
+    "prefix": "token",
+    "body": [
+      "{",
+      "  val tokenId = fromBase64(\"${1:token_id_base64}\")",
+      "  val hasToken = SELF.tokens.exists { (t: (Coll[Byte], Long)) =>",
+      "    t._1 == tokenId && t._2 >= ${2:1L}",
+      "  }",
+      "  sigmaProp(hasToken)",
+      "}"
+    ],
+    "description": "Check for specific token in box"
+  },
+  "Register Access": {
+    "prefix": "register",
+    "body": [
+      "val ${1:data} = SELF.R${2:4}[${3:Long}].getOrElse(${4:0L})"
+    ],
+    "description": "Access register with default value"
+  },
+  "If-Else": {
+    "prefix": "ifelse",
+    "body": [
+      "if (${1:condition}) {",
+      "  ${2:trueValue}",
+      "} else {",
+      "  ${3:falseValue}",
+      "}"
+    ],
+    "description": "If-else expression"
+  },
+  "Val Definition": {
+    "prefix": "val",
+    "body": [
+      "val ${1:name} = ${2:value}"
+    ],
+    "description": "Value definition"
+  },
+  "Def Function": {
+    "prefix": "def",
+    "body": [
+      "def ${1:name}(${2:arg}: ${3:Type}): ${4:ReturnType} = {",
+      "  ${5:body}",
+      "}"
+    ],
+    "description": "Function definition"
+  },
+  "Collection Filter": {
+    "prefix": "filter",
+    "body": [
+      "${1:collection}.filter { (${2:x}: ${3:Type}) => ${4:condition} }"
+    ],
+    "description": "Filter collection elements"
+  },
+  "Collection Map": {
+    "prefix": "map",
+    "body": [
+      "${1:collection}.map { (${2:x}: ${3:Type}) => ${4:transform} }"
+    ],
+    "description": "Transform collection elements"
+  },
+  "Collection Fold": {
+    "prefix": "fold",
+    "body": [
+      "${1:collection}.fold(${2:initial}, { (${3:acc}: ${4:AccType}, ${5:x}: ${6:ElemType}) => ${7:acc + x} })"
+    ],
+    "description": "Fold/reduce collection"
+  },
+  "HTLC Template": {
+    "prefix": "htlc",
+    "body": [
+      "{",
+      "  val hashlock = fromBase64(\"${1:secret_hash}\")",
+      "  val receiver = PK(\"${2:receiver_address}\")",
+      "  val sender = PK(\"${3:sender_address}\")",
+      "  val deadline = ${4:1000000}",
+      "  ",
+      "  // Receiver reveals secret",
+      "  val revealCondition = {",
+      "    val secret = getVar[Coll[Byte]](0).get",
+      "    blake2b256(secret) == hashlock",
+      "  }",
+      "  ",
+      "  // Sender reclaims after deadline",
+      "  val reclaimCondition = HEIGHT >= deadline",
+      "  ",
+      "  (sigmaProp(revealCondition) && receiver) || (sigmaProp(reclaimCondition) && sender)",
+      "}"
+    ],
+    "description": "Hash Time-Locked Contract template"
+  },
+  "sigmaProp": {
+    "prefix": "sigma",
+    "body": [
+      "sigmaProp(${1:condition})"
+    ],
+    "description": "Convert boolean to SigmaProp"
+  },
+  "proveDlog": {
+    "prefix": "prove",
+    "body": [
+      "proveDlog(${1:groupElement})"
+    ],
+    "description": "Create discrete log proof"
+  }
+}

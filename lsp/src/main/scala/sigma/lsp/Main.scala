@@ -48,9 +48,6 @@ object Main {
    * Uses stdin/stdout for JSON-RPC communication.
    */
   def startServer(in: InputStream, out: OutputStream): Unit = {
-    // Redirect stderr to avoid polluting the JSON-RPC stream
-    System.setErr(System.err)
-    
     val server = new ErgoScriptLanguageServer()
     val launcher = LSPLauncher.createServerLauncher(server, in, out)
     
