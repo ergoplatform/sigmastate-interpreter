@@ -46,8 +46,8 @@ class DebugFuncTest extends AnyPropSpec
 
   property("debug() pass-through semantics") {
     // Value should be returned unchanged
-    typecheck(env, "{ val x = debug(42, \"test\"); x }") shouldBe SInt
-    typecheck(env, "{ val x = debug(42, \"test\"); x + 1 }") shouldBe SInt
+    typecheck(env, "{ val dVal = debug(42, \"test\"); dVal }") shouldBe SInt
+    typecheck(env, "{ val dVal = debug(42, \"test\"); dVal + 1 }") shouldBe SInt
     typecheck(env, "debug(10, \"value\") + 5") shouldBe SInt
   }
 
@@ -91,7 +91,7 @@ class DebugFuncTest extends AnyPropSpec
   }
 
   property("debug() chaining") {
-    typecheck(env, "{ val x = debug(10, \"first\"); val y = debug(x + 5, \"second\"); y }") shouldBe SInt
+    typecheck(env, "{ val dVal = debug(10, \"first\"); val y = debug(dVal + 5, \"second\"); y }") shouldBe SInt
   }
 
   property("debug() in conditional") {
@@ -111,7 +111,7 @@ class DebugFuncTest extends AnyPropSpec
 
   property("debug() with nested calls") {
     typecheck(env, "debug(debug(10, \"inner\"), \"outer\")") shouldBe SInt
-    typecheck(env, "{ val x = debug(debug(5, \"a\") + debug(3, \"b\"), \"sum\"); x }") shouldBe SInt
+    typecheck(env, "{ val dVal = debug(debug(5, \"a\") + debug(3, \"b\"), \"sum\"); dVal }") shouldBe SInt
   }
 
   property("debug() with empty label") {
