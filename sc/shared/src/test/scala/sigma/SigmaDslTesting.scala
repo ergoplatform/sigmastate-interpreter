@@ -294,12 +294,12 @@ class SigmaDslTesting extends AnyPropSpec
         txInputs, txDataInputs, txOutputCandidates.toIndexedSeq)
       val selfIndex = boxesToSpend.indexWhere(b => java.util.Arrays.equals(b.id, ctx.selfBox.id.toArray))
 
-      val extension = ContextExtension(
-        values = ctx.vars.toArray.zipWithIndex.collect {
+      val extension = ContextExtension.fromSeq(
+        ctx.vars.toArray.zipWithIndex.collect {
           case (v, i) if v != null =>
             val tpe = Evaluation.rtypeToSType(v.tVal)
             i.toByte -> ConstantNode(v.value.asWrappedType, tpe)
-        }.toMap
+        }.toSeq
       )
       new ErgoLikeContext(
         treeData, ctx.headers, ctx.preHeader,

@@ -214,7 +214,7 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
         (itx6.messageToSign sameElements initialMessage) shouldBe false
 
         // transaction with modified input extension
-        val newExtension7 = ContextExtension(headInput.spendingProof.extension.values ++ Map(Byte.MinValue -> ByteArrayConstant(Random.randomBytes(32))))
+        val newExtension7 = ContextExtension(headInput.spendingProof.extension.values.updated(Byte.MinValue, ByteArrayConstant(Random.randomBytes(32))))
         val newProof7 = new ProverResult(headInput.spendingProof.proof, newExtension7)
         val headInput7 = headInput.copy(spendingProof = newProof7)
         val itx7 = new ErgoLikeTransaction(headInput7 +: tailInputs, di, txIn.outputCandidates)
