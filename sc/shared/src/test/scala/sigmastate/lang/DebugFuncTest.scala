@@ -91,7 +91,7 @@ class DebugFuncTest extends AnyPropSpec
   }
 
   property("debug() chaining") {
-    typecheck(env, "{ val dVal = debug(10, \"first\"); val y = debug(dVal + 5, \"second\"); y }") shouldBe SInt
+    typecheck(env, "{ val dVal = debug(10, \"first\"); val dVal2 = debug(dVal + 5, \"second\"); dVal2 }") shouldBe SInt
   }
 
   property("debug() in conditional") {
