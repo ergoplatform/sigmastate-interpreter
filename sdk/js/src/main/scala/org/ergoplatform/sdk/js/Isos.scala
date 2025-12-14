@@ -159,9 +159,11 @@ object Isos {
 
     override def from(x: ContextExtension): contextExtensionMod.ContextExtension = {
       val res = new Object().asInstanceOf[contextExtensionMod.ContextExtension]
-      x.values.foreach { case (k, v: Constant[_]) =>
-        val hex = DataIsos.isoHexStringToConstant.from(v)
-        res.update(k, hex)
+      x.values.foreach {
+        case (k, v: Constant[_]) =>
+          val hex = DataIsos.isoHexStringToConstant.from(v)
+          res.update(k, hex)
+        case _ => // ignore non-Constant values
       }
       res
     }

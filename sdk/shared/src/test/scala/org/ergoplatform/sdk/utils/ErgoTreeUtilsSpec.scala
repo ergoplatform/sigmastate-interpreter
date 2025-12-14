@@ -25,7 +25,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   def createSimpleTree(seed: Byte = 1.toByte): ErgoTree = {
     // Use generator point multiplied by a scalar to get valid points
     val scalar = BigInt(1, Array.fill(32)(seed))
-    val point = CryptoConstants.dlogGroup.generator.exp(scalar.bigInteger)
+    val point = CryptoConstants.dlogGroup.exponentiate(CryptoConstants.dlogGroup.generator, scalar.bigInteger)
     val pk = ProveDlog(point)
     ErgoTree.fromProposition(SigmaPropConstant(pk))
   }
@@ -33,7 +33,7 @@ class ErgoTreeUtilsSpec extends AnyPropSpec with Matchers {
   /** Creates an ErgoTree with constant segregation */
   def createTreeWithSegregation(seed: Byte = 1.toByte): ErgoTree = {
     val scalar = BigInt(1, Array.fill(32)(seed))
-    val point = CryptoConstants.dlogGroup.generator.exp(scalar.bigInteger)
+    val point = CryptoConstants.dlogGroup.exponentiate(CryptoConstants.dlogGroup.generator, scalar.bigInteger)
     val pk = ProveDlog(point)
     val prop = SigmaPropConstant(pk)
     ErgoTree.withSegregation(ErgoTree.ZeroHeader, prop)
