@@ -4,22 +4,29 @@ This folder contains a minimal, low-cost Language Server Protocol (LSP) implemen
 
 ## What it provides
 
-- Basic diagnostics: unmatched braces/parentheses and a simple `TODO` info marker.
-- Document symbols: extracts `val`, `def`, `let`, `func`, `type` symbols via regex.
-- Hover: shows the token under cursor with a small help message.
+- **Real parser diagnostics**: When the Scala parser is available, calls `SigmaParser` via a CLI wrapper to get accurate parse errors with line/column information.
+- **Fallback regex diagnostics**: If the Scala parser is unavailable, uses simple pattern matching for unmatched braces/parentheses and `TODO` markers.
+- **Document symbols**: Extracts `val`, `def`, `let`, `func`, `type` symbols via regex.
+- **Hover**: Shows the token under cursor with a small help message.
 
-This is intentionally minimal to be low-effort and useful for tooling integration.
+This is intentionally minimal to be low-effort and useful for tooling integration, with a clear upgrade path to full parser integration.
 
 ## Quick start
 
-1. Install Node.js (>=14) and npm
-2. Install dependencies and run server
+1. **Build the parser** (optional but recommended for real diagnostics):
+   ```bash
+   # from repository root
+   sbt "parsers/publishLocal"
+   ```
 
-```bash
-cd lsp
-npm install
-npm start
-```
+2. **Install Node.js dependencies and run server**:
+   ```bash
+   cd lsp
+   npm install
+   npm start
+   ```
+
+The server automatically detects if the Scala parser JAR is available and uses it; otherwise it falls back to regex-based validation.
 
 ## How to use in VS Code (manual demo)
 
@@ -33,20 +40,56 @@ The server speaks LSP over stdio. If you have an LSP client that can attach to a
 
 Create `example.es` with some ErgoScript content and open it in the editor connected to this server. The server will emit diagnostics for unmatched braces and provide symbol extraction for lines beginning with `val`, `def`, `let`, `func`, or `type`.
 
+## Architecture
+
+```
+┌─────────────────┐
+│ LSP Client      │  (VS Code, Neovim, etc.)
+│ (stdio)         │
+└────────┬────────┘
+         │ LSP protocol
+         v
+┌─────────────────┐
+│ server.js       │  Node.js LSP server
+│ (stdio)         │  • Hover, symbols, diagnostics
+└────────┬────────┘
+         │
+         ├─────────────────┐
+         │                 │
+         v                 v
+┌─────────────────┐  ┌─────────────────┐
+│ ParserCLI.scala │  │ Regex fallback  │
+│ (via scala CLI) │  │ (basic checks)  │
+│ Uses SigmaParser│  └─────────────────┘
+└─────────────────┘
+         │
+         v
+┌─────────────────┐
+│ SigmaParser     │  Actual ErgoScript parser
+│ (Scala/fastparse)
+└─────────────────┘
+```
+
+When the Scala parser JAR is built (`sbt parsers/publishLocal`), the LSP server invokes `ParserCLI.scala` via the `scala` command to get real parse errors. Otherwise, it falls back to simple regex validation.
+
 ## Limitations and next steps
 
-- This implementation uses simple regex parsing and basic heuristics; it is not a replacement for a full parser.
+- **Parser invocation overhead**: Currently spawns a new `scala` process per validation. For production, consider:
+  - Running a persistent Scala server (e.g., via HTTP or Unix socket) to avoid startup costs.
+  - Compiling `ParserCLI.scala` to a native binary with Scala Native or GraalVM.
+- **Limited symbol resolution**: Document symbols use regex, not the actual AST. Future work should query the parser's symbol table.
 - Next steps to improve quality and LSP features:
-  - Wire the server to the actual parser in this repo (`parsers/`), calling it to produce real diagnostics and symbol data.
   - Add completions and signature help by reusing interpreter AST.
   - Provide workspace/x references and find-definition using interpreter symbols.
   - Optionally publish as an npm package and provide a VS Code extension to simplify usage.
 
 ## Files
 
-- `server.js` - minimal LSP server (stdio)
+- `server.js` - LSP server (stdio) with auto-detection of Scala parser
+- `ParserCLI.scala` - Scala wrapper for SigmaParser that outputs JSON diagnostics
 - `package.json` - Node package manifest
 - `README.md` - this file
+- `example.es` - sample ErgoScript file for testing
 
 ## License
 

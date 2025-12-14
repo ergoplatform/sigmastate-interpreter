@@ -6,9 +6,16 @@ const {
   SymbolKind,
   DocumentSymbol
 } = require('vscode-languageserver');
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments();
+
+// Check if Scala parser CLI is available
+const parserJarPath = path.join(__dirname, '..', 'parsers', 'shared', 'target', 'scala-2.13', 'parsers_2.13-5.0.4.jar');
+const useRealParser = fs.existsSync(parserJarPath);
 
 connection.onInitialize(() => {
   return {
@@ -21,8 +28,61 @@ connection.onInitialize(() => {
   };
 });
 
-// Simple diagnostics: unmatched braces and basic forbidden tokens
-function validateText(text) {
+// Call real Scala parser if available, otherwise use regex fallback
+async function validateText(text) {
+  if (useRealParser) {
+    return await validateWithScalaParser(text);
+  } else {
+    return validateWithRegex(text);
+  }
+}
+
+// Call Scala parser CLI via scala command
+function validateWithScalaParser(text) {
+  return new Promise((resolve) => {
+    const scalaFile = path.join(__dirname, 'ParserCLI.scala');
+    const proc = spawn('scala', ['-cp', parserJarPath, scalaFile], {
+      cwd: __dirname
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdin.write(text);
+    proc.stdin.end();
+
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      try {
+        const result = JSON.parse(stdout);
+        const diagnostics = (result.diagnostics || []).map(d => ({
+          severity: d.severity === 'error' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
+          range: {
+            start: { line: d.line, character: d.column },
+            end: { line: d.line, character: d.column + 1 }
+          },
+          message: d.message,
+          source: 'ergoscript-parser'
+        }));
+        resolve(diagnostics);
+      } catch (e) {
+        // Parser invocation failed, fall back to regex
+        connection.console.warn(`Parser failed: ${stderr || e.message}, falling back to regex`);
+        resolve(validateWithRegex(text));
+      }
+    });
+
+    proc.on('error', (err) => {
+      connection.console.warn(`Parser spawn error: ${err.message}, falling back to regex`);
+      resolve(validateWithRegex(text));
+    });
+  });
+}
+
+// Simple regex-based diagnostics (fallback)
+function validateWithRegex(text) {
   const diagnostics = [];
   const stack = [];
   const open = { '{': '}', '(': ')', '[': ']' };
@@ -41,7 +101,7 @@ function validateText(text) {
             end: { line: 0, character: 1 }
           },
           message: `Unmatched closing '${ch}' at pos ${i}`,
-          source: 'ergoscript-lsp'
+          source: 'ergoscript-lsp-regex'
         };
         diagnostics.push(diag);
       }
@@ -55,7 +115,7 @@ function validateText(text) {
         end: { line: 0, character: 1 }
       },
       message: `Unmatched opening '${stack[stack.length - 1].ch}'`,
-      source: 'ergoscript-lsp'
+      source: 'ergoscript-lsp-regex'
     };
     diagnostics.push(diag);
   }
@@ -72,7 +132,7 @@ function validateText(text) {
         end: { line: 0, character: pos + m[0].length }
       },
       message: "TODO found",
-      source: 'ergoscript-lsp'
+      source: 'ergoscript-lsp-regex'
     });
   }
 
@@ -111,14 +171,14 @@ connection.onHover((params) => {
   return { contents: { kind: 'markdown', value: `**${word}**\n\nErgoScript token (hover info is minimal).` } };
 });
 
-// Handle document changes
-documents.onDidChangeContent(change => {
-  const diagnostics = validateText(change.document.getText());
+// Handle document changes (async now)
+documents.onDidChangeContent(async (change) => {
+  const diagnostics = await validateText(change.document.getText());
   connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
 });
 
-documents.onDidOpen(e => {
-  const diagnostics = validateText(e.document.getText());
+documents.onDidOpen(async (e) => {
+  const diagnostics = await validateText(e.document.getText());
   connection.sendDiagnostics({ uri: e.document.uri, diagnostics });
 });
 
