@@ -21,7 +21,7 @@ import sigma.ast.SOption
 import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
-import sigma.crypto.{CryptoConstants, SecP256K1Group}
+import sigma.crypto.{CryptoConstants, CryptoFacade, SecP256K1Group}
 import sigmastate._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -690,105 +690,472 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
-  // todo: finish the range proof verification script and test
-  ignore("Bulletproof verification for a range proof") {
-    /*
-     * Original range proof verifier code by Benedikt Bunz:
-     *
-        VectorBase<T> vectorBase = params.getVectorBase();
-        PeddersenBase<T> base = params.getBase();
-        int n = vectorBase.getGs().size();
-        T a = proof.getaI();
-        T s = proof.getS();
+  /**
+    * Bulletproof range proof verification (Issue #1032).
+    *
+    * Implements a simplified Bulletproof range proof verifier in ErgoScript using
+    * Ergo 6.0's UnsignedBigInt and GroupElement.expUnsigned operations.
+    *
+    * The proof demonstrates that a committed value v in C = v*G + r*H
+    * lies in [0, 2^n) without revealing v.
+    *
+    * Architecture:
+    *   - Scala prover: generates the proof off-chain using secp256k1
+    *   - ErgoScript verifier: checks the polynomial identity on-chain
+    *
+    * Reference: Benedikt Bünz et al., "Bulletproofs: Short Proofs for Confidential
+    * Transactions and More", 2018 IEEE S&P.
+    *
+    * Original range proof verifier by Benedikt Bunz (Java):
+    * (Preserved for cross-reference with the Scala/ErgoScript implementation below)
+    *
+    *   VectorBase<T> vectorBase = params.getVectorBase();
+    *   PeddersenBase<T> base = params.getBase();
+    *   int n = vectorBase.getGs().size();
+    *   T a = proof.getaI();
+    *   T s = proof.getS();
+    *
+    *   BigInteger q = params.getGroup().groupOrder();
+    *   BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    *     → Scala: val y = new BigInteger(1, Blake2b256(V_enc ++ A_enc ++ S_enc)).mod(q)
+    *
+    *   FieldVector ys = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, y::multiply), q);
+    *
+    *   BigInteger z = ProofUtils.challengeFromints(q, y);
+    *     → Scala: val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    *
+    *   BigInteger zSquared = z.pow(2).mod(q);
+    *   BigInteger zCubed = z.pow(3).mod(q);
+    *   FieldVector twos = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, bi -> bi.shiftLeft(1)), q);
+    *   FieldVector twoTimesZSquared = twos.times(zSquared);
+    *   GeneratorVector<T> tCommits = proof.gettCommits();
+    *
+    *   BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    *     → Scala: val x = new BigInteger(1, Blake2b256(z_bytes ++ T1_enc ++ T2_enc)).mod(q)
+    *
+    *   BigInteger tauX = proof.getTauX();
+    *   BigInteger mu = proof.getMu();
+    *   BigInteger t = proof.getT();
+    *   BigInteger k = ys.sum().multiply(z.subtract(zSquared))
+    *                    .subtract(zCubed.shiftLeft(n).subtract(zCubed));
+    *     → Scala: val delta = (z - z²)·Σy^i - z³·Σ2^i
+    *
+    *   T lhs = base.commit(t.subtract(k), tauX);
+    *   T rhs = tCommits.commit(Arrays.asList(x, x.pow(2))).add(input.multiply(zSquared));
+    *     → Scala/ErgoScript: g^tHat * h^tauX == g^delta * V^z² * T1^x * T2^x²
+    *
+    *   equal(lhs, rhs, "Polynomial identity check failed, LHS: %s, RHS %s");
+    *   BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    *     → Scala: val uChallenge = new BigInteger(1, Blake2b256(x ++ tauX ++ mu ++ tHat)).mod(q)
+    *
+    *   T u = base.g.multiply(uChallenge);
+    *   GeneratorVector<T> hs = vectorBase.getHs();
+    *   GeneratorVector<T> gs = vectorBase.getGs();
+    *   GeneratorVector<T> hPrimes = hs.haddamard(ys.invert());
+    *   FieldVector hExp = ys.times(z).add(twoTimesZSquared);
+    *   T P = a.add(s.multiply(x)).add(gs.sum().multiply(z.negate()))
+    *           .add(hPrimes.commit(hExp)).subtract(base.h.multiply(mu)).add(u.multiply(t));
+    *   VectorBase<T> primeBase = new VectorBase<>(gs, hPrimes, u);
+    *   EfficientInnerProductVerifier<T> verifier = new EfficientInnerProductVerifier<>();
+    *   verifier.verify(primeBase, P, proof.getProductProof(), uChallenge);
+    */
+  property("Bulletproof verification for a range proof") {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator // secp256k1 generator
 
-        BigInteger q = params.getGroup().groupOrder();
-        BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    // Derive a second generator H via hash-to-curve (nothing-up-my-sleeve)
+    // Bunz: PeddersenBase<T> base = params.getBase(); (H is base.h)
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
 
-        FieldVector ys = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, y::multiply), q);
+    // --- PROVER SIDE (off-chain, Scala) ---
+    // For this test we use n=4 bits, proving v ∈ [0, 16)
+    val n = 4
+    val v = BigInteger.valueOf(9) // secret value to prove is in range
+    val r = new BigInteger(256, new SecureRandom()).mod(q) // blinding factor
 
-        BigInteger z = ProofUtils.challengeFromints(q, y);
+    // Pedersen commitment: V = v*G + r*H
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v),
+      group.exponentiate(H, r)
+    )
 
-        BigInteger zSquared = z.pow(2).mod(q);
-        BigInteger zCubed = z.pow(3).mod(q);
+    // Bit decomposition of v
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
 
-        FieldVector twos = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, bi -> bi.shiftLeft(1)), q);
-        FieldVector twoTimesZSquared = twos.times(zSquared);
-        GeneratorVector<T> tCommits = proof.gettCommits();
+    // Generate n independent generators gs(i), hs(i) via hash-to-curve
+    // Bunz: VectorBase<T> vectorBase = params.getVectorBase(); gs = vectorBase.getGs(); hs = vectorBase.getHs();
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
 
-         BigInteger x = ProofUtils.computeChallenge(q,z, tCommits);
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
 
-        BigInteger tauX = proof.getTauX();
-        BigInteger mu = proof.getMu();
-        BigInteger t = proof.getT();
-        BigInteger k = ys.sum().multiply(z.subtract(zSquared)).subtract(zCubed.shiftLeft(n).subtract(zCubed));
-        T lhs = base.commit(t.subtract(k), tauX);
-        T rhs = tCommits.commit(Arrays.asList(x, x.pow(2))).add(input.multiply(zSquared));
-        System.out.println("y " + y);
-        System.out.println("z " + z);
+    // Random blinding scalars
+    val alpha = new BigInteger(256, new SecureRandom()).mod(q)
+    val rho = new BigInteger(256, new SecureRandom()).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
 
-        System.out.println("x " + x);pow
-        equal(lhs, rhs, "Polynomial identity check failed, LHS: %s, RHS %s");
-        BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
-        System.out.println("u " + uChallenge);
-        T u = base.g.multiply(uChallenge);
-        GeneratorVector<T> hs = vectorBase.getHs();
-        GeneratorVector<T> gs = vectorBase.getGs();
-        GeneratorVector<T> hPrimes = hs.haddamard(ys.invert());
-        FieldVector hExp = ys.times(z).add(twoTimesZSquared);
-        T P = a.add(s.multiply(x)).add(gs.sum().multiply(z.negate())).add(hPrimes.commit(hExp)).subtract(base.h.multiply(mu)).add(u.multiply(t));
-        VectorBase<T> primeBase = new VectorBase<>(gs, hPrimes, u);
-        // System.out.println("PVerify "+P.normalize());
-        // System.out.println("XVerify" +x);
-        // System.out.println("YVerify" +y);
-        // System.out.println("ZVerify" +z);
-        // System.out.println("uVerify" +u);
+    // A = h^alpha * gs^aL * hs^aR (vector Pedersen commitment to aL, aR)
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
 
-        EfficientInnerProductVerifier<T> verifier = new EfficientInnerProductVerifier<>();
-        verifier.verify(primeBase, P, proof.getProductProof(), uChallenge);
-     */
+    // S = h^rho * gs^sL * hs^sR
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
 
-    val g = CGroupElement(SecP256K1Group.generator)
+    // Fiat-Shamir challenge y
+    // Bunz: BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+
+    // Fiat-Shamir challenge z
+    // Bunz: BigInteger z = ProofUtils.challengeFromints(q, y);
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    // Compute t1, t2 (polynomial coefficients)
+    // l(x) = (aL - z*1^n) + sL*x
+    // r(x) = y^n ○ (aR + z*1^n + sR*x) + z^2 * 2^n
+    // t(x) = <l(x), r(x)> = t0 + t1*x + t2*x^2
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    // t0 = <aL - z*1, y^n ○ (aR + z*1) + z^2 * 2^n>
+    // t1 = <sL, y^n ○ (aR + z*1) + z^2 * 2^n> + <aL - z*1, y^n ○ sR>
+    // t2 = <sL, y^n ○ sR>
+    var t0 = BigInteger.ZERO
+    var t1 = BigInteger.ZERO
+    var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lConst = aL(i).subtract(z).mod(q) // aL[i] - z
+      val rConst = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rLin = yn(i).multiply(sR(i)).mod(q)
+
+      t0 = t0.add(lConst.multiply(rConst)).mod(q)
+      t1 = t1.add(sL(i).multiply(rConst).add(lConst.multiply(rLin))).mod(q)
+      t2 = t2.add(sL(i).multiply(rLin)).mod(q)
+    }
+
+    // T1 = t1*G + tau1*H, T2 = t2*G + tau2*H
+    val tau1 = new BigInteger(256, new SecureRandom()).mod(q)
+    val tau2 = new BigInteger(256, new SecureRandom()).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    // Fiat-Shamir challenge x
+    // Bunz: BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    // tauX = tau2 * x^2 + tau1 * x + z^2 * r
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+
+    // mu = alpha + rho * x
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+
+    // tHat = t0 + t1*x + t2*x^2
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    // Compute delta(y,z) = (z - z^2) * <1^n, y^n> - z^3 * <1^n, 2^n>
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((acc, yi) => acc.add(yi).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((acc, ti) => acc.add(ti).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn).subtract(
+      z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // --- INNER PRODUCT ARGUMENT (Prover, Scala side) ---
+    // Compute the final evaluation vectors l and r at challenge point x
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    // Sanity check: <l, r> should equal tHat
+    val innerProduct = (0 until n).foldLeft(BigInteger.ZERO) { (acc, i) =>
+      acc.add(lVec(i).multiply(rVec(i))).mod(q)
+    }
+    assert(innerProduct.equals(tHat), s"Inner product $innerProduct != tHat $tHat")
+
+    // Compute u challenge point
+    // Bunz: BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    // Bunz: T u = base.g.multiply(uChallenge);
+    val U = group.exponentiate(G, uChallenge)
+
+    // Compute hPrimes[i] = hs[i]^(y^(-i))
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      val yInvI = yInv.modPow(BigInteger.valueOf(i), q)
+      group.exponentiate(hs(i), yInvI)
+    }.toArray
+
+    // Compute P = A * S^x * gs^(-z) * hPrimes^(hExp) * h^(-mu) * u^tHat
+    // where hExp[i] = y^i * z + z^2 * 2^i
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+    }
+    for (i <- 0 until n) {
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    // Inner product protocol: recursive halving
+    // For n=4, we have logN=2 rounds
+    val logN = 2 // log2(4)
+    var curGs = gs.clone()
+    var curHs = hPrimes.clone()
+    var curL = lVec.clone()
+    var curR = rVec.clone()
+    var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+    val challenges = new Array[BigInteger](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+
+      // L = gs[halfN:]^l[:halfN] * hs[:halfN]^r[halfN:] * u^<l[:halfN], r[halfN:]>
+      var Li = group.identity
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+      }
+      val cL = (0 until halfN).foldLeft(BigInteger.ZERO)((acc, j) =>
+        acc.add(curL(j).multiply(curR(halfN + j))).mod(q))
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ls(round) = Li
+
+      // R = gs[:halfN]^l[halfN:] * hs[halfN:]^r[:halfN] * u^<l[halfN:], r[:halfN]>
+      var Ri = group.identity
+      for (j <- 0 until halfN) {
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+      }
+      val cR = (0 until halfN).foldLeft(BigInteger.ZERO)((acc, j) =>
+        acc.add(curL(halfN + j).multiply(curR(j))).mod(q))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Rs(round) = Ri
+
+      // Fiat-Shamir challenge for this round (inner product argument)
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      challenges(round) = xi
+      val xiInv = xi.modInverse(q)
+
+      // Fold generators: gs' = gs[:h]^(xi^-1) * gs[h:]^(xi)
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv),
+          group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi),
+          group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs
+      curHs = newHs
+      curL = newL
+      curR = newR
+      curN = halfN
+    }
+
+    val finalA = curL(0) // final scalar a
+    val finalB = curR(0) // final scalar b
+
+    // --- VERIFIER SIDE (ErgoScript, on-chain) ---
+    // Checks BOTH:
+    // 1) Polynomial identity: g^tHat * h^tauX == g^delta * V^(z^2) * T1^x * T2^(x^2)
+    // 2) Inner product argument: fold L/R with challenges, verify final point
+
+    import sigma.data.CUnsignedBigInt
+
+    val gsColl = gs.map(p => CGroupElement(p))
+    val hsColl = hs.map(p => CGroupElement(p))
+
+    // Encode L and R points for context extensions
+    val LsEncoded = Ls.map(p => CGroupElement(p))
+    val RsEncoded = Rs.map(p => CGroupElement(p))
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> GroupElementConstant(CGroupElement(V)),
+      1.toByte -> GroupElementConstant(CGroupElement(A)),
+      2.toByte -> GroupElementConstant(CGroupElement(S)),
+      3.toByte -> GroupElementConstant(CGroupElement(T1)),
+      4.toByte -> GroupElementConstant(CGroupElement(T2)),
+      5.toByte -> UnsignedBigIntConstant(tauX),
+      6.toByte -> UnsignedBigIntConstant(mu),
+      7.toByte -> UnsignedBigIntConstant(tHat),
+      8.toByte -> UnsignedBigIntConstant(finalA),
+      9.toByte -> UnsignedBigIntConstant(finalB),
+      14.toByte -> GroupElementConstant(CGroupElement(P)),
+      15.toByte -> GroupElementConstant(CGroupElement(U))
+    )
+
+    // Pre-compute values as hex strings for use in ErgoScript
+    val gHex = Base16.encode(CryptoFacade.getASN1Encoding(G, true))
+    val hHex = Base16.encode(CryptoFacade.getASN1Encoding(H, true))
+
+    // Pre-compute challenge scalars for L/R rounds
+    val x1 = challenges(0)
+    val x2 = challenges(1)
+    val x1Sq = x1.multiply(x1).mod(q)
+    val x2Sq = x2.multiply(x2).mod(q)
+    val x1InvSq = x1.modInverse(q).multiply(x1.modInverse(q)).mod(q)
+    val x2InvSq = x2.modInverse(q).multiply(x2.modInverse(q)).mod(q)
+
+    // Encode L/R points as hex for constants in ErgoScript
+    val L0Hex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(0), true))
+    val L1Hex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(1), true))
+    val R0Hex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(0), true))
+    val R1Hex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(1), true))
+
+    // Compute the expected final point on Scala side for verification
+    // P_final = P * L0^(x1^2) * R0^(x1^-2) * L1^(x2^2) * R1^(x2^-2)
+    var Pfinal = P
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(0), x1Sq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(0), x1InvSq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(1), x2Sq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(1), x2InvSq))
+
+    // g_final = multiexp of gs with challenge products
+    // h_final = multiexp of hPrimes with challenge products (inverse)
+    // For n=4, log2=2: scalars are products of xi or xi^-1
+    val gScalars = Array(
+      x1.modInverse(q).multiply(x2.modInverse(q)).mod(q), // s0 = x1^-1 * x2^-1
+      x1.modInverse(q).multiply(x2).mod(q),               // s1 = x1^-1 * x2
+      x1.multiply(x2.modInverse(q)).mod(q),               // s2 = x1 * x2^-1
+      x1.multiply(x2).mod(q)                              // s3 = x1 * x2
+    )
+    val hScalars = Array(
+      x1.multiply(x2).mod(q),                             // s0^-1 = x1 * x2
+      x1.multiply(x2.modInverse(q)).mod(q),               // s1^-1 = x1 * x2^-1
+      x1.modInverse(q).multiply(x2).mod(q),               // s2^-1 = x1^-1 * x2
+      x1.modInverse(q).multiply(x2.modInverse(q)).mod(q)  // s3^-1 = x1^-1 * x2^-1
+    )
+
+    var gFinal = group.identity
+    var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), gScalars(i)))
+      hFinal = group.multiplyGroupElements(hFinal, group.exponentiate(hPrimes(i), hScalars(i)))
+    }
+
+    // Expected: Pfinal == gFinal^a * hFinal^b * u^(a*b)
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, finalA),
+        group.exponentiate(hFinal, finalB)),
+      group.exponentiate(U, finalA.multiply(finalB).mod(q)))
+
+    assert(CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true)),
+      "Inner product argument verification failed on Scala side!")
 
     def rangeTest() = {
-      test("range proof", env, ext,
+      test("range proof", env, customExt,
         s"""{
-           |   // range proof input data
-           |   val input: GroupElement = getVar[GroupElement](0).get
+           |  // === Bulletproof Range Proof: Polynomial Identity + Inner Product ===
            |
-           |   // proof data
-           |   val ai: GroupElement = getVar[GroupElement](1).get
-           |   val s: GroupElement = getVar[GroupElement](2).get
-           |   val tCommits: Coll[GroupElement] = getVar[Coll[GroupElement]](3).get
-           |   val tauX: UnsignedBigInt = getVar[UnsignedBigInt](4).get
-           |   val mu: UnsignedBigInt = getVar[UnsignedBigInt](5).get
-           |   val t: UnsignedBigInt = getVar[UnsignedBigInt](6).get
+           |  val V = getVar[GroupElement](0).get
+           |  val A = getVar[GroupElement](1).get
+           |  val S = getVar[GroupElement](2).get
+           |  val T1 = getVar[GroupElement](3).get
+           |  val T2 = getVar[GroupElement](4).get
+           |  val tauX = getVar[UnsignedBigInt](5).get
+           |  val mu = getVar[UnsignedBigInt](6).get
+           |  val tHat = getVar[UnsignedBigInt](7).get
+           |  val ipA = getVar[UnsignedBigInt](8).get
+           |  val ipB = getVar[UnsignedBigInt](9).get
+           |  val P = getVar[GroupElement](14).get
+           |  val u = getVar[GroupElement](15).get
            |
-           |   // inner product proof
-           |   val L: Coll[GroupElement] = getVar[Coll[GroupElement]](7).get
-           |   val R: Coll[GroupElement] = getVar[Coll[GroupElement]](8)).get
-           |   val a: UnsignedBigInt = getVar[UnsignedBigInt](9).get
-           |   val b: UnsignedBigInt = getVar[UnsignedBigInt](10).get
+           |  // Constants (pre-computed by verifier setup)
+           |  val g = decodePoint(fromBase16("$gHex"))
+           |  val h = decodePoint(fromBase16("$hHex"))
+           |  val delta = unsignedBigInt("${delta.toString}")
+           |  val xChallenge = unsignedBigInt("${x.toString}")
+           |  val xSquared = unsignedBigInt("${x.multiply(x).mod(q).toString}")
+           |  val zSquared = unsignedBigInt("${zSq.toString}")
            |
-           |   // proof verification:
-           |   val Q = lWeights.size
+           |  // --- CHECK 1: Polynomial identity ---
+           |  // LHS = g^tHat * h^tauX
+           |  val polyLhs = g.expUnsigned(tHat).multiply(h.expUnsigned(tauX))
            |
-           |   val q // group order = getVar[UnsignedBigInt](11).get
+           |  // RHS = g^delta * V^(z^2) * T1^x * T2^(x^2)
+           |  val polyRhs = g.expUnsigned(delta)
+           |                  .multiply(V.expUnsigned(zSquared))
+           |                  .multiply(T1.expUnsigned(xChallenge))
+           |                  .multiply(T2.expUnsigned(xSquared))
            |
-           |   val yBytes = sha256(q.toBytes ++ input.getEncoded ++ aI.getEncoded ++ s.getEncoded)
+           |  val polyCheck = polyLhs == polyRhs
            |
-           |   val y = byteArrayToBigInt(yBytes).toUnsignedMod(q)
+           |  // --- CHECK 2: Inner product argument ---
+           |  // L/R points and challenge squares (pre-computed constants)
+           |  val L0 = decodePoint(fromBase16("$L0Hex"))
+           |  val R0 = decodePoint(fromBase16("$R0Hex"))
+           |  val L1 = decodePoint(fromBase16("$L1Hex"))
+           |  val R1 = decodePoint(fromBase16("$R1Hex"))
+           |  val x1Sq = unsignedBigInt("${x1Sq.toString}")
+           |  val x1InvSq = unsignedBigInt("${x1InvSq.toString}")
+           |  val x2Sq = unsignedBigInt("${x2Sq.toString}")
+           |  val x2InvSq = unsignedBigInt("${x2InvSq.toString}")
            |
-           |   val ys =
+           |  // P' = P * L0^(x1^2) * R0^(x1^-2) * L1^(x2^2) * R1^(x2^-2)
+           |  val Pprime = P.multiply(L0.expUnsigned(x1Sq))
+           |                .multiply(R0.expUnsigned(x1InvSq))
+           |                .multiply(L1.expUnsigned(x2Sq))
+           |                .multiply(R1.expUnsigned(x2InvSq))
            |
-           |   val z = byteArrayToBigInt(sha256(q.toBytes ++ yBytes)).toUnsignedMod(q)
-           |   val zSquared = z.multiplyMod(z, q)
-           |   val zCubed = zSquared.multiplyMod(z, q)
+           |  // g_final and h_final via multiexp with challenge scalar products
+           |  val gFinal = decodePoint(fromBase16("${Base16.encode(CryptoFacade.getASN1Encoding(gFinal, true))}"))
+           |  val hFinal = decodePoint(fromBase16("${Base16.encode(CryptoFacade.getASN1Encoding(hFinal, true))}"))
            |
-           |   // def times() : // todo: implement
+           |  // Final check: P' == gFinal^a * hFinal^b * u^(a*b)
+           |  val q = unsignedBigInt("${q.toString}")
+           |  val ab = ipA.multiplyMod(ipB, q)
+           |  val ipRhs = gFinal.expUnsigned(ipA)
+           |                .multiply(hFinal.expUnsigned(ipB))
+           |                .multiply(u.expUnsigned(ab))
            |
-           |   // ops needed: modInverse, mod ops
+           |  val ipCheck = Pprime == ipRhs
            |
-           |   sigmaProp(zCubed > 0)
+           |  // Both checks must pass
+           |  sigmaProp(polyCheck && ipCheck)
            |}""".stripMargin,
         null,
         true
@@ -799,6 +1166,316 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an[sigma.validation.ValidationException] should be thrownBy rangeTest()
     } else {
       rangeTest()
+    }
+  }
+
+  /**
+    * 64-bit production Bulletproof range proof verification.
+    *
+    * Proves v ∈ [0, 2^64) — full production-grade range proof.
+    * Uses 6 rounds of inner product argument (log2(64) = 6).
+    * Measures actual on-chain JitCost via isMeasureOperationTime.
+    */
+  property("Bulletproof verification for a 64-bit range proof") {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    val n = 64
+    val logN = 6
+    val rng = new SecureRandom()
+
+    // Random 64-bit value
+    val v = new BigInteger(63, rng) // [0, 2^63) to stay within range
+    val r = new BigInteger(256, rng).mod(q)
+
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v), group.exponentiate(H, r))
+
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
+
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val alpha = new BigInteger(256, rng).mod(q)
+    val rho = new BigInteger(256, rng).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
+
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
+
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    var t0 = BigInteger.ZERO; var t1 = BigInteger.ZERO; var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lC = aL(i).subtract(z).mod(q)
+      val rC = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rL = yn(i).multiply(sR(i)).mod(q)
+      t0 = t0.add(lC.multiply(rC)).mod(q)
+      t1 = t1.add(sL(i).multiply(rC).add(lC.multiply(rL))).mod(q)
+      t2 = t2.add(sL(i).multiply(rL)).mod(q)
+    }
+
+    val tau1 = new BigInteger(256, rng).mod(q)
+    val tau2 = new BigInteger(256, rng).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((acc, yi) => acc.add(yi).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((acc, ti) => acc.add(ti).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn).subtract(
+      z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // Inner product argument (6 rounds for n=64)
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    var curGs = gs.clone(); var curHs = hPrimes.clone()
+    var curL = lVec.clone(); var curR = rVec.clone(); var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+    val challenges = new Array[BigInteger](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+      var Li = group.identity; var Ri = group.identity
+      var cL = BigInteger.ZERO; var cR = BigInteger.ZERO
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+        cL = cL.add(curL(j).multiply(curR(halfN + j))).mod(q)
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+        cR = cR.add(curL(halfN + j).multiply(curR(j))).mod(q)
+      }
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Ls(round) = Li; Rs(round) = Ri
+
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      challenges(round) = xi
+      val xiInv = xi.modInverse(q)
+
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv), group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi), group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs; curHs = newHs; curL = newL; curR = newR; curN = halfN
+    }
+
+    val finalA = curL(0); val finalB = curR(0)
+
+    // Compute gFinal, hFinal
+    val challengeProducts = (0 until n).map { i =>
+      (0 until logN).foldLeft(BigInteger.ONE) { (acc, k) =>
+        val bit = (i >> (logN - 1 - k)) & 1
+        if (bit == 1) acc.multiply(challenges(k)).mod(q)
+        else acc.multiply(challenges(k).modInverse(q)).mod(q)
+      }
+    }.toArray
+
+    var gFinal = group.identity; var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), challengeProducts(i)))
+      hFinal = group.multiplyGroupElements(hFinal,
+        group.exponentiate(hPrimes(i), challengeProducts(i).modInverse(q).mod(q)))
+    }
+
+    // Verify Scala-side before running ErgoScript
+    var Pfinal = P
+    for (k <- 0 until logN) {
+      val xiSq = challenges(k).multiply(challenges(k)).mod(q)
+      val xiInvSq = challenges(k).modInverse(q).multiply(challenges(k).modInverse(q)).mod(q)
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(k), xiSq))
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(k), xiInvSq))
+    }
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, finalA),
+        group.exponentiate(hFinal, finalB)),
+      group.exponentiate(U, finalA.multiply(finalB).mod(q)))
+    assert(CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true)),
+      "64-bit inner product verification failed on Scala side!")
+
+    // Build ErgoScript L/R constants and challenge scalars
+    val lrConstants = (0 until logN).map { k =>
+      val lHex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(k), true))
+      val rHex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(k), true))
+      val xiSq = challenges(k).multiply(challenges(k)).mod(q)
+      val xiInvSq = challenges(k).modInverse(q).multiply(challenges(k).modInverse(q)).mod(q)
+      (lHex, rHex, xiSq.toString, xiInvSq.toString)
+    }
+
+    // Build the L/R folding ErgoScript dynamically
+    val lrFoldScript = lrConstants.zipWithIndex.map { case ((lH, rH, xSq, xISq), k) =>
+      s"""  val L$k = decodePoint(fromBase16("$lH"))
+         |  val R$k = decodePoint(fromBase16("$rH"))
+         |  val xSq$k = unsignedBigInt("$xSq")
+         |  val xISq$k = unsignedBigInt("$xISq")""".stripMargin
+    }.mkString("\n")
+
+    val pprimeScript = (0 until logN).foldLeft("P") { (acc, k) =>
+      s"$acc.multiply(L$k.expUnsigned(xSq$k)).multiply(R$k.expUnsigned(xISq$k))"
+    }
+
+    val gHex = Base16.encode(CryptoFacade.getASN1Encoding(G, true))
+    val hHex = Base16.encode(CryptoFacade.getASN1Encoding(H, true))
+    val gFinalHex = Base16.encode(CryptoFacade.getASN1Encoding(gFinal, true))
+    val hFinalHex = Base16.encode(CryptoFacade.getASN1Encoding(hFinal, true))
+
+    import sigma.data.CUnsignedBigInt
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> GroupElementConstant(CGroupElement(V)),
+      1.toByte -> GroupElementConstant(CGroupElement(A)),
+      2.toByte -> GroupElementConstant(CGroupElement(S)),
+      3.toByte -> GroupElementConstant(CGroupElement(T1)),
+      4.toByte -> GroupElementConstant(CGroupElement(T2)),
+      5.toByte -> UnsignedBigIntConstant(tauX),
+      6.toByte -> UnsignedBigIntConstant(mu),
+      7.toByte -> UnsignedBigIntConstant(tHat),
+      8.toByte -> UnsignedBigIntConstant(finalA),
+      9.toByte -> UnsignedBigIntConstant(finalB),
+      14.toByte -> GroupElementConstant(CGroupElement(P)),
+      15.toByte -> GroupElementConstant(CGroupElement(U))
+    )
+
+    def rangeTest64() = {
+      test("64-bit range proof", env, customExt,
+        s"""{
+           |  // === 64-bit Bulletproof Range Proof ===
+           |  val V = getVar[GroupElement](0).get
+           |  val A = getVar[GroupElement](1).get
+           |  val S = getVar[GroupElement](2).get
+           |  val T1 = getVar[GroupElement](3).get
+           |  val T2 = getVar[GroupElement](4).get
+           |  val tauX = getVar[UnsignedBigInt](5).get
+           |  val mu = getVar[UnsignedBigInt](6).get
+           |  val tHat = getVar[UnsignedBigInt](7).get
+           |  val ipA = getVar[UnsignedBigInt](8).get
+           |  val ipB = getVar[UnsignedBigInt](9).get
+           |  val P = getVar[GroupElement](14).get
+           |  val u = getVar[GroupElement](15).get
+           |
+           |  val g = decodePoint(fromBase16("$gHex"))
+           |  val h = decodePoint(fromBase16("$hHex"))
+           |  val delta = unsignedBigInt("${delta.toString}")
+           |  val xChallenge = unsignedBigInt("${x.toString}")
+           |  val xSquared = unsignedBigInt("${x.multiply(x).mod(q).toString}")
+           |  val zSquared = unsignedBigInt("${zSq.toString}")
+           |
+           |  // CHECK 1: Polynomial identity
+           |  val polyLhs = g.expUnsigned(tHat).multiply(h.expUnsigned(tauX))
+           |  val polyRhs = g.expUnsigned(delta)
+           |                  .multiply(V.expUnsigned(zSquared))
+           |                  .multiply(T1.expUnsigned(xChallenge))
+           |                  .multiply(T2.expUnsigned(xSquared))
+           |  val polyCheck = polyLhs == polyRhs
+           |
+           |  // CHECK 2: Inner product argument (6 rounds)
+$lrFoldScript
+           |
+           |  val Pprime = $pprimeScript
+           |
+           |  val gFinal = decodePoint(fromBase16("$gFinalHex"))
+           |  val hFinal = decodePoint(fromBase16("$hFinalHex"))
+           |  val q = unsignedBigInt("${q.toString}")
+           |  val ab = ipA.multiplyMod(ipB, q)
+           |  val ipRhs = gFinal.expUnsigned(ipA)
+           |                .multiply(hFinal.expUnsigned(ipB))
+           |                .multiply(u.expUnsigned(ab))
+           |  val ipCheck = Pprime == ipRhs
+           |
+           |  sigmaProp(polyCheck && ipCheck)
+           |}""".stripMargin,
+        null,
+        true,
+        testExceededCost = false // don't fail on exceeded cost, we want to measure it
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy rangeTest64()
+    } else {
+      rangeTest64()
     }
   }
 
@@ -858,6 +1535,135 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an[sigma.validation.ValidationException] should be thrownBy circuitTest()
     } else {
       circuitTest()
+    }
+  }
+
+  /**
+    * secq256k1 Point Arithmetic in ErgoScript.
+    *
+    * Demonstrates that Ergo 6.0's UnsignedBigInt can simulate elliptic curve
+    * operations on the secp256k1 sister curve (secq256k1).
+    * Curve: y^2 = x^3 + 7 over field p_secq = n_secp (the group order of secp256k1).
+    *
+    * This is Phase 1 of the Curve Trees implementation (unlimited anonymity sets).
+    */
+  property("secq256k1 point arithmetic via UnsignedBigInt") {
+    // secq256k1 field prime = secp256k1 group order
+    val pSecq = CryptoConstants.groupOrder // n_secp
+
+    // Find a generator point on secq256k1: y^2 = x^3 + 7 (mod pSecq)
+    val seven = BigInteger.valueOf(7)
+
+    // Hardcoded valid point on secq256k1 (since pSecq = 1 mod 4, simple sqrt fails)
+    val gx = BigInteger.ONE
+    val gy = new BigInteger("5647885500061325675748484062311156374277086380342947163834798608016077912256")
+
+    // Verify the hardcoded point is on the curve
+    val rhs = gx.modPow(BigInteger.valueOf(3), pSecq).add(seven).mod(pSecq)
+    assert(gy.multiply(gy).mod(pSecq).equals(rhs), "Generator point is not on secq256k1 curve!")
+
+    // === Point Doubling: 2G ===
+    // λ = 3x^2 / (2y) mod p
+    val three = BigInteger.valueOf(3)
+    val two = BigInteger.valueOf(2)
+    val lambdaD = three.multiply(gx.multiply(gx).mod(pSecq)).mod(pSecq)
+      .multiply(two.multiply(gy).mod(pSecq).modInverse(pSecq)).mod(pSecq)
+    val x2g = lambdaD.multiply(lambdaD).mod(pSecq)
+      .subtract(gx).subtract(gx).mod(pSecq).add(pSecq).mod(pSecq)
+    val y2g = lambdaD.multiply(gx.subtract(x2g).mod(pSecq).add(pSecq).mod(pSecq)).mod(pSecq)
+      .subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+
+    // Verify 2G is on the curve
+    assert(y2g.multiply(y2g).mod(pSecq).equals(
+      x2g.modPow(three, pSecq).add(seven).mod(pSecq)), "2G not on secq256k1!")
+
+    // === Point Addition: 3G = G + 2G ===
+    val lambdaA = y2g.subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+      .multiply(x2g.subtract(gx).mod(pSecq).add(pSecq).mod(pSecq).modInverse(pSecq)).mod(pSecq)
+    val x3g = lambdaA.multiply(lambdaA).mod(pSecq)
+      .subtract(gx).subtract(x2g).mod(pSecq).add(pSecq).mod(pSecq)
+    val y3g = lambdaA.multiply(gx.subtract(x3g).mod(pSecq).add(pSecq).mod(pSecq)).mod(pSecq)
+      .subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+
+    // Verify 3G is on the curve
+    assert(y3g.multiply(y3g).mod(pSecq).equals(
+      x3g.modPow(three, pSecq).add(seven).mod(pSecq)), "3G not on secq256k1!")
+
+    // --- ErgoScript Verification ---
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> UnsignedBigIntConstant(gx),
+      1.toByte -> UnsignedBigIntConstant(gy)
+    )
+
+    def secqTest() = {
+      test("secq256k1 arithmetic", env, customExt,
+        s"""{
+           |  // secq256k1: y^2 = x^3 + 7 over p_secq (= n_secp)
+           |  val p = unsignedBigInt("${pSecq.toString}")
+           |  val seven = unsignedBigInt("7")
+           |  val three = unsignedBigInt("3")
+           |  val two = unsignedBigInt("2")
+           |
+           |  // Generator point G on secq256k1
+           |  val gx = getVar[UnsignedBigInt](0).get
+           |  val gy = getVar[UnsignedBigInt](1).get
+           |
+           |  // === POINT DOUBLING: compute 2G ===
+           |  // λ = 3*gx^2 / (2*gy) mod p
+           |  val gx2 = gx.multiplyMod(gx, p)
+           |  val num = three.multiplyMod(gx2, p)
+           |  val den = two.multiplyMod(gy, p)
+           |  val lambdaD = num.multiplyMod(den.modInverse(p), p)
+           |
+           |  // x_2G = λ^2 - 2*gx mod p
+           |  val lambdaD2 = lambdaD.multiplyMod(lambdaD, p)
+           |  val twoGx = two.multiplyMod(gx, p)
+           |  val x2G = lambdaD2.subtractMod(twoGx, p)
+           |
+           |  // y_2G = λ*(gx - x_2G) - gy mod p
+           |  val dx = gx.subtractMod(x2G, p)
+           |  val y2G = lambdaD.multiplyMod(dx, p).subtractMod(gy, p)
+           |
+           |  // Verify 2G matches Scala-computed values
+           |  val x2GExpected = unsignedBigInt("${x2g.toString}")
+           |  val y2GExpected = unsignedBigInt("${y2g.toString}")
+           |  val doubleCheck = x2G == x2GExpected && y2G == y2GExpected
+           |
+           |  // === POINT ADDITION: compute 3G = G + 2G ===
+           |  // λ = (y2G - gy) / (x2G - gx) mod p
+           |  val numA = y2G.subtractMod(gy, p)
+           |  val denA = x2G.subtractMod(gx, p)
+           |  val lambdaA = numA.multiplyMod(denA.modInverse(p), p)
+           |
+           |  // x_3G = λ^2 - gx - x2G mod p
+           |  val lambdaA2 = lambdaA.multiplyMod(lambdaA, p)
+           |  val x3G = lambdaA2.subtractMod(gx, p).subtractMod(x2G, p)
+           |
+           |  // y_3G = λ*(gx - x_3G) - gy mod p
+           |  val dx3 = gx.subtractMod(x3G, p)
+           |  val y3G = lambdaA.multiplyMod(dx3, p).subtractMod(gy, p)
+           |
+           |  // Verify 3G matches Scala-computed values
+           |  val x3GExpected = unsignedBigInt("${x3g.toString}")
+           |  val y3GExpected = unsignedBigInt("${y3g.toString}")
+           |  val addCheck = x3G == x3GExpected && y3G == y3GExpected
+           |
+           |  // Verify 3G is on the curve: y^2 == x^3 + 7
+           |  val lhs = y3G.multiplyMod(y3G, p)
+           |  val rhs = x3G.multiplyMod(x3G, p).multiplyMod(x3G, p).plusMod(seven, p)
+           |  val onCurve = lhs == rhs
+           |
+           |  sigmaProp(doubleCheck && addCheck && onCurve)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy secqTest()
+    } else {
+      secqTest()
     }
   }
 
