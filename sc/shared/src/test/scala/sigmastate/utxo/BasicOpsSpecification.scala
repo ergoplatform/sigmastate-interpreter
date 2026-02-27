@@ -1479,6 +1479,369 @@ $lrFoldScript
     }
   }
 
+  /**
+    * Standalone Scala Bulletproof range proof verifier.
+    *
+    * Takes only public inputs and proof components, independently recomputes
+    * all Fiat-Shamir challenges using Blake2b256, and verifies:
+    *   1) Polynomial identity: g^tHat * h^tauX == g^delta * V^(z^2) * T1^x * T2^(x^2)
+    *   2) Inner product argument: P' == gFinal^a * hFinal^b * u^(a*b)
+    *
+    * Corresponds to Bunz' RangeProofVerifier.verify() with Blake2b256 replacing Keccak-256.
+    *
+    * @param V      Pedersen commitment (public input)
+    * @param A      bit-commitment vector
+    * @param S      blinding vector commitment
+    * @param T1     polynomial commitment T1
+    * @param T2     polynomial commitment T2
+    * @param tauX   blinding factor for polynomial evaluation
+    * @param mu     blinding factor for inner product
+    * @param tHat   polynomial evaluation t(x)
+    * @param Ls     left points from inner product rounds
+    * @param Rs     right points from inner product rounds
+    * @param ipA    final inner product scalar a
+    * @param ipB    final inner product scalar b
+    * @param n      bit-width of range proof (e.g. 4, 64)
+    * @return true if the range proof is valid
+    */
+  def scalaVerifyRangeProof(
+    V: sigma.crypto.Ecp, A: sigma.crypto.Ecp, S: sigma.crypto.Ecp,
+    T1: sigma.crypto.Ecp, T2: sigma.crypto.Ecp,
+    tauX: BigInteger, mu: BigInteger, tHat: BigInteger,
+    Ls: Array[sigma.crypto.Ecp], Rs: Array[sigma.crypto.Ecp],
+    ipA: BigInteger, ipB: BigInteger,
+    n: Int
+  ): Boolean = {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+    val logN = Ls.length
+
+    // Derive H via hash-to-curve (same nothing-up-my-sleeve as prover)
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    // Derive vector generators gs, hs (same as prover)
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    // === Recompute Fiat-Shamir challenges from transcript ===
+    // V_enc, A_enc, S_enc = 33-byte compressed SEC1 point encoding
+    // Bunz: BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    val V_enc = CryptoFacade.getASN1Encoding(V, true)
+    val A_enc = CryptoFacade.getASN1Encoding(A, true)
+    val S_enc = CryptoFacade.getASN1Encoding(S, true)
+    val y = new BigInteger(1, Blake2b256(V_enc ++ A_enc ++ S_enc)).mod(q)
+
+    // Bunz: BigInteger z = ProofUtils.challengeFromints(q, y);
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    // Bunz: BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    val T1_enc = CryptoFacade.getASN1Encoding(T1, true)
+    val T2_enc = CryptoFacade.getASN1Encoding(T2, true)
+    val x = new BigInteger(1, Blake2b256(z.toByteArray ++ T1_enc ++ T2_enc)).mod(q)
+
+    // === CHECK 1: Polynomial identity ===
+    // delta = (z - z^2) * sum(y^i) - z^3 * sum(2^i)
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((a, b) => a.add(b).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((a, b) => a.add(b).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn)
+      .subtract(z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // LHS = g^tHat * h^tauX
+    val polyLhs = group.multiplyGroupElements(
+      group.exponentiate(G, tHat), group.exponentiate(H, tauX))
+
+    // RHS = g^delta * V^(z^2) * T1^x * T2^(x^2)
+    val xSq = x.multiply(x).mod(q)
+    var polyRhs = group.exponentiate(G, delta)
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(V, zSq))
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(T1, x))
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(T2, xSq))
+
+    val polyCheck = CryptoFacade.getASN1Encoding(polyLhs, true)
+      .sameElements(CryptoFacade.getASN1Encoding(polyRhs, true))
+
+    if (!polyCheck) return false
+
+    // === CHECK 2: Inner product argument ===
+    // Bunz: BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    // hPrimes[i] = hs[i]^(y^(-i))
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    // Compute P
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    // Recompute inner product challenges from L/R points
+    val ipChallenges = (0 until logN).map { k =>
+      new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Ls(k), true) ++
+        CryptoFacade.getASN1Encoding(Rs(k), true))).mod(q)
+    }.toArray
+
+    // Fold P with L/R: P' = P * prod(L_k^(xi_k^2) * R_k^(xi_k^-2))
+    var Pfinal = P
+    for (k <- 0 until logN) {
+      val xiSq = ipChallenges(k).multiply(ipChallenges(k)).mod(q)
+      val xiInvSq = ipChallenges(k).modInverse(q).multiply(
+        ipChallenges(k).modInverse(q)).mod(q)
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(k), xiSq))
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(k), xiInvSq))
+    }
+
+    // Compute gFinal, hFinal as multiexp with challenge products
+    val challengeProducts = (0 until n).map { i =>
+      (0 until logN).foldLeft(BigInteger.ONE) { (acc, k) =>
+        val bit = (i >> (logN - 1 - k)) & 1
+        if (bit == 1) acc.multiply(ipChallenges(k)).mod(q)
+        else acc.multiply(ipChallenges(k).modInverse(q)).mod(q)
+      }
+    }.toArray
+
+    var gFinal = group.identity
+    var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), challengeProducts(i)))
+      hFinal = group.multiplyGroupElements(hFinal,
+        group.exponentiate(hPrimes(i), challengeProducts(i).modInverse(q).mod(q)))
+    }
+
+    // Final check: P' == gFinal^a * hFinal^b * u^(a*b)
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, ipA),
+        group.exponentiate(hFinal, ipB)),
+      group.exponentiate(U, ipA.multiply(ipB).mod(q)))
+
+    CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true))
+  }
+
+  /**
+    * Helper: generate a Bulletproof range proof for value v with n bits.
+    * Returns all proof components needed for verification.
+    */
+  private def generateRangeProof(v: BigInteger, n: Int): (
+    sigma.crypto.Ecp, // V
+    sigma.crypto.Ecp, // A
+    sigma.crypto.Ecp, // S
+    sigma.crypto.Ecp, // T1
+    sigma.crypto.Ecp, // T2
+    BigInteger, // tauX
+    BigInteger, // mu
+    BigInteger, // tHat
+    Array[sigma.crypto.Ecp], // Ls
+    Array[sigma.crypto.Ecp], // Rs
+    BigInteger, // ipA (final a)
+    BigInteger  // ipB (final b)
+  ) = {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+    val logN = (Math.log(n) / Math.log(2)).toInt
+
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    val rng = new SecureRandom()
+    val r = new BigInteger(256, rng).mod(q)
+
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v), group.exponentiate(H, r))
+
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
+
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val alpha = new BigInteger(256, rng).mod(q)
+    val rho = new BigInteger(256, rng).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
+
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
+
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    var t0 = BigInteger.ZERO; var t1 = BigInteger.ZERO; var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lC = aL(i).subtract(z).mod(q)
+      val rC = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rL = yn(i).multiply(sR(i)).mod(q)
+      t0 = t0.add(lC.multiply(rC)).mod(q)
+      t1 = t1.add(sL(i).multiply(rC).add(lC.multiply(rL))).mod(q)
+      t2 = t2.add(sL(i).multiply(rL)).mod(q)
+    }
+
+    val tau1 = new BigInteger(256, rng).mod(q)
+    val tau2 = new BigInteger(256, rng).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    // Inner product argument
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    var curGs = gs.clone(); var curHs = hPrimes.clone()
+    var curL = lVec.clone(); var curR = rVec.clone(); var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+      var Li = group.identity; var Ri = group.identity
+      var cL = BigInteger.ZERO; var cR = BigInteger.ZERO
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+        cL = cL.add(curL(j).multiply(curR(halfN + j))).mod(q)
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+        cR = cR.add(curL(halfN + j).multiply(curR(j))).mod(q)
+      }
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Ls(round) = Li; Rs(round) = Ri
+
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      val xiInv = xi.modInverse(q)
+
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv), group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi), group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs; curHs = newHs; curL = newL; curR = newR; curN = halfN
+    }
+
+    (V, A, S, T1, T2, tauX, mu, tHat, Ls, Rs, curL(0), curR(0))
+  }
+
+  /**
+    * Scala-only Bulletproof verification: prove and verify in Scala without ErgoScript.
+    * Tests both positive (valid value) and negative (out-of-range value) cases.
+    */
+  property("Bulletproof Scala verifier - valid value passes") {
+    val proof = generateRangeProof(BigInteger.valueOf(9), n = 4) // 9 ∈ [0, 16) ✓
+
+    assert(scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, proof._8, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should accept valid range proof for v=9 in [0, 2^4)")
+  }
+
+  property("Bulletproof Scala verifier - out-of-range value fails") {
+    // v = 17 is outside [0, 2^4 = 16), so the bit decomposition will be wrong
+    // (testBit checks 5 bits but n=4, causing aL·aR != 0 which breaks the proof)
+    val proof = generateRangeProof(BigInteger.valueOf(17), n = 4) // 17 ∉ [0, 16) ✗
+
+    assert(!scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, proof._8, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should reject range proof for out-of-range v=17")
+  }
+
+  property("Bulletproof Scala verifier - tampered proof fails") {
+    val proof = generateRangeProof(BigInteger.valueOf(9), n = 4)
+
+    // Tamper with tHat (polynomial evaluation)
+    val tamperedTHat = proof._8.add(BigInteger.ONE).mod(CryptoConstants.groupOrder)
+
+    assert(!scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, tamperedTHat, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should reject proof with tampered tHat")
+  }
+
   // todo: complete
   ignore("Bulletproof verification for a circuit proof") {
 
