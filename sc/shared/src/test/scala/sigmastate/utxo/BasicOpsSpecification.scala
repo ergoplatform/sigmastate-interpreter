@@ -931,10 +931,10 @@ class BasicOpsSpecification extends CompilerTestingCommons
     // Inner product protocol: recursive halving
     // For n=4, we have logN=2 rounds
     val logN = 2 // log2(4)
-    var curGs = gs.clone()
-    var curHs = hPrimes.clone()
-    var curL = lVec.clone()
-    var curR = rVec.clone()
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
     var curN = n
     val Ls = new Array[sigma.crypto.Ecp](logN)
     val Rs = new Array[sigma.crypto.Ecp](logN)
@@ -1297,8 +1297,11 @@ class BasicOpsSpecification extends CompilerTestingCommons
     P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
     P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
 
-    var curGs = gs.clone(); var curHs = hPrimes.clone()
-    var curL = lVec.clone(); var curR = rVec.clone(); var curN = n
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
+    var curN = n
     val Ls = new Array[sigma.crypto.Ecp](logN)
     val Rs = new Array[sigma.crypto.Ecp](logN)
     val challenges = new Array[BigInteger](logN)
@@ -1759,8 +1762,11 @@ $lrFoldScript
       group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
     }.toArray
 
-    var curGs = gs.clone(); var curHs = hPrimes.clone()
-    var curL = lVec.clone(); var curR = rVec.clone(); var curN = n
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
+    var curN = n
     val Ls = new Array[sigma.crypto.Ecp](logN)
     val Rs = new Array[sigma.crypto.Ecp](logN)
 
