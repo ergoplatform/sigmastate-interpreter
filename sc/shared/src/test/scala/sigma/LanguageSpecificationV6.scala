@@ -115,6 +115,91 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
   }
 
+  property("Global.serialize[Int]") {
+    lazy val serializeInt = mkSerializeFeature[Int]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (Int.MinValue, Expected(Success(Coll[Byte](-1, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace)),
+      (-1, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1, Expected(Success(Coll(2.toByte)), expectedCostTrace)),
+      (Int.MaxValue, Expected(Success(Coll[Byte](-2, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeInt, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Long]") {
+    lazy val serializeLong = mkSerializeFeature[Long]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (-1L, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0L, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1L, Expected(Success(Coll(2.toByte)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeLong, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Coll[Byte]]") {
+    lazy val serializeCollByte = mkSerializeFeature[Coll[Byte]]
+    val baseCostItems = baseTrace ++ Array(
+      FixedCostItem(Global),
+      FixedCostItem(MethodCall),
+      FixedCostItem(ValUse),
+      FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+      FixedCostItem(NamedDesc("SigmaByteWriter.putUNumeric"), FixedCost(JitCost(3)))
+    )
+    val emptyCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 0)
+      )
+    )
+    val threeByteCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 3)
+      )
+    )
+    val cases = Seq(
+      (Coll[Byte](), Expected(Success(Coll(0.toByte)), emptyCostTrace)),
+      (Coll[Byte](1, 2, 3), Expected(Success(Coll[Byte](3, 1, 2, 3)), threeByteCostTrace))
+    )
+    verifyCases(cases, serializeCollByte, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[(Long, Long)]") {
+    lazy val serializePair = mkSerializeFeature[(Long, Long)]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      ((0L, 0L), Expected(Success(Coll[Byte](0, 0)), expectedCostTrace)),
+      ((42L, 100L), Expected(Success(Coll[Byte](84, -56.toByte, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializePair, preGeneratedSamples = None)
+  }
+
   property("Boolean.toByte") {
     val toByte = newFeature((x: Boolean) => x.toByte, "{ (x: Boolean) => x.toByte }",
       sinceVersion = V6SoftForkVersion
