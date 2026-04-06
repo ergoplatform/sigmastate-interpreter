@@ -282,4 +282,81 @@ class ContractTemplateSpecification extends SerializationSpecification
       jsonRoundTrip(template)
     }
   }
+
+  property("ContractTemplate with treeVersion preserves version") {
+    // Test that treeVersion is correctly preserved through serialization round-trip
+    
+    // Test with v6 treeVersion
+    val scriptV6 = EQ(
+      Plus(ConstantPlaceholder(0, SInt), ConstantPlaceholder(1, SInt)),
+      ConstantPlaceholder(2, SInt)
+    ).toSigmaProp
+
+    val templateV6 = ContractTemplate(
+      treeVersion = Some(VersionContext.V6SoftForkVersion),
+      name = "V6Contract",
+      description = "V6 contract",
+      constTypes = IndexedSeq(SInt, SInt, SInt),
+      constValues = Some(IndexedSeq(Some(10), Some(20), Some(30)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
+      parameters = IndexedSeq(
+        Parameter("a", "First operand", 0),
+        Parameter("b", "Second operand", 1),
+        Parameter("c", "Expected result", 2)
+      ),
+      expressionTree = scriptV6
+    )
+
+    serializationRoundTrip(templateV6)
+    templateV6.treeVersion shouldBe Some(VersionContext.V6SoftForkVersion)
+
+    // Test with None (no version)
+    val scriptNoVersion = EQ(
+      Plus(ConstantPlaceholder(0, SByte), ConstantPlaceholder(1, SByte)),
+      ConstantPlaceholder(2, SByte)
+    ).toSigmaProp
+
+    val templateNoVersion = ContractTemplate(
+      treeVersion = None,
+      name = "NoVersionContract",
+      description = "Contract without explicit version",
+      constTypes = IndexedSeq(SByte, SByte, SByte),
+      constValues = Some(IndexedSeq(Some(10.toByte), Some(20.toByte), Some(30.toByte)).asInstanceOf[IndexedSeq[Option[SType#WrappedType]]]),
+      parameters = IndexedSeq(
+        Parameter("x", "First byte", 0),
+        Parameter("y", "Second byte", 1)
+      ),
+      expressionTree = scriptNoVersion
+    )
+
+    serializationRoundTrip(templateNoVersion)
+    templateNoVersion.treeVersion shouldBe None
+  }
+
+  property("ContractTemplate serialization with different treeVersions") {
+    // Test that templates with different treeVersions serialize/deserialize correctly
+    val versions = Seq(
+      None,
+      Some(VersionContext.V6SoftForkVersion)
+    )
+
+    versions.foreach { versionOpt =>
+      val script = EQ(
+        IntConstant(1),
+        IntConstant(1)
+      ).toSigmaProp
+
+      val template = ContractTemplate(
+        treeVersion = versionOpt,
+        name = s"Contract_v${versionOpt.getOrElse("none")}",
+        description = s"Contract with treeVersion = ${versionOpt.getOrElse("none")}",
+        constTypes = SType.EmptySeq,
+        constValues = None,
+        parameters = Parameter.EmptySeq,
+        expressionTree = script
+      )
+
+      serializationRoundTrip(template)
+      template.treeVersion shouldBe versionOpt
+    }
+  }
 }

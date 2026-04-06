@@ -254,11 +254,6 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "{ (a: Int) => (1, 2L)(a) }") shouldBe SFunc(IndexedSeq(SInt), SAny)
   }
 
-  ignore("tuple advanced operations") {
-    typecheck(env, "(1, 2L).getOrElse(2, 3)") shouldBe SAny
-    typecheck(env, "(1, 2L).slice(0, 2)") shouldBe SCollection(SAny)
-  }
-
   property("types") {
     an[TyperException] should be thrownBy {
       typecheck(env, "{val X: Boolean = 10}") shouldBe SBoolean
@@ -636,16 +631,6 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, """ "a" + "b" """) shouldBe SString
   }
 
-  // TODO https://github.com/ScorexFoundation/sigmastate-interpreter/issues/327
-  ignore("modular arith ops") {
-    typecheck(env, "10.toBigInt.modQ") shouldBe SBigInt
-    typecheck(env, "10.toBigInt.plusModQ(2.toBigInt)") shouldBe SBigInt
-    typecheck(env, "10.toBigInt.minusModQ(2.toBigInt)") shouldBe SBigInt
-    typefail(env, "10.modQ", 1, 1)
-    typefail(env, "10.toBigInt.plusModQ(1)", 1, 1)
-    typefail(env, "10.toBigInt.minusModQ(1)", 1, 1)
-  }
-
   property("byteArrayToLong") {
     typecheck(env, "byteArrayToLong(Coll[Byte](1.toByte))") shouldBe SLong
     typefail(env, "byteArrayToLong(Coll[Int](1))", 1, 1)
@@ -826,6 +811,91 @@ class SigmaTyperTest extends AnyPropSpec
           Array(Tuple(Vector(IntConstant(1), LongConstant(2L)))),
           Map()
         )) shouldBe SByteArray
+    }
+  }
+
+  property("Global.serialize for all numeric types") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      // Byte
+      typecheck(env, "Global.serialize(1.toByte)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SByte)),
+          Array(Select(IntConstant(1), "toByte", Some(SByte))),
+          Map()
+        )) shouldBe SByteArray
+
+      // Short
+      typecheck(env, "Global.serialize(1.toShort)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SShort)),
+          Array(Select(IntConstant(1), "toShort", Some(SShort))),
+          Map()
+        )) shouldBe SByteArray
+
+      // Long
+      typecheck(env, "Global.serialize(1L)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SLong)),
+          Array(LongConstant(1L)),
+          Map()
+        )) shouldBe SByteArray
+
+      // BigInt
+      typecheck(env, "Global.serialize(1.toBigInt)",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SBigInt)),
+          Array(Select(IntConstant(1), "toBigInt", Some(SBigInt))),
+          Map()
+        )) shouldBe SByteArray
+    }
+  }
+
+  property("Global.serialize for Coll[Byte]") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      // Note: Coll[Byte](1, 2, 3) parses as Coll[Int], need explicit byte constants
+      typecheck(env, "Global.serialize(Coll[Byte](1.toByte, 2.toByte, 3.toByte))") shouldBe SByteArray
+    }
+  }
+
+  property("Global.serialize for pair types") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      // Pair of Integers
+      typecheck(env, "Global.serialize((1, 2))",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(Map(STypeVar("T") -> SPair(SInt, SInt))),
+          Array(Tuple(Vector(IntConstant(1), IntConstant(2)))),
+          Map()
+        )) shouldBe SByteArray
+
+      // Nested pair
+      typecheck(env, "Global.serialize(((1, 2), 3L))",
+        MethodCall.typed[Value[SCollection[SByte.type]]](
+          Global,
+          SGlobalMethods.getMethodByName("serialize").withConcreteTypes(
+            Map(STypeVar("T") -> SPair(SPair(SInt, SInt), SLong))),
+          Array(Tuple(Vector(Tuple(Vector(IntConstant(1), IntConstant(2))), LongConstant(3L)))),
+          Map()
+        )) shouldBe SByteArray
+    }
+  }
+
+  property("Global.serialize version compatibility") {
+    // Should fail in v5
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "Global.serialize(1L)"),
+        exceptionLike[MethodNotFound]("Cannot find method 'serialize'")
+      )
+    }
+
+    // Should work in v6
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "Global.serialize(1L)") shouldBe SByteArray
     }
   }
 
