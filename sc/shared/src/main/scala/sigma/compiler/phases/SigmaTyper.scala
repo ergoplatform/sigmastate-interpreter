@@ -54,9 +54,13 @@ class SigmaTyper(val builder: SigmaBuilder,
     case Block(bs, res) =>
       var curEnv = env
       val bs1 = ArrayBuffer[Val]()
-      for (v @ Val(n, _, b) <- bs) {
-        if (curEnv.contains(n)) error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
+      for (v @ Val(n, explicitType, b) <- bs) {
+        if (curEnv.contains(n))
+          error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
         val b1 = assignType(curEnv, b)
+        val resultType = SType.getResultType(b1.tpe)
+        if (SType.isAssignableTo(explicitType) && explicitType != resultType)
+          error(s"Expected type ${explicitType}, but got ${b1.tpe}", v.sourceContext)
         curEnv = curEnv + (n -> b1.tpe)
         builder.currentSrcCtx.withValue(v.sourceContext) {
           bs1 += mkVal(n, b1.tpe, b1)
