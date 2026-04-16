@@ -35,8 +35,8 @@
     "ci:snapshot": "node ./scripts/setSnapshotVersion"
   },
   "dependencies": {
-    "@noble/hashes": "1.1.4",
-    "@fleet-sdk/common": "0.1.3",
+    "@noble/hashes": "1.8.0",
+    "@fleet-sdk/common": "0.10.0",
     "sigmajs-crypto-facade": "0.0.7"
   },
   "devDependencies": {
