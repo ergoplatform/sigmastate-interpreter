@@ -70,6 +70,7 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp(env, "anyOf(Coll(c1, c2))") shouldBe OR(ConcreteCollection.fromSeq(Array(TrueLeaf, FalseLeaf)))
     comp(env, "blake2b256(getVar[Coll[Byte]](10).get)") shouldBe CalcBlake2b256(GetVarByteArray(10).get)
     comp(env, "sha256(getVar[Coll[Byte]](10).get)") shouldBe CalcSha256(GetVarByteArray(10).get)
+    comp(env, "stripErgoTreeHeader(Coll[Byte](1.toByte,2.toByte,3.toByte))") shouldBe Slice(ConcreteCollection(Array(ByteConstant(1), ByteConstant(2), ByteConstant(3)), SByte), IntConstant(1), IntConstant(3))
     comp(env, "10.toByte") shouldBe ByteConstant(10)
     comp(env, "Coll(1)(0).toByte") shouldBe
       Downcast(ByIndex(ConcreteCollection(Array(IntConstant(1)),SInt),IntConstant(0),None), SByte)

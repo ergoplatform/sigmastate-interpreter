@@ -76,6 +76,7 @@ abstract class SigmaBuilder {
 
   def mkCalcBlake2b256(input: Value[SByteArray]): Value[SByteArray]
   def mkCalcSha256(input: Value[SByteArray]): Value[SByteArray]
+  def mkStripErgoTreeHeader(input: Value[SByteArray]): Value[SByteArray]
   def mkDecodePoint(input: Value[SByteArray]): GroupElementValue
 
   def mkAppend[IV <: SType](input: Value[SCollection[IV]],
@@ -399,6 +400,9 @@ class StdSigmaBuilder extends SigmaBuilder {
 
   override def mkCalcSha256(input: Value[SByteArray]): Value[SByteArray] =
     CalcSha256(input).withSrcCtx(currentSrcCtx.value)
+
+  override def mkStripErgoTreeHeader(input: Value[SByteArray]): Value[SByteArray] =
+    StripErgoTreeHeader(input).withSrcCtx(currentSrcCtx.value)
 
   override def mkDecodePoint(input: Value[SByteArray]): GroupElementValue =
     DecodePoint(input).withSrcCtx(currentSrcCtx.value)

@@ -488,6 +488,12 @@ object Operations {
     val argInfos: Seq[ArgInfo] = Array(thisArg, fromArg, untilArg)
   }
 
+  object StripErgoTreeHeaderInfo extends InfoObject {
+    private val func = predefinedOps.funcs("stripErgoTreeHeader")
+    val treeBytesArg: ArgInfo = func.argInfo("treeBytes")
+    val argInfos: Seq[ArgInfo] = Array(treeBytesArg)
+  }
+
   object SubstConstantsInfo extends InfoObject {
     private val func = predefinedOps.funcs("substConstants")
     val scriptBytesArg: ArgInfo = func.argInfo("scriptBytes")

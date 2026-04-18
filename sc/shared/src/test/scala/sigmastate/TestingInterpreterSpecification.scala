@@ -444,6 +444,21 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     verifier.verify(prop3, env, proof, challenge).map(_._1).getOrElse(false) shouldBe false
   }
 
+  property("Evaluation - stripErgoTreeHeader") {
+    val treeBytes = Array[Byte](1, 2, 3, 4, 5)
+    val expected = treeBytes.slice(1, treeBytes.length)
+
+    val prop = mkTestErgoTree(EQ(
+      treeBytes.slice(1, treeBytes.length),
+      ByteArrayConstant(expected)).toSigmaProp)
+
+    val challenge = Array.fill(32)(Random.nextInt(100).toByte)
+    val proof = NoProof
+    val env = testingContext(99)
+
+    verifier.verify(prop, env, proof, challenge).map(_._1).getOrElse(false) shouldBe true
+  }
+
   property("blake2b - test vector") {
     testEval(
       """ {

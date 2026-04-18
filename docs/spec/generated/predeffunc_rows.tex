@@ -107,6 +107,8 @@
  \hline
           248 & \hyperref[sec:serialization:operation:BitShiftRightZeroed]{\lst{BitShiftRightZeroed}} & \parbox{4cm}{\lst{bit_>>>:} \\ \lst{(T, T)} \\ \lst{  => T}} & Right shift of bits. \\
  \hline
+          144 & \hyperref[sec:serialization:operation:StripErgoTreeHeader]{\lst{StripErgoTreeHeader}} & \parbox{4cm}{\lst{stripErgoTreeHeader:} \\ \lst{(Coll[Byte])} \\ \lst{  => Coll[Byte]}} & Removes the header byte from a serialized ErgoTree \\
+ \hline
           255 & \hyperref[sec:serialization:operation:XorOf]{\lst{XorOf}} & \parbox{4cm}{\lst{xorOf:} \\ \lst{(Coll[Boolean])} \\ \lst{  => Boolean}} & Similar to \lst{allOf}, but performing logical XOR operation between all conditions instead of \lst{&&} \\
  \hline
          
