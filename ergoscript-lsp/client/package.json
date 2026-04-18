@@ -1,0 +1,86 @@
+{
+    "name": "ergoscript-lsp-client",
+    "version": "0.1.0",
+    "description": "VS Code extension for ErgoScript",
+    "author": "Team Dev Engers",
+    "license": "MIT",
+    "publisher": "team-dev-engers",
+    "displayName": "ErgoScript Language Support",
+    "categories": [
+        "Programming Languages"
+    ],
+    "keywords": [
+        "ergo",
+        "ergoscript",
+        "blockchain",
+        "smart-contracts"
+    ],
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "activationEvents": [
+        "onLanguage:ergoscript"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "ergoscript",
+                "aliases": [
+                    "ErgoScript",
+                    "ergoscript"
+                ],
+                "extensions": [
+                    ".es",
+                    ".ergoscript"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ergoscript",
+                "scopeName": "source.ergoscript",
+                "path": "./syntaxes/ergoscript.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "ergoscript",
+                "path": "./snippets/ergoscript.json"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "ErgoScript",
+            "properties": {
+                "ergoscript.trace.server": {
+                    "scope": "window",
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Traces the communication between VS Code and the language server."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
+        "package": "vsce package"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.75.0",
+        "typescript": "^5.3.3",
+        "@vscode/vsce": "^2.22.0"
+    }
+}
