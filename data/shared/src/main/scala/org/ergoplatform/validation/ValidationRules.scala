@@ -67,13 +67,13 @@ object ValidationRules {
   }
 
   /** Not used since v5.0.1. */
-  object CheckIsSupportedIndexExpression extends ValidationRule(1003,
+  private object CheckIsSupportedIndexExpression extends ValidationRule(1003,
     "Check the index expression for accessing collection element is supported.") {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
 
   /** Not used since v5.0.3  */
-  object CheckCostFunc extends ValidationRule(1004,
+  private object CheckCostFunc extends ValidationRule(1004,
     "Cost function should contain only operations from specified list.") {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
@@ -86,7 +86,7 @@ object ValidationRules {
   /** This rule is not use in v5.x, keep the commented code below as a precise
     * documentation of its semantics.
     */
-  object CheckTupleType extends ValidationRule(1006,
+  private object CheckTupleType extends ValidationRule(1006,
     "Supported tuple type.") with SoftForkWhenReplaced {
     override protected def settings: SigmaValidationSettings = currentSettings
 
@@ -150,14 +150,14 @@ object ValidationRules {
     }
   }
 
-  /** Not used since v5.0.3  */
-  object CheckCostFuncOperation extends ValidationRule(1013,
+  /** Not used since v5.0.3, left for historical purposes */
+  private object CheckCostFuncOperation extends ValidationRule(1013,
     "Check the opcode is allowed in cost function") {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
 
-  /** Not used since v5.0.1  */
-  object CheckLoopLevelInCostFunction extends ValidationRule(1015,
+  /** Not used since v5.0.1, left for historical purposes */
+  private object CheckLoopLevelInCostFunction extends ValidationRule(1015,
     "Check that loop level is not exceeded.") {
     override protected def settings: SigmaValidationSettings = currentSettings
   }
@@ -229,7 +229,7 @@ object ValidationRules {
     ruleSpecsV5.filter(_.id != CheckAndGetMethod.id) ++ Seq(CheckAndGetMethodV6)
   }
 
-  def ruleSpecs: Seq[ValidationRule] = {
+  private def ruleSpecs: Seq[ValidationRule] = {
     if (VersionContext.current.isV6Activated) {
       ruleSpecsV6
     } else {

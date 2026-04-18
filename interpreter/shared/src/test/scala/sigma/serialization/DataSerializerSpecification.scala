@@ -63,11 +63,11 @@ class DataSerializerSpecification extends SerializationSpecification {
   def testCollection[T <: SType](tpe: T) = {
     implicit val wWrapped = wrappedTypeGen(tpe)
     implicit val tT = Evaluation.stypeToRType(tpe)
-    implicit val tagT = tT.classTag
     implicit val tAny = sigma.AnyType
+    implicit val tag = tT.classTag
 
     val withVersion = if (tpe == SHeader || tpe == SUnsignedBigInt) {
-      None // Some(VersionContext.V6SoftForkVersion)
+      Some(VersionContext.V6SoftForkVersion)
     } else {
       None
     }

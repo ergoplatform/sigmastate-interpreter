@@ -1,8 +1,7 @@
 package sigmastate
 
-import sigma.Environment
+import sigma.{Environment, SigmaTestingData, VersionContext}
 import sigma.ast.SType.isValueOfType
-import sigma.SigmaTestingData
 import sigma.ast._
 import sigma.data.{CSigmaDslBuilder, CSigmaProp}
 
@@ -67,6 +66,12 @@ class TypesSpecification extends SigmaTestingData {
 
     assertValidType(BigIntZero, SBigInt)
     assertInvalidType(BigIntZero, SShort)
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      assertValidType(UnsignedBigIntZero, SUnsignedBigInt)
+      assertInvalidType(UnsignedBigIntZero, SBigInt)
+      assertInvalidType(UnsignedBigIntZero, SShort)
+    }
 
     assertValidType(ge1, SGroupElement)
     assertInvalidType(ge1, SShort)

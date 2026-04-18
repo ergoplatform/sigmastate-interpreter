@@ -4,12 +4,12 @@ import java.math.BigInteger
 import org.ergoplatform._
 import org.scalacheck.Arbitrary._
 import sigma.data.{RType, SigmaBoolean, TupleColl}
-import sigma.ast.SCollection.SByteArray
+import sigma.ast.SCollection.{SByteArray, SUnsignedBigIntArray}
 import sigma.ast.{BigIntConstant, ByteArrayConstant, Constant, DeserializationSigmaBuilder, FalseLeaf, GroupGenerator, LongConstant, TrueLeaf}
 import sigmastate.eval._
 import sigma.Extensions.ArrayOps
 import sigma.ast._
-import sigma.{AvlTree, Colls, Evaluation, Header, VersionContext}
+import sigma.{AvlTree, BigIntRType, Colls, Evaluation, Header, VersionContext}
 import sigma.ast.SType.AnyOps
 import scorex.util.encode.Base16
 import sigma.ast.BoolArrayConstant.BoolArrayTypeCode
@@ -27,7 +27,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     implicit val tT = Evaluation.stypeToRType(tpe)
     implicit val tag = tT.classTag
 
-    val withVersion = if (tpe == SHeader) {
+    val withVersion = if (tpe == SHeader || tpe == SUnsignedBigInt) {
       Some(VersionContext.V6SoftForkVersion)
     } else {
       None
@@ -88,6 +88,11 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     forAll { x: Array[Byte] => roundTripTest(Constant[SByteArray](x.toColl, SByteArray)) }
     forAll { t: SPredefType => testCollection(t) }
     forAll { t: SPredefType => testTuples(t) }
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      forAll { x: BigInteger => whenever(x.compareTo(BigInteger.ZERO) >= 0) {
+        roundTripTest(Constant[SUnsignedBigInt.type](x.toUnsignedBigInt, SUnsignedBigInt))
+      }}
+    }
   }
 
   property("CollectionConstant serialization round trip") {
@@ -97,6 +102,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     testCollection(SInt)
     testCollection(SLong)
     testCollection(SBigInt)
+    testCollection(SUnsignedBigInt)
     testCollection(SGroupElement)
     testCollection(SSigmaProp)
     testCollection(SUnit)

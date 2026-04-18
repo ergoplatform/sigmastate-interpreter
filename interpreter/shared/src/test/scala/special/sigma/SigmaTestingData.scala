@@ -54,6 +54,8 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
   object TestData {
     val BigIntZero: BigInt = CBigInt(new BigInteger("0", 16))
 
+    val UnsignedBigIntZero: UnsignedBigInt = CUnsignedBigInt(new BigInteger("0", 16))
+
     val BigIntOne: BigInt = CBigInt(new BigInteger("1", 16))
 
     val BigIntMinusOne: BigInt = CBigInt(new BigInteger("-1", 16))

@@ -5,7 +5,7 @@ package sigma.ast
   * @param ident       The identifier for this type parameter
   */
 case class STypeParam(ident: STypeVar) {
-  override def toString = ident.toString
+  override def toString: String = ident.toString
 }
 
 object STypeParam {
