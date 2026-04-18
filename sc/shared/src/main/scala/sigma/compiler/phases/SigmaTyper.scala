@@ -248,6 +248,12 @@ class SigmaTyper(val builder: SigmaBuilder,
             case (Ident(GetVarFunc.name | ExecuteFromVarFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
               if id.tpe.isNumType =>
                 Seq(ByteConstant(SByte.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext))
+            case (Ident(ExecuteFromSelfRegFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
+              if id.tpe.isNumType =>
+                Seq(IntConstant(SInt.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext))
+            case (Ident(ExecuteFromSelfRegWithDefaultFunc.name, _), Seq(id: Constant[SNumericType]@unchecked, default))
+              if id.tpe.isNumType =>
+                Seq(IntConstant(SInt.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext), default)
             case (Ident(SContextMethods.getVarFromInputMethod.name, _),
                   Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked))
                   if inputId.tpe.isNumType && varId.tpe.isNumType =>
