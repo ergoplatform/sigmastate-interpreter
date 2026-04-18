@@ -46,7 +46,7 @@ object DataJsonEncoder {
   }
 
   def encodeData[T <: SType](v: T#WrappedType, tpe: T): Json = tpe match {
-    case SUnit => Json.fromFields(ArraySeq.empty)
+    case SUnit => Json.obj()
     case SBoolean => v.asInstanceOf[Boolean].asJson
     case SByte => v.asInstanceOf[Byte].asJson
     case SShort => v.asInstanceOf[Short].asJson
