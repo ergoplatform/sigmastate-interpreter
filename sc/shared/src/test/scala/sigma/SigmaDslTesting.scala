@@ -65,16 +65,6 @@ class SigmaDslTesting extends AnyPropSpec
     override val okMeasureOperationTime: Boolean = true
   }
 
-  def checkEq2[A,B,R](f: (A, B) => R)(g: (A, B) => R): (A,B) => Unit = { (x: A, y: B) =>
-    val r1 = f(x, y); val r2 = g(x, y)
-    assert(r1.getClass == r2.getClass)
-    assert(r1 == r2)
-  }
-
-  def getArrayIndex(len: Int): Int = {
-    val index = Gen.choose(0, len - 1)
-    index.sample.get
-  }
 
   /** Generate indices for an array of a given length.
     * @return unordered array of indices with possibly repeated elements
@@ -105,10 +95,6 @@ class SigmaDslTesting extends AnyPropSpec
   }
 
   val LogScriptDefault: Boolean = false
-
-  val isNewVersion = new scala.util.DynamicVariable(false)
-
-  val predefScripts = Seq[String]()
 
   /** Descriptor of the language feature.
     * Each language feature is described by so called feature-function which exercises
@@ -456,17 +442,6 @@ class SigmaDslTesting extends AnyPropSpec
           |Script: $script
           |Actual New Verification Cost: $actualCost
           |""".stripMargin)
-    }
-
-    private def checkEqualResults(res1: Try[VerificationResult], res2: Try[VerificationResult]): Unit = {
-      (res1, res2) match {
-        case (Success((v1, c1)), Success((v2, c2))) =>
-          v1 shouldBe v2
-        case (Failure(t1), Failure(t2)) =>
-          rootCause(t1) shouldBe rootCause(t2)
-        case _ =>
-          res1 shouldBe res2
-      }
     }
 
     private def checkExpectedResult(

@@ -261,19 +261,6 @@ object Extensions {
     def ?:(whenNone: => T): T = if (opt.isDefined) opt.get else whenNone
   }
 
-  implicit class ProductOps(val source: Product) extends AnyVal {
-    def toArray: Array[Any] = {
-      val arity = source.productArity
-      val res = new Array[Any](arity)
-      var i = 0
-      while (i < arity) {
-        res(i) = source.productElement(i)
-        i += 1
-      }
-      res
-    }
-  }
-
   implicit class ByteBufferOps(val buf: ByteBuffer) extends AnyVal {
     def toBytes: Array[Byte] = {
       val res = new Array[Byte](buf.position())
@@ -334,18 +321,6 @@ object Extensions {
     def showToString: String = toECPoint.showECPoint
   }
 
-  implicit class DBufferOps[A](val buf: DBuffer[A]) extends AnyVal {
-    /** Sum all values in `buf` using the given Numeric. */
-    def sumAll(implicit n: Numeric[A]): A = {
-      val limit     = buf.length
-      var result: A = n.zero
-      cfor(0)(_ < limit, _ + 1) { i =>
-        result = n.plus(result, buf.elems(i))
-      }
-      result
-    }
-  }
-
   implicit class SigmaBooleanOps(val sb: SigmaBoolean) extends AnyVal {
     /** Wraps SigmaBoolean into SigmaProp. */
     def toSigmaProp: SigmaProp = CSigmaProp(sb)
@@ -374,4 +349,5 @@ object Extensions {
     /** Extracts [[sigma.AvlTreeData]] from the AvlTree instance. */
     def toAvlTreeData: AvlTreeData = tree.asInstanceOf[CAvlTree].wrappedValue
   }
+
 }

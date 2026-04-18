@@ -27,8 +27,6 @@ abstract class CoreSerializer[TFamily, T <: TFamily] extends Serializer[TFamily,
 }
 
 object CoreSerializer {
-  /** Max length of Box.propositionBytes collection */
-  val MaxPropositionSize: Int = SigmaConstants.MaxPropositionBytes.value
 
   /** Max tree depth should not be greater then provided value */
   val MaxTreeDepth: Int = SigmaConstants.MaxTreeDepth.value

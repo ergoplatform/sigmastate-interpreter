@@ -1,10 +1,10 @@
 package sigmastate.eval
 
-import debox.{sp, Buffer => DBuffer, Map => DMap}
+import debox.{cfor, sp, Buffer => DBuffer, Map => DMap}
 import sigma.ast.{CostItem, FixedCost, FixedCostItem, JitCost, SMethod, SeqCostItem, TypeBasedCostItem}
 import sigma.ast.TypeCodes.LastConstantCode
 import sigma.ast.syntax._
-import sigma.util.Extensions.{ByteOps, DBufferOps}
+import sigma.util.Extensions.ByteOps
 import sigma.ast.{MethodCall, PropertyCall}
 import sigma.eval.Profiler
 import sigma.serialization.ValueCodes.OpCode
@@ -40,8 +40,18 @@ abstract class StatHolder[@sp (Long, Double) V] {
 class StatCollection[@sp(Int) K, @sp(Long, Double) V]
   (implicit n: Integral[V], ctK: ClassTag[K], ctV: ClassTag[V]) {
 
+  /** Sum all values in `buf` using the given Numeric. */
+  private def sumAll[A](buf: DBuffer[A], n: Numeric[A]): A = {
+    val limit     = buf.length
+    var result: A = n.zero
+    cfor(0)(_ < limit, _ + 1) { i =>
+      result = n.plus(result, buf.elems(i))
+    }
+    result
+  }
+
   private def calcAvg(buf: DBuffer[V]): V = {
-    n.quot(buf.sumAll, n.fromInt(buf.length))
+    n.quot(sumAll(buf, n), n.fromInt(buf.length))
   }
 
   // NOTE: this class is mutable so better to keep it private
@@ -58,7 +68,7 @@ class StatCollection[@sp(Int) K, @sp(Long, Double) V]
     }
 
     override def count: Int = dataPoints.length
-    override def sum: V = dataPoints.sumAll
+    override def sum: V = sumAll(dataPoints, n)
     override def avg: V = calcAvg(dataPoints)
 
     override def mean: (V, Int) = {
