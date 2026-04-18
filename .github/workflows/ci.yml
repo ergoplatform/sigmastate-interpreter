@@ -30,10 +30,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v10
+      - name: Setup Scala with SBT
+        uses: coursier/setup-action@v1
         with:
-          java-version: ${{ matrix.java }}
+          jvm: temurin:1.8
+          apps: sbt
+
+      - name: Ensure SBT in PATH
+        run: echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
 
       - name: Cache sbt
         uses: actions/cache@v4
@@ -48,7 +52,9 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} test
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} test
 
       - name: Publish a snapshot ${{ github.ref }}
         if: env.HAS_SECRETS == 'true'
@@ -85,10 +91,15 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci --prefix sigma-js
 
-      - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v10
+      - name: Setup Scala with SBT
+        uses: coursier/setup-action@v1
         with:
-          java-version: ${{ matrix.java }}
+          jvm: temurin:1.8
+          apps: sbt
+
+      - name: Ensure SBT in PATH
+        run: echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
+
 
       - name: Cache sbt
         uses: actions/cache@v4
@@ -103,7 +114,9 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests and collect coverage
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
 
       - name: Publish a JVM snapshot ${{ github.ref }}
         if: env.HAS_SECRETS == 'true'
@@ -113,7 +126,9 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
       - name: JS Build
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} scJS/fastOptJS
+        run: |
+          export SBT_OPTS="$(cat ci/ci.jvmopts | tr '\n' ' ')"
+          sbt ++${{ matrix.scala }} scJS/fastOptJS
 
       - name: Runs JS tests
         run: npm run test

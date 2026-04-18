@@ -139,6 +139,13 @@ class SigmaTyperTest extends AnyPropSpec
 
     typecheck(env, "sigmaProp(HEIGHT > 1000)") shouldBe SSigmaProp
     typecheck(env, "ZKProof { sigmaProp(HEIGHT > 1000) }") shouldBe SBoolean
+    
+    // debug() function tests
+    typecheck(env, "debug(10, \"test\")") shouldBe SInt
+    typecheck(env, "debug(HEIGHT, \"current height\")") shouldBe SInt
+    typecheck(env, "{ val debugVal = debug(42, \"value\"); debugVal }") shouldBe SInt
+    typecheck(env, "debug(SELF.R5[Long].get, \"price\")") shouldBe SLong
+    typecheck(env, "debug(Coll(1,2,3), \"collection\")") shouldBe SCollection(SInt)
   }
 
   property("val constructs") {
@@ -900,3 +907,4 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
 }
+
