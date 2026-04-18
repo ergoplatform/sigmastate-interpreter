@@ -1,0 +1,27 @@
+{
+    "name": "ergoscript-lsp",
+    "version": "0.1.0",
+    "description": "Language Server Protocol implementation for ErgoScript (MVP)",
+    "private": true,
+    "workspaces": [
+        "server",
+        "client"
+    ],
+    "scripts": {
+        "compile": "npm run compile:server && npm run compile:client",
+        "compile:server": "cd server && npm run compile",
+        "compile:client": "cd client && npm run compile",
+        "watch": "npm run watch:server & npm run watch:client",
+        "watch:server": "cd server && npm run watch",
+        "watch:client": "cd client && npm run watch",
+        "clean": "rimraf server/dist client/dist"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "rimraf": "^5.0.5",
+        "typescript": "^5.3.3"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

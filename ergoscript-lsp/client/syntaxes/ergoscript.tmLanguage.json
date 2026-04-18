@@ -1,0 +1,87 @@
+{
+    "scopeName": "source.ergoscript",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.ergoscript",
+                    "match": "//.*$"
+                },
+                {
+                    "name": "comment.block.ergoscript",
+                    "begin": "/\\*",
+                    "end": "\\*/"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.ergoscript",
+                    "match": "\\b(if|else|val)\\b"
+                },
+                {
+                    "name": "keyword.other.ergoscript",
+                    "match": "\\b(SigmaProp|HEIGHT|OUTPUTS|INPUTS|SELF|CONTEXT|Box|Coll|Option|AvlTree)\\b"
+                },
+                {
+                    "name": "keyword.other.ergoscript",
+                    "match": "\\b(sigmaProp|proveDlog|proveDHTuple|anyOf|allOf|atLeast)\\b"
+                },
+                {
+                    "name": "keyword.other.ergoscript",
+                    "match": "\\b(tokens|value|propositionBytes|id|creationInfo)\\b"
+                },
+                {
+                    "name": "keyword.other.ergoscript",
+                    "match": "\\b(size|exists|forall|fold|map|filter)\\b"
+                },
+                {
+                    "name": "constant.language.ergoscript",
+                    "match": "\\b(true|false)\\b"
+                },
+                {
+                    "name": "storage.type.ergoscript",
+                    "match": "\\b(Int|Long|BigInt|Boolean|Byte|Short|String)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.ergoscript",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.ergoscript",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.ergoscript",
+                    "match": "\\b\\d+L?\\b"
+                }
+            ]
+        }
+    }
+}
