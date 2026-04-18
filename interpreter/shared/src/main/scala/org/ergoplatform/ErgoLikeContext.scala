@@ -155,7 +155,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     Examined ergo code: all that leads to ErgoLikeContext creation.
     */
     val outputs = spendingTransaction.outputs.toArray.map(_.toTestBox).toColl
-    val varMap = extension.values.map { case (k, v: EvaluatedValue[_]) =>
+    val varMap = extension.values.toSeq.map { case (k, v: EvaluatedValue[_]) =>
       val tVal = stypeToRType[SType](v.tpe)
       k -> toAnyValue(v.value.asWrappedType)(tVal)
     }.toMap
