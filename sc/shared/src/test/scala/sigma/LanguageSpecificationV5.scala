@@ -9299,6 +9299,23 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ErgoTree.setConstantSegregation(ZeroHeader),
       Vector(IntConstant(10)),
       BoolToSigmaProp(EQ(ConstantPlaceholder(0, SInt), IntConstant(20))))
+    
+    // Custom generator that produces valid ErgoTree bytes to avoid NegativeArraySizeException
+    // from deserializing random bytes with invalid size values
+    implicit val arbErgoTreeBytesAndInt: Arbitrary[(Coll[Byte], Int)] = Arbitrary {
+      for {
+        treeBytes <- Gen.oneOf(
+          Coll(t1.bytes: _*),
+          Coll(t2.bytes: _*),
+          Coll(t3.bytes: _*),
+          Helpers.decodeBytes("000008d3"),
+          Helpers.decodeBytes("100008d3"),
+          Helpers.decodeBytes("100108d37300")
+        )
+        idx <- Gen.choose(0, 10)
+      } yield (treeBytes, idx)
+    }
+    
     def costDetails(i: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),
