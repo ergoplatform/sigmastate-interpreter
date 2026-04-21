@@ -12,7 +12,7 @@ import sigma.data.{CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, Nullable, RTyp
 import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
-import sigma.exceptions.InterpreterException
+import sigma.exceptions.{InterpreterException, SoftFieldAccessException}
 import sigma.kiama.rewriting.Rewriter.count
 import sigma.serialization.OpCodes._
 import sigma.serialization.ValueCodes.OpCode
@@ -1345,6 +1345,14 @@ case class MethodCall(
           argsBuf(len + i) = extra(i)
         }
         var res: Any = null
+
+        // Check if accessing soft fields of PreHeader when soft fields are not allowed
+        if (method.objType.typeId == SPreHeader.typeId &&
+              !E.context.softFieldsAllowed &&
+              SPreHeaderMethods.softMethodIds.contains(method.methodId)) {
+          throw new SoftFieldAccessException(method.name)
+        }
+
         E.addFixedCost(fixed, method.opDesc) {
           res = method.invokeFixed(objV, argsBuf)
         }
@@ -1432,7 +1440,9 @@ object Lambda extends ValueCompanion {
       body: Value[SType]): Lambda = Lambda(Nil, args, NoType, Some(body))
 }
 
-/** When interpreted evaluates to a ByteArrayConstant built from Context.minerPubkey */
+/** When interpreted evaluates to a ByteArrayConstant built from Context.minerPubkey
+  * @note throws exception if soft field access is not allowed in current context
+  */
 case object MinerPubkey extends NotReadyValueByteArray with ValueCompanion {
   override def opCode: OpCode = OpCodes.MinerPubkeyCode
   /** Cost of calling Context.minerPubkey Scala method. */
@@ -1441,7 +1451,7 @@ case object MinerPubkey extends NotReadyValueByteArray with ValueCompanion {
   override def companion = this
   protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
     addCost(this.costKind)
-    E.context.minerPubKey
+    E.context.minerPubKey // exception is thrown here if soft field access not allowed
   }
 }
 

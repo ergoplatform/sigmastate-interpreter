@@ -19,7 +19,7 @@ object Extensions {
   implicit class IntExt(val x: Int) extends AnyVal {
     /** Convert this value to BigInt. */
     @inline def toBigInt: BigInt = CSigmaDslBuilder.BigInt(BigInteger.valueOf(x.toLong))
-    @inline def toUnsignedBigInt: UnsignedBigInt = CSigmaDslBuilder.UnsignedBigInt(BigInteger.valueOf(x.toLong))
+    @inline def toUnsignedBigInt: UnsignedBigInt = CSigmaDslBuilder.unsignedBigInt(BigInteger.valueOf(x.toLong))
   }
 
   implicit class LongExt(val x: Long) extends AnyVal {

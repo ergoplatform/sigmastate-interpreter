@@ -45,7 +45,10 @@ trait InterpreterContext {
   /** Creates a new instance with extension updated with given value. */
   def withExtension(newExtension: ContextExtension): InterpreterContext
 
-  /** Creates a new instance with given bindings added to extension. */
+  /**
+    * Creates a new instance with given bindings added to extension.
+    * USED IN TESTS ONLY! thus not optimized for efficiency
+    */
   def withBindings(bindings: VarBinding*): InterpreterContext = {
     val ext = extension.add(bindings: _*)
     withExtension(ext)
@@ -62,6 +65,6 @@ trait InterpreterContext {
     *
     * @see sigmastate.eval.Evaluation
     */
-  def toSigmaContext(): sigma.Context
+  def toSigmaContext: sigma.Context
 }
 

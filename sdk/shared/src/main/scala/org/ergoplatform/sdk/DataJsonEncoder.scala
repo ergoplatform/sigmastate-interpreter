@@ -175,7 +175,7 @@ object DataJsonEncoder {
       case SBigInt =>
         SigmaDsl.BigInt(new BigInteger(decodeBytes(json)))
       case SUnsignedBigInt =>
-        SigmaDsl.UnsignedBigInt(BigIntegers.fromUnsignedByteArray(decodeBytes(json)))
+        SigmaDsl.unsignedBigInt(BigIntegers.fromUnsignedByteArray(decodeBytes(json)))
       case SString =>
         new String(decodeBytes(json))
       case tColl: SCollectionType[a] =>

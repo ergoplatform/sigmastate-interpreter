@@ -15,6 +15,8 @@ import scala.util.Try
   * Note: context is included into message (under hash function), thus changed context
   * also changes message. This trait may be useful for tests, that sign fake messages,
   * or for transactions which inputs does not require signatures.
+  *
+  * USED IN TESTS ONLY
   */
 trait ContextEnrichingProverInterpreter extends ProverInterpreter {
 

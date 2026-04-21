@@ -44,6 +44,7 @@ import sigmastate.interpreter.InterpreterContext
   *                               - in v4.0 must be 1
   *                               - in v5.x must be 2
   *                               etc.
+  * @param softFieldsAllowed      - whether soft fields of `preHeader` could be accessed during execution
   */
 class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
                       val headers: Coll[Header],
@@ -56,7 +57,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
                       val validationSettings: SigmaValidationSettings,
                       val costLimit: Long,
                       val initCost: Long,
-                      val activatedScriptVersion: Byte
+                      val activatedScriptVersion: Byte,
+                      val softFieldsAllowed: Boolean = true
                  ) extends InterpreterContext {
   // TODO lastBlockUtxoRoot should be calculated from headers if it is nonEmpty
 
@@ -112,7 +114,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     * interpreter via [[sigma.Context]].
     * The value cannot be assigned on [[ErgoLikeContext]] construction and must be
     * attached using [[withErgoTreeVersion()]] method.
-    * When the value is None, the [[InterpreterException]] is thrown by the interpreter.
+    * When the value is None, the [[sigma.exceptions.InterpreterException]] is thrown by the interpreter.
     */
   val currentErgoTreeVersion: Option[Byte] = None
 
@@ -134,7 +136,10 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
   def withTransaction(newSpendingTransaction: ErgoLikeTransactionTemplate[_ <: UnsignedInput]): ErgoLikeContext =
     ErgoLikeContext.copy(this)(spendingTransaction = newSpendingTransaction)
 
-  override def toSigmaContext(): sigma.Context = {
+  def withSoftFieldsAllowed(newSoftFieldsAllowed: Boolean): ErgoLikeContext =
+    ErgoLikeContext.copy(this)(softFieldsAllowed = newSoftFieldsAllowed)
+
+  override def toSigmaContext: sigma.Context = {
     import sigma.Evaluation._
 
     def contextVars(m: Map[Byte, AnyValue]): Coll[AnyValue] = {
@@ -168,7 +173,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         syntax.error(s"Undefined context property: currentErgoTreeVersion"))
     CContext(
       dataInputs, headers, preHeader, inputs, outputs, preHeader.height, selfBox, selfIndex, avlTree,
-      preHeader.minerPk.getEncoded, vars, spendingTransaction, activatedScriptVersion, ergoTreeVersion)
+      preHeader.minerPk.getEncoded, vars, spendingTransaction, activatedScriptVersion, ergoTreeVersion, softFieldsAllowed)
   }
 
 
@@ -186,7 +191,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         validationSettings == that.validationSettings &&
         costLimit == that.costLimit &&
         initCost == that.initCost &&
-        activatedScriptVersion == that.activatedScriptVersion
+        activatedScriptVersion == that.activatedScriptVersion &&
+        softFieldsAllowed == that.softFieldsAllowed
     case _ => false
   }
 
@@ -231,11 +237,12 @@ object ErgoLikeContext {
       costLimit: Long = ctx.costLimit,
       initCost: Long = ctx.initCost,
       activatedScriptVersion: Byte = ctx.activatedScriptVersion,
-      currErgoTreeVersion: Option[Byte] = ctx.currentErgoTreeVersion): ErgoLikeContext = {
+      currErgoTreeVersion: Option[Byte] = ctx.currentErgoTreeVersion,
+      softFieldsAllowed: Boolean = ctx.softFieldsAllowed): ErgoLikeContext = {
     new ErgoLikeContext(
       lastBlockUtxoRoot, headers, preHeader, dataBoxes, boxesToSpend,
       spendingTransaction, selfIndex, extension, validationSettings, costLimit, initCost,
-      activatedScriptVersion) {
+      activatedScriptVersion, softFieldsAllowed) {
       override val currentErgoTreeVersion: Option[TypeCode] = currErgoTreeVersion
     }
   }

@@ -86,7 +86,7 @@ trait ObjectGenerators extends TypeGenerators
   implicit lazy val arbRegisterIdentifier: Arbitrary[RegisterId] = Arbitrary(registerIdentifierGen)
   implicit lazy val arbBigInteger: Arbitrary[BigInteger] = Arbitrary(Arbitrary.arbBigInt.arbitrary.map(_.bigInteger).map(_.mod(MaxBigIntValue)))
   implicit lazy val arbBigInt: Arbitrary[BigInt] = Arbitrary(arbBigInteger.arbitrary.map(SigmaDsl.BigInt(_)))
-  implicit lazy val arbUnsignedBigInt: Arbitrary[UnsignedBigInt] = Arbitrary(arbBigInteger.arbitrary.map(_.abs()).map(SigmaDsl.UnsignedBigInt(_)))
+  implicit lazy val arbUnsignedBigInt: Arbitrary[UnsignedBigInt] = Arbitrary(arbBigInteger.arbitrary.map(_.abs()).map(SigmaDsl.unsignedBigInt(_)))
   implicit lazy val arbEcPointType: Arbitrary[dlogGroup.ElemType] = Arbitrary(Gen.const(()).flatMap(_ => CryptoConstants.dlogGroup.createRandomGenerator()))
   implicit lazy val arbGroupElement: Arbitrary[GroupElement] = Arbitrary(arbEcPointType.arbitrary.map(SigmaDsl.GroupElement(_)))
   implicit lazy val arbSigmaBoolean: Arbitrary[SigmaBoolean] = Arbitrary(Gen.oneOf(proveDHTGen, proveDHTGen))

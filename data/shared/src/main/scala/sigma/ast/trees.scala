@@ -16,6 +16,7 @@ import sigma.validation.SigmaValidationSettings
 import sigma.{Coll, Colls, GroupElement, SigmaProp, VersionContext}
 import NumericOps.{BigIntIsExactIntegral, BigIntIsExactOrdering}
 import sigma.data.UnsignedBigIntNumericOps.{UnsignedBigIntIsExactIntegral, UnsignedBigIntIsExactOrdering}
+import org.ergoplatform.validation.ValidationRules
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.Extensions.EvalCollOps
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}

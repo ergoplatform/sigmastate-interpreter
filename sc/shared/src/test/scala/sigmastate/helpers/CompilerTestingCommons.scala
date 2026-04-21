@@ -85,7 +85,7 @@ trait CompilerTestingCommons extends TestingCommons
           .withErgoTreeVersion(ergoTreeVersionInTests)
           .withBindings(1.toByte -> Constant[SType](in.asInstanceOf[SType#WrappedType], tpeA))
           .withBindings(bindings: _*)
-        val calcCtx = ergoCtx.toSigmaContext().asInstanceOf[CContext]
+        val calcCtx = ergoCtx.toSigmaContext.asInstanceOf[CContext]
         calcCtx
     }
   }
