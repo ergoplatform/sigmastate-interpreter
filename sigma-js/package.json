@@ -1,6 +1,6 @@
 {
   "name": "sigmastate-js",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Sigma.js library",
   "files": [
     "dist/",
@@ -20,13 +20,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ScorexFoundation/sigmastate-interpreter.git"
+    "url": "git+https://github.com/ergoplatform/sigmastate-interpreter.git"
   },
   "author": "aslesarenko",
   "bugs": {
-    "url": "https://github.com/ScorexFoundation/sigmastate-interpreter/issues"
+    "url": "https://github.com/ergoplatform/sigmastate-interpreter/issues"
   },
-  "homepage": "https://github.com/ScorexFoundation/sigmastate-interpreter/blob/master/sigma-js/README.md",
+  "homepage": "https://github.com/ergoplatform/sigmastate-interpreter/blob/master/sigma-js/README.md",
   "scripts": {
     "test": "jest",
     "clean": "shx rm -rf ./dist/*",

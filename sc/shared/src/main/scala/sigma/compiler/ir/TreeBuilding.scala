@@ -292,6 +292,12 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val method = SGlobalMethods.deserializeToMethod.withConcreteTypes(typeSubst)
         builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(bytes)), typeSubst)
 
+      case SDBM.serialize(g, value) =>
+        val valueTpe = elemToSType(value.elem)
+        val typeSubst = Map(tT -> valueTpe): STypeSubst
+        val method = SGlobalMethods.serializeMethod.withConcreteTypes(typeSubst)
+        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(value)), Map.empty)
+
       case BIM.subtract(In(x), In(y)) =>
         mkArith(x.asNumValue, y.asNumValue, MinusCode)
       case BIM.add(In(x), In(y)) =>
