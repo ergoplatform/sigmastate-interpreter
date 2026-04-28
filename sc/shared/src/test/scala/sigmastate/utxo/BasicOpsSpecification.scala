@@ -4,7 +4,7 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
 import org.scalatest.Assertion
 import scorex.crypto.authds.{ADKey, ADValue}
-import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, InsertOrUpdate}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, InsertOrUpdate, Lookup, Remove}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.{ByteArrayBuilder, idToBytes}
 import scorex.util.encode.Base16
@@ -22,6 +22,7 @@ import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
 import sigma.crypto.{CryptoConstants, SecP256K1Group}
+import sigmastate.crypto.DiffieHellmanTupleProverInput
 import sigmastate._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -1677,6 +1678,159 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
   }
 
+  property("Coll.zip"){
+    test("zip", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = Coll(4, 5, 6, 7)
+        | val c3 = Coll(4, 5)
+        |
+        | val z1 = c1.zip(c2)
+        | val z2 = c1.zip(c3)
+        |
+        | z1.size == 3 && z1(0) == (1, 4) && z1(1) == (2, 5) && z1(2) == (3, 6) &&
+        | z2.size == 2 && z2(0) == (1, 4) && z2(1) == (2, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.flatMap"){
+    test("flatMap", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = c1.flatMap({ (i: Int) => Coll(i, i * 2) })
+        |
+        | c2.size == 6 && c2 == Coll(1, 2, 2, 4, 3, 6)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.patch"){
+    test("patch", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        | val c2 = Coll(9, 9)
+        |
+        | val p1 = c1.patch(1, c2, 2)
+        | val p2 = c1.patch(0, c2, 0)
+        | val p3 = c1.patch(5, c2, 0)
+        |
+        | p1 == Coll(1, 9, 9, 4, 5) && p2 == Coll(9, 9, 1, 2, 3, 4, 5) &&
+        | p3 == Coll(1, 2, 3, 4, 5, 9, 9)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.updated"){
+    test("updated", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        |
+        | val u1 = c1.updated(0, 9)
+        | val u2 = c1.updated(4, 9)
+        | val u3 = c1.updated(2, 9)
+        |
+        | u1 == Coll(9, 2, 3, 4, 5) && u2 == Coll(1, 2, 3, 4, 9) &&
+        | u3 == Coll(1, 2, 9, 4, 5) && c1 == Coll(1, 2, 3, 4, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.updateMany"){
+    test("updateMany", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        | val idx = Coll(0, 2, 4)
+        | val vals = Coll(9, 8, 7)
+        |
+        | val u1 = c1.updateMany(idx, vals)
+        |
+        | u1 == Coll(9, 2, 8, 4, 7) && c1 == Coll(1, 2, 3, 4, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.slice"){
+    test("slice", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        |
+        | val s1 = c1.slice(1, 3)
+        | val s2 = c1.slice(0, 5)
+        | val s3 = c1.slice(2, 2)
+        | val s4 = c1.slice(0, 10)
+        |
+        | s1 == Coll(2, 3) && s2 == c1 && s3.size == 0 && s4 == c1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.append"){
+    test("append", env, ext,
+      """{
+        | val c1 = Coll(1, 2)
+        | val c2 = Coll(3, 4)
+        |
+        | val a1 = c1.append(c2)
+        | val a2 = c2.append(c1)
+        | val a3 = c1.append(Coll[Int]())
+        |
+        | a1 == Coll(1, 2, 3, 4) && a2 == Coll(3, 4, 1, 2) && a3 == c1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.indexOf"){
+    test("indexOf", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 2, 5)
+        |
+        | val i1 = c1.indexOf(2, 0)
+        | val i2 = c1.indexOf(2, 2)
+        | val i3 = c1.indexOf(2, 3)
+        | val i4 = c1.indexOf(99, 0)
+        |
+         | i1 == 1 && i2 == 3 && i3 == 3 && i4 == -1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.indices"){
+    test("indices", env, ext,
+      """{
+        | val c1 = Coll(10, 20, 30)
+        | val c2 = Coll[Int]()
+        |
+        | c1.indices == Coll(0, 1, 2) && c2.indices == Coll[Int]()
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.getOrElse"){
+    test("getOrElse", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        |
+        | val g1 = c1.getOrElse(0, 99)
+        | val g2 = c1.getOrElse(2, 99)
+        | val g3 = c1.getOrElse(5, 99)
+        | val g4 = c1.getOrElse(-1, 99)
+        |
+        | g1 == 1 && g2 == 3 && g3 == 99 && g4 == 99
+        | }""".stripMargin,
+      null
+    )
+  }
+
   property("Global.fromBigEndianBytes - byte") {
     def fromTest() = test("fromBigEndianBytes - byte", env, ext,
       s"""{
@@ -3144,30 +3298,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
     )
   }
 
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should always be positive") {
-    test("BATBI1", env, ext,
-      "{ byteArrayToBigInt(Coll[Byte](-1.toByte)) > 0 }",
-      GT(ByteArrayToBigInt(ConcreteCollection.fromItems(ByteConstant(-1))), BigIntConstant(0)).toSigmaProp,
-      onlyPositive = true
-    )
-  }
-
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should not exceed dlog group order q (it is NOT ModQ integer)") {
-    val q = CryptoConstants.dlogGroup.q
-    val bytes = q.add(BigInteger.valueOf(1L)).toByteArray
-    val itemsStr = bytes.map(v => s"$v.toByte").mkString(",")
-    assertExceptionThrown(
-      test("BATBI1", env, ext,
-        s"{ byteArrayToBigInt(Coll[Byte]($itemsStr)) > 0 }",
-        GT(ByteArrayToBigInt(ConcreteCollection.fromSeq(bytes.map(ByteConstant(_)))), BigIntConstant(0)).toSigmaProp,
-        onlyPositive = true
-      ),
-      e => rootCause(e).isInstanceOf[ArithmeticException]
-    )
-  }
-
   property("ByteArrayToBigInt: range check") {
     def check(b: BigInteger, shouldThrow: Boolean) = {
       val bytes = b.toByteArray
@@ -3586,6 +3716,135 @@ class BasicOpsSpecification extends CompilerTestingCommons
     )
   }
 
+  property("Context.dataInputs") {
+    test("dataInputs", env, ext,
+      """{
+        | CONTEXT.dataInputs.size == 0
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Context.headers") {
+    test("headers", env, ext,
+      """{
+        | val h = CONTEXT.headers
+        | h.size >= 0
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Context.minerPubKey") {
+    test("minerPubKey", env, ext,
+      """{
+        | CONTEXT.minerPubKey.size == 33
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Header fields") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+
+    val customExt = Seq(21.toByte -> HeaderConstant(h1))
+
+    def headerTest() = test("header", env, customExt,
+      s"""{
+         | val h = getVar[Header](21).get
+         | h.version == 1.toByte &&
+         | h.parentId.size == 32 &&
+         | h.ADProofsRoot.size == 32 &&
+         | h.transactionsRoot.size == 32 &&
+         | h.timestamp > 0 &&
+         | h.height >= 0 &&
+         | h.extensionRoot.size == 32 &&
+         | h.minerPk.getEncoded.size == 33 &&
+         | h.powNonce.size == 8 &&
+         | h.votes.size == 3
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      headerTest()
+    } else {
+      an[Exception] shouldBe thrownBy(headerTest())
+    }
+  }
+
+  property("Header.checkPow") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+
+    val customExt = Seq(21.toByte -> HeaderConstant(h1))
+
+    def checkPowTest() = test("checkPow", env, customExt,
+      s"""{
+         | val h = getVar[Header](21).get
+         | h.checkPow == true
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      // The test data uses Autolykos v1 which is not supported in checkPow
+      // So we expect an exception
+      an[Exception] shouldBe thrownBy(checkPowTest())
+    } else {
+      an[Exception] shouldBe thrownBy(checkPowTest())
+    }
+  }
+
+  property("PreHeader fields") {
+    test("preHeaderFields", env, ext,
+      """{
+         | val ph = CONTEXT.preHeader
+         | ph.parentId.size >= 0 &&
+         | ph.timestamp >= 0 &&
+         | ph.nBits >= 0 &&
+         | ph.height >= 0 &&
+         | ph.minerPk.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.bytesWithoutRef") {
+    test("bytesWithoutRef", env, ext,
+      """{
+         | SELF.bytes.size > SELF.bytesWithoutRef.size
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.tokens") {
+    test("tokens", env, ext,
+      """{
+         | SELF.tokens.size == 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.creationInfo") {
+    test("creationInfo", env, ext,
+      """{
+         | val ci = SELF.creationInfo
+         | ci._1 == 5 && ci._2.size == 34
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
   property("expUnsigned - with mod inside") {
       val zz = SecP256K1Group.order.add(new BigInteger("8"))
       def someTest() = test("exp", env, ext,
@@ -3605,6 +3864,416 @@ class BasicOpsSpecification extends CompilerTestingCommons
       someTest()
     } else {
       an[Exception] should be thrownBy someTest()
+    }
+  }
+
+  property("GroupElement.multiply") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val ge2 = Helpers.decodeGroupElement("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1), 22.toByte -> GroupElementConstant(ge2))
+
+    test("multiply", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val ge2 = getVar[GroupElement](22).get
+         | val result = ge1.multiply(ge2)
+         | result.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("GroupElement.negate") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1))
+
+    test("negate", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val neg = ge1.negate
+         | val back = neg.negate
+         | ge1 == back && ge1 != neg
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("GroupElement.getEncoded roundtrip") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1))
+
+    test("roundtrip", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val encoded = ge1.getEncoded
+         | val decoded = decodePoint(encoded)
+         | ge1 == decoded
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree properties") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("treeProps", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | tree.digest.size == 33 &&
+         | tree.enabledOperations == 7.toByte &&
+         | tree.keyLength == 32 &&
+         | tree.valueLengthOpt.isEmpty &&
+         | tree.isInsertAllowed &&
+         | tree.isUpdateAllowed &&
+         | tree.isRemoveAllowed
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.updateDigest") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("updateDigest", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val newDigest = fromBase16("${Base16.encode(Array.fill(32)(0.toByte) ++ Array(0.toByte))}")
+         | val newTree = tree.updateDigest(newDigest)
+         | newTree.digest == newDigest && tree.digest != newDigest
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.updateOperations") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("updateOps", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val newTree = tree.updateOperations(0.toByte)
+         | !newTree.isInsertAllowed &&
+         | !newTree.isUpdateAllowed &&
+         | !newTree.isRemoveAllowed &&
+         | tree.isInsertAllowed
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.contains") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof
+    avlProver.performOneOperation(Lookup(treeElements(0)._1))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val keyBytes = treeElements(0)._1
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> ByteArrayConstant(keyBytes)
+    )
+
+    test("contains", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val key = getVar[Coll[Byte]](22).get
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | tree.contains(key, proof)
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.get") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof
+    avlProver.performOneOperation(Lookup(treeElements(0)._1))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val keyBytes = treeElements(0)._1
+    val valBytes = treeElements(0)._2
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> ByteArrayConstant(keyBytes),
+      23.toByte -> ByteArrayConstant(valBytes)
+    )
+
+    test("get", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val key = getVar[Coll[Byte]](22).get
+         | val expected = getVar[Coll[Byte]](23).get
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | tree.get(key, proof).get == expected
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.getMany") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof for all keys
+    treeElements.foreach(s => avlProver.performOneOperation(Lookup(s._1)))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData)
+    )
+
+    test("getMany", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val keys = Coll(fromBase16("${Base16.encode(treeElements(0)._1)}"), fromBase16("${Base16.encode(treeElements(1)._1)}"))
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | val results = tree.getMany(keys, proof)
+         | results.size == 2 && results(0).isDefined && results(1).isDefined
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("xorOf") {
+    test("xorOf", env, ext,
+      """{
+         | val r1 = xorOf(Coll(true, false, false))
+         | val r2 = xorOf(Coll(true, true))
+         | val r3 = xorOf(Coll(false, false))
+         | r1 && !r2 && !r3
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("atLeast") {
+    test("atLeast", env, ext,
+      "{ atLeast(1, Coll(getVar[SigmaProp](proofVar1).get, getVar[SigmaProp](proofVar2).get)) }",
+      null,
+      onlyPositive = true,
+      testExceededCost = false
+    )
+  }
+
+  property("decodePoint") {
+    val ge = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val encoded = ge.getEncoded
+
+    test("decodePoint", env, ext,
+      s"""{
+         | val encoded = fromBase16("${Base16.encode(encoded.toArray)}")
+         | val ge = decodePoint(encoded)
+         | ge.getEncoded == encoded
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Global.xor") {
+    test("xor", env, ext,
+      s"""{
+         | val b1 = fromBase16("123456")
+         | val b2 = fromBase16("abcdef")
+         | val result = Global.xor(b1, b2)
+         | result == fromBase16("b9f9b9")
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Global.groupGenerator") {
+    test("groupGenerator", env, ext,
+      """{
+         | val g = groupGenerator
+         | g.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Numeric conversion overflow - Byte") {
+    an[ArithmeticException] shouldBe thrownBy {
+      test("overflowByte", env, ext,
+        """{
+           | val i = 128
+           | i.toByte == -128.toByte
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Short") {
+    an[ArithmeticException] shouldBe thrownBy {
+      test("overflowShort", env, ext,
+        """{
+           | val i = 32768
+           | i.toShort == (-32768).toShort
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Int") {
+    an[Exception] shouldBe thrownBy {
+      test("overflowInt", env, ext,
+        """{
+           | val l = 2147483648L
+           | l.toInt == -2147483648
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Long") {
+    an[Exception] shouldBe thrownBy {
+      test("overflowLong", env, ext,
+        """{
+           | val bi = bigInt("9223372036854775808")
+           | bi.toLong == -9223372036854775808L
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("SigmaProp.propBytes comparison - different tree versions") {
+    test("propBytes", env, ext,
+      """{
+         | val p1 = getVar[SigmaProp](proofVar1).get
+         | val p2 = getVar[SigmaProp](proofVar2).get
+         | val b1 = p1.propBytes
+         | val b2 = p2.propBytes
+         | b1 != b2 && b1.size > 0 && b2.size > 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.map with None") {
+    test("mapNone", env, ext,
+      """{
+         | val opt = getVar[Int](99)
+         | val mapped = opt.map({ (i: Int) => i + 1 })
+         | mapped.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with Some - predicate true") {
+    test("filterTrue", env, ext,
+      """{
+         | val opt = getVar[Int](intVar1)
+         | val filtered = opt.filter({ (i: Int) => i > 0 })
+         | filtered.isDefined && filtered.get == 1
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with Some - predicate false") {
+    test("filterFalse", env, ext,
+      """{
+         | val opt = getVar[Int](intVar1)
+         | val filtered = opt.filter({ (i: Int) => i > 10 })
+         | filtered.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with None") {
+    test("filterNone", env, ext,
+      """{
+         | val opt = getVar[Int](99)
+         | val filtered = opt.filter({ (i: Int) => i > 0 })
+         | filtered.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("powHit") {
+    def powHitTest() = test("powHit", env, ext,
+      s"""{
+         | val k = 32
+         | val msg = fromBase16("${Base16.encode(Array.fill(32)(1.toByte))}")
+         | val nonce = fromBase16("${Base16.encode(Array.fill(8)(2.toByte))}")
+         | val h = fromBase16("${Base16.encode(Array.fill(4)(3.toByte))}")
+         | val N = 32
+         | val result = Global.powHit(k, msg, nonce, h, N)
+         | result >= 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(powHitTest())
+    } else {
+      powHitTest()
     }
   }
 
