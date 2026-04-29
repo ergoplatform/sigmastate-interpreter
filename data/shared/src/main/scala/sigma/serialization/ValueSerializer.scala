@@ -148,7 +148,8 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     CreateProveDHTupleSerializer(mkCreateProveDHTuple),
     LogicalNotSerializer(mkLogicalNot),
     OneArgumentOperationSerializer(Negation, mkNegation[SNumericType]),
-    OneArgumentOperationSerializer(BitInversion, mkBitInversion[SNumericType])
+    OneArgumentOperationSerializer(BitInversion, mkBitInversion[SNumericType]),
+    VerifyStarkSerializer
   ))
 
   private def serializable(v: Value[SType]): Value[SType] = {
