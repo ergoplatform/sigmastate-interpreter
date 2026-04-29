@@ -211,10 +211,10 @@ object FriVerifier {
       }
 
       // Batch Merkle verification of all coset commitments
-      val uniqueMap = scala.collection.mutable.TreeMap.empty[Int, Array[Int]]
+      var uniqueMap = scala.collection.immutable.TreeMap.empty[Int, Array[Int]]
       q = 0
       while (q < Q) {
-        uniqueMap(cosetIndices(q)) = leafDigests(q)
+        uniqueMap = uniqueMap.updated(cosetIndices(q), leafDigests(q))
         q += 1
       }
       val sortedIndices = uniqueMap.keys.toArray

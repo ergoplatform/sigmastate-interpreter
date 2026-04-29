@@ -88,10 +88,10 @@ object MerkleVerifier {
     }
 
     // Current layer: map of nodeIndex → digest
-    var currentNodes = scala.collection.mutable.TreeMap.empty[Int, Array[Int]]
+    var currentNodes = scala.collection.immutable.TreeMap.empty[Int, Array[Int]]
     i = 0
     while (i < leafIndices.length) {
-      currentNodes(leafIndices(i)) = leafDigests(i)
+      currentNodes = currentNodes.updated(leafIndices(i), leafDigests(i))
       i += 1
     }
 
@@ -100,7 +100,7 @@ object MerkleVerifier {
     // Process layer by layer (bottom-up)
     var layer = 0
     while (layer < depth) {
-      val nextNodes = scala.collection.mutable.TreeMap.empty[Int, Array[Int]]
+      var nextNodes = scala.collection.immutable.TreeMap.empty[Int, Array[Int]]
 
       // Process nodes in sorted order
       val indices = currentNodes.keys.toArray
@@ -129,7 +129,7 @@ object MerkleVerifier {
           }
 
           val (left, right) = if (isLeft) (myDigest, sibDigest) else (sibDigest, myDigest)
-          nextNodes(parentIdx) = tweakableHash(seed, layer, parentIdx, left, right)
+          nextNodes = nextNodes.updated(parentIdx, tweakableHash(seed, layer, parentIdx, left, right))
         }
 
         j += 1
