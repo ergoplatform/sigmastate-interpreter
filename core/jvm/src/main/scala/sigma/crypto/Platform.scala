@@ -106,8 +106,16 @@ object Platform {
     /*
      * BC treats EC as additive group while we treat that as multiplicative group.
      * Therefore, exponentiate point is multiply.
+     * Use native libsecp256k1 when available; fall back to BouncyCastle otherwise.
      */
-    Ecp(p.value.multiply(n))
+    if (SecP256K1Native.isEnabled && !p.value.isInfinity) {
+      SecP256K1Native.multiplyPointByScalar(p.value, n) match {
+        case Some(result) => Ecp(result)
+        case None         => Ecp(p.value.multiply(n))  // n == 0 → infinity via BC
+      }
+    } else {
+      Ecp(p.value.multiply(n))
+    }
   }
 
   /** Check if a point is infinity. */
