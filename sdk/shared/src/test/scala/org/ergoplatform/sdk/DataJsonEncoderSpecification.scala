@@ -192,7 +192,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
           |{ "type": "(Coll[(Int, Coll[Byte])], Long)",
           |  "value": {
           |    "_1": { "_1": [1, 2, 3, 4], "_2": [ [1, 1, 1], [2, 2], [3], [] ] },
-          |    "_2": 100
+          |    "_2": "100"
           |  }
           |}
           |""".stripMargin)

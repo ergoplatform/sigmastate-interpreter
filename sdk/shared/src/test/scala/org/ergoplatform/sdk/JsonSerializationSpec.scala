@@ -62,6 +62,19 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
     forAll(headerGen) { v: Header => jsonRoundTrip(v) }
   }
 
+  property("Long values > 2^53 survive JSON round-trip without truncation") {
+    // 4928911477310178288L is the exact value from the bug report.
+    // JS JSON.parse truncates it to 4928911477310178000 when encoded as a number.
+    val bigTimestamp = 4928911477310178288L
+    val encoded = longEncoder(bigTimestamp)
+    longDecoder.decodeJson(encoded).toTry.get shouldEqual bigTimestamp
+  }
+
+  property("Long decoder accepts both string and number formats for backward compatibility") {
+    val numericJson = io.circe.Json.fromLong(42L)
+    longDecoder.decodeJson(numericJson).toTry.get shouldEqual 42L
+  }
+
   property("PreHeader should be encoded into JSON and decoded back correctly") {
     forAll(preHeaderGen) { v: PreHeader => jsonRoundTrip(v) }
   }

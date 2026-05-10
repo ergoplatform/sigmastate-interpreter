@@ -64,6 +64,23 @@ trait JsonCodecs {
     } yield CBigInt(bigInt.bigInteger)
   })
 
+  implicit val longEncoder: Encoder[Long] = Encoder.instance(l => Json.fromString(l.toString))
+
+  implicit val longDecoder: Decoder[Long] = Decoder.instance({ cursor =>
+    cursor.value.asString match {
+      case Some(s) =>
+        try Right(java.lang.Long.parseLong(s))
+        catch { case _: NumberFormatException =>
+          Left(DecodingFailure(s"Not a valid Long string: $s", cursor.history))
+        }
+      case None =>
+        cursor.value.asNumber.flatMap(_.toLong) match {
+          case Some(v) => Right(v)
+          case None    => Left(DecodingFailure("Long", cursor.history))
+        }
+    }
+  })
+
   implicit val arrayBytesEncoder: Encoder[Array[Byte]] = Encoder.instance(ErgoAlgos.encode(_).asJson)
   implicit val arrayBytesDecoder: Decoder[Array[Byte]] = bytesDecoder(x => x)
 
