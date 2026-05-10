@@ -2384,7 +2384,9 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       Seq(
         (CBigInt(new BigInteger("1146584469340160"))) -> Expected(ExpectedResult(Success(117707472L), None)),
         (CBigInt(new BigInteger("130e0000000000000000000000000000000000000000000", 16))) -> Expected(ExpectedResult(Success(0x180130e0L), None)),
-        (CBigInt(new BigInteger("7fffff0000000000000000000000000000000000000000000000000000000000", 16))) -> Expected(ExpectedResult(Success(0x207fffffL), None))
+        (CBigInt(new BigInteger("7fffff0000000000000000000000000000000000000000000000000000000000", 16))) -> Expected(ExpectedResult(Success(0x207fffffL), None)),
+        (CBigInt(new BigInteger("-1"))) -> Expected(ExpectedResult(Success(0x01810000L), None)),
+        (CBigInt(new BigInteger("-12345600", 16))) -> Expected(ExpectedResult(Success(0x04923456L), None))
       ),
       f
     )
