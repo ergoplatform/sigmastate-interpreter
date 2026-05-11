@@ -146,6 +146,10 @@ class SigmaCompiler private(settings: CompilerSettings) {
         MethodCall(xs,
           SCollectionMethods.GetOrElseMethod.withConcreteTypes(Map(tIV -> xs.tpe.elemType)),
           Vector(index, default), Map())
+      case LastBlockUtxoRootHash =>
+        MethodCall(sigma.ast.Context, SContextMethods.lastBlockUtxoRootHashMethod, Vector(), Map())
+      case MinerPubkey =>
+        MethodCall(sigma.ast.Context, SContextMethods.minerPubKeyMethod, Vector(), Map())
     })
     rewrite(everywherebu(r))(expr)
   }
