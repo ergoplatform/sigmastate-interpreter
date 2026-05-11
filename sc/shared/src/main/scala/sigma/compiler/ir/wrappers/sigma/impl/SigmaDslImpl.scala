@@ -2112,6 +2112,26 @@ object Context extends EntityObject("Context") {
       }
       def unapply(exp: Sym): Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}] = unapply(exp.node)
     }
+
+    object LastBlockUtxoRootHash {
+      def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
+        case MethodCall(receiver, method, _, _) if method.getName == "LastBlockUtxoRootHash" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+          val res = receiver
+          Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
+        case _ => Nullable.None
+      }
+      def unapply(exp: Sym): Nullable[Ref[Context]] = unapply(exp.node)
+    }
+
+    object minerPubKey {
+      def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
+        case MethodCall(receiver, method, _, _) if method.getName == "minerPubKey" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+          val res = receiver
+          Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
+        case _ => Nullable.None
+      }
+      def unapply(exp: Sym): Nullable[Ref[Context]] = unapply(exp.node)
+    }
   }
 } // of object Context
   registerEntityObject("Context", Context)
