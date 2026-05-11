@@ -183,6 +183,10 @@ Test / publishArtifact := true
 
 pomIncludeRepository := { _ => false }
 
+def moduleNameSetting(moduleName: String) =
+  Compile / packageBin / packageOptions +=
+    Package.ManifestAttributes("Automatic-Module-Name" -> moduleName)
+
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
 lazy val commonDependenies2 = libraryDependencies ++= Seq(
@@ -203,6 +207,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigma"),
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )
@@ -245,7 +250,10 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(
+    crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigma.data")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     useYarn := true
@@ -263,7 +271,10 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(
+    crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigmastate")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     useYarn := true
@@ -282,7 +293,8 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      moduleNameSetting("org.scorexfoundation.sigmastate.parsers")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -307,7 +319,8 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      moduleNameSetting("org.ergoplatform.sdk")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -340,6 +353,7 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .settings(publish / skip := true)
     .jvmSettings(
       crossScalaSettings,
+      moduleNameSetting("org.scorexfoundation.sigma.sc"),
       libraryDependencies ++= Seq(scalameter)
     )
     .jsSettings(
@@ -368,7 +382,7 @@ lazy val scJS = sc.js
 
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
-  .settings(libraryDefSettings, rootSettings)
+  .settings(libraryDefSettings, rootSettings, moduleNameSetting("org.scorexfoundation.sigmastate"))
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
 
