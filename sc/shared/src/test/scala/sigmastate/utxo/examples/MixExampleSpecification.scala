@@ -168,7 +168,7 @@ class MixExampleSpecification extends CompilerTestingCommons
 
     // bob (2nd player) is generating a proof and it is passing verification
     // To Do: Extract below g_x from halfMixOutput
-    val dhtBob = DiffieHellmanTupleProverInput(y, ProveDHTuple(g, gX, gY, gXY))
+    val dhtBob = DiffieHellmanTupleProverInput.create(y, ProveDHTuple(g, gX, gY, gXY))
 
     val proofFullMix = (new ContextEnrichingTestProvingInterpreter).withDHSecrets(
       Seq(dhtBob)
@@ -222,7 +222,7 @@ class MixExampleSpecification extends CompilerTestingCommons
     )
 
     // To Do: Extract below g_y, g_xy from fullMixOutputs registers
-    val dhtAlice = DiffieHellmanTupleProverInput(x, ProveDHTuple(g, gY, gX, gXY))
+    val dhtAlice = DiffieHellmanTupleProverInput.create(x, ProveDHTuple(g, gY, gX, gXY))
 
     val proofAliceSpend = (new ContextEnrichingTestProvingInterpreter).withDHSecrets(
       Seq(dhtAlice)

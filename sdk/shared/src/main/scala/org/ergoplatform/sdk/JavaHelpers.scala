@@ -476,7 +476,7 @@ object JavaHelpers {
       v: EcPointType,
       x: BigInteger): DiffieHellmanTupleProverInput = {
     val dht = ProveDHTuple(g, h, u, v)
-    DiffieHellmanTupleProverInput(x, dht)
+    DiffieHellmanTupleProverInput.create(x, dht)
   }
 }
 
