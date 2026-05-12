@@ -237,4 +237,77 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
     }
   }
 
+  // ---- Tests for issue #694: lazy partial deserialization for size-bit trees ----
+
+  /** Builds a size-bit tree by setting version=1 (which forces the size bit, see
+    * `ErgoTree.setRequiredBits`). Uses a non-trivial expression so the saving is real. */
+  private def mkSizeBitTree(): ErgoTree = {
+    val header = ErgoTree.setSizeBit(ErgoTree.setConstantSegregation(ErgoTree.ZeroHeader))
+    new ErgoTree(
+      header,
+      Array[Constant[SType]](IntConstant(1)),
+      Right(BoolToSigmaProp(EQ(ConstantPlaceholder(0, SInt), IntConstant(10))))
+    )
+  }
+
+  property("size-bit deserialization takes the lazy path and defers root parsing") {
+    val tree = mkSizeBitTree()
+    ErgoTree.hasSize(tree.header) shouldBe true
+
+    val bytes = DefaultSerializer.serializeErgoTree(tree)
+    val parsed = DefaultSerializer.deserializeErgoTree(bytes)
+
+    // The root must not have been forced yet.
+    parsed.isRootForced shouldBe false
+    // Lazy-path indicators: the deserializer does not populate _hasDeserialize /
+    // _isUsingBlockchainContext because computing them requires the parsed root.
+    // A legacy (no-size-bit) deserialize would set these to Some(_) eagerly.
+    parsed._hasDeserialize shouldBe None
+    parsed._isUsingBlockchainContext shouldBe None
+
+    // Operations that don't need the root must NOT force it.
+    parsed.bytes.length shouldBe bytes.length
+    parsed.constants shouldBe tree.constants
+    parsed.isRootForced shouldBe false
+    parsed._hasDeserialize shouldBe None
+
+    // Forcing root triggers parsing; subsequent flag accesses populate the caches.
+    parsed.root shouldBe tree.root
+    parsed.isRootForced shouldBe true
+    parsed.hasDeserialize shouldBe false
+    parsed._hasDeserialize shouldBe Some(false)
+  }
+
+  property("legacy (no size-bit) deserialization remains eager") {
+    val header = ErgoTree.setConstantSegregation(ErgoTree.ZeroHeader) // size bit NOT set
+    val tree = new ErgoTree(
+      header,
+      Array[Constant[SType]](IntConstant(1)),
+      Right(BoolToSigmaProp(EQ(ConstantPlaceholder(0, SInt), IntConstant(10))))
+    )
+    ErgoTree.hasSize(tree.header) shouldBe false
+
+    val bytes = DefaultSerializer.serializeErgoTree(tree)
+    val parsed = DefaultSerializer.deserializeErgoTree(bytes)
+
+    // Eager path populates these flags during deserialization.
+    parsed._hasDeserialize shouldBe defined
+    parsed._isUsingBlockchainContext shouldBe defined
+    parsed shouldBe tree
+  }
+
+  property("bytes-based equality: two deserialized size-bit trees with identical bytes are equal") {
+    val tree = mkSizeBitTree()
+    val bytes = DefaultSerializer.serializeErgoTree(tree)
+
+    val a = DefaultSerializer.deserializeErgoTree(bytes)
+    val b = DefaultSerializer.deserializeErgoTree(bytes)
+
+    a shouldBe b
+    a.hashCode shouldBe b.hashCode
+    // Equality and hashCode must not require forcing the root.
+    a.isRootForced shouldBe false
+    b.isRootForced shouldBe false
+  }
+
 }
