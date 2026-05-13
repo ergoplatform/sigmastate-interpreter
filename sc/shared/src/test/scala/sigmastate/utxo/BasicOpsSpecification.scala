@@ -4073,6 +4073,49 @@ $lrFoldScript
     )
   }
 
+  property("executeFromSelfReg - boundary id == allRegisters.length") {
+    // allRegisters has 10 entries (R0..R9), so id == 10 is the first out-of-range value
+    // and must be rejected at compile time, exercising the upper bound of the range check.
+    assertExceptionThrown(
+      test("executeFromSelfReg", env, ext,
+        "{ executeFromSelfReg[Int](10) == 2 }",
+        null,
+        true,
+        additionalRegistersOpt = Some(Map())
+      ),
+      e => {
+        val r = rootCause(e)
+        r.isInstanceOf[sigma.exceptions.InvalidArguments] && r.getMessage == "Invalid register specified 10"
+      }
+    )
+  }
+
+  property("executeFromSelfReg - negative id") {
+    assertExceptionThrown(
+      test("executeFromSelfReg", env, ext,
+        "{ executeFromSelfReg[Int](-1) == 2 }",
+        null,
+        true,
+        additionalRegistersOpt = Some(Map())
+      ),
+      e => {
+        val r = rootCause(e)
+        r.isInstanceOf[sigma.exceptions.InvalidArguments] && r.getMessage == "Invalid register specified -1"
+      }
+    )
+  }
+
+  property("executeFromSelfRegWithDefault - boundary id == allRegisters.length") {
+    // With out-of-range id (== 10) the IR builder must fall through to the default value
+    // expression at compile time, rather than producing a DeserializeRegister node.
+    test("executeFromSelfReg", env, ext,
+      "{ executeFromSelfRegWithDefault[Int](10, getVar[Int](2).get) == 2 }",
+      null,
+      true,
+      additionalRegistersOpt = Some(Map())
+    )
+  }
+
   property("Relation operations") {
     test("R1", env, ext,
       "{ allOf(Coll(getVar[Boolean](trueVar).get, true, true)) }",

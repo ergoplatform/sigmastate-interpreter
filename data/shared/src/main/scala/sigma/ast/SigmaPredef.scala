@@ -426,7 +426,7 @@ object SigmaPredef {
         { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked, default)) =>
           val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
           if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
-            default.v
+            default
           } else {
             val r: RegisterId = org.ergoplatform.ErgoBox.registerByIndex(idx)
             val d = Some(default.asValue[rtpe.type])
@@ -512,7 +512,7 @@ object SigmaPredef {
         { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
           val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
           if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
-            throw new InvalidArguments(s"Invalid register specified $id")
+            throw new InvalidArguments(s"Invalid register specified $idx")
           }
 
           val r: RegisterId = org.ergoplatform.ErgoBox.registerByIndex(idx)
