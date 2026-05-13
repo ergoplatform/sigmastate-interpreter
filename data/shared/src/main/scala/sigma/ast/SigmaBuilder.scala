@@ -215,12 +215,21 @@ abstract class SigmaBuilder {
   /** Created a new Value instance with an appropriate type derived from the given data `obj`.
     * If `obj` is already Value, then it is returned as result.
     * Uses [[scalan.Nullable]] instead of [[Option]] to avoid allocation on consensus hot path.
+    *
+    * Note: handling of `scala.math.BigInt` is done here (compiler-side) rather than in
+    * [[Platform.liftToConstant]] because the latter is consensus-critical (used by
+    * SubstConstants). `scala.math.BigInt` is a Scala host-language wrapper and cannot
+    * appear in serialized ErgoTrees, so keeping this conversion outside the consensus
+    * path avoids hard-fork risk.
     */
   def liftAny(obj: Any): Nullable[SValue] = obj match {
     case v: SValue => Nullable(v)
     case av: AnyValue if Environment.current.isJVM =>
       // on JVM we must use the wrapped value directly
       Platform.liftToConstant(av.value, this)
+    case bi: scala.math.BigInt =>
+      // unwrap to java.math.BigInteger and let liftToConstant produce a SBigInt Constant
+      Platform.liftToConstant(sigma.data.CBigInt(bi.bigInteger), this)
     case _ =>
       Platform.liftToConstant(obj, this)
   }
