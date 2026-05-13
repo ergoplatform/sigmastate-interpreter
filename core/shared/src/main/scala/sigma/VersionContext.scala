@@ -42,7 +42,7 @@ object VersionContext {
     * - version 3.x this value must be 0
     * - in v4.0 must be 1
     * - in v5.x must be 2
-    * - in 6.x must be 3
+    * - in v6.x must be 3
     * etc.
     */
   val MaxSupportedScriptVersion: Byte = 3 // supported versions 0, 1, 2, 3

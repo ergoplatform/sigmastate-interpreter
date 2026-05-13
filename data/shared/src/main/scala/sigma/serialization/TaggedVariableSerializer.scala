@@ -3,7 +3,20 @@ package sigma.serialization
 import sigma.ast.SType
 import sigma.ast._
 
-// TODO v6.0: remove this class (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584)
+/** Serializer for the legacy [[TaggedVariable]] node (opcode 0x71).
+  *
+  * Retained to preserve the consensus-level wire format for ErgoTrees with
+  * `ergoTreeVersion <= V6SoftForkVersion`. The class is `@deprecated` to
+  * signal the retirement plan:
+  *   - Phase 1: types deprecated, wire format unchanged.
+  *   - Phase 2 (version-gated): `parse` will reject opcode 0x71 when
+  *     `VersionContext.current.isV7Activated`. The opcode slot is
+  *     reserved and MUST NOT be reassigned to a new node.
+  *
+  * Behavior pinned by `TaggedVariableSerializerSpecification`.
+  */
+@deprecated("Scheduled for version-gated rejection in v7.0; do not reference outside the dispatch table.", since = "7.0.0")
+@annotation.nowarn("cat=deprecation")
 case class TaggedVariableSerializer(cons: (Byte, SType) => Value[SType])
   extends ValueSerializer[TaggedVariable[_ <: SType]] {
   override def opDesc = TaggedVariable
