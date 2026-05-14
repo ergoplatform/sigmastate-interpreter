@@ -424,13 +424,34 @@ object ConstantPlaceholder extends ValueCompanion {
 trait NotReadyValue[S <: SType] extends Value[S] {
 }
 
-// TODO v6.0: remove these TaggedVariable and TaggedVariableNode (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584)
+// Retirement plan for TaggedVariable / opcode 0x71.
+//
+// Phase 1: the AST/builder types are deprecated. The on-wire format is unchanged:
+// opcode 0x71 is still registered in the ValueSerializer dispatch table and still
+// round-trips (pinned by TaggedVariableSerializerSpecification). The companion object
+// itself MUST remain non-deprecated because it is referenced by the dispatch table via
+// `ValueCompanion.opCode`.
+//
+// Phase 2 (future, version-gated): once the next protocol version that rejects
+// opcode 0x71 is activated (targeted at v7.0), the serializer entry will start
+// throwing for trees at ergoTreeVersion >= V7SoftForkVersion. The opcode slot will
+// be reserved permanently and never reassigned.
 
-/** Reference a context variable by id. */
+/** Reference a context variable by id.
+  *
+  * @deprecated
+  * Unreachable from the ErgoScript compiler since the introduction of
+  * `GetVar` / `ValUse`. Retained only to preserve binary compatibility
+  * for deserialization of legacy ErgoTrees. Scheduled for consensus-level
+  * rejection in the v7.0 protocol update.
+  */
+@deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
 trait TaggedVariable[T <: SType] extends NotReadyValue[T] {
   val varId: Byte
 }
 
+/** @see [[TaggedVariable]] for the retirement plan. */
+@deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
 case class TaggedVariableNode[T <: SType](varId: Byte, override val tpe: T)
     extends TaggedVariable[T] {
   override def companion = TaggedVariable
@@ -438,11 +459,19 @@ case class TaggedVariableNode[T <: SType](varId: Byte, override val tpe: T)
   def opType: SFunc = Value.notSupportedError(this, "opType")
 }
 
+/** Companion object for [[TaggedVariable]].
+  *
+  * NOTE: this object is intentionally NOT deprecated — it must stay reachable
+  * because the serializer dispatch table looks up `opCode` on it. Only the
+  * `apply` constructor is marked deprecated to discourage new producers of
+  * `TaggedVariableNode` while keeping the parse path intact.
+  */
 object TaggedVariable extends ValueCompanion {
   override def opCode: OpCode = TaggedVariableCode
 
   override def costKind: CostKind = FixedCost(JitCost(1))
 
+  @deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
   def apply[T <: SType](varId: Byte, tpe: T): TaggedVariable[T] =
     TaggedVariableNode(varId, tpe)
 }
