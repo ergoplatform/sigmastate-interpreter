@@ -245,7 +245,7 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "(1, 2L)._2") shouldBe SLong
     typecheck(env, "(1, 2L, 3)._3") shouldBe SInt
 
-    typefail(env, "(1, 2L)._3", 1, 1)
+    typefail(env, "(1, 2L)._3", 1, 9)
 
     // tuple as collection
     typecheck(env, "(1, 2L).size") shouldBe SInt
@@ -319,9 +319,9 @@ class SigmaTyperTest extends AnyPropSpec
 
   property("array indexed access with default value") {
     typecheck(env, "Coll(0).getOrElse(0, 1)") shouldBe SInt
-    typefail(env, "Coll(0).getOrElse(true, 1)", 1, 1)
-    typefail(env, "Coll(true).getOrElse(0, 1)", 1, 1)
-    typefail(env, "Coll(0).getOrElse(0, Coll(1))", 1, 1)
+    typefail(env, "Coll(0).getOrElse(true, 1)", 1, 9)
+    typefail(env, "Coll(true).getOrElse(0, 1)", 1, 12)
+    typefail(env, "Coll(0).getOrElse(0, Coll(1))", 1, 9)
   }
 
   property("array indexed access with default value with evaluation") {
@@ -582,7 +582,7 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
   property("invalid cast method for numeric types") {
-    typefail(env, "1.toSuperBigInteger", 1, 1)
+    typefail(env, "1.toSuperBigInteger", 1, 3)
   }
 
   property("toBytes method for numeric types") {
@@ -797,7 +797,7 @@ class SigmaTyperTest extends AnyPropSpec
     runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
       assertExceptionThrown(
         typecheck(env, "Global.serialize(1)"),
-        exceptionLike[MethodNotFound]("Cannot find method 'serialize' in in the object Global")
+        exceptionLike[MethodNotFound]("Cannot find method 'serialize' on receiver of type SGlobal")
       )
     }
   }
@@ -897,6 +897,30 @@ class SigmaTyperTest extends AnyPropSpec
     runWithVersion(VersionContext.V6SoftForkVersion) {
       typecheck(env, "Global.serialize(1L)") shouldBe SByteArray
     }
+  }
+
+  property("MethodNotFound on a plain selector chain points at the offending selector") {
+    val source = "INPUTS.size.nonexistent"
+    val ex = the[MethodNotFound] thrownBy typecheck(env, source)
+    ex.getMessage should not include "Select("
+    ex.getMessage should include ("'nonexistent'")
+    ex.source shouldBe defined
+    val src = ex.source.get
+    src.line shouldBe 1
+    src.sourceLine shouldBe source
+    src.column shouldBe 13 // start of `nonexistent`
+  }
+
+  property("MethodNotFound on a selector after a type application") {
+    val source = "SELF.R4[Coll[Long]].get.remove(0)"
+    val ex = the[MethodNotFound] thrownBy typecheck(env, source)
+    ex.getMessage should not include "Select("
+    ex.getMessage should include ("'remove'")
+    ex.source shouldBe defined
+    val src = ex.source.get
+    src.line shouldBe 1
+    src.sourceLine shouldBe source
+    src.column shouldBe 25 // start of `remove`
   }
 
 }

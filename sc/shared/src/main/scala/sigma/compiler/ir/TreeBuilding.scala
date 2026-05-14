@@ -483,7 +483,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
             val specMethod = method.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
             builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
           case None =>
-            error(s"Cannot find method ${m.getName} in object $obj")
+            error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
         }
 
       case Def(d) =>

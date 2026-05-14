@@ -95,8 +95,8 @@ class SigmaTyper(val builder: SigmaBuilder,
         case tNewObj: SProduct =>
           val method = MethodsContainer.getMethod(tNewObj, n).getOrElse(
             throw new MethodNotFound(
-              s"Cannot find method '$n' in in the object $obj of Product type with methods",
-              obj.sourceContext.toOption))
+              s"Cannot find method '$n' on receiver of type $tNewObj",
+              sel.sourceContext.toOption))
           val tMeth = method.stype
           val tRes = tMeth match {
             case SFunc(args, _, _) =>
@@ -122,7 +122,7 @@ class SigmaTyper(val builder: SigmaBuilder,
             mkSelect(newObj, n, Some(tRes))
           }
         case t =>
-          error(s"Cannot get field '$n' in in the object $obj of non-product type $t", sel.sourceContext)
+          error(s"Cannot select field '$n': receiver has non-product type $t", sel.sourceContext)
       }
 
     case lam @ Lambda(tparams, args, t, body) =>
@@ -176,10 +176,10 @@ class SigmaTyper(val builder: SigmaBuilder,
             case Some(method) =>
               error(s"Don't know how to handle method $method in obj $p", sel.sourceContext)
             case None =>
-              throw new MethodNotFound(s"Cannot find method '$n' in in the object $newObj of Product type $p", newObj.sourceContext.toOption)
+              throw new MethodNotFound(s"Cannot find method '$n' on receiver of type $p", sel.sourceContext.toOption)
           }
         case _ =>
-          error(s"Cannot get field '$n' in in the object $newObj of non-product type ${newObj.tpe}", sel.sourceContext)
+          error(s"Cannot select field '$n': receiver has non-product type ${newObj.tpe}", sel.sourceContext)
       }
 
     case app @ Apply(selOriginal @ Select(obj, nOriginal, resType), args) =>

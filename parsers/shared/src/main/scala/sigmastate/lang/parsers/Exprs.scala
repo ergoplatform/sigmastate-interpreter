@@ -191,7 +191,11 @@ trait Exprs extends Core with Types {
    private def applySuffix(f: Value[SType], args: Seq[SigmaNode]): Value[SType] = {
     builder.currentSrcCtx.withValue(f.sourceContext) {
       val rhs = args.foldLeft(f)((acc, arg) => arg match {
-        case Ident(name, _) => mkSelect(acc, name)
+        case id @ Ident(name, _) =>
+          // Each `.foo` selector captured its own position in `ExprSuffix` via `atSrcPos`;
+          // use it so chained selectors after type-applications / argument lists get a
+          // precise source context.
+          builder.currentSrcCtx.withValue(id.sourceContext) { mkSelect(acc, name) }
         case UnitConstant() => mkApply(acc, ArraySeq.empty)
         case Tuple(xs) => mkApply(acc, xs.toArray[SValue])
         case STypeApply("", targs) => mkApplyTypes(acc, targs)
