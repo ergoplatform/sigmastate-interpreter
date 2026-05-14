@@ -21,9 +21,9 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
 
   override def nonEmpty: Boolean = length > 0
 
-  override def isDefinedAt(idx: Int): Boolean = (idx >= 0) && (idx < length)
+  override def isDefinedAt(idx: Int): Boolean = isValidIndex(idx)
 
-  def getOrElse(i: Int, default: A): A = if (i >= 0 && i < toArray.length) toArray(i) else default
+  def getOrElse(i: Int, default: A): A = if (isValidIndex(i)) toArray(i) else default
 
   def map[@specialized B: RType](f: A => B): Coll[B] = {
     implicit val ctB = RType[B].classTag
@@ -109,7 +109,7 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
     var i = 0
     while (i < indexes.length) {
       val pos = indexes(i)
-      if (pos < 0 || pos >= toArray.length) throw new IndexOutOfBoundsException(pos.toString)
+      if (!isValidIndex(pos)) throw new IndexOutOfBoundsException(pos.toString)
       resArr(pos) = values(i)
       i += 1
     }
@@ -307,7 +307,7 @@ class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R
   override def isDefinedAt(idx: Int): Boolean = ls.isDefinedAt(idx) && rs.isDefinedAt(idx)
 
   override def getOrElse(i: Int, default: (L, R)): (L, R) =
-    if (i >= 0 && i < this.length)
+    if (isValidIndex(i))
       this.apply(i)
     else {
       val d = default // force thunk
@@ -440,7 +440,7 @@ class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R
     var i = 0
     while (i < indexes.length) {
       val pos = indexes(i)
-      if (pos < 0 || pos >= length) throw new IndexOutOfBoundsException(pos.toString)
+      if (!isValidIndex(pos)) throw new IndexOutOfBoundsException(pos.toString)
       resL(pos) = values(i)._1
       resR(pos) = values(i)._2
       i += 1
