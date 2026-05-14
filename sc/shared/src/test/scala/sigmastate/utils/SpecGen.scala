@@ -72,11 +72,20 @@ trait SpecGen {
 
     val funcsByOpCode = funcs
         .groupBy(_.docInfo.opDesc.map(_.opCode))
-        .ensuring(g => g.forall{ case (k, xs) => xs.length <= 1})
+        // Multiple predef funcs may share an opCode (e.g. executeFromSelfReg and
+        // executeFromSelfRegWithDefault both lower to DeserializeRegister), but they
+        // must differ in arity so the richest-signature pick below is unambiguous.
+        .ensuring(g => g.forall { case (_, xs) =>
+          xs.map(_.declaration.args.length).distinct.length == xs.length
+        })
 
     val table = ops.map { case (opCode, opDesc) =>
       val methodOpt = methodsByOpCode.get(Some(opCode)).map(_.head)
-      val funcOpt = funcsByOpCode.get(Some(opCode)).map(_.head)
+      // Multiple predef funcs can legitimately share an opCode (e.g. executeFromSelfReg
+      // and executeFromSelfRegWithDefault both lower to DeserializeRegister). Pick the
+      // function with the richest signature (most declared args) deterministically.
+      val funcOpt = funcsByOpCode.get(Some(opCode))
+          .map(_.maxBy(_.declaration.args.length))
       (opCode, opDesc, methodOpt, funcOpt)
     }
     val rowsWithInfo =
