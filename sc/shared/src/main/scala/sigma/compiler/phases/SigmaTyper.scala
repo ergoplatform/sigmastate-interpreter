@@ -1,5 +1,6 @@
 package sigma.compiler.phases
 
+import sigma.VersionContext
 import sigma.ast.SCollection.{SBooleanArray, SByteArray}
 import sigma.ast.SigmaPredef._
 import sigma.ast._
@@ -37,11 +38,14 @@ class SigmaTyper(val builder: SigmaBuilder,
 
   /** True when `v` is a bare `None` literal whose element type the typer cannot
     * resolve on its own — used by the `If` case to pick which branch to type first.
+    * Gated on ErgoTree v6+: pre-V6 the bare-`None` case fails fast on its own,
+    * and reordering would only move the diagnostic away from the `None` token.
     */
-  private def isBareNone(v: SValue): Boolean = v match {
-    case Ident("None", _) => true
-    case _ => false
-  }
+  private def isBareNone(v: SValue): Boolean =
+    VersionContext.current.isV3OrLaterErgoTreeVersion && (v match {
+      case Ident("None", _) => true
+      case _ => false
+    })
 
   private def processGlobalMethod(srcCtx: Nullable[SourceContext],
                                   method: SMethod,
@@ -94,35 +98,36 @@ class SigmaTyper(val builder: SigmaBuilder,
       val newItems = items.map(assignType(env, _))
       assignConcreteCollection(c, newItems)
 
-    case i @ Ident("None", _) =>
-      // Infer the element type of a bare `None` literal from contextual type
-      // information (either a `val` ascription or the sibling branch of an `if`).
-      // Desugar to a MethodCall on Global.none[T] which is the v6 representation.
-      expected match {
-        case Some(SOption(elemTpe)) =>
-          processGlobalMethod(
-            i.sourceContext,
-            SGlobalMethods.noneMethod,
-            IndexedSeq.empty,
-            Map(STypeVar("T") -> elemTpe))
-        case _ =>
-          error(
-            "Cannot infer the type of `None`. Add a type ascription " +
-            "(e.g. `val x: Option[Int] = None`) or use `Global.none[T]()`.",
-            i.sourceContext)
-      }
-
     case i @ Ident(n, _) =>
-      env.get(n) match {
-        case Some(t) => mkIdent(n, t)
-        case None =>
-          SGlobalMethods.method(n) match {
-            case Some(method) if method.stype.tDom.length == 1 => // this is like  `groupGenerator` without parentheses
-              val srcCtx = i.sourceContext
-              processGlobalMethod(srcCtx, method, IndexedSeq())
-            case _ =>
-              error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
-          }
+      if (isBareNone(i)) {
+        // Bare `None` is a v6.0 feature, gated alongside SGlobalMethods.noneMethod
+        // in SGlobal.getMethods. Infer the element type from the surrounding
+        // context (either a `val` ascription or the sibling branch of an `if`)
+        // and emit a MethodCall on noneMethod.
+        expected match {
+          case Some(SOption(elemTpe)) =>
+            processGlobalMethod(
+              i.sourceContext,
+              SGlobalMethods.noneMethod,
+              IndexedSeq.empty,
+              Map(STypeVar("T") -> elemTpe))
+          case _ =>
+            error(
+              "Cannot infer the type of `None`. Add a type ascription " +
+              "(e.g. `val x: Option[Int] = None`) or use `Global.none[T]()`.",
+              i.sourceContext)
+        }
+      } else {
+        env.get(n) match {
+          case Some(t) => mkIdent(n, t)
+          case None =>
+            SGlobalMethods.method(n) match {
+              case Some(method) if method.stype.tDom.length == 1 => // this is like  `groupGenerator` without parentheses
+                processGlobalMethod(i.sourceContext, method, IndexedSeq())
+              case _ =>
+                error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
+            }
+        }
       }
 
     case sel @ Select(obj, n, None) =>
