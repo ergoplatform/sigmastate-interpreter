@@ -4,6 +4,7 @@ import org.ergoplatform.ErgoAddressEncoder.TestnetNetworkPrefix
 import org.ergoplatform._
 import scorex.util.encode.Base58
 import sigma.ast.{ByIndex, ExtractAmount, GetVar, _}
+import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax._
 import sigmastate._
 import sigmastate.helpers.CompilerTestingCommons
@@ -118,6 +119,89 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp("getVar[Byte](10).get") shouldBe GetVar(10.toByte, SByte).get
     comp("getVar[Byte](10L).get") shouldBe GetVar(10.toByte, SByte).get
     an[TyperException] should be thrownBy comp("getVar[Byte](\"ha\")")
+  }
+
+  property("placeholder") {
+    // Bypass `checkSerializationRoundTrip` because a tree containing a
+    // `ConstantPlaceholder` cannot round-trip through `ValueSerializer` without
+    // a populated `ConstantStore`. End-to-end round-tripping is exercised via
+    // `ErgoTree.withSegregation` in the segregation tests below.
+    def buildTree(env: ScriptEnv, code: String): SValue =
+      compiler.compile(env, code).buildTree
+
+    buildTree(env, "placeholder[Int](0)") shouldBe ConstantPlaceholder(0, SInt)
+    buildTree(env, "placeholder[Long](2)") shouldBe ConstantPlaceholder(2, SLong)
+    buildTree(env, "placeholder[Coll[Byte]](1)") shouldBe ConstantPlaceholder(1, SByteArray)
+
+    // Negative index is rejected at IR-builder time.
+    an[InvalidArguments] should be thrownBy buildTree(env, "placeholder[Int](-1)")
+
+    // Non-literal index is rejected by the typer (no overload matches).
+    an[Exception] should be thrownBy buildTree(env, "{ val i = 0; placeholder[Int](i) }")
+  }
+
+  property("placeholder segregation: pure template") {
+    // `placeholder[T](id)` with no inline constants leaves the constants array
+    // empty for the user-supplied slots; `withSegregation` seeds typed dummies
+    // so the round-trip works and the caller can fill via `withConstant`.
+    val buildTree = compiler.compile(env, "placeholder[Int](0) > HEIGHT").buildTree
+    val tree = ErgoTree.fromProposition(buildTree.asSigmaProp)
+
+    tree.isConstantSegregation shouldBe true
+    tree.constants should have size 1
+    tree.constants(0).tpe shouldBe SInt
+
+    val withReal = tree.withConstant(0, IntConstant(42))
+    withReal.constants(0) shouldBe IntConstant(42)
+  }
+
+  property("placeholder segregation: shared slot") {
+    // Two `placeholder[T](0)` references share the same slot — the resulting
+    // tree has one constant in `constants` and two `ConstantPlaceholder(0, _)`
+    // nodes in the body.
+    val buildTree = compiler.compile(env, "placeholder[Int](0) + placeholder[Int](0) > 1").buildTree
+    val tree = ErgoTree.fromProposition(buildTree.asSigmaProp)
+
+    tree.isConstantSegregation shouldBe true
+    // slot 0: user placeholder (Int dummy); slot 1: extracted IntConstant(1)
+    tree.constants should have size 2
+    tree.constants(0).tpe shouldBe SInt
+    tree.constants(1) shouldBe IntConstant(1)
+  }
+
+  property("placeholder segregation: type inconsistency") {
+    val buildTree = compiler.compile(env, "placeholder[Int](0) + placeholder[Long](0).toInt > 0").buildTree
+    an[IllegalArgumentException] should be thrownBy
+      ErgoTree.fromProposition(buildTree.asSigmaProp)
+  }
+
+  property("placeholder segregation: ErgoTreeSerializer round-trip") {
+    import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
+    val buildTree = compiler.compile(env, "sigmaProp(placeholder[Long](0) > 1000L)").buildTree
+    val tree = ErgoTree.fromProposition(buildTree.asSigmaProp)
+    val filled = tree.withConstant(0, LongConstant(2000L))
+
+    val bytes = DefaultSerializer.serializeErgoTree(filled)
+    val parsed = DefaultSerializer.deserializeErgoTree(bytes)
+    parsed shouldBe filled
+    parsed.constants(0) shouldBe LongConstant(2000L)
+  }
+
+  property("placeholder segregation: Coll[Byte] template") {
+    // Templates often parameterise on byte arrays (hashes, pubkey bytes).
+    // The dummy slot must be a serialisable Coll so the unfilled tree can
+    // round-trip through ErgoTreeSerializer.
+    import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
+    val buildTree = compiler.compile(env, "sigmaProp(placeholder[Coll[Byte]](0).size == 32)").buildTree
+    val tree = ErgoTree.fromProposition(buildTree.asSigmaProp)
+    tree.constants(0).tpe shouldBe SByteArray
+
+    val pubkey = ByteArrayConstant(Array.fill[Byte](32)(0x42))
+    val filled = tree.withConstant(0, pubkey)
+
+    val parsed = DefaultSerializer.deserializeErgoTree(DefaultSerializer.serializeErgoTree(filled))
+    parsed shouldBe filled
+    parsed.constants(0) shouldBe pubkey
   }
 
   property("PK (testnet network prefix)") {
