@@ -35,6 +35,14 @@ class SigmaTyper(val builder: SigmaBuilder,
       predefFuncs ++ typeEnv
   }
 
+  /** True when `v` is a bare `None` literal whose element type the typer cannot
+    * resolve on its own — used by the `If` case to pick which branch to type first.
+    */
+  private def isBareNone(v: SValue): Boolean = v match {
+    case Ident("None", _) => true
+    case _ => false
+  }
+
   private def processGlobalMethod(srcCtx: Nullable[SourceContext],
                                   method: SMethod,
                                   args: IndexedSeq[SValue],
@@ -49,15 +57,25 @@ class SigmaTyper(val builder: SigmaBuilder,
   /**
     * Rewrite tree to typed tree.  Checks constituent names and types.  Uses
     * the env map to resolve bound variables and their types.
+    *
+    * The optional `expected` type is propagated down at the few points where
+    * the user has supplied contextual type information (e.g. `val x: Option[Int] = ...`
+    * or one branch of an `if` when the other is a bare `None`). Cases that do
+    * not consult `expected` are unchanged.
     */
-  def assignType(env: Map[String, SType], bound: SValue): SValue = ( bound match {
+  def assignType(
+    env: Map[String, SType],
+    bound: SValue,
+    expected: Option[SType] = None
+  ): SValue = ( bound match {
     case Block(bs, res) =>
       var curEnv = env
       val bs1 = ArrayBuffer[Val]()
       for (v @ Val(n, explicitType, b) <- bs) {
         if (curEnv.contains(n))
           error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
-        val b1 = assignType(curEnv, b)
+        val expectedForB = if (explicitType != NoType) Some(explicitType) else None
+        val b1 = assignType(curEnv, b, expectedForB)
         val resultType = SType.getResultType(b1.tpe)
         if (SType.isAssignableTo(explicitType) && explicitType != resultType)
           error(s"Expected type ${explicitType}, but got ${b1.tpe}", v.sourceContext)
@@ -66,7 +84,7 @@ class SigmaTyper(val builder: SigmaBuilder,
           bs1 += mkVal(n, b1.tpe, b1)
         }
       }
-      val res1 = assignType(curEnv, res)
+      val res1 = assignType(curEnv, res, expected)
       mkBlock(bs1.toSeq, res1)
 
     case Tuple(items) =>
@@ -75,6 +93,24 @@ class SigmaTyper(val builder: SigmaBuilder,
     case c @ ConcreteCollection(items, _) =>
       val newItems = items.map(assignType(env, _))
       assignConcreteCollection(c, newItems)
+
+    case i @ Ident("None", _) =>
+      // Infer the element type of a bare `None` literal from contextual type
+      // information (either a `val` ascription or the sibling branch of an `if`).
+      // Desugar to a MethodCall on Global.none[T] which is the v6 representation.
+      expected match {
+        case Some(SOption(elemTpe)) =>
+          processGlobalMethod(
+            i.sourceContext,
+            SGlobalMethods.noneMethod,
+            IndexedSeq.empty,
+            Map(STypeVar("T") -> elemTpe))
+        case _ =>
+          error(
+            "Cannot infer the type of `None`. Add a type ascription " +
+            "(e.g. `val x: Option[Int] = None`) or use `Global.none[T]()`.",
+            i.sourceContext)
+      }
 
     case i @ Ident(n, _) =>
       env.get(n) match {
@@ -443,8 +479,20 @@ class SigmaTyper(val builder: SigmaBuilder,
 
     case If(c, t, e) =>
       val c1 = assignType(env, c).asValue[SBoolean.type]
-      val t1 = assignType(env, t)
-      val e1 = assignType(env, e)
+      val tIsNone = isBareNone(t)
+      val eIsNone = isBareNone(e)
+      // If exactly one branch is a bare `None`, type the other branch
+      // first and use its type to drive inference for the `None` side.
+      val (t1, e1) =
+        if (tIsNone && !eIsNone) {
+          val eFirst = assignType(env, e, expected)
+          (assignType(env, t, Some(eFirst.tpe)), eFirst)
+        } else if (eIsNone && !tIsNone) {
+          val tFirst = assignType(env, t, expected)
+          (tFirst, assignType(env, e, Some(tFirst.tpe)))
+        } else {
+          (assignType(env, t, expected), assignType(env, e, expected))
+        }
       val ite = mkIf(c1, t1, e1)
       if (c1.tpe != SBoolean)
         error(s"Invalid type of condition in $ite: expected Boolean; actual: ${c1.tpe}", c.sourceContext)
