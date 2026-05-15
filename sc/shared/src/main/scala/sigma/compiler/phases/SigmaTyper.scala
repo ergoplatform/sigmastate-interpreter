@@ -535,6 +535,7 @@ class SigmaTyper(val builder: SigmaBuilder,
     case LastBlockUtxoRootHash => LastBlockUtxoRootHash
     case v: GetVar[_] => v
     case v: OptionGet[_] => v
+    case v: ConstantPlaceholder[_] => v
     case v: EvaluatedValue[_] => v
     case v: SigmaBoolean => v
     case v: Upcast[_, _] => v

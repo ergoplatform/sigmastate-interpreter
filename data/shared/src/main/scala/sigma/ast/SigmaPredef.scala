@@ -416,6 +416,25 @@ object SigmaPredef {
         Seq(ArgInfo("id", "identifier of the context variable")))
     )
 
+    val PlaceholderFunc = PredefinedFunc("placeholder",
+      Lambda(Array(paramT), Array("index" -> SInt), tT, None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
+          val idx = SInt.downcast(id.value.asInstanceOf[AnyVal])
+          if (idx < 0)
+            throw new InvalidArguments(
+              s"placeholder index must be non-negative, got: $idx", id.sourceContext.toOption)
+          mkConstantPlaceholder(idx, rtpe)
+        }),
+      OperationInfo(ConstantPlaceholder,
+        """Reference a constant in the \lst{ErgoTree.constants} array by its index.
+         | The constant at the given index must exist and have a type matching \lst{T}.
+         | Multiple \lst{placeholder} calls with the same index refer to the same constant slot,
+         | which lets the same ErgoTree be reused as a template parameterised by its constants.
+        """.stripMargin,
+        Seq(ArgInfo("index", "index of the constant in the ErgoTree.constants array")))
+    )
+
     val ExecuteFromSelfRegWithDefaultFunc = PredefinedFunc("executeFromSelfRegWithDefault",
       Lambda(
         Seq(paramT),
@@ -559,6 +578,7 @@ object SigmaPredef {
       ExecuteFromVarFunc,
       ExecuteFromSelfRegFunc,
       ExecuteFromSelfRegWithDefaultFunc,
+      PlaceholderFunc,
       SerializeFunc,
       DeserializeToFunc,
       GetVarFromInputFunc,
@@ -726,13 +746,6 @@ object SigmaPredef {
           "Apply the function to the arguments. ",
           Seq(ArgInfo("func", "function which is applied"),
             ArgInfo("args", "list of arguments")))
-      ),
-      PredefinedFunc("placeholder",
-        Lambda(Array(paramT), Array("id" -> SInt), tT, None),
-        PredefFuncInfo(undefined),
-        OperationInfo(ConstantPlaceholder,
-          "Create special ErgoTree node which can be replaced by constant with given id.",
-          Seq(ArgInfo("index", "index of the constant in ErgoTree header")))
       )
     ).map(f => f.name -> f).toMap
 
