@@ -1,0 +1,83 @@
+{
+  "scalaVersion": "2.13.18",
+  "valueConvention": "IntConstant(key.toInt)",
+  "fixtures": [
+    {
+      "name": "size-0",
+      "inputKeys": [],
+      "mapClass": "scala.collection.immutable.Map$EmptyMap$",
+      "observedIterationOrder": [],
+      "serializedHex": "00"
+    },
+    {
+      "name": "size-1",
+      "inputKeys": [0],
+      "mapClass": "scala.collection.immutable.Map$Map1",
+      "observedIterationOrder": [0],
+      "serializedHex": "01000400"
+    },
+    {
+      "name": "size-2",
+      "inputKeys": [0, 1],
+      "mapClass": "scala.collection.immutable.Map$Map2",
+      "observedIterationOrder": [0, 1],
+      "serializedHex": "02000400010402"
+    },
+    {
+      "name": "size-3",
+      "inputKeys": [0, 1, 2],
+      "mapClass": "scala.collection.immutable.Map$Map3",
+      "observedIterationOrder": [0, 1, 2],
+      "serializedHex": "03000400010402020404"
+    },
+    {
+      "name": "size-4",
+      "inputKeys": [0, 1, 2, 3],
+      "mapClass": "scala.collection.immutable.Map$Map4",
+      "observedIterationOrder": [0, 1, 2, 3],
+      "serializedHex": "04000400010402020404030406"
+    },
+    {
+      "name": "size-5-contiguous",
+      "inputKeys": [0, 1, 2, 3, 4],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 1, 2, 3, 4],
+      "serializedHex": "05000400010402020404030406040408"
+    },
+    {
+      "name": "size-6-contiguous",
+      "inputKeys": [0, 1, 2, 3, 4, 5],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 5, 1, 2, 3, 4],
+      "serializedHex": "0600040005040a010402020404030406040408"
+    },
+    {
+      "name": "size-7-contiguous",
+      "inputKeys": [0, 1, 2, 3, 4, 5, 6],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 5, 1, 6, 2, 3, 4],
+      "serializedHex": "0700040005040a01040206040c020404030406040408"
+    },
+    {
+      "name": "size-8-contiguous",
+      "inputKeys": [0, 1, 2, 3, 4, 5, 6, 7],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 5, 1, 6, 2, 7, 3, 4],
+      "serializedHex": "0800040005040a01040206040c02040407040e030406040408"
+    },
+    {
+      "name": "size-16-contiguous",
+      "inputKeys": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 5, 10, 14, 1, 6, 9, 13, 2, 12, 7, 3, 11, 8, 4, 15],
+      "serializedHex": "1000040005040a0a04140e041c01040206040c0904120d041a0204040c041807040e0304060b04160804100404080f041e"
+    },
+    {
+      "name": "size-8-sparse",
+      "inputKeys": [0, 7, 13, 31, 64, 100, 120, 127],
+      "mapClass": "scala.collection.immutable.HashMap",
+      "observedIterationOrder": [0, 120, 13, 64, 7, 100, 127, 31],
+      "serializedHex": "080004007804f0010d041a4004800107040e6404c8017f04fe011f043e"
+    }
+  ]
+}
