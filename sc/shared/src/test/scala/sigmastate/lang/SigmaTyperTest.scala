@@ -669,8 +669,16 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "executeFromVar[Boolean](1)") shouldBe SBoolean
   }
 
+  property("executeFromSelfReg") {
+    // Int and Long literals are auto-downcast to Byte to match the SByte parameter.
+    typecheck(env, "executeFromSelfReg[Boolean](4)") shouldBe SBoolean
+    typecheck(env, "executeFromSelfReg[Boolean](4L)") shouldBe SBoolean
+  }
+
   property("executeFromSelfRegWithDefault") {
+    // Int and Long literals are auto-downcast to Byte to match the SByte parameter.
     typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Boolean](1).get)") shouldBe SBoolean
+    typecheck(env, "executeFromSelfRegWithDefault[Boolean](4L, getVar[Boolean](1).get)") shouldBe SBoolean
 
     an[TyperException] should be thrownBy {
       typecheck(env, "executeFromSelfRegWithDefault[Boolean](4, getVar[Int](1).get)")
