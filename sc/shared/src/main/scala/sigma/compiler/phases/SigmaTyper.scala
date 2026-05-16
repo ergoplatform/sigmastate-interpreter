@@ -75,10 +75,23 @@ class SigmaTyper(val builder: SigmaBuilder,
         if (curEnv.contains(n))
           error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
         val expectedForB = if (explicitType != NoType) Some(explicitType) else None
+        // `def f(args): R = body` is parsed as `Val(f, R, Lambda(.., givenResType = R, ..))`
+        // — the user's ascription is the *return type*, not the full function type.
+        // Detect this on the *pre-typing* body (the typer fills `givenResType` unconditionally)
+        // and compare against the lambda's range.
+        val isFunDef = b match {
+          case lam: Lambda => lam.givenResType != NoType
+          case _ => false
+        }
         val b1 = assignType(curEnv, b, expectedForB)
-        val resultType = SType.getResultType(b1.tpe)
-        if (SType.isAssignableTo(explicitType) && explicitType != resultType)
-          error(s"Expected type ${explicitType}, but got ${b1.tpe}", v.sourceContext)
+        val actualType = if (isFunDef) b1.tpe.asInstanceOf[SFunc].tRange else b1.tpe
+        explicitType match {
+          case NoType => ()
+          case tv: STypeVar => error(s"Unknown type ${tv.name}", v.sourceContext)
+          case t if t != actualType =>
+            error(s"Expected type $t, but got $actualType", v.sourceContext)
+          case _ => ()
+        }
         curEnv = curEnv + (n -> b1.tpe)
         builder.currentSrcCtx.withValue(v.sourceContext) {
           bs1 += mkVal(n, b1.tpe, b1)
