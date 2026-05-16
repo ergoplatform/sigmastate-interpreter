@@ -900,6 +900,15 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
   property("None inferred from `val` type ascription") {
+    // Should fail in v5
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "{val X: Option[Int] = None; X}"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+    }
+
+    // Should work in v6
     runWithVersion(VersionContext.V6SoftForkVersion) {
       typecheck(env, "{val X: Option[Int] = None; X}") shouldBe SOption(SInt)
       typecheck(env, "{val X: Option[Long] = None; X}") shouldBe SOption(SLong)
@@ -908,6 +917,15 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
   property("None inferred from sibling if-branch") {
+    // Should fail in v5
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "if (SELF.R5[Int].isDefined) None else SELF.R5[Int]"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+    }
+
+    // Should work in v6
     runWithVersion(VersionContext.V6SoftForkVersion) {
       typecheck(env, "if (SELF.R5[Int].isDefined) None else SELF.R5[Int]") shouldBe SOption(SInt)
       typecheck(env, "if (SELF.R5[Int].isDefined) SELF.R5[Int] else None") shouldBe SOption(SInt)
@@ -916,6 +934,20 @@ class SigmaTyperTest extends AnyPropSpec
   }
 
   property("bare None without context still errors") {
+    // Pre-V6 bare `None` is rejected via the generic unresolved-name path;
+    // `Global.none[T]()` is rejected via the version-gated method lookup.
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "None"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+      assertExceptionThrown(
+        typecheck(env, "Global.none[Int]()"),
+        exceptionLike[MethodNotFound]("Cannot find method 'none'")
+      )
+    }
+
+    // V6: bare `None` outside any inferring context produces the typer hint.
     runWithVersion(VersionContext.V6SoftForkVersion) {
       assertExceptionThrown(
         typecheck(env, "None"),
