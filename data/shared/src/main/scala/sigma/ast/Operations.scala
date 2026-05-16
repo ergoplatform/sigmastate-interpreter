@@ -496,14 +496,6 @@ object Operations {
     val argInfos: Seq[ArgInfo] = Array(scriptBytesArg, positionsArg, newValuesArg)
   }
 
-  object TreeLookupInfo extends InfoObject {
-    private val func = predefinedOps.specialFuncs("treeLookup")
-    val treeArg: ArgInfo = func.argInfo("tree")
-    val keyArg: ArgInfo = func.argInfo("key")
-    val proofArg: ArgInfo = func.argInfo("proof")
-    val argInfos: Seq[ArgInfo] = Array(treeArg, keyArg, proofArg)
-  }
-
   object UpcastInfo extends InfoObject {
     private val func = predefinedOps.specialFuncs("upcast")
     val inputArg: ArgInfo = func.argInfo("input")

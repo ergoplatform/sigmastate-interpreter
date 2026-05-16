@@ -1318,6 +1318,9 @@ sealed trait Quadruple[IV1 <: SType, IV2 <: SType, IV3 <: SType, OV <: SType] ex
   * Throws exception if proof is incorrect
   * Return Some(bytes) of leaf with key `key` if it exists
   * Return None if leaf with provided key does not exist.
+  *
+  * Retained for deserialization of legacy ErgoTrees carrying opcode 71
+  * (AvlTreeGetCode); the compiler emits MethodCall(AvlTree.get) instead.
   */
 case class TreeLookup(tree: Value[SAvlTree.type],
     key: Value[SByteArray],
@@ -1334,7 +1337,10 @@ trait QuadrupleCompanion extends ValueCompanion {
 object TreeLookup extends QuadrupleCompanion {
   override def opCode: OpCode = OpCodes.AvlTreeGetCode
   override def costKind: CostKind = Value.notSupportedError(this, "costKind")
-  override def argInfos: Seq[ArgInfo] = TreeLookupInfo.argInfos
+  override def argInfos: Seq[ArgInfo] = Array(
+    ArgInfo("tree", "tree to lookup the key"),
+    ArgInfo("key", "a key of an item in the \\lst{tree} to lookup"),
+    ArgInfo("proof", "proof to perform verification of the operation"))
 }
 
 /**
