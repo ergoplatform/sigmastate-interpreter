@@ -136,6 +136,12 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
       BigIntConstant(-10L)
   }
 
+  property("scala.math.BigInt in env compiles to BigIntConstant") {
+    val z: scala.math.BigInt = scala.math.BigInt("123456789012345678901234567890")
+    val envWithZ = env + ("z" -> z)
+    comp(envWithZ, "z") shouldBe BigIntConstant(new BigInteger("123456789012345678901234567890"))
+  }
+
   property("fromBaseX") {
     comp(""" fromBase16("31") """) shouldBe ByteArrayConstant(Array[Byte](49))
     comp(""" fromBase58("r") """) shouldBe ByteArrayConstant(Array[Byte](49))

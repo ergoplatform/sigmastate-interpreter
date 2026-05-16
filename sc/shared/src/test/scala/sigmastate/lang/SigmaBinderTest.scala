@@ -227,4 +227,22 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
         ))
     }
   }
+
+  property("scala.math.BigInt in env is lifted to BigIntConstant") {
+    val i: scala.math.BigInt = scala.math.BigInt(42)
+    val envWithI = env + ("i" -> i)
+    bind(envWithI, "i") shouldBe BigIntConstant(java.math.BigInteger.valueOf(42))
+  }
+
+  property("env value of unsupported type produces a clear BinderException") {
+    // java.util.Date is not liftable to any ErgoTree Constant
+    val envWithBad = env + ("bad" -> new java.util.Date(0L))
+    val builder = TransformingSigmaBuilder
+    val ast = SigmaParser("bad").get.value
+    val binder = new SigmaBinder(envWithBad, builder, TestnetNetworkPrefix, new PredefinedFuncRegistry(builder))
+    val e = the[BinderException] thrownBy binder.bind(ast)
+    e.getMessage should include ("'bad'")
+    e.getMessage should include ("unsupported type")
+    e.getMessage should include ("java.util.Date")
+  }
 }
