@@ -3230,6 +3230,29 @@ $lrFoldScript
     }
   }
 
+  property("avlTree global function") {
+    // 33-byte digest: 32 bytes of tree root hash + 1 byte height
+    val digestHex = "57326f0ef1d34c46c45c365c3fb1a34f43d5e5169c848cae938ef684b1995cdd00"
+    def avlTreeTest() = test("avlTree", env, ext,
+      s"""{
+         |  val digest = fromBase16("$digestHex")
+         |  val createdTree = avlTree(0.toByte, digest, 32, Global.some[Int](32))
+         |  createdTree.digest == digest &&
+         |    createdTree.keyLength == 32 &&
+         |    createdTree.valueLengthOpt == Global.some[Int](32) &&
+         |    createdTree.enabledOperations == 0.toByte
+         |}""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [Exception] should be thrownBy avlTreeTest()
+    } else {
+      avlTreeTest()
+    }
+  }
+
   property("serialize - collection of boxes") {
     def deserTest() = test("serialize", env, ext,
       s"""{
