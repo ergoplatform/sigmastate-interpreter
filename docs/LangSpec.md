@@ -1186,6 +1186,9 @@ def decodePoint(bytes: Coll[Byte]): GroupElement
   *   }
   * </pre>
   *
+  * Note: numeric literals (e.g. `4` or `4L`) are accepted and downcast to Byte
+  * at compile time, so callers need not write `.toByte` explicitly.
+  *
   * @param id zero-based identifier of the variable.
   * @tparam T expected type of the variable.
   * @return Some(value) if the variable is defined in the context AND has the given type.
@@ -1193,7 +1196,7 @@ def decodePoint(bytes: Coll[Byte]): GroupElement
   * @throws InvalidType exception when the type of the variable value is
   *                                   different from cT.
   */
-def getVar[T](tag: Int): Option[T]
+def getVar[T](id: Byte): Option[T]
 
 /** Extracts Context variable from any input by input index, variable id and variable type.
   * Unlike getVar, it is not throwing exception when expected type does not match real type of the variable.
@@ -1268,6 +1271,9 @@ def deserialize[T](string: String): T
  * Throws an exception if the result type of the execution doesn't conform to the return
  * type specified.
  * 
+ * Note: numeric literals (e.g. `4` or `4L`) are accepted and downcast to Byte
+ * at compile time, so callers need not write `.toByte` explicitly.
+ *
  * @param id context variable holding the serialized script to execute
  * @tparam T expected type of the variable and return type.
  * @return result of the executed script
@@ -1283,6 +1289,9 @@ def executeFromVar[T](id: Byte): T
  * An exception is thrown if the result type of the execution doesn't conform to the
  * return type specified and if an invalid register is specified.
  * 
+ * Note: numeric literals (e.g. `4` or `4L`) are accepted and downcast to Byte
+ * at compile time, so callers need not write `.toByte` explicitly.
+ *
  * @param id register id holding the serialized script to execute
  * @tparam T expected type of the register and return type.
  * @return result of the executed script or default value
@@ -1290,7 +1299,7 @@ def executeFromVar[T](id: Byte): T
  * @throws InvalidType exception when the result type of the execution value is 
  *                     different from T.
  */
-def executeFromSelfReg[T](id: Int): T
+def executeFromSelfReg[T](id: Byte): T
 
 /**
  * 
@@ -1300,6 +1309,9 @@ def executeFromSelfReg[T](id: Int): T
  * type of the execution doesn't conform to the return type specified and if an invalid 
  * register is specified.
  * 
+ * Note: numeric literals (e.g. `4` or `4L`) are accepted and downcast to Byte
+ * at compile time, so callers need not write `.toByte` explicitly.
+ *
  * @param id register id holding the serialized script to execute
  * @param default value returned if the register is unavailable
  * @tparam T expected type of the register and return type.
@@ -1308,7 +1320,7 @@ def executeFromSelfReg[T](id: Int): T
  * @throws InvalidType exception when the result type of the execution value is 
  *                     different from T.
  */
-def executeFromSelfRegWithDefault[T](id: Int, default: T): T
+def executeFromSelfRegWithDefault[T](id: Byte, default: T): T
 
 /**
   * Transforms serialized bytes of ErgoTree with segregated constants by

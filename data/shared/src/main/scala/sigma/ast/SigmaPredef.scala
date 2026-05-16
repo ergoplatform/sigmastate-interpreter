@@ -419,12 +419,12 @@ object SigmaPredef {
     val ExecuteFromSelfRegWithDefaultFunc = PredefinedFunc("executeFromSelfRegWithDefault",
       Lambda(
         Seq(paramT),
-        Array("id" -> SInt, "default" -> tT),
+        Array("id" -> SByte, "default" -> tT),
         tT, None
       ),
       PredefFuncInfo(
         { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked, default)) =>
-          val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
+          val idx: Int = SByte.downcast(id.value.asInstanceOf[AnyVal]).toInt
           if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
             default
           } else {
@@ -505,12 +505,12 @@ object SigmaPredef {
     val ExecuteFromSelfRegFunc = PredefinedFunc("executeFromSelfReg",
       Lambda(
         Seq(paramT),
-        Array("id" -> SInt),
+        Array("id" -> SByte),
         tT, None
       ),
       PredefFuncInfo(
         { case (Ident(_, SFunc(_, rtpe, _)), Seq(id: Constant[SNumericType]@unchecked)) =>
-          val idx: Int = SInt.downcast((id.value.asInstanceOf[AnyVal]))
+          val idx: Int = SByte.downcast(id.value.asInstanceOf[AnyVal]).toInt
           if (idx < 0 || idx >= org.ergoplatform.ErgoBox.allRegisters.length) {
             throw new InvalidArguments(s"Invalid register specified $idx")
           }

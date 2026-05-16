@@ -120,6 +120,22 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     an[TyperException] should be thrownBy comp("getVar[Byte](\"ha\")")
   }
 
+  property("executeFromSelfReg") {
+    // Int and Long literals are auto-downcast to Byte to match the SByte parameter.
+    comp("executeFromSelfReg[Boolean](4)") shouldBe DeserializeRegister(ErgoBox.R4, SBoolean, None)
+    comp("executeFromSelfReg[Boolean](4L)") shouldBe DeserializeRegister(ErgoBox.R4, SBoolean, None)
+    an[InvalidArguments] should be thrownBy comp("executeFromSelfReg[Boolean](99)")
+  }
+
+  property("executeFromSelfRegWithDefault") {
+    comp("executeFromSelfRegWithDefault[Boolean](4, false)") shouldBe
+      DeserializeRegister(ErgoBox.R4, SBoolean, Some(FalseLeaf))
+    comp("executeFromSelfRegWithDefault[Boolean](4L, false)") shouldBe
+      DeserializeRegister(ErgoBox.R4, SBoolean, Some(FalseLeaf))
+    // Out-of-range id short-circuits to the default at compile time.
+    comp("executeFromSelfRegWithDefault[Boolean](99, false)") shouldBe FalseLeaf
+  }
+
   property("PK (testnet network prefix)") {
     implicit val ergoAddressEncoder: ErgoAddressEncoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
     val dk1 = proveDlogGen.sample.get

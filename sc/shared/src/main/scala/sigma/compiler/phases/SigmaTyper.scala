@@ -281,9 +281,12 @@ class SigmaTyper(val builder: SigmaBuilder,
           val adaptedTypedArgs = (new_f, typedArgs) match {
             case (AllOfFunc.sym | AnyOfFunc.sym, _) =>
               adaptSigmaPropToBoolean(typedArgs, argTypes)
-            case (Ident(GetVarFunc.name | ExecuteFromVarFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
+            case (Ident(GetVarFunc.name | ExecuteFromVarFunc.name | ExecuteFromSelfRegFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
               if id.tpe.isNumType =>
                 Seq(ByteConstant(SByte.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext))
+            case (Ident(ExecuteFromSelfRegWithDefaultFunc.name, _), Seq(id: Constant[SNumericType]@unchecked, default))
+              if id.tpe.isNumType =>
+                Seq(ByteConstant(SByte.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext), default)
             case (Ident(SContextMethods.getVarFromInputMethod.name, _),
                   Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked))
                   if inputId.tpe.isNumType && varId.tpe.isNumType =>
