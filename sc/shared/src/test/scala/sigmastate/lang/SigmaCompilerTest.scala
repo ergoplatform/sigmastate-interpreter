@@ -52,6 +52,14 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp(env, "arr1(0)") shouldBe ByIndex(ByteArrayConstant(Array[Byte](1, 2)), 0)
   }
 
+  property("non-Int numeric index in array apply gets upcasted") {
+    // The typer must wrap a Byte/Short index in Upcast(_, SInt) so the resulting ByIndex node carries an SInt index (the bytecode op requires it).
+    val coll = ConcreteCollection.fromSeq(Array(IntConstant(1), IntConstant(2), IntConstant(3)))(SInt)
+    comp(env, "Coll(1, 2, 3)(getVar[Byte](10).get)")  shouldBe ByIndex(coll, Upcast(GetVarByte(10).get,  SInt), None)
+    comp(env, "Coll(1, 2, 3)(getVar[Short](10).get)") shouldBe ByIndex(coll, Upcast(GetVarShort(10).get, SInt), None)
+    comp(env, "Coll(1, 2, 3)(getVar[Int](10).get)")   shouldBe ByIndex(coll, GetVarInt(10).get, None)
+  }
+
   property("array indexed access with default value") {
     comp(env, "Coll(1).getOrElse(0, 1)") shouldBe
       ByIndex(ConcreteCollection.fromSeq(Array(IntConstant(1)))(SInt), 0, Some(IntConstant(1)))
