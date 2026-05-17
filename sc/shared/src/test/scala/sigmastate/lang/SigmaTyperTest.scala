@@ -899,4 +899,33 @@ class SigmaTyperTest extends AnyPropSpec
     }
   }
 
+  property("None inferred from `val` type ascription") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "{val X: Option[Int] = None; X}") shouldBe SOption(SInt)
+      typecheck(env, "{val X: Option[Long] = None; X}") shouldBe SOption(SLong)
+      typecheck(env, "{val X: Option[Coll[Byte]] = None; X}") shouldBe SOption(SCollection(SByte))
+    }
+  }
+
+  property("None inferred from sibling if-branch") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "if (SELF.R5[Int].isDefined) None else SELF.R5[Int]") shouldBe SOption(SInt)
+      typecheck(env, "if (SELF.R5[Int].isDefined) SELF.R5[Int] else None") shouldBe SOption(SInt)
+      typecheck(env, "if (HEIGHT > 0) None else getVar[Long](1)") shouldBe SOption(SLong)
+    }
+  }
+
+  property("bare None without context still errors") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      assertExceptionThrown(
+        typecheck(env, "None"),
+        exceptionLike[TyperException]("Cannot infer the type of `None`")
+      )
+      assertExceptionThrown(
+        typecheck(env, "if (HEIGHT > 0) None else 1"),
+        exceptionLike[TyperException]("Cannot infer the type of `None`")
+      )
+    }
+  }
+
 }

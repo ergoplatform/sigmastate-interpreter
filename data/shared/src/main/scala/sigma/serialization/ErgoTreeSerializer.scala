@@ -153,7 +153,7 @@ class ErgoTreeSerializer {
       try { // nested try-catch to intercept size limit exceptions and rethrow them as ValidationExceptions
         sizeOpt match {
           case Some(declaredBodySize) =>
-            // Lazy path (issue #694): the size bit is set, so the body length is known.
+            // Lazy path: the size bit is set, so the body length is known.
             // We can capture all tree bytes now and defer parsing the root expression until
             // someone actually reads `ergoTree.root`. Callers that only need `bytes`,
             // `template`, or `constants` never pay the AST-construction cost.

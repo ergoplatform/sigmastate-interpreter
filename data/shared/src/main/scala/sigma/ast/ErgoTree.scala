@@ -49,9 +49,8 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   * The default behavior of ErgoTreeSerializer is to preserve original structure of ErgoTree and check
   * consistency. In case of any inconsistency the serializer throws exception.
   *
-  * Note: prior to issue #694, this was a `case class` with eager `root`. It is now a plain class so the
-  * `root` field can be backed by a `lazy val`, allowing the deserializer to defer parsing of the
-  * tree body until the root is actually accessed. See `docs/avoid-ergotree-duplicates.md`.
+  * Note: It is a plain class so the `root` field can be backed by a `lazy val`, allowing the deserializer
+  * to defer parsing of the tree body until the root is actually accessed.
   *
   * @param header           the first byte of serialized byte array which determines interpretation of the rest of the array
   * @param constants        If isConstantSegregation == true contains the constants for which there may be
@@ -145,9 +144,9 @@ class ErgoTree private[sigma](
     }
   }
 
-  /** Test-only / package-private: whether `root` has been computed yet. Lets the
-    * test suite verify that operations like `bytes`, `template`, equality, etc.
-    * don't accidentally force the lazy root. */
+  /** Whether `root` has been computed yet. Test suite verify that operations like
+    * `bytes`, `template`, equality, etc. don't accidentally force the lazy root.
+    */
   private[sigma] def isRootForced: Boolean = _rootValue != null
 
   require(isConstantSegregation || constants.isEmpty)
@@ -262,18 +261,14 @@ class ErgoTree private[sigma](
     }
   }
 
-  /** Replicates the synthetic `copy` method of the previous case class, with one
-    * semantic change required by bytes-based equality (issue #694):
+  /** Replicates the synthetic `copy` method of the case class, with one semantic change
+    * required by bytes-based equality:
     *
     * `propositionBytes` and the cached `givenDeserialize` / `givenIsUsingBlockchainContext`
     * flags are NOT preserved from `this`. They are reset and will be lazily recomputed
     * from the (possibly changed) field values on first access. This guarantees that
     * `ergoTree.bytes` and the cached flags stay consistent with `header`, `constants`,
     * and `root` after any override.
-    *
-    * The previous case-class `copy` blindly preserved `propositionBytes`, which was
-    * masked by structural equality but would surface as `bytes` inconsistency under
-    * bytes-based equality.
     */
   def copy(
       header: HeaderType = this.header,
@@ -291,8 +286,6 @@ class ErgoTree private[sigma](
   /* NO HF PROOF:
      Changed: ErgoTree.equals / hashCode switched from structural over (header, constants, root)
      to bytes-based (`java.util.Arrays.equals(this.bytes, other.bytes)`).
-     Motivation: avoids forcing the lazy `root` solely to test equality; enables byte-level
-     deduplication of identical deserialized trees (issue #694).
      Safety:
        - ErgoTree equality is NOT used inside ErgoTransaction.validateStateful or any code path
          it reaches (verified by grep across the repository — only references are in
@@ -422,11 +415,9 @@ object ErgoTree {
     new ErgoTree(setRequiredBits(header), constants, Right(root))
   }
 
-  /** Pattern-match extractor preserving the previous case-class arity.
-    *
-    * Returns the 6 fields from the original case class definition. Pattern matchers
-    * typically only inspect the first three (header, constants, root); the remaining
-    * three are exposed to keep existing match patterns binary-compatible.
+  /** Returns the 6 fields from the class definition. Pattern matchers typically only
+    * inspect the first three (header, constants, root); the remaining three are exposed
+    * to keep existing match patterns binary-compatible.
     *
     * Forcing `t.root` is unavoidable here because the pattern surfaces the root value.
     */

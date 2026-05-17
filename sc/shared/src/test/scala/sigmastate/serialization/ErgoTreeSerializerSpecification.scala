@@ -237,10 +237,11 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
     }
   }
 
-  // ---- Tests for issue #694: lazy partial deserialization for size-bit trees ----
+  // ---- Tests: lazy partial deserialization for size-bit trees ----
 
   /** Builds a size-bit tree by setting version=1 (which forces the size bit, see
-    * `ErgoTree.setRequiredBits`). Uses a non-trivial expression so the saving is real. */
+    * `ErgoTree.setRequiredBits`). Uses a non-trivial expression so the saving is real.
+    */
   private def mkSizeBitTree(): ErgoTree = {
     val header = ErgoTree.setSizeBit(ErgoTree.setConstantSegregation(ErgoTree.ZeroHeader))
     new ErgoTree(
