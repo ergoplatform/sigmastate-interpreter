@@ -907,21 +907,16 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val y = eval(rel.right)
         binop.apply(x, asRep[t#WrappedType](y))
 
+      // Single-argument case. The NAryFunctionLowering compiler phase
+      // (run by SigmaCompiler before buildGraph) rewrites n-ary lambdas
+      // into 1-arg lambdas over right-nested pairs, so this is the only
+      // AST Lambda shape that reaches GraphBuilding.
       case sigma.ast.Lambda(_, Seq((n, argTpe)), _, Some(body)) =>
         val eArg = stypeToElem(argTpe).asInstanceOf[Elem[Any]]
         val f = fun(removeIsProven({ x: Ref[Any] =>
           buildNode(ctx, env + (n -> x), body)
         }))(Lazy(eArg))
         f
-
-      case sigma.ast.Lambda(_, Seq((accN, accTpe), (n, tpe)), _, Some(body)) =>
-        (stypeToElem(accTpe), stypeToElem(tpe)) match { case (eAcc: Elem[s], eA: Elem[a]) =>
-          val eArg = pairElement(eAcc, eA)
-          val f = fun { x: Ref[(s, a)] =>
-            buildNode(ctx, env + (accN -> x._1) + (n -> x._2), body)
-          }(Lazy(eArg))
-          f
-        }
 
       case FuncValue(Seq((n, argTpe)), body) =>
         val eArg = stypeToElem(argTpe).asInstanceOf[Elem[Any]]

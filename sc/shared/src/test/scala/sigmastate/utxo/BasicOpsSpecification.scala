@@ -4604,6 +4604,54 @@ $lrFoldScript
     )
   }
 
+  property("user defined 2-arg function") {
+    test("function2", env, ext,
+      "{ def add(a: Int, b: Int) = a + b; add(2, 3) == 5 }",
+      null,
+      true
+    )
+  }
+
+  property("user defined 3-arg function") {
+    test("function3", env, ext,
+      "{ def sum3(a: Int, b: Int, c: Int) = a + b + c; sum3(1, 2, 3) == 6 }",
+      null,
+      true
+    )
+  }
+
+  property("user defined function with heterogeneous arg types") {
+    test("functionMixed", env, ext,
+      "{ def f(a: Int, b: Long, c: Boolean) = if (c) a.toLong + b else b; f(1, 2L, true) == 3L }",
+      null,
+      true
+    )
+  }
+
+  property("user defined 5-arg function") {
+    test("function5", env, ext,
+      "{ def sum5(a: Int, b: Int, c: Int, d: Int, e: Int) = a + b + c + d + e; sum5(1, 2, 3, 4, 5) == 15 }",
+      null,
+      true
+    )
+  }
+
+  property("user defined n-ary function captures outer val") {
+    test("functionClosure", env, ext,
+      "{ val x = 10; def f(a: Int, b: Int) = x + a + b; f(1, 2) == 13 }",
+      null,
+      true
+    )
+  }
+
+  property("2-arg lambda passed to a higher-order method (fold)") {
+    test("functionFold", env, ext,
+      "{ OUTPUTS.fold(0L, { (acc: Long, b: Box) => acc + b.value }) >= 0L }",
+      null,
+      true
+    )
+  }
+
   property("missing variable in env buildValue error") {
     test("missingVar", env, ext,
       """
