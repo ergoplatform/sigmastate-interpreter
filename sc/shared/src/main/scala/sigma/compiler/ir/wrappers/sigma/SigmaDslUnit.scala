@@ -40,6 +40,7 @@ import scalan._
     trait SigmaProp extends Def[SigmaProp] {
       def isValid: Ref[Boolean];
       def propBytes: Ref[Coll[Byte]];
+      def propBytes(version: Ref[Byte]): Ref[Coll[Byte]];
       def &&(other: Ref[SigmaProp]): Ref[SigmaProp];
       def ||(other: Ref[SigmaProp]): Ref[SigmaProp];
     };

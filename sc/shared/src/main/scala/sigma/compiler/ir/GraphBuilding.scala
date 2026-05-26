@@ -1066,6 +1066,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               box.getReg(c1)(c2)
             case _ => throwError()
           }
+          case (sp: Ref[SigmaProp]@unchecked, SSigmaPropMethods) => method.name match {
+            case SSigmaPropMethods.PropBytesMethodV2.name
+                if argsV.nonEmpty && VersionContext.current.isV4OrLaterErgoTreeVersion =>
+              val versionV = asRep[Byte](argsV(0))
+              sp.propBytes(versionV)
+            case _ => throwError()
+          }
           case (ctx: Ref[Context]@unchecked, SContextMethods) => method.name match {
             case SContextMethods.dataInputsMethod.name =>
               ctx.dataInputs

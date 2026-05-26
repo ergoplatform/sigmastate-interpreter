@@ -93,6 +93,9 @@ object ReflectionData {
         mkMethod(clazz, "propBytes", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[SigmaProp].propBytes
         },
+        mkMethod(clazz, "propBytes", Array[Class[_]](classOf[Byte])) { (obj, args) =>
+          obj.asInstanceOf[SigmaProp].propBytes(args(0).asInstanceOf[Byte])
+        },
         mkMethod(clazz, "$amp$amp", Array[Class[_]](classOf[SigmaProp])) { (obj, args) =>
           obj.asInstanceOf[SigmaProp].$amp$amp(args(0).asInstanceOf[SigmaProp])
         }

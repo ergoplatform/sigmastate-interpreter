@@ -5,7 +5,8 @@ import org.ergoplatform.validation.ValidationRules.CheckDeserializedScriptIsSigm
 import sigma.{SigmaProp, VersionContext}
 import sigma.ast._
 import sigma.ast.syntax.SigmaPropValue
-import sigma.data.CBigInt
+import sigma.data.{CAND, CBigInt, CSigmaProp, ProveDHTuple, ProveDlog}
+import sigmastate.utils.Helpers
 import sigma.util.Extensions.SigmaPropOps
 import sigma.validation.ValidationException
 import ErgoTree.EmptyConstants
@@ -223,6 +224,81 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
       val ergoTree = new ErgoTree(ErgoTree.DefaultHeader, EmptyConstants, Right(sp.toSigmaBoolean.toSigmaPropValue), null, None, None)
       val treeBytes = DefaultSerializer.serializeErgoTree(ergoTree)
       treeBytes shouldBe propBytes.toArray
+    }
+  }
+
+  property("SigmaProp.propBytes(version) vs ErgoTree.serializer equivalence (v0..v4)") {
+    forAll(MinSuccessful(50)) { sp: SigmaProp =>
+      (0 to 4).foreach { vInt =>
+        val v = vInt.toByte
+        val activated = (VersionContext.MaxSupportedScriptVersion: Byte).max(v)
+        VersionContext.withVersions(activated, v) {
+          val header = ErgoTree.defaultHeaderWithVersion(v)
+          val tree = new ErgoTree(
+            header, EmptyConstants,
+            Right(sp.toSigmaBoolean.toSigmaPropValue),
+            null, None, None)
+          val treeBytes = DefaultSerializer.serializeErgoTree(tree)
+          sp.propBytes(v).toArray shouldBe treeBytes
+        }
+      }
+    }
+  }
+
+  property("SigmaProp.propBytes (no-arg) == SigmaProp.propBytes(0)") {
+    forAll(MinSuccessful(100)) { sp: SigmaProp =>
+      sp.propBytes.toArray shouldBe sp.propBytes(0.toByte).toArray
+    }
+  }
+
+  // Golden vectors covering the SigmaBoolean shapes that matter on-chain: bare ProveDlog,
+  // ProveDHTuple, and a CAND composition. v0 bytes are reused from `LanguageSpecificationV5
+  // / "SigmaProp.propBytes equivalence"`. v1..v4 bytes are derived from the v0 content via
+  // the documented header layout, so any drift in either layer breaks the test.
+  property("SigmaProp.propBytes(version) golden vectors (v0..v4)") {
+    val pk = ProveDlog(
+      Helpers.decodeECPoint("039d0b1e46c21540d033143440d2fb7dd5d650cf89981c99ee53c6e0374d2b1b6f"))
+    val dht = ProveDHTuple(
+      Helpers.decodeECPoint("03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb"),
+      Helpers.decodeECPoint("023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d03"),
+      Helpers.decodeECPoint("03d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72"),
+      Helpers.decodeECPoint("037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441"))
+    val and = CAND(Array(pk, dht))
+
+    val cases: Seq[(SigmaProp, Array[Byte])] = Seq(
+      CSigmaProp(pk) -> Helpers.decodeBytes(
+        "0008cd039d0b1e46c21540d033143440d2fb7dd5d650cf89981c99ee53c6e0374d2b1b6f").toArray,
+      CSigmaProp(dht) -> Helpers.decodeBytes(
+        "0008ce03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d0303d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441").toArray,
+      CSigmaProp(and) -> Helpers.decodeBytes(
+        "00089602cd039d0b1e46c21540d033143440d2fb7dd5d650cf89981c99ee53c6e0374d2b1b6fce03c046fccb95549910767d0543f5e8ce41d66ae6a8720a46f4049cac3b3d26dafb023479c9c3b86a0d3c8be3db0a2d186788e9af1db76d55f3dad127d15185d83d0303d7898641cb6653585a8e1dabfa7f665e61e0498963e329e6e3744bd764db2d72037ae057d89ec0b46ff8e9ff4c37e85c12acddb611c3f636421bef1542c11b0441").toArray
+    )
+
+    cases.foreach { case (sp, v0Bytes) =>
+      sp.propBytes(0.toByte).toArray shouldBe v0Bytes
+      val content = v0Bytes.tail  // drop the 0x00 v0 header
+      (1 to 4).foreach { vInt =>
+        val v = vInt.toByte
+        val w = CoreSerializer.startWriter()
+        w.put((0x08 | v).toByte)  // SizeFlag | version
+        w.putUInt(content.length)
+        w.putBytes(content)
+        sp.propBytes(v).toArray shouldBe w.toBytes
+      }
+    }
+  }
+
+  property("PropBytesMethodV2 is gated by V7SoftForkVersion (ergoTree v4+)") {
+    val v2MethodId = SSigmaPropMethods.PropBytesMethodV2.methodId
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+      SSigmaPropMethods.methods.map(_.methodId) should not contain v2MethodId
+    }
+
+    VersionContext.withVersions(VersionContext.V7SoftForkVersion, VersionContext.V7SoftForkVersion) {
+      val ids = SSigmaPropMethods.methods.map(_.methodId)
+      ids should contain (v2MethodId)
+      ids should contain (SSigmaPropMethods.PropBytesMethod.methodId)
     }
   }
 

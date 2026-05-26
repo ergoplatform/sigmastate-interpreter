@@ -716,6 +716,13 @@ object SigmaProp extends EntityObject("SigmaProp") {
         true, false, element[Coll[Byte]]))
     }
 
+    override def propBytes(version: Ref[Byte]): Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(self,
+        SigmaPropClass.getMethod("propBytes", classOf[Byte]),
+        Array[AnyRef](version),
+        true, false, element[Coll[Byte]]))
+    }
+
     override def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
       asRep[SigmaProp](mkMethodCall(self,
         SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
@@ -760,6 +767,13 @@ object SigmaProp extends EntityObject("SigmaProp") {
       asRep[Coll[Byte]](mkMethodCall(source,
         SigmaPropClass.getMethod("propBytes"),
         ArraySeq.empty,
+        true, true, element[Coll[Byte]]))
+    }
+
+    def propBytes(version: Ref[Byte]): Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(source,
+        SigmaPropClass.getMethod("propBytes", classOf[Byte]),
+        Array[AnyRef](version),
         true, true, element[Coll[Byte]]))
     }
 

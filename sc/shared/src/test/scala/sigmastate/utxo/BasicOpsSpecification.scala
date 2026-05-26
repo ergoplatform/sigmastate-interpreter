@@ -13,7 +13,7 @@ import scorex.util.serialization.VLQByteBufferWriter
 import scorex.utils.Longs
 import sigma.{Coll, Colls, GroupElement, SigmaTestingData, VersionContext}
 import sigma.Extensions.ArrayOps
-import sigma.VersionContext.{V6SoftForkVersion, withVersions}
+import sigma.VersionContext.{V6SoftForkVersion, V7SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.{AnyOps, tD}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CAnyValue, CBigInt, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp}
@@ -1993,6 +1993,26 @@ class BasicOpsSpecification extends CompilerTestingCommons
       an [sigma.validation.ValidationException] should be thrownBy deserTest()
     } else {
       deserTest()
+    }
+  }
+
+  // propBytesV2(0) at the source level should be byte-identical to the no-arg propBytes.
+  // The framework iterates only up to MaxSupportedScriptVersion (=3) so the positive branch
+  // is currently unreachable; the if/else auto-promotes once MaxSupportedScriptVersion bumps.
+  property("propBytesV2 - propBytes correspondence") {
+    def runTest() = test("propBytesV2", env, ext,
+      s"""{
+            val p1 = getVar[SigmaProp]($propVar1).get
+            p1.propBytesV2(0.toByte) == p1.propBytes
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V7SoftForkVersion) {
+      an [Exception] should be thrownBy runTest()
+    } else {
+      runTest()
     }
   }
 

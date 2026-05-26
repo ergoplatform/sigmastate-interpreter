@@ -391,6 +391,10 @@ trait SigmaProp {
   /** Serialized bytes of this sigma proposition taken as ErgoTree and then serialized. */
   def propBytes: Coll[Byte]
 
+  /** Serialized bytes of this sigma proposition as a minimal ErgoTree of the given version,
+    * suitable for comparison against `box.propositionBytes` of v1+ ErgoTrees. */
+  def propBytes(version: Byte): Coll[Byte]
+
   /** Logical AND between this SigmaProp and other SigmaProp.
     * This constructs a new CAND node of sigma tree with two children. */
   def &&(other: SigmaProp): SigmaProp

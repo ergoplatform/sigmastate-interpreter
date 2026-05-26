@@ -6,6 +6,8 @@ import sigma.VersionContext
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.tT
 import sigma.ast._
+import sigma.data.{CSigmaProp, ProveDlog}
+import sigma.crypto.CryptoConstants
 import sigma.validation.ValidationException
 
 class MethodCallSerializerSpecification extends SerializationSpecification {
@@ -200,6 +202,34 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
         code
       }
       )
+  }
+
+  property("MethodCall deserialization round trip for SigmaProp.propBytes(version)") {
+    val sp = SigmaPropConstant(CSigmaProp(ProveDlog(CryptoConstants.dlogGroup.generator)))
+    def code = {
+      val expr = MethodCall(sp,
+        SSigmaPropMethods.PropBytesMethodV2,
+        Vector(ByteConstant(0)),
+        Map()
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V7SoftForkVersion, VersionContext.V7SoftForkVersion) {
+      code
+    }
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+        code
+      }
+    )
+
+    a[ValidationException] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V7SoftForkVersion, VersionContext.V6SoftForkVersion) {
+        code
+      }
+    )
   }
 
   property("eq") {

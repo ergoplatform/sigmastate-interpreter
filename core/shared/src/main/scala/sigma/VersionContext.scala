@@ -1,6 +1,6 @@
 package sigma
 
-import VersionContext.{JitActivationVersion, V6SoftForkVersion}
+import VersionContext.{JitActivationVersion, V6SoftForkVersion, V7SoftForkVersion}
 
 import scala.util.DynamicVariable
 
@@ -32,6 +32,13 @@ case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
     * including v6.0 update. */
   def isV6Activated: Boolean = activatedVersion >= V6SoftForkVersion
 
+  /** @return true if tree version is corresponding to 7.0 */
+  def isV4OrLaterErgoTreeVersion: Boolean = ergoTreeVersion >= V7SoftForkVersion
+
+  /** @return true, if the activated script version of Ergo protocol on the network is
+    * including v7.0 update. */
+  def isV7Activated: Boolean = activatedVersion >= V7SoftForkVersion
+
 }
 
 object VersionContext {
@@ -54,6 +61,13 @@ object VersionContext {
    * The version of ErgoTree corresponding to "evolution" (6.0) soft-fork
    */
   val V6SoftForkVersion: Byte = 3
+
+  /**
+   * The version of ErgoTree introduced by the 7.0 soft-fork.
+   * `MaxSupportedScriptVersion` stays at 3 until the activation rollout; this constant
+   * is a forward declaration so new ops/methods can be gated against it before flip.
+   */
+  val V7SoftForkVersion: Byte = 4
 
   private val _defaultContext = VersionContext(
     activatedVersion = 1 /* v4.x */,
