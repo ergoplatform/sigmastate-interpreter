@@ -7,7 +7,7 @@ import sigma.data.OverloadHack.Overloaded1
 import sigma.data.{CBigInt, CUnsignedBigInt, Nullable, SigmaConstants}
 import sigma.reflection.{RClass, RMethod, ReflectionData}
 import sigma.util.Extensions.{IntOps, LongOps, ShortOps}
-import sigma.{AvlTree, BigInt, Box, Coll, Context, Evaluation, GroupElement, Header, PreHeader, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, Context, Evaluation, GroupElement, Header, MerkleTree, PreHeader, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
 
@@ -111,10 +111,15 @@ object SType {
   // V6 types, see `allPredefTypes` scaladoc below. Contains SUnsignedBigInt type in addition to v5 types.
   private val v6PredefTypes = v5PredefTypes ++ Array(SUnsignedBigInt)
 
+  // V7 types, see `allPredefTypes` scaladoc below. Contains SMerkleTree type in addition to v6 types.
+  private val v7PredefTypes = v6PredefTypes ++ Array(SMerkleTree)
+
   /** All pre-defined types should be listed here. Note, NoType is not listed.
     * Should be in sync with sigmastate.lang.Types.predefTypes. */
   def allPredefTypes: Seq[SType] = {
-    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      v7PredefTypes
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       v6PredefTypes
     } else {
       v5PredefTypes
@@ -126,10 +131,13 @@ object SType {
     SAvlTree, SBox, SOption, SCollection, SBigInt
   )
   private val v6Types = v5Types ++ Seq(SByte, SShort, SInt, SLong, SUnsignedBigInt)
+  private val v7Types = v6Types ++ Seq(SMerkleTree)
 
   private val v5TypesMap = v5Types.map { t => (t.typeId, t) }.toMap
 
   private val v6TypesMap = v6Types.map { t => (t.typeId, t) }.toMap
+
+  private val v7TypesMap = v7Types.map { t => (t.typeId, t) }.toMap
 
   /** A mapping of object types supporting MethodCall operations. For each serialized
     * typeId this map contains a companion object which can be used to access the list of
@@ -164,10 +172,14 @@ object SType {
     *
     * The regression tests in `property("MethodCall Codes")` should pass.
     */
-  def types: Map[Byte, STypeCompanion] = if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
-    v6TypesMap
-  } else {
-    v5TypesMap
+  def types: Map[Byte, STypeCompanion] = {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      v7TypesMap
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      v6TypesMap
+    } else {
+      v5TypesMap
+    }
   }
 
   /** Checks that the type of the value corresponds to the descriptor `tpe`.
@@ -205,6 +217,7 @@ object SType {
       else sys.error(s"Unsupported function type $tF")
     case SContext => x.isInstanceOf[Context]
     case SAvlTree => x.isInstanceOf[AvlTree]
+    case SMerkleTree if VersionContext.current.isV4OrLaterErgoTreeVersion => x.isInstanceOf[MerkleTree]
     case SGlobal => x.isInstanceOf[SigmaDslBuilder]
     case SHeader => x.isInstanceOf[Header]
     case SPreHeader => x.isInstanceOf[PreHeader]
@@ -925,5 +938,20 @@ case object SGlobal extends SProduct with SPredefType with SMonoType {
   override val typeCode: TypeCode = 106: Byte
   override val reprClass: RClass[_] = RClass(classOf[SigmaDslBuilder])
   override def typeId = typeCode
+}
+
+/** Type descriptor of `MerkleTree` type of ErgoTree.
+  *
+  * Static (unauthenticated) Merkle tree introduced in v7.0. Unlike [[SAvlTree]] this
+  * type represents a tree that doesn't support insertions/updates/removals — only
+  * membership-proof verification against a fixed root digest. See issue
+  * https://github.com/ergoplatform/sigmastate-interpreter/issues/296 for motivation.
+  */
+case object SMerkleTree extends SProduct with SPredefType with SMonoType {
+  override type WrappedType = MerkleTree
+  override val typeCode: TypeCode = 107: Byte
+  override val reprClass: RClass[_] = RClass(classOf[MerkleTree])
+  override def typeId = typeCode
+  implicit def typeMerkleTree: SMerkleTree.type = this
 }
 

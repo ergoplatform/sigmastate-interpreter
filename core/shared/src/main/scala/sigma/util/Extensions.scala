@@ -3,7 +3,7 @@ package sigma.util
 import debox.{cfor, Buffer => DBuffer}
 import sigma.crypto.{CryptoFacade, Ecp}
 import sigma.data._
-import sigma.{AvlTree, GroupElement, SigmaProp}
+import sigma.{AvlTree, GroupElement, MerkleTree, SigmaProp}
 
 import java.math.BigInteger
 import java.nio.ByteBuffer
@@ -373,5 +373,15 @@ object Extensions {
   implicit class CoreAvlTreeOps(val tree: AvlTree) extends AnyVal {
     /** Extracts [[sigma.AvlTreeData]] from the AvlTree instance. */
     def toAvlTreeData: AvlTreeData = tree.asInstanceOf[CAvlTree].wrappedValue
+  }
+
+  implicit class MerkleTreeDataOps(val treeData: MerkleTreeData) extends AnyVal {
+    /** Wrap [[sigma.data.MerkleTreeData]] to [[sigma.MerkleTree]]. */
+    def toMerkleTree: MerkleTree = CMerkleTree(treeData)
+  }
+
+  implicit class CoreMerkleTreeOps(val tree: MerkleTree) extends AnyVal {
+    /** Extracts [[sigma.data.MerkleTreeData]] from the MerkleTree instance. */
+    def toMerkleTreeData: MerkleTreeData = tree.asInstanceOf[CMerkleTree].wrappedValue
   }
 }

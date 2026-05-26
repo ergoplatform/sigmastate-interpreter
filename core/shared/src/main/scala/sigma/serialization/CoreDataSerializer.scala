@@ -4,7 +4,7 @@ import debox.cfor
 import sigma.ast._
 import sigma.crypto.BigIntegers
 import sigma.data._
-import sigma.util.Extensions.{BigIntOps, BigIntegerOps, CoreAvlTreeOps, GroupElementOps, SigmaPropOps}
+import sigma.util.Extensions.{BigIntOps, BigIntegerOps, CoreAvlTreeOps, CoreMerkleTreeOps, GroupElementOps, SigmaPropOps}
 import sigma.validation.ValidationRules.CheckSerializableTypeCode
 import sigma.{Evaluation, _}
 
@@ -47,6 +47,8 @@ class CoreDataSerializer {
       SigmaBoolean.serializer.serialize(p.toSigmaBoolean, w)
     case SAvlTree =>
       AvlTreeData.serializer.serialize(v.asInstanceOf[AvlTree].toAvlTreeData, w)
+    case SMerkleTree if VersionContext.current.isV4OrLaterErgoTreeVersion =>
+      MerkleTreeData.serializer.serialize(v.asInstanceOf[MerkleTree].toMerkleTreeData, w)
     case tColl: SCollectionType[a] =>
       val coll = v.asInstanceOf[tColl.WrappedType]
       w.putUShort(coll.length)
@@ -128,6 +130,8 @@ class CoreDataSerializer {
         CSigmaProp(SigmaBoolean.serializer.parse(r))
       case SAvlTree =>
         CAvlTree(AvlTreeData.serializer.parse(r))
+      case SMerkleTree if VersionContext.current.isV4OrLaterErgoTreeVersion =>
+        CMerkleTree(MerkleTreeData.serializer.parse(r))
       case tColl: SCollectionType[a] =>
         val len = r.getUShort()
         deserializeColl(len, tColl.elemType, r)

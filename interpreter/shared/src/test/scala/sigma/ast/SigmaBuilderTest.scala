@@ -284,6 +284,17 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     testColl[SAvlTree.type](v, c)
   }
 
+  property("liftToConstant MerkleTree") {
+    val v = TestData.mt1
+    val c = MerkleTreeConstant(v)
+    VersionContext.withVersions(
+      VersionContext.V7SoftForkVersion, VersionContext.V7SoftForkVersion) {
+      test[SMerkleTree.type](v, c)
+      testFailure(Array.fill(10)(v))
+      testColl[SMerkleTree.type](v, c)
+    }
+  }
+
   property("liftToConstant AvlTreeData") {
     val v = TestData.t1.asInstanceOf[CAvlTree].wrappedValue
     val c = AvlTreeConstant(SigmaDsl.avlTree(v))

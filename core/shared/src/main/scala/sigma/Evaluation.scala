@@ -33,6 +33,7 @@ object Evaluation {
     case SPreHeader => PreHeaderRType
     case SGroupElement => GroupElementRType
     case SAvlTree => AvlTreeRType
+    case SMerkleTree => MerkleTreeRType
     case SSigmaProp => SigmaPropRType
     case tup: STuple if tup.items.length == 2 =>
       val tpeA = tup.items(0)
@@ -71,6 +72,7 @@ object Evaluation {
     case UnsignedBigIntRType => SUnsignedBigInt
     case GroupElementRType => SGroupElement
     case AvlTreeRType => SAvlTree
+    case MerkleTreeRType => SMerkleTree
     case ot: OptionType[_] => SOption(rtypeToSType(ot.tA))
     case BoxRType => SBox
     case ContextRType => SContext

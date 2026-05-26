@@ -30,6 +30,7 @@ import Coll._
 import CollBuilder._
 import GroupElement._
 import Header._
+import MerkleTree._
 import PreHeader._
 import SigmaProp._
 import WOption._
@@ -1379,6 +1380,124 @@ object AvlTree extends EntityObject("AvlTree") {
 
 } // of object AvlTree
   registerEntityObject("AvlTree", AvlTree)
+
+object MerkleTree extends EntityObject("MerkleTree") {
+  import Liftables._
+  import scala.reflect.{ClassTag, classTag}
+  type SMerkleTree = sigma.MerkleTree
+  case class MerkleTreeConst(
+        constValue: SMerkleTree
+      ) extends LiftedConst[SMerkleTree, MerkleTree] with MerkleTree
+        with Def[MerkleTree] with MerkleTreeConstMethods {
+    val liftable: Liftable[SMerkleTree, MerkleTree] = LiftableMerkleTree
+    val resultType: Elem[MerkleTree] = liftable.eW
+  }
+
+  trait MerkleTreeConstMethods extends MerkleTree { thisConst: Def[_] =>
+
+    private val MerkleTreeClass = RClass(classOf[MerkleTree])
+
+    override def digest: Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(self,
+        MerkleTreeClass.getMethod("digest"),
+        ArraySeq.empty,
+        true, false, element[Coll[Byte]]))
+    }
+
+    override def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[MerkleTree] = {
+      asRep[MerkleTree](mkMethodCall(self,
+        MerkleTreeClass.getMethod("updateDigest", classOf[Sym]),
+        Array[AnyRef](newDigest),
+        true, false, element[MerkleTree]))
+    }
+
+    override def containsLeaf(leafData: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(self,
+        MerkleTreeClass.getMethod("containsLeaf", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](leafData, proof),
+        true, false, element[Boolean]))
+    }
+
+    override def containsLeaves(leaves: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(self,
+        MerkleTreeClass.getMethod("containsLeaves", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](leaves, proof),
+        true, false, element[Boolean]))
+    }
+  }
+
+  implicit object LiftableMerkleTree
+    extends Liftable[SMerkleTree, MerkleTree] {
+    lazy val eW: Elem[MerkleTree] = merkleTreeElement
+    lazy val sourceType: RType[SMerkleTree] = {
+      RType[SMerkleTree]
+    }
+    def lift(x: SMerkleTree): Ref[MerkleTree] = MerkleTreeConst(x)
+  }
+
+  private val MerkleTreeClass = RClass(classOf[MerkleTree])
+
+  // entityAdapter for MerkleTree trait
+  case class MerkleTreeAdapter(source: Ref[MerkleTree])
+      extends Node with MerkleTree
+      with Def[MerkleTree] {
+    val resultType: Elem[MerkleTree] = element[MerkleTree]
+    override def transform(t: Transformer) = MerkleTreeAdapter(t(source))
+
+    def digest: Ref[Coll[Byte]] = {
+      asRep[Coll[Byte]](mkMethodCall(source,
+        MerkleTreeClass.getMethod("digest"),
+        ArraySeq.empty,
+        true, true, element[Coll[Byte]]))
+    }
+
+    def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[MerkleTree] = {
+      asRep[MerkleTree](mkMethodCall(source,
+        MerkleTreeClass.getMethod("updateDigest", classOf[Sym]),
+        Array[AnyRef](newDigest),
+        true, true, element[MerkleTree]))
+    }
+
+    def containsLeaf(leafData: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(source,
+        MerkleTreeClass.getMethod("containsLeaf", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](leafData, proof),
+        true, true, element[Boolean]))
+    }
+
+    def containsLeaves(leaves: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
+      asRep[Boolean](mkMethodCall(source,
+        MerkleTreeClass.getMethod("containsLeaves", classOf[Sym], classOf[Sym]),
+        Array[AnyRef](leaves, proof),
+        true, true, element[Boolean]))
+    }
+  }
+
+  // entityUnref: single unref method for each type family
+  implicit final def unrefMerkleTree(p: Ref[MerkleTree]): MerkleTree = {
+    if (p.node.isInstanceOf[MerkleTree]) p.node.asInstanceOf[MerkleTree]
+    else
+      MerkleTreeAdapter(p)
+  }
+
+  // familyElem
+  class MerkleTreeElem[To <: MerkleTree]
+    extends EntityElem[To] {
+    override val liftable: Liftables.Liftable[_, To] = asLiftable[SMerkleTree, To](LiftableMerkleTree)
+
+    override protected def collectMethods: Map[RMethod, MethodDesc] = {
+      super.collectMethods ++
+        Elem.declaredMethods(RClass(classOf[MerkleTree]), RClass(classOf[SMerkleTree]), Set(
+        "digest", "updateDigest", "containsLeaf", "containsLeaves"
+        ))
+    }
+  }
+
+  implicit lazy val merkleTreeElement: Elem[MerkleTree] =
+    new MerkleTreeElem[MerkleTree]
+
+} // of object MerkleTree
+  registerEntityObject("MerkleTree", MerkleTree)
 
 object PreHeader extends EntityObject("PreHeader") {
   // entityConst: single const for each entity

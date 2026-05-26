@@ -19,6 +19,7 @@ package object data {
   val SigmaPropClassTag = classTag[SigmaProp]
   val SigmaBooleanClassTag = classTag[SigmaBoolean]
   val AvlTreeClassTag = classTag[AvlTree]
+  val MerkleTreeClassTag = classTag[MerkleTree]
   val BoxClassTag = classTag[Box]
   val ContextClassTag = classTag[Context]
   val HeaderClassTag = classTag[Header]

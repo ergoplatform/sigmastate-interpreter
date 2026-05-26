@@ -3,13 +3,14 @@ package sigmastate.interpreter
 import org.ergoplatform.ErgoLikeContext
 import sigma.ast._
 import sigma.ast.syntax._
-import sigmastate.eval.{CAvlTreeVerifier, CProfiler}
+import sigmastate.eval.{CAvlTreeVerifier, CMerkleTreeVerifier, CProfiler}
 import sigmastate.interpreter.Interpreter.ReductionResult
-import sigma.{AvlTree, Coll, Colls, Context, Header, VersionContext}
+import sigma.{AvlTree, Coll, Colls, Context, Header, MerkleTree, VersionContext}
 import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey
 import sigma.ast.SAvlTreeMethods._
+import sigma.ast.SMerkleTreeMethods
 import sigma.ast.SType
 import sigma.data.{CSigmaProp, KeyValueColl, SigmaBoolean}
 import sigma.eval.{AvlTreeVerifier, ErgoTreeEvaluator, EvalSettings, Profiler}
@@ -251,6 +252,42 @@ class CErgoTreeEvaluator(
         case _ => None
       }
     }
+  }
+
+  /** Cost-tracking factory for [[CMerkleTreeVerifier]]. Charges the parse-proof cost up
+    * front (O(proof.length)), then `containsLeaf` / `containsLeaves` only charge the
+    * lookup cost per leaf.
+    */
+  private def createMerkleVerifier(tree: MerkleTree, proof: Coll[Byte]): CMerkleTreeVerifier = {
+    addSeqCost(SMerkleTreeMethods.CreateMerkleVerifier_Info, proof.length) { () =>
+      CMerkleTreeVerifier(tree, proof)
+    }
+  }
+
+  override def containsLeaf_eval(
+      mc: MethodCall,
+      tree: MerkleTree,
+      leafData: Coll[Byte],
+      proof: Coll[Byte]): Boolean = {
+    val verifier = createMerkleVerifier(tree, proof)
+    var res = false
+    addSeqCost(SMerkleTreeMethods.VerifyMerkleProof_Info, 1) { () =>
+      res = verifier.containsLeaf(leafData)
+    }
+    res
+  }
+
+  override def containsLeaves_eval(
+      mc: MethodCall,
+      tree: MerkleTree,
+      leaves: Coll[Coll[Byte]],
+      proof: Coll[Byte]): Boolean = {
+    val verifier = createMerkleVerifier(tree, proof)
+    var res = false
+    addSeqCost(SMerkleTreeMethods.VerifyMerkleProof_Info, leaves.length) { () =>
+      res = verifier.containsLeaves(leaves)
+    }
+    res
   }
 
   /** Evaluates the given expression in the given data environment. */

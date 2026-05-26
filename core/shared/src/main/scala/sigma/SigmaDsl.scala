@@ -588,6 +588,25 @@ trait AvlTree {
   def updateOperations(newOperations: Byte): AvlTree
 }
 
+/** Static (unauthenticated) Merkle tree, introduced in v7.0.
+  *
+  * Unlike [[AvlTree]], a `MerkleTree` doesn't support insertions/updates/removals — it
+  * stores only the root digest. Membership of one or more leaves is verified against
+  * that digest by ErgoTree method calls (`containsLeaf`, `containsLeaves`) which
+  * accept a proof produced by the sender. The proof byte format matches
+  * `scorex.crypto.authds.merkle.serialization.BatchMerkleProofSerializer` (compact
+  * multiproof / Lum Ramabaja's algorithm).
+  */
+trait MerkleTree {
+  /** Root hash of the tree. 32 bytes (Blake2b256). */
+  def digest: Coll[Byte]
+
+  /** Replace digest of this tree producing a new tree.
+    * Since MerkleTree is immutable, this instance remains unchanged.
+    */
+  def updateDigest(newDigest: Coll[Byte]): MerkleTree
+}
+
 /** Only header fields that can be predicted by a miner. */
 trait PreHeader {
   /** Block version, to be increased on every soft and hardfork. */

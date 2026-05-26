@@ -20,8 +20,8 @@ import sigma.pow.Autolykos2PowValidation
 import sigma.util.Extensions.BigIntegerOps
 import sigma.util.NBitsUtils
 import sigma.validation.SigmaValidationSettings
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, MerkleTree, SigmaDslBuilder, SigmaProp, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, MerkleTree, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
 import java.nio.ByteBuffer
@@ -74,6 +74,11 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
   /** Wraps the given tree data into SigmaDsl value of type [[AvlTree]]. */
   def avlTree(treeData: AvlTreeData): AvlTree = {
     CAvlTree(treeData)
+  }
+
+  /** Wraps the given Merkle tree data into SigmaDsl value of type [[MerkleTree]]. */
+  def merkleTree(treeData: MerkleTreeData): MerkleTree = {
+    CMerkleTree(treeData)
   }
 
   /** Wraps the given [[ErgoBox]] into SigmaDsl value of type [[Box]].

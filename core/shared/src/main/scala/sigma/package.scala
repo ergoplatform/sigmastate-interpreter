@@ -33,6 +33,7 @@ package object sigma {
 
 
   implicit val AvlTreeRType:   RType[AvlTree]   = GeneralType(AvlTreeClassTag)
+  implicit val MerkleTreeRType: RType[MerkleTree] = GeneralType(MerkleTreeClassTag)
 
   implicit val BoxRType:       RType[Box]       = GeneralType(BoxClassTag)
   implicit val ContextRType:   RType[Context]   = GeneralType(ContextClassTag)

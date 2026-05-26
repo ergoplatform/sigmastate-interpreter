@@ -96,6 +96,9 @@ trait ObjectGenerators extends TypeGenerators
   implicit lazy val arbBox: Arbitrary[Box] = Arbitrary(ergoBoxGen.map(SigmaDsl.Box))
   implicit lazy val arbAvlTreeData: Arbitrary[AvlTreeData] = Arbitrary(avlTreeDataGen)
   implicit lazy val arbAvlTree: Arbitrary[AvlTree] = Arbitrary(avlTreeGen)
+  implicit lazy val arbMerkleTreeData: Arbitrary[sigma.data.MerkleTreeData] = Arbitrary(merkleTreeDataGen)
+  implicit lazy val arbMerkleTree: Arbitrary[sigma.MerkleTree] = Arbitrary(merkleTreeGen)
+  implicit lazy val arbMerkleTreeConstant: Arbitrary[Constant[SMerkleTree.type]] = Arbitrary(merkleTreeConstantGen)
   implicit lazy val arbBoxCandidate: Arbitrary[ErgoBoxCandidate] = Arbitrary(ergoBoxCandidateGen(tokensGen.sample.get))
   implicit lazy val arbTransaction: Arbitrary[ErgoLikeTransaction] = Arbitrary(ergoTransactionGen)
   implicit lazy val arbContextExtension: Arbitrary[ContextExtension] = Arbitrary(contextExtensionGen)
@@ -304,6 +307,15 @@ trait ObjectGenerators extends TypeGenerators
 
   def avlTreeConstantGen: Gen[AvlTreeConstant] = avlTreeGen.map { v => AvlTreeConstant(v) }
 
+  def merkleTreeDataGen: Gen[sigma.data.MerkleTreeData] = for {
+    digest <- arrayOfN(sigma.data.MerkleTreeData.DigestSize, arbByte.arbitrary)
+  } yield sigma.data.MerkleTreeData(Colls.fromArray(digest))
+
+  def merkleTreeGen: Gen[sigma.MerkleTree] = merkleTreeDataGen.map(d => sigma.data.CMerkleTree(d))
+
+  def merkleTreeConstantGen: Gen[Constant[SMerkleTree.type]] =
+    merkleTreeGen.map(v => MerkleTreeConstant(v))
+
   def wrappedTypeGen[T <: SType](tpe: T): Gen[T#WrappedType] = (tpe match {
     case SBoolean => arbBool
     case SByte => arbByte
@@ -316,6 +328,7 @@ trait ObjectGenerators extends TypeGenerators
     case SSigmaProp => arbSigmaProp
     case SBox => arbBox
     case SAvlTree => arbAvlTree
+    case SMerkleTree => arbMerkleTree
     case SAny => arbAnyVal
     case SUnit => arbUnit
     case SHeader => arbHeader

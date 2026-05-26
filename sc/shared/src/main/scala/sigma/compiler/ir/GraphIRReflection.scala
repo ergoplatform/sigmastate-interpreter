@@ -337,6 +337,30 @@ object GraphIRReflection {
       )
     )
   }
+  {
+    val clazz = classOf[SigmaDsl#MerkleTree]
+    val ctx = null.asInstanceOf[IRContext] // ok! type level only
+    registerClassEntry(clazz,
+      methods = Map(
+        mkMethod(clazz, "digest", Array[Class[_]]()) { (obj, _) =>
+          obj.asInstanceOf[ctx.MerkleTree].digest
+        },
+        mkMethod(clazz, "updateDigest", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.MerkleTree].updateDigest(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "containsLeaf", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.MerkleTree].containsLeaf(
+            args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        },
+        mkMethod(clazz, "containsLeaves", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
+          obj.asInstanceOf[ctx.MerkleTree].containsLeaves(
+            args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.Coll[Byte]]]],
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
+        }
+      )
+    )
+  }
 
   { val clazz = classOf[SigmaDsl#Box]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only

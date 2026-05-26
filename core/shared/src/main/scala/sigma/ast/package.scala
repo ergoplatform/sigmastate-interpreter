@@ -122,6 +122,8 @@ package object ast {
 
     def isAvlTree: Boolean = tpe.isInstanceOf[SAvlTree.type]
 
+    def isMerkleTree: Boolean = tpe.isInstanceOf[SMerkleTree.type]
+
     def isFunc: Boolean = tpe.isInstanceOf[SFunc]
 
     def isTuple: Boolean = tpe.isInstanceOf[STuple]

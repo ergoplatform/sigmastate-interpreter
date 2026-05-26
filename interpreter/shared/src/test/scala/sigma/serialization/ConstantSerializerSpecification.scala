@@ -9,7 +9,7 @@ import sigma.ast.{BigIntConstant, ByteArrayConstant, Constant, DeserializationSi
 import sigmastate.eval._
 import sigma.Extensions.ArrayOps
 import sigma.ast._
-import sigma.{AvlTree, Colls, Evaluation, Header, VersionContext}
+import sigma.{AvlTree, Colls, Evaluation, Header, MerkleTree, VersionContext}
 import sigma.ast.SType.AnyOps
 import scorex.util.encode.Base16
 import sigma.ast.BoolArrayConstant.BoolArrayTypeCode
@@ -29,6 +29,8 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
 
     val withVersion = if (tpe == SHeader) {
       Some(VersionContext.V6SoftForkVersion)
+    } else if (tpe == SMerkleTree) {
+      Some(VersionContext.V7SoftForkVersion)
     } else {
       None
     }
@@ -84,6 +86,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     forAll { x: SigmaBoolean => roundTripTest(Constant[SSigmaProp.type](x.toSigmaProp, SSigmaProp)) }
     forAll { x: ErgoBox => roundTripTest(Constant[SBox.type](x, SBox)) }
     forAll { x: AvlTree => roundTripTest(Constant[SAvlTree.type](x, SAvlTree)) }
+    forAll { x: MerkleTree => roundTripTest(Constant[SMerkleTree.type](x, SMerkleTree), Some(VersionContext.V7SoftForkVersion)) }
     forAll { x: Header => roundTripTest(Constant[SHeader.type](x, SHeader), Some(VersionContext.V6SoftForkVersion)) }
     forAll { x: Array[Byte] => roundTripTest(Constant[SByteArray](x.toColl, SByteArray)) }
     forAll { t: SPredefType => testCollection(t) }
@@ -102,6 +105,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     testCollection(SUnit)
     testCollection(SBox)
     testCollection(SAvlTree)
+    testCollection(SMerkleTree)
     testCollection(SHeader)
   }
 

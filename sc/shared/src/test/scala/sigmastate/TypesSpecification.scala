@@ -95,6 +95,18 @@ class TypesSpecification extends SigmaTestingData {
     assertValidType(t1, SAvlTree)
     assertInvalidType(t1, SShort)
 
+    // MerkleTree is gated by v7 in isValueOfType
+    sigma.VersionContext.withVersions(
+      sigma.VersionContext.V7SoftForkVersion, sigma.VersionContext.V7SoftForkVersion) {
+      assertValidType(mt1, SMerkleTree)
+      assertInvalidType(mt1, SShort)
+    }
+    // Pre-v7 contexts: SMerkleTree is unknown to isValueOfType
+    sigma.VersionContext.withVersions(
+      sigma.VersionContext.V6SoftForkVersion, sigma.VersionContext.V6SoftForkVersion) {
+      an[RuntimeException] should be thrownBy isValueOfType(mt1, SMerkleTree)
+    }
+
     assertValidType(CSigmaDslBuilder, SGlobal)
     assertInvalidType(CSigmaDslBuilder, SShort)
 

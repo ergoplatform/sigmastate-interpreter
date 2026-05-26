@@ -202,6 +202,63 @@ class MethodCallSerializerSpecification extends SerializationSpecification {
       )
   }
 
+  property("MethodCall deserialization round trip for MerkleTree.containsLeaf") {
+    def code = {
+      val digest = ByteArrayConstant(Array.fill[Byte](32)(0.toByte))
+      val emptyTree = MethodCall(
+        MerkleTreeConstant(sigma.data.MerkleTreeData(digest.value)),
+        SMerkleTreeMethods.containsLeafMethod,
+        Vector(ByteArrayConstant(Array.fill[Byte](4)(1.toByte)),
+               ByteArrayConstant(Array.fill[Byte](8)(0.toByte))),
+        Map()
+      )
+      roundTripTest(emptyTree)
+    }
+
+    VersionContext.withVersions(VersionContext.V7SoftForkVersion, VersionContext.V7SoftForkVersion) {
+      code
+    }
+
+    a[Exception] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+        code
+      }
+    )
+
+    a[Exception] should be thrownBy (
+      VersionContext.withVersions((VersionContext.V6SoftForkVersion - 1).toByte, 1) {
+        code
+      }
+    )
+  }
+
+  property("MethodCall deserialization round trip for MerkleTree.containsLeaves") {
+    def code = {
+      val digest = ByteArrayConstant(Array.fill[Byte](32)(0.toByte))
+      val leaves = ConcreteCollection(
+        Array[Value[SByteArray]](ByteArrayConstant(Array.fill[Byte](4)(1.toByte))),
+        SByteArray
+      )
+      val expr = MethodCall(
+        MerkleTreeConstant(sigma.data.MerkleTreeData(digest.value)),
+        SMerkleTreeMethods.containsLeavesMethod,
+        Vector(leaves, ByteArrayConstant(Array.fill[Byte](8)(0.toByte))),
+        Map()
+      )
+      roundTripTest(expr)
+    }
+
+    VersionContext.withVersions(VersionContext.V7SoftForkVersion, VersionContext.V7SoftForkVersion) {
+      code
+    }
+
+    a[Exception] should be thrownBy (
+      VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
+        code
+      }
+    )
+  }
+
   property("eq") {
     println("sv: " + VersionContext.current.activatedVersion)
     println("tv: " + VersionContext.current.ergoTreeVersion)

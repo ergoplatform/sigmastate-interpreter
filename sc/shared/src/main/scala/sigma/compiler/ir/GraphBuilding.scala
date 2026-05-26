@@ -44,6 +44,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   import GroupElement._
   import Header._
   import Liftables._
+  import MerkleTree._
   import PreHeader._
   import SigmaDslBuilder._
   import SigmaProp._
@@ -271,6 +272,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case SPreHeader => preHeaderElement
     case SGroupElement => groupElementElement
     case SAvlTree => avlTreeElement
+    case SMerkleTree => merkleTreeElement
     case SSigmaProp => sigmaPropElement
     case STuple(Seq(a, b)) => pairElement(stypeToElem(a), stypeToElem(b))
     case c: SCollectionType[a] => collElement(stypeToElem(c.elemType))
@@ -294,6 +296,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: UnsignedBigIntElem[_] => SUnsignedBigInt
     case _: GroupElementElem[_] => SGroupElement
     case _: AvlTreeElem[_] => SAvlTree
+    case _: MerkleTreeElem[_] => SMerkleTree
     case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
     case _: BoxElem[_] => SBox
     case _: ContextElem[_] => SContext
@@ -487,6 +490,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           val boxV = liftConst(box)
           boxV
         case tree: sigma.AvlTree =>
+          val treeV = liftConst(tree)
+          treeV
+        case tree: sigma.MerkleTree =>
           val treeV = liftConst(tree)
           treeV
         case s: String =>
@@ -1143,6 +1149,22 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
               val proof = asRep[Coll[Byte]](argsV(1))
               tree.insertOrUpdate(operations, proof)
+            case _ => throwError()
+          }
+          case (tree: Ref[MerkleTree]@unchecked, SMerkleTreeMethods) => method.name match {
+            case SMerkleTreeMethods.digestMethod.name =>
+              tree.digest
+            case SMerkleTreeMethods.updateDigestMethod.name =>
+              val digest = asRep[Coll[Byte]](argsV(0))
+              tree.updateDigest(digest)
+            case SMerkleTreeMethods.containsLeafMethod.name =>
+              val leafData = asRep[Coll[Byte]](argsV(0))
+              val proof = asRep[Coll[Byte]](argsV(1))
+              tree.containsLeaf(leafData, proof)
+            case SMerkleTreeMethods.containsLeavesMethod.name =>
+              val leaves = asRep[Coll[Coll[Byte]]](argsV(0))
+              val proof = asRep[Coll[Byte]](argsV(1))
+              tree.containsLeaves(leaves, proof)
             case _ => throwError()
           }
           case (ph: Ref[PreHeader]@unchecked, SPreHeaderMethods) => method.name match {

@@ -1,6 +1,6 @@
 package sigma.eval
 
-import sigma.{AvlTree, Coll, Context, Header}
+import sigma.{AvlTree, Coll, Context, Header, MerkleTree}
 import sigma.ast.{Constant, FixedCost, MethodCall, OperationCostInfo, OperationDesc, PerItemCost, SType, TypeBasedCost}
 import sigma.data.KeyValueColl
 
@@ -145,6 +145,20 @@ abstract class ErgoTreeEvaluator {
   def remove_eval(
       mc: MethodCall, tree: AvlTree,
       operations: Coll[Coll[Byte]], proof: Coll[Byte]): Option[AvlTree]
+
+  /** Implements evaluation of MerkleTree.containsLeaf method call ErgoTree node (v7.0+). */
+  def containsLeaf_eval(
+      mc: MethodCall,
+      tree: MerkleTree,
+      leafData: Coll[Byte],
+      proof: Coll[Byte]): Boolean
+
+  /** Implements evaluation of MerkleTree.containsLeaves method call ErgoTree node (v7.0+). */
+  def containsLeaves_eval(
+      mc: MethodCall,
+      tree: MerkleTree,
+      leaves: Coll[Coll[Byte]],
+      proof: Coll[Byte]): Boolean
 }
 
 object ErgoTreeEvaluator {

@@ -148,6 +148,12 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
       )
     )
 
+    val mt1: MerkleTree = CMerkleTree(
+      MerkleTreeData(
+        ErgoAlgos.decodeUnsafe("0183807f66b301530120ff7fc6bd6601ff01ff7f7d2bedbbffff00187fe89094").toColl
+      )
+    )
+
     val b1_instances = new CloneSet(1000, CBox(
       new ErgoBox(
         9223372036854775807L,

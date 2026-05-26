@@ -190,6 +190,7 @@ object Platform {
     case _: GroupElement => tpe.isGroupElement
     case _: SigmaProp => tpe.isSigmaProp
     case _: AvlTree => tpe.isAvlTree
+    case _: MerkleTree => tpe.isMerkleTree
     case _: Box => tpe.isBox
     case _: PreHeader => tpe == SPreHeader
     case _: Header => tpe == SHeader

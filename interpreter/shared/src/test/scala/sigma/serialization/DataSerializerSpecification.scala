@@ -6,7 +6,7 @@ import org.scalacheck.Arbitrary._
 import sigma.data.{CBigInt, CHeader, DataValueComparer, OptionType, RType, SigmaBoolean, TupleColl}
 import sigma.ast.SCollection.SByteArray
 import sigmastate.eval._
-import sigma.{AvlTree, Colls, Evaluation, Header, VersionContext}
+import sigma.{AvlTree, Colls, Evaluation, Header, MerkleTree, VersionContext}
 import sigma.ast.SType.AnyOps
 import sigma.ast._
 import org.scalacheck.Gen
@@ -154,6 +154,7 @@ class DataSerializerSpecification extends SerializationSpecification {
     forAll { x: SigmaBoolean => roundtrip[SSigmaProp.type](x.toSigmaProp, SSigmaProp) }
     forAll { x: ErgoBox => roundtrip[SBox.type](x, SBox) }
     forAll { x: AvlTree => roundtrip[SAvlTree.type](x, SAvlTree) }
+    forAll { x: MerkleTree => roundtrip[SMerkleTree.type](x, SMerkleTree, Some(VersionContext.V7SoftForkVersion)) }
     forAll { x: Array[Byte] => roundtrip[SByteArray](x.toColl, SByteArray) }
     forAll { x: Header => roundtrip[SHeader.type](x, SHeader, Some(VersionContext.V6SoftForkVersion)) }
     forAll { t: SPredefType => testCollection(t) }

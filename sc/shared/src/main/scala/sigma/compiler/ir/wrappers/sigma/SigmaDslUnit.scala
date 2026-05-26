@@ -71,6 +71,12 @@ import scalan._
       def insertOrUpdate(operations: Ref[Coll[scala.Tuple2[Coll[Byte], Coll[Byte]]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]];
       def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]]
     };
+    trait MerkleTree extends Def[MerkleTree] {
+      def digest: Ref[Coll[Byte]];
+      def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[MerkleTree];
+      def containsLeaf(leafData: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean];
+      def containsLeaves(leaves: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Boolean]
+    };
     trait PreHeader extends Def[PreHeader] {
       def version: Ref[Byte];
       def parentId: Ref[Coll[Byte]];
@@ -149,6 +155,7 @@ import scalan._
     trait SigmaPropCompanion;
     trait BoxCompanion;
     trait AvlTreeCompanion;
+    trait MerkleTreeCompanion;
     trait PreHeaderCompanion;
     trait HeaderCompanion;
     trait ContextCompanion;

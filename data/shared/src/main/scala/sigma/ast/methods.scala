@@ -64,6 +64,7 @@ sealed trait MethodsContainer {
 
   private var _v5Methods: Seq[SMethod] = null
   private var _v6Methods: Seq[SMethod] = null
+  private var _v7Methods: Seq[SMethod] = null
 
   /** Returns all the methods of this type. */
   def methods: Seq[SMethod] = {
@@ -76,7 +77,12 @@ sealed trait MethodsContainer {
       ms
     }
 
-    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      if (_v7Methods == null) {
+        _v7Methods = calc()
+      }
+      _v7Methods
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       if (_v6Methods == null) {
         _v6Methods = calc()
       }
@@ -91,6 +97,7 @@ sealed trait MethodsContainer {
 
   private var _v5MethodsMap: Map[Byte, Map[Byte, SMethod]] = null
   private var _v6MethodsMap: Map[Byte, Map[Byte, SMethod]] = null
+  private var _v7MethodsMap: Map[Byte, Map[Byte, SMethod]] = null
 
   private def _methodsMap: Map[Byte, Map[Byte, SMethod]] = {
     def calc() = {
@@ -98,7 +105,12 @@ sealed trait MethodsContainer {
         .groupBy(_.objType.typeId)
         .map { case (typeId, ms) => (typeId -> ms.map(m => m.methodId -> m).toMap) }
     }
-    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      if (_v7MethodsMap == null) {
+        _v7MethodsMap = calc()
+      }
+      _v7MethodsMap
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       if (_v6MethodsMap == null) {
         _v6MethodsMap = calc()
       }
@@ -168,12 +180,18 @@ object MethodsContainer {
 
   private val methodsV6 = methodsV5 ++ Seq(SUnsignedBigIntMethods)
 
+  private val methodsV7 = methodsV6 ++ Seq(SMerkleTreeMethods)
+
   private val containersV5 = new SparseArrayContainer[MethodsContainer](methodsV5.map(m => (m.typeId, m)))
 
   private val containersV6 = new SparseArrayContainer[MethodsContainer](methodsV6.map(m => (m.typeId, m)))
 
+  private val containersV7 = new SparseArrayContainer[MethodsContainer](methodsV7.map(m => (m.typeId, m)))
+
   def contains(typeId: TypeCode): Boolean = {
-    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      containersV7.contains(typeId)
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       containersV6.contains(typeId)
     } else {
       containersV5.contains(typeId)
@@ -181,7 +199,9 @@ object MethodsContainer {
   }
 
   def apply(typeId: TypeCode): MethodsContainer = {
-    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      containersV7(typeId)
+    } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
       containersV6(typeId)
     } else {
       containersV5(typeId)
@@ -198,7 +218,9 @@ object MethodsContainer {
     case tup: STuple =>
       STupleMethods.getTupleMethod(tup, methodName)
     case _ =>
-      if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+        containersV7.get(tpe.typeCode).flatMap(_.method(methodName))
+      } else if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
         containersV6.get(tpe.typeCode).flatMap(_.method(methodName))
       } else {
         containersV5.get(tpe.typeCode).flatMap(_.method(methodName))
@@ -1724,6 +1746,106 @@ case object SAvlTreeMethods extends MonoTypeMethods {
     }
   }
 
+}
+
+/** Type descriptor of `MerkleTree` type of ErgoTree (v7.0+).
+  *
+  * Mirrors [[SAvlTreeMethods]] but for static (unauthenticated) Merkle trees. Only the
+  * root digest is stored; membership is proved by a serialized `BatchMerkleProof`
+  * (scrypto wire format) supplied as a `Coll[Byte]` argument to [[containsLeafMethod]]
+  * or [[containsLeavesMethod]].
+  *
+  * All methods are gated by [[VersionContext.isV4OrLaterErgoTreeVersion]] — they
+  * disappear under v5/v6 contexts so the v7 soft-fork is the only path through which
+  * scripts can call them.
+  */
+case object SMerkleTreeMethods extends MonoTypeMethods {
+  override def ownerType: SMonoType = SMerkleTree
+
+  lazy val digestMethod = SMethod(this, "digest", SFunc(SMerkleTree, SByteArray), 1, FixedCost(JitCost(15)))
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(PropertyCall,
+      """Returns root hash of the Merkle tree (32 bytes, Blake2b256).
+      """.stripMargin)
+
+  lazy val updateDigestMethod = SMethod(this, "updateDigest",
+    SFunc(Array(SMerkleTree, SByteArray), SMerkleTree), 2, FixedCost(JitCost(40)))
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+      """Replace the digest of this tree producing a new tree. Since MerkleTree is
+        |immutable, this instance remains unchanged.
+      """.stripMargin)
+
+  /** The proof may contain many leaf hashes, sibling hashes, and indices, and we don't
+    * know the exact split, but we assume the cost is O(proof.length).
+    * This descriptor is the same scale as AvlTree's [[SAvlTreeMethods.CreateAvlVerifier_Info]].
+    */
+  final val CreateMerkleVerifier_Info = OperationCostInfo(
+    PerItemCost(baseCost = JitCost(80), perChunkCost = JitCost(15), chunkSize = 64),
+    NamedDesc("CreateMerkleVerifier"))
+
+  /** Cost of validating a single (leaf, proof) pair against the root.
+    * The cost is O(log(tree_size)) but the verifier doesn't know the tree size,
+    * so we charge per-leaf as a constant approximation.
+    */
+  final val VerifyMerkleProof_Info = OperationCostInfo(
+    PerItemCost(baseCost = JitCost(35), perChunkCost = JitCost(8), chunkSize = 1),
+    NamedDesc("VerifyMerkleProof"))
+
+  lazy val containsLeafMethod = SMethod(this, "containsLeaf",
+    SFunc(Array(SMerkleTree, SByteArray, SByteArray), SBoolean), 3, DynamicCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+      """Verify single-leaf membership in this tree.
+        |
+        |Returns true iff the proof is well-formed and proves that `leafData` is a member
+        |of this tree under `this.digest`. Returns false on any verification failure or
+        |malformed proof (no exception is thrown).
+      """.stripMargin)
+
+  /** Implements evaluation of MerkleTree.containsLeaf method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def containsLeaf_eval(mc: MethodCall, tree: MerkleTree, leafData: Coll[Byte], proof: Coll[Byte])
+                       (implicit E: ErgoTreeEvaluator): Boolean = {
+    E.containsLeaf_eval(mc, tree, leafData, proof)
+  }
+
+  lazy val containsLeavesMethod = SMethod(this, "containsLeaves",
+    SFunc(Array(SMerkleTree, SByteArray2, SByteArray), SBoolean), 4, DynamicCost)
+    .withIRInfo(MethodCallIrBuilder)
+    .withInfo(MethodCall,
+      """Verify batch membership in this tree.
+        |
+        |Returns true iff the proof is well-formed and proves that all elements of
+        |`leaves` are members of this tree under `this.digest`. Returns false on any
+        |verification failure or malformed proof (no exception is thrown).
+      """.stripMargin)
+
+  /** Implements evaluation of MerkleTree.containsLeaves method call ErgoTree node.
+    * Called via reflection based on naming convention.
+    * @see SMethod.evalMethod
+    */
+  def containsLeaves_eval(mc: MethodCall, tree: MerkleTree, leaves: Coll[Coll[Byte]], proof: Coll[Byte])
+                         (implicit E: ErgoTreeEvaluator): Boolean = {
+    E.containsLeaves_eval(mc, tree, leaves, proof)
+  }
+
+  lazy val v7Methods: Seq[SMethod] = super.getMethods() ++ Seq(
+    digestMethod,
+    updateDigestMethod,
+    containsLeafMethod,
+    containsLeavesMethod
+  )
+
+  protected override def getMethods(): Seq[SMethod] = {
+    if (VersionContext.current.isV4OrLaterErgoTreeVersion) {
+      v7Methods
+    } else {
+      super.getMethods()
+    }
+  }
 }
 
 /** Type descriptor of `Context` type of ErgoTree. */

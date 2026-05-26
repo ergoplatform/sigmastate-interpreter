@@ -53,6 +53,13 @@ object DataValueComparer {
   final val OpDesc_EQ_AvlTree = NamedDesc("EQ_AvlTree")
   final val EQ_AvlTree = OperationCostInfo(CostKind_EQ_AvlTree, OpDesc_EQ_AvlTree)
 
+  /** Dedicated descriptor (not EQ_AvlTree) so AvlTree re-tuning never silently
+    * re-tunes MerkleTree and cost traces stay readable. Placeholder values: one field
+    * (digest) to compare instead of AvlTree's four — re-tune against benchmarks. */
+  final val CostKind_EQ_MerkleTree = FixedCost(JitCost(3 + (2 * CostOf_MatchType) / 2))
+  final val OpDesc_EQ_MerkleTree = NamedDesc("EQ_MerkleTree")
+  final val EQ_MerkleTree = OperationCostInfo(CostKind_EQ_MerkleTree, OpDesc_EQ_MerkleTree)
+
   final val CostKind_EQ_Box = FixedCost(JitCost(6))          // case 7
   final val OpDesc_EQ_Box = NamedDesc("EQ_Box")
   final val EQ_Box = OperationCostInfo(CostKind_EQ_Box, OpDesc_EQ_Box)
@@ -118,6 +125,14 @@ object DataValueComparer {
   final val OpDesc_EQ_COA_AvlTree = NamedDesc("EQ_COA_AvlTree")
   final val EQ_COA_AvlTree = OperationCostInfo(CostKind_EQ_COA_AvlTree, OpDesc_EQ_COA_AvlTree)
 
+  /** Equals two CollOverArray of MerkleTree type. Same shape as AvlTree's COA cost
+    * since both reduce to per-element digest comparisons; refine once benchmarked.
+    */
+  final val CostKind_EQ_COA_MerkleTree = PerItemCost(
+    baseCost = JitCost(15), perChunkCost = JitCost(5), chunkSize = 2)
+  final val OpDesc_EQ_COA_MerkleTree = NamedDesc("EQ_COA_MerkleTree")
+  final val EQ_COA_MerkleTree = OperationCostInfo(CostKind_EQ_COA_MerkleTree, OpDesc_EQ_COA_MerkleTree)
+
   /** Equals two CollOverArray of Box type. */
   final val CostKind_EQ_COA_Box = PerItemCost(
     baseCost = JitCost(15), perChunkCost = JitCost(5), chunkSize = 1)
@@ -142,6 +157,7 @@ object DataValueComparer {
       (UnsignedBigIntRType, (EQ_BigInt, EQ_COA_BigInt)),
       (GroupElementRType, (EQ_GroupElement, EQ_COA_GroupElement)),
       (AvlTreeRType, (EQ_AvlTree, EQ_COA_AvlTree)),
+      (MerkleTreeRType, (EQ_MerkleTree, EQ_COA_MerkleTree)),
       (BoxRType, (EQ_Box, EQ_COA_Box)),
       (PreHeaderRType, (EQ_PreHeader, EQ_COA_PreHeader)),
       (HeaderRType, (EQ_Header, EQ_COA_Header))
@@ -363,6 +379,11 @@ object DataValueComparer {
       case bi: AvlTree =>  /** case 6 (see [[EQ_AvlTree]]) */
         E.addFixedCost(EQ_AvlTree) {
           okEqual = bi == r
+        }
+
+      case mt: MerkleTree =>
+        E.addFixedCost(EQ_MerkleTree) {
+          okEqual = mt == r
         }
 
       case opt1: Option[_] => /** case 7 (see [[EQ_Option]]) */

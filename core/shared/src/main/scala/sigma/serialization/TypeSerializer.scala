@@ -31,6 +31,7 @@ class TypeSerializer {
     case SUnit => w.put(SUnit.typeCode)
     case SBox => w.put(SBox.typeCode)
     case SAvlTree => w.put(SAvlTree.typeCode)
+    case SMerkleTree => w.put(SMerkleTree.typeCode)
     case SContext => w.put(SContext.typeCode)
     case SGlobal => w.put(SGlobal.typeCode)
     case SHeader => w.put(SHeader.typeCode)
@@ -197,6 +198,7 @@ class TypeSerializer {
         case SUnit.typeCode => SUnit
         case SBox.typeCode => SBox
         case SAvlTree.typeCode => SAvlTree
+        case SMerkleTree.typeCode if VersionContext.current.isV4OrLaterErgoTreeVersion => SMerkleTree
         case SContext.typeCode => SContext
         case SString.typeCode => SString
         case STypeVar.TypeCode => {
