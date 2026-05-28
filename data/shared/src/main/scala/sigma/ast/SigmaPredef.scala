@@ -529,6 +529,63 @@ object SigmaPredef {
         Seq(ArgInfo("id", "identifier of the register")))
     )
 
+    val EqualBoxExceptFunc = PredefinedFunc("equalBoxExcept",
+      Lambda(
+        Array("b1" -> SBox, "b2" -> SBox, "exclude" -> SCollection(SInt)),
+        SBoolean, None),
+      PredefFuncInfo({
+        case (_, Seq(
+          b1: Value[SBox.type] @unchecked,
+          b2: Value[SBox.type] @unchecked,
+          excludeArg: Value[SCollection[SInt.type]] @unchecked)) =>
+            val excludeIds: Set[Int] = excludeArg match {
+              case CollectionConstant(arr, SInt) =>
+                arr.toArray.toSet
+              case ConcreteCollection(items, SInt) =>
+                items.map {
+                  case IntConstant(v) => v
+                  case other =>
+                    throw new InvalidArguments(
+                      s"equalBoxExcept: exclude argument must be a literal Coll[Int]; got non-literal element $other")
+                }.toSet
+              case _ =>
+                throw new InvalidArguments(
+                  s"equalBoxExcept: exclude argument must be a literal Coll[Int]; got $excludeArg")
+            }
+            def keep(regId: Int)(build: => BoolValue): Option[BoolValue] =
+              if (excludeIds.contains(regId)) None else Some(build)
+            val checks: Seq[BoolValue] = Seq(
+              keep(0)(mkEQ(mkExtractAmount(b1), mkExtractAmount(b2))),
+              keep(1)(mkEQ(mkExtractScriptBytes(b1), mkExtractScriptBytes(b2))),
+              keep(2)(mkEQ(
+                mkMethodCall(b1, SBoxMethods.tokensMethod, IndexedSeq.empty, Map.empty),
+                mkMethodCall(b2, SBoxMethods.tokensMethod, IndexedSeq.empty, Map.empty)))
+            ).flatten
+            checks match {
+              case Nil       => TrueLeaf
+              case h +: tail => tail.foldLeft[BoolValue](h)(mkBinAnd)
+            }
+      }),
+      OperationInfo(BinAnd,
+        """Returns true when \lst{b1} and \lst{b2} are equal on \lst{value}, \lst{propositionBytes},
+         | and \lst{tokens}, ignoring the registers listed in \lst{exclude} as well as R3
+         | (creationInfo, always implicitly excluded because its txId/outputIndex tail differs
+         | between any input box and its successor output by construction).
+         |
+         | Non-mandatory registers R4-R9 are NOT compared by this helper because they are typed
+         | and cannot be compared polymorphically without a new ErgoTree primitive. To require
+         | a specific R4-R9 register to stay equal, add the equality clause manually:
+         | \lst{equalBoxExcept(b1, b2, Coll[Int]()) && b1.R4[Long].get == b2.R4[Long].get}.
+         |
+         | The \lst{exclude} argument must be a compile-time literal \lst{Coll[Int]}; the helper
+         | expands at compile time into a conjunction of the surviving \lst{==} comparisons.
+        """.stripMargin,
+        Seq(
+          ArgInfo("b1", "first box to compare"),
+          ArgInfo("b2", "second box to compare"),
+          ArgInfo("exclude", "compile-time literal Coll[Int] of register ids (0..2) whose comparison should be skipped")))
+    )
+
     val globalFuncs: Map[String, PredefinedFunc] = Seq(
       AllOfFunc,
       AnyOfFunc,
@@ -562,7 +619,8 @@ object SigmaPredef {
       SerializeFunc,
       DeserializeToFunc,
       GetVarFromInputFunc,
-      FromBigEndianBytesFunc
+      FromBigEndianBytesFunc,
+      EqualBoxExceptFunc
     ).map(f => f.name -> f).toMap
 
     def comparisonOp(symbolName: String, opDesc: ValueCompanion, desc: String, args: Seq[ArgInfo]) = {
