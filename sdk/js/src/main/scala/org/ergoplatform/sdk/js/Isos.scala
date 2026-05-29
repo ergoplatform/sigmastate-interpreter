@@ -154,7 +154,7 @@ object Isos {
         val c = DataIsos.isoHexStringToConstant.to(x.apply(id).get.get)
         map = map + (id -> c)
       }
-      ContextExtension(map)
+      ContextExtension.fromMap(map)
     }
 
     override def from(x: ContextExtension): contextExtensionMod.ContextExtension = {

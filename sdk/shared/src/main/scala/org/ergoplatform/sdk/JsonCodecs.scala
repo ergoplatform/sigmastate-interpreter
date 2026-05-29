@@ -245,7 +245,7 @@ trait JsonCodecs {
   implicit val contextExtensionDecoder: Decoder[ContextExtension] = Decoder.instance({ cursor =>
     for {
       values <- cursor.as[Map[Byte, EvaluatedValue[SType]]]
-    } yield ContextExtension(values)
+    } yield ContextExtension.fromMap(values)
   })
 
   implicit val proverResultEncoder: Encoder[ProverResult] = Encoder.instance({ v =>
