@@ -1,0 +1,91 @@
+{
+  "name": "ergoscript-lsp",
+  "displayName": "ErgoScript",
+  "description": "ErgoScript language support - Smart contracts for the Ergo blockchain",
+  "version": "0.1.0",
+  "publisher": "ergo-platform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ScorexFoundation/sigmastate-interpreter"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "ergo",
+    "ergoscript",
+    "blockchain",
+    "smart contracts"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ergoscript",
+        "aliases": ["ErgoScript", "ergoscript"],
+        "extensions": [".es", ".ergo", ".ergoscript"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ergoscript",
+        "scopeName": "source.ergoscript",
+        "path": "./syntaxes/ergoscript.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "ErgoScript",
+      "properties": {
+        "ergoscript.lsp.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to ErgoScript LSP server JAR file"
+        },
+        "ergoscript.java.home": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Java home directory"
+        },
+        "ergoscript.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Trace communication with language server"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "ergoscript.restartServer",
+        "title": "ErgoScript: Restart Language Server"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "ergoscript",
+        "path": "./snippets/ergoscript.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

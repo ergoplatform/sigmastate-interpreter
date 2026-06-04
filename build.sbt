@@ -65,11 +65,11 @@ lazy val commonSettings = Seq(
 
 lazy val crossScalaSettings = Seq(
   crossScalaVersions := Seq(scala213, scala212, scala211),
-  scalaVersion := scala213
+  scalaVersion := scala212
 )
 lazy val crossScalaSettingsJS = Seq(
-  crossScalaVersions := Seq(scala213),
-  scalaVersion := scala213
+  crossScalaVersions := Seq(scala212),
+  scalaVersion := scala212
 )
 
 def javacReleaseOption = {
@@ -91,16 +91,16 @@ val scryptoDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.0.0"
 
 val scorexUtilDependency =
-  libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.1"
+  libraryDependencies += "org.scorexfoundation" %% "scorex-util" % "0.2.1"
 
 val debox              = "org.scorexfoundation" %% "debox" % "0.10.0"
 val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 
 val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
-
+  
 val supertaggedDependency =
-  libraryDependencies += "org.rudogma" %%% "supertagged" % "2.0-RC2"
+  libraryDependencies += "org.rudogma" %% "supertagged" % "1.4"
 
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
@@ -182,6 +182,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
     publish / skip := true
   )
   .jvmSettings(
@@ -229,13 +230,14 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     publish / skip := true
   )
   .jvmSettings( crossScalaSettings )
-  .jsSettings(
-    crossScalaSettingsJS,
-    useYarn := true
+  .settings(
+    commonSettings ++ testSettings2,
+    commonDependenies2,
+    testingDependencies2,
+    scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
+    publish / skip := true
   )
-lazy val dataJS = data.js
-    .enablePlugins(ScalaJSBundlerPlugin)
-
 lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
   .in(file("interpreter"))
   .dependsOn(core % allConfigDependency, data % allConfigDependency)
@@ -247,13 +249,14 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     publish / skip := true
   )
   .jvmSettings( crossScalaSettings )
-  .jsSettings(
-    crossScalaSettingsJS,
-    useYarn := true
+  .settings(
+    commonSettings ++ testSettings2,
+    commonDependenies2,
+    testingDependencies2,
+    scorexUtilDependency,
+    supertaggedDependency, // Ensure supertagged is included
+    publish / skip := true
   )
-lazy val interpreterJS = interpreter.js
-    .enablePlugins(ScalaJSBundlerPlugin)
-
 lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     .in(file("parsers"))
     .dependsOn(interpreter % allConfigDependency)
@@ -267,17 +270,20 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     .jvmSettings(
       crossScalaSettings
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      useYarn := true
-    )
-lazy val parsersJS = parsers.js
-    .enablePlugins(ScalaJSBundlerPlugin)
     .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
+    )
+    .jsSettings(
       scalaJSLinkerConfig ~= { conf =>
         conf.withSourceMap(false)
-      },
+      }
     )
+    
 
 lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     .in(file("sdk"))
@@ -292,18 +298,21 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     .jvmSettings(
       crossScalaSettings
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      useYarn := true
-    )
-lazy val sdkJS = sdk.js
-    .enablePlugins(ScalaJSBundlerPlugin)
     .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
+    )
+    .jsSettings(
       scalaJSLinkerConfig ~= { conf =>
         conf.withSourceMap(false)
             .withModuleKind(ModuleKind.CommonJSModule)
-      },
+      }
     )
+    
 
 lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .in(file("sc"))
@@ -325,12 +334,13 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
       crossScalaSettings,
       libraryDependencies ++= Seq(scalameter)
     )
-    .jsSettings(
-      crossScalaSettingsJS,
-      libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scala-js-macrotask-executor" % "1.0.0"
-      ),
-      useYarn := true
+    .settings(
+      commonSettings ++ testSettings2,
+      commonDependenies2,
+      testingDependencies2,
+      scorexUtilDependency,
+      supertaggedDependency, // Ensure supertagged is included
+      publish / skip := true
     )
 lazy val scJS = sc.js
     .enablePlugins(ScalaJSBundlerPlugin)
@@ -349,8 +359,32 @@ lazy val scJS = sc.js
     )
 
 
+// ErgoScript Language Server Protocol (LSP) implementation
+lazy val lsp = (project in file("lsp"))
+  .dependsOn(sc.jvm, parsers.jvm, interpreter.jvm, data.jvm, core.jvm)
+  .settings(
+    commonSettings,
+    scalaVersion := scala212,
+    name := "ergoscript-lsp",
+    libraryDependencies ++= Seq(
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.13.0",
+      scalatest, scalactic
+    ),
+    assembly / mainClass := Some("sigma.lsp.Main"),
+    assembly / assemblyJarName := "ergoscript-lsp.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
+    publish / skip := true
+  )
+  .settings(
+    supertaggedDependency, // Ensure supertagged is included for LSP server
+    publish / skip := true
+  )
+
 lazy val sigma = (project in file("."))
-  .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
+  .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm, lsp)
   .settings(libraryDefSettings, rootSettings)
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
@@ -387,4 +421,6 @@ pgpPublicRing := file("ci/pubring.asc")
 pgpSecretRing := file("ci/secring.asc")
 pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray)
 usePgpKeyHex("C1FD62B4D44BDF702CDF2B726FF59DA944B150DD")
+
+dependencyOverrides += "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.13.0"
 
