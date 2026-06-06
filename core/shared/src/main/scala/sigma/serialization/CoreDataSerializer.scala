@@ -19,12 +19,10 @@ class CoreDataSerializer {
     * Primitive types are leaves of the type tree, and they are served as basis of recursion.
     * The data value `v` is expected to conform to the type described by `tpe`.
     */
-  // `v`'s type is widened to `SType#WrappedType` rather than the original `T#WrappedType`:
-  // `T#WrappedType` (projection on an abstract type param) is illegal in Scala 3, and the
-  // `Wrapped.Of[T]` alias can't be used here either — as the param type it over-normalizes the
-  // STuple recursive-call argument to `Any` on Scala 2. The direct projection keeps it conforming.
-  // `v` is matched against `tpe` and cast per-branch, so the looser static type is inconsequential.
-  def serialize[T <: SType](v: SType#WrappedType, tpe: T, w: CoreByteWriter): Unit = tpe match {
+  // `v`'s type is `Wrapped.Of[T]` — exactly the original `T#WrappedType` on Scala 2.x (so callers
+  // passing a concrete wrapped value, e.g. `Coll[Int]` for `T = SCollection[SInt.type]`, still
+  // type-check) and `SType#WrappedType` on Scala 3, where `T#WrappedType` is illegal.
+  def serialize[T <: SType](v: Wrapped.Of[T], tpe: T, w: CoreByteWriter): Unit = tpe match {
     case SUnit => // don't need to save anything
     case SBoolean => w.putBoolean(v.asInstanceOf[Boolean])
     case SByte => w.put(v.asInstanceOf[Byte])
@@ -69,7 +67,10 @@ class CoreDataSerializer {
       }
 
     case t: STuple =>
-      val arr = Evaluation.fromDslTuple(v, t).asInstanceOf[t.WrappedType]
+      // Cast to `Coll[SType#WrappedType]` (not `t.WrappedType`) so each `arr(i)` is directly
+      // `SType#WrappedType` and conforms to the recursive call's `Wrapped.Of[SType]` parameter
+      // below (as a param-position alias it would otherwise over-normalize the element projection).
+      val arr = Evaluation.fromDslTuple(v, t).asInstanceOf[Coll[SType#WrappedType]]
       val len = arr.length
       assert(arr.length == t.items.length, s"Type $t doesn't correspond to value $arr")
       if (len > 0xFFFF)

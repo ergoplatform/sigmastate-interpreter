@@ -12,7 +12,7 @@ object DataSerializer extends CoreDataSerializer {
     * Primitive types are leaves of the type tree, and they are served as basis of recursion.
     * The data value `v` is expected to conform to the type described by `tpe`.
     */
-  override def serialize[T <: SType](v: SType#WrappedType, tpe: T, w: CoreByteWriter): Unit = tpe match {
+  override def serialize[T <: SType](v: Wrapped.Of[T], tpe: T, w: CoreByteWriter): Unit = tpe match {
     case SBox =>
       val b = v.asInstanceOf[CBox]
       ErgoBox.sigmaSerializer.serialize(b.ebox, w.asInstanceOf[SigmaByteWriter])
