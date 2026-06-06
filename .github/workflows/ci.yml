@@ -57,6 +57,41 @@ jobs:
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
+  buildScala3:
+    name: Scala 3 - Test core
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        scala: [3.3.4]
+        java: [adopt@1.8]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java and Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: ${{ matrix.java }}
+
+      - name: Cache sbt
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.coursier/cache/v1
+            ~/.cache/coursier/v1
+            ~/AppData/Local/Coursier/Cache/v1
+            ~/Library/Caches/Coursier/v1
+          key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+
+      # Only `core` cross-compiles to Scala 3 so far; other modules are migrated in later steps.
+      - name: Runs core tests (Scala 3)
+        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJVM/test
+
   buildJs:
     name: JS - Test and publish snapshots
     env:

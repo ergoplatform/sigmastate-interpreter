@@ -266,7 +266,7 @@ object DataJsonEncoder {
               mutable.ArrayBuilder.make[T#WrappedType]
             }
             for (i <- jsonList) {
-              collSource += decodeData(i, tpe).asInstanceOf[T#WrappedType]
+              collSource += decodeData(i, tpe)
             }
             Colls.fromArray(collSource.result())
           case Left(error) => throw new SerializerException(error.getMessage)

@@ -19,7 +19,10 @@ class CoreDataSerializer {
     * Primitive types are leaves of the type tree, and they are served as basis of recursion.
     * The data value `v` is expected to conform to the type described by `tpe`.
     */
-  def serialize[T <: SType](v: T#WrappedType, tpe: T, w: CoreByteWriter): Unit = tpe match {
+  // `v`'s type is `Wrapped.Of[T]` — exactly the original `T#WrappedType` on Scala 2.x (so callers
+  // passing a concrete wrapped value, e.g. `Coll[Int]` for `T = SCollection[SInt.type]`, still
+  // type-check) and `SType#WrappedType` on Scala 3, where `T#WrappedType` is illegal.
+  def serialize[T <: SType](v: Wrapped.Of[T], tpe: T, w: CoreByteWriter): Unit = tpe match {
     case SUnit => // don't need to save anything
     case SBoolean => w.putBoolean(v.asInstanceOf[Boolean])
     case SByte => w.put(v.asInstanceOf[Byte])
@@ -64,7 +67,10 @@ class CoreDataSerializer {
       }
 
     case t: STuple =>
-      val arr = Evaluation.fromDslTuple(v, t).asInstanceOf[t.WrappedType]
+      // Cast to `Coll[SType#WrappedType]` (not `t.WrappedType`) so each `arr(i)` is directly
+      // `SType#WrappedType` and conforms to the recursive call's `Wrapped.Of[SType]` parameter
+      // below (as a param-position alias it would otherwise over-normalize the element projection).
+      val arr = Evaluation.fromDslTuple(v, t).asInstanceOf[Coll[SType#WrappedType]]
       val len = arr.length
       assert(arr.length == t.items.length, s"Type $t doesn't correspond to value $arr")
       if (len > 0xFFFF)
@@ -91,7 +97,7 @@ class CoreDataSerializer {
     * The data structure depth is limited by r.maxTreeDepth which is
     * SigmaSerializer.MaxTreeDepth by default.
     */
-  def deserialize[T <: SType](tpe: T, r: CoreByteReader): T#WrappedType = {
+  def deserialize[T <: SType](tpe: T, r: CoreByteReader): tpe.WrappedType = {
     val depth = r.level
     r.level = depth + 1
     val res = (tpe match {
@@ -102,7 +108,7 @@ class CoreDataSerializer {
       case SInt => r.getInt()
       case SLong => r.getLong()
       case SString =>
-        val size = r.getUIntExact
+        val size = r.getUIntExact()
         // NO-FORK: in v5.x getUIntExact may throw Int overflow exception
         // in v4.x r.getUInt().toInt is used and may return negative Int instead of the overflow
         // in which case the getBytes will throw NegativeArraySizeException
@@ -144,17 +150,17 @@ class CoreDataSerializer {
       case t =>
         CheckSerializableTypeCode(t.typeCode)
         throw new SerializerException(s"Not defined DataSerializer for type $t")
-    }).asInstanceOf[T#WrappedType]
+    }).asInstanceOf[tpe.WrappedType]
     r.level = r.level - 1
     res
   }
 
-  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
+  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[tpeElem.WrappedType] =
     tpeElem match {
       case SBoolean =>
-        Colls.fromArray(r.getBits(len)).asInstanceOf[Coll[T#WrappedType]]
+        Colls.fromArray(r.getBits(len)).asInstanceOf[Coll[tpeElem.WrappedType]]
       case SByte =>
-        Colls.fromArray(r.getBytes(len)).asInstanceOf[Coll[T#WrappedType]]
+        Colls.fromArray(r.getBytes(len)).asInstanceOf[Coll[tpeElem.WrappedType]]
       case _ =>
         implicit val tItem = (tpeElem match {
           case tTup: STuple if tTup.items.length == 2 =>
@@ -163,10 +169,10 @@ class CoreDataSerializer {
             collRType(sigma.AnyType)
           case _ =>
             Evaluation.stypeToRType(tpeElem)
-        }).asInstanceOf[RType[T#WrappedType]]
+        }).asInstanceOf[RType[tpeElem.WrappedType]]
         val b = { // this code works both for Scala 2.12 and 2.13
           implicit val ct = tItem.classTag
-          mutable.ArrayBuilder.make[T#WrappedType]
+          mutable.ArrayBuilder.make[tpeElem.WrappedType]
         }
         for (_ <- 0 until len) {
           b += deserialize(tpeElem, r)

@@ -15,7 +15,7 @@ object Evaluation {
   /** Transforms a serializable ErgoTree type descriptor to the corresponding RType descriptor of SigmaDsl,
     * which is used during evaluation.
     */
-  def stypeToRType[T <: SType](t: T): RType[T#WrappedType] = (t match {  // TODO optimize using memoization
+  def stypeToRType[T <: SType](t: T): RType[Wrapped.Of[T]] = (t match {  // TODO optimize using memoization
     case SBoolean => BooleanType
     case SByte => ByteType
     case SShort => ShortType
@@ -53,7 +53,7 @@ object Evaluation {
       funcRType(stypeToRType(tpeArg), stypeToRType(tpeRange))
     case _ =>
       sys.error(s"Don't know how to convert SType $t to RType")
-  }).asInstanceOf[RType[T#WrappedType]]
+  }).asInstanceOf[RType[Wrapped.Of[T]]]
 
   /** Transforms RType descriptor of SigmaDsl, which is used during evaluation,
     * to the corresponding serializable ErgoTree type descriptor,

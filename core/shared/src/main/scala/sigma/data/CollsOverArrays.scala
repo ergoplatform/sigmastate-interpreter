@@ -5,8 +5,9 @@ import sigma.Evaluation.stypeToRType
 import sigma.data.CollOverArray.equalsPairCollWithCollOverArray
 import sigma.data.RType._
 import sigma.util.{CollectionUtil, MaxArrayLength, safeConcatArrays_v5}
-import sigma.{Coll, CollBuilder, PairColl, VersionContext, requireSameLength}
-import sigma.rtypeToClassTag
+import sigma._
+import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuilder)
                                    (implicit tA: RType[A]) extends Coll[A] {
@@ -26,7 +27,7 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
   def getOrElse(i: Int, default: A): A = if (i >= 0 && i < toArray.length) toArray(i) else default
 
   def map[@specialized B: RType](f: A => B): Coll[B] = {
-    implicit val ctB = RType[B].classTag
+    implicit val ctB: ClassTag[B] = RType[B].classTag
     builder.fromArray(toArray.map(f))
   }
 
@@ -68,7 +69,7 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
   def indices: Coll[Int] = builder.fromArray(toArray.indices.toArray)
 
   override def flatMap[B: RType](f: A => Coll[B]): Coll[B] = {
-    implicit val ctB = RType[B].classTag
+    implicit val ctB: ClassTag[B] = RType[B].classTag
     builder.fromArray(toArray.flatMap(x => f(x).toArray))
   }
 
@@ -218,7 +219,7 @@ private[sigma] class CollOverArrayBuilder extends CollBuilder {
     case pt: PairType[a,b] =>
       val tA = pt.tFst
       val tB = pt.tSnd
-      fromBoxedPairs(items)(tA, tB)
+      fromBoxedPairs(items.asInstanceOf[Seq[(a, b)]])(tA, tB)
     case _ =>
       new CollOverArray(items.toArray(cT.classTag), builder)
   }
@@ -246,8 +247,8 @@ private[sigma] class CollOverArrayBuilder extends CollBuilder {
     case pa: PairColl[_,_] => (pa.ls, pa.rs)
     case _ =>
       val limit = xs.length
-      implicit val tA = xs.tItem.tFst
-      implicit val tB = xs.tItem.tSnd
+      implicit val tA: RType[A] = xs.tItem.tFst
+      implicit val tB: RType[B] = xs.tItem.tSnd
       val ls = Array.ofDim[A](limit)(tA.classTag)
       val rs = Array.ofDim[B](limit)(tB.classTag)
       cfor(0)(_ < limit, _ + 1) { i =>
@@ -473,7 +474,7 @@ class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R
       addToSet(that(i))
       i += 1
     }
-    builder.pairCollFromArrays(resL.toArray, resR.toArray)
+    builder.pairCollFromArrays(resL.toArray(), resR.toArray())
   }
 
   override def mapFirst[T1: RType](f: L => T1): Coll[(T1, R)] = {
