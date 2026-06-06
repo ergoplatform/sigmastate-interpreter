@@ -15,7 +15,7 @@ import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.tT
 import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, COR, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, ProveDlog, RType, TrivialProp}
 import sigma.data.CSigmaDslBuilder
 import sigma.data.{CGroupElement, CUnsignedBigInt}
 import sigma.crypto.SecP256K1Group
@@ -1380,36 +1380,81 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  // TODO v6.0 (3h): implement allZK func https://github.com/ScorexFoundation/sigmastate-interpreter/issues/543
+  // allZK / anyZK are compiler sugar for the SigmaAnd / SigmaOr nodes (issue #543). They lower
+  // to the same ErgoTree that `a && b` / `a || b` produce on sigma propositions, so they are
+  // available in all script versions (existingFeature). Only literal collections are accepted;
+  // the argument arity is fixed at compile time. See SigmaCompilerTest for the rejection cases.
   property("allZK equivalence") {
-    lazy val allZK = newFeature((x: Coll[SigmaProp]) => SigmaDsl.allZK(x),
-      "{ (x: Coll[SigmaProp]) => allZK(x) }",
-      sinceVersion = V6SoftForkVersion)
+    val allZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.allZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => allZK(Coll(x._1, x._2)) }")
 
-    if (activatedVersionInTests < VersionContext.V6SoftForkVersion) {
-      // NOTE, for such versions getReg is not supported
-      // which is checked below
+    val dlA = ProveDlog(Helpers.decodeECPoint("02ea9bf6da7f512386c6ca509d40f8c5e7e0ffb3eea5dc3c398443ea17f4510798"))
+    val dlB = ProveDlog(Helpers.decodeECPoint("03a426a66fc1af2792b35d9583904c3fb877b49ae5cea45b7a2aa105ffa4c68606"))
+    val pkA = CSigmaProp(dlA)
+    val pkB = CSigmaProp(dlB)
+    def expected(v: SigmaProp) = new Expected(ExpectedResult(Success(v), None))
 
-      forAll { x: Coll[SigmaProp] =>
-        allZK.checkEquality(x)
-      }
-    }
+    verifyCases(
+      Seq(
+        (pkA, pkB)                               -> expected(CSigmaProp(CAND.normalized(Array(dlA, dlB)))),
+        (CSigmaProp(TrivialProp.TrueProp), pkB)  -> expected(pkB),                              // true && x == x
+        (CSigmaProp(TrivialProp.FalseProp), pkB) -> expected(CSigmaProp(TrivialProp.FalseProp)) // false && x == false
+      ),
+      allZK,
+      preGeneratedSamples = Some(Seq.empty))
   }
 
-  // TODO v6.0 (3h): implement anyZK func https://github.com/ScorexFoundation/sigmastate-interpreter/issues/543
   property("anyZK equivalence") {
-    lazy val anyZK = newFeature((x: Coll[SigmaProp]) => SigmaDsl.anyZK(x),
-      "{ (x: Coll[SigmaProp]) => anyZK(x) }",
-      sinceVersion = V6SoftForkVersion)
+    val anyZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.anyZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => anyZK(Coll(x._1, x._2)) }")
 
-    if (activatedVersionInTests < VersionContext.V6SoftForkVersion) {
-      // NOTE, for such versions getReg is not supported
-      // which is checked below
+    val dlA = ProveDlog(Helpers.decodeECPoint("02ea9bf6da7f512386c6ca509d40f8c5e7e0ffb3eea5dc3c398443ea17f4510798"))
+    val dlB = ProveDlog(Helpers.decodeECPoint("03a426a66fc1af2792b35d9583904c3fb877b49ae5cea45b7a2aa105ffa4c68606"))
+    val pkA = CSigmaProp(dlA)
+    val pkB = CSigmaProp(dlB)
+    def expected(v: SigmaProp) = new Expected(ExpectedResult(Success(v), None))
 
-      forAll { x: Coll[SigmaProp] =>
-        anyZK.checkEquality(x)
-      }
-    }
+    verifyCases(
+      Seq(
+        (pkA, pkB)                               -> expected(CSigmaProp(COR.normalized(Array(dlA, dlB)))),
+        (CSigmaProp(TrivialProp.TrueProp), pkB)  -> expected(CSigmaProp(TrivialProp.TrueProp)), // true || x == true
+        (CSigmaProp(TrivialProp.FalseProp), pkB) -> expected(pkB)                               // false || x == x
+      ),
+      anyZK,
+      preGeneratedSamples = Some(Seq.empty))
+  }
+
+  property("allZK/anyZK over heterogeneous sigma propositions") {
+    // allZK/anyZK combine SigmaProp values of any kind uniformly: here a ProveDHTuple is
+    // combined with a ProveDlog. The result must be the same CAND/COR tree as `&&`/`||`.
+    val dlog = CryptoConstants.dlogGroup
+    val ecp1 = dlog.generator
+    val ecp2 = dlog.multiplyGroupElements(ecp1, ecp1)
+    val ecp3 = dlog.multiplyGroupElements(ecp2, ecp2)
+    val ecp4 = dlog.multiplyGroupElements(ecp3, ecp3)
+    val dht  = ProveDHTuple(ecp1, ecp2, ecp3, ecp4)
+    val dl   = ProveDlog(Helpers.decodeECPoint("02ea9bf6da7f512386c6ca509d40f8c5e7e0ffb3eea5dc3c398443ea17f4510798"))
+    val pkDht = CSigmaProp(dht)
+    val pkDl  = CSigmaProp(dl)
+    def expected(v: SigmaProp) = new Expected(ExpectedResult(Success(v), None))
+
+    val allZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.allZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => allZK(Coll(x._1, x._2)) }")
+    verifyCases(
+      Seq((pkDht, pkDl) -> expected(CSigmaProp(CAND.normalized(Array(dht, dl))))),
+      allZK,
+      preGeneratedSamples = Some(Seq.empty))
+
+    val anyZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.anyZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => anyZK(Coll(x._1, x._2)) }")
+    verifyCases(
+      Seq((pkDht, pkDl) -> expected(CSigmaProp(COR.normalized(Array(dht, dl))))),
+      anyZK,
+      preGeneratedSamples = Some(Seq.empty))
   }
 
   property("Numeric.toBytes methods equivalence") {

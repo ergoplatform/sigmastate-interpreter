@@ -55,6 +55,28 @@ object SigmaPredef {
     private val undefined: IrBuilderFunc =
       PartialFunction.empty[(SValue, Seq[SValue]), SValue]
 
+    /** Extracts the sigma-proposition items from the argument of `allZK`/`anyZK`.
+      *
+      * Both functions lower to the fixed-arity `SigmaAnd`/`SigmaOr` ErgoTree nodes (the same
+      * nodes produced by `&&`/`||` on sigma propositions). Those nodes hold a static
+      * `Seq[SigmaPropValue]`, so the argument must be a `Coll(...)` literal written in the
+      * script (a [[ConcreteCollection]]); a runtime collection cannot be folded into them.
+      * An empty collection is rejected because `CAND.normalized`/`COR.normalized` require at
+      * least one item and would otherwise fail at evaluation time.
+      */
+    private def sigmaPropItems(funcName: String, arg: SValue): Seq[SigmaPropValue] = {
+      val items: Seq[SigmaPropValue] = arg match {
+        case ConcreteCollection(items, SSigmaProp) =>
+          items.map(_.asSigmaProp)
+        case other =>
+          throw new InvalidArguments(
+            s"$funcName: argument must be a literal Coll[SigmaProp]; got $other")
+      }
+      if (items.isEmpty)
+        throw new InvalidArguments(s"$funcName: argument collection must be non-empty")
+      items
+    }
+
     val AllOfFunc = PredefinedFunc("allOf",
       Lambda(Array("conditions" -> SCollection(SBoolean)), SBoolean, None),
       PredefFuncInfo({ case (_, Seq(col: Value[SCollection[SBoolean.type]]@unchecked)) => mkAND(col) }),
@@ -78,14 +100,16 @@ object SigmaPredef {
 
     val AllZKFunc = PredefinedFunc("allZK",
       Lambda(Array("propositions" -> SCollection(SSigmaProp)), SSigmaProp, None),
-      PredefFuncInfo(undefined),
+      PredefFuncInfo({ case (_, Seq(col: Value[SCollection[SSigmaProp.type]]@unchecked)) =>
+        mkSigmaAnd(sigmaPropItems("allZK", col)) }),
       OperationInfo(SigmaAnd, "Returns sigma proposition which is proven when \\emph{all} the elements in collection are proven.",
         Seq(ArgInfo("propositions", "a collection of propositions")))
     )
 
     val AnyZKFunc = PredefinedFunc("anyZK",
       Lambda(Array("propositions" -> SCollection(SSigmaProp)), SSigmaProp, None),
-      PredefFuncInfo(undefined),
+      PredefFuncInfo({ case (_, Seq(col: Value[SCollection[SSigmaProp.type]]@unchecked)) =>
+        mkSigmaOr(sigmaPropItems("anyZK", col)) }),
       OperationInfo(SigmaOr, "Returns sigma proposition which is proven when \\emph{any} of the elements in collection is proven.",
         Seq(ArgInfo("propositions", "a collection of propositions")))
     )

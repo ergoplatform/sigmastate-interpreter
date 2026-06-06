@@ -105,6 +105,53 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp("atLeast(2, Coll[SigmaProp](p1, p2))") shouldBe AtLeast(2, p1, p2)
   }
 
+  // NOTE: each sigma proposition in a script must be a distinct subexpression, otherwise the
+  // compiler hoists the repeated one into a BlockValue(ValDef, ...) via common-subexpression
+  // elimination and the result is no longer a bare SigmaAnd/SigmaOr.
+  property("allZK") {
+    comp("allZK(Coll[SigmaProp](p1, p2))") shouldBe SigmaAnd(p1, p2)
+    // a single-element collection collapses to the element itself (AND of one)
+    comp("allZK(Coll[SigmaProp](p1))") shouldBe comp("p1")
+    // lowers to exactly the same node as `&&` on sigma propositions
+    comp("allZK(Coll[SigmaProp](p1, p2))") shouldBe comp("p1 && p2")
+    // arity > 2 with mixed element kinds: sigmaProp(bool) is a valid SigmaProp expression
+    comp("allZK(Coll[SigmaProp](p1, p2, sigmaProp(HEIGHT > 1000)))") shouldBe
+      SigmaAnd(p1, p2, BoolToSigmaProp(GT(Height, IntConstant(1000))))
+    // nested zk operations
+    comp("allZK(Coll[SigmaProp](anyZK(Coll[SigmaProp](p1, p2)), sigmaProp(HEIGHT > 1000)))") shouldBe
+      SigmaAnd(SigmaOr(p1, p2), BoolToSigmaProp(GT(Height, IntConstant(1000))))
+  }
+
+  property("anyZK") {
+    comp("anyZK(Coll[SigmaProp](p1, p2))") shouldBe SigmaOr(p1, p2)
+    // a single-element collection collapses to the element itself (OR of one)
+    comp("anyZK(Coll[SigmaProp](p1))") shouldBe comp("p1")
+    // lowers to exactly the same node as `||` on sigma propositions
+    comp("anyZK(Coll[SigmaProp](p1, p2))") shouldBe comp("p1 || p2")
+    comp("anyZK(Coll[SigmaProp](p1, p2, sigmaProp(HEIGHT > 1000)))") shouldBe
+      SigmaOr(p1, p2, BoolToSigmaProp(GT(Height, IntConstant(1000))))
+    comp("anyZK(Coll[SigmaProp](allZK(Coll[SigmaProp](p1, p2)), sigmaProp(HEIGHT > 1000)))") shouldBe
+      SigmaOr(SigmaAnd(p1, p2), BoolToSigmaProp(GT(Height, IntConstant(1000))))
+  }
+
+  property("allZK/anyZK reject a non-literal collection") {
+    // SigmaAnd/SigmaOr are fixed-arity nodes, so a runtime Coll[SigmaProp] cannot be folded into them
+    an[InvalidArguments] should be thrownBy comp("allZK(getVar[Coll[SigmaProp]](1).get)")
+    an[InvalidArguments] should be thrownBy comp("anyZK(getVar[Coll[SigmaProp]](1).get)")
+  }
+
+  property("allZK/anyZK reject an empty collection") {
+    // CAND/COR.normalized require at least one item; reject at compile time rather than crash at eval
+    an[InvalidArguments] should be thrownBy comp("allZK(Coll[SigmaProp]())")
+    an[InvalidArguments] should be thrownBy comp("anyZK(Coll[SigmaProp]())")
+  }
+
+  property("allZK/anyZK reject a non-SigmaProp collection") {
+    // the declared parameter type is Coll[SigmaProp]; a Coll[Boolean] must not type-check
+    an[TyperException] should be thrownBy comp("allZK(Coll[Boolean](true, false))")
+    an[TyperException] should be thrownBy comp("anyZK(Coll[Boolean](true, false))")
+  }
+
   property("ZKProof") {
     testMissingCostingWOSerialization("ZKProof { sigmaProp(HEIGHT > 1000) }",
       ZKProofBlock(BoolToSigmaProp(GT(Height, IntConstant(1000)))))
