@@ -10,6 +10,7 @@ name := "sigma-state"
 lazy val scala213 = "2.13.16"
 lazy val scala212 = "2.12.20"
 lazy val scala211 = "2.11.12"
+lazy val scala3   = "3.3.4"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
@@ -23,6 +24,8 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-release", "8")
       case Some((2, 11)) =>
         Seq()
+      case Some((3, _)) =>
+        Seq("-release", "8")
       case _ => sys.error("Unsupported scala version")
     }
   },
@@ -93,7 +96,7 @@ val scryptoDependency =
 
 val scorexUtil         = "org.scorexfoundation" %% "scorex-util" % "0.2.1"
 val scorexUtilDependency =
-  libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.1"
+  libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.2"
 
 val debox              = "org.scorexfoundation" %% "debox" % "0.10.0"
 val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
@@ -103,7 +106,14 @@ val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
 
 val supertaggedDependency =
-  libraryDependencies += "org.rudogma" %%% "supertagged" % "2.0-RC2"
+  libraryDependencies ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      // No supertagged_3 is published; consume the 2.13 artifact (only TaggedType/`@@`, no macros).
+      // On Scala 2.x supertagged arrives transitively via scorex-util, so nothing extra is needed.
+      case Some((3, _)) => Seq(("org.rudogma" %% "supertagged" % "2.0-RC2").cross(CrossVersion.for3Use2_13))
+      case _            => Seq.empty
+    }
+  }
 
 val scalaCompat        = "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0"
 lazy val scodecBitsDependency =
@@ -151,13 +161,26 @@ lazy val testingDependencies = Seq(
 )
 
 lazy val testingDependencies2 =
-  libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.2.14" % Test,
-    "org.scalactic" %%% "scalactic" % "3.2.14" % Test,
-    "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
-    "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
-    "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
-  )
+  libraryDependencies ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      // The 2.11-compatible pins below have no _3 artifacts; on Scala 3 use the
+      // matching _3-capable versions (scalacheck 1.17 + its scalatestplus binding).
+      case Some((3, _)) => Seq(
+        "org.scalatest" %%% "scalatest" % "3.2.14" % Test,
+        "org.scalactic" %%% "scalactic" % "3.2.14" % Test,
+        "org.scalacheck" %%% "scalacheck" % "1.17.0" % Test,
+        "org.scalatestplus" %%% "scalacheck-1-17" % "3.2.14.0" % Test,
+        "com.lihaoyi" %%% "pprint" % "0.8.1" % Test
+      )
+      case _ => Seq(
+        "org.scalatest" %%% "scalatest" % "3.2.14" % Test,
+        "org.scalactic" %%% "scalactic" % "3.2.14" % Test,
+        "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
+        "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
+        "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
+      )
+    }
+  }
 
 lazy val testSettings = Seq(
   libraryDependencies ++= testingDependencies,
@@ -186,8 +209,14 @@ pomIncludeRepository := { _ => false }
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
 lazy val commonDependenies2 = libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scorexfoundation" %%% "debox" % "0.10.0",
+  // debox 0.11.0 is the first release cross-published for Scala 3 (native _3, with the real
+  // specialized Buffer/Set and the `cfor` macro). Used on all Scala versions: it affects no
+  // serialized bytes (consensus-neutral) and on 2.x only bumps minor transitive versions
+  // (spire-macros/algebra/cats-kernel). scala-collection-compat publishes _3 and is kept everywhere.
+  // NB: scala-reflect was previously declared here but is unused (no TypeTag/Manifest/runtime
+  // reflection/macros anywhere — only ClassTag, which lives in scala-library), and on Scala 2.x it
+  // is still provided transitively by scorex-util. So it is no longer declared explicitly.
+  "org.scorexfoundation" %%% "debox" % "0.11.0",
   "org.scala-lang.modules" %%% "scala-collection-compat" % "2.7.0"
 )
 
@@ -199,10 +228,12 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency,
+    supertaggedDependency,
     publish / skip := true
   )
   .jvmSettings(
     crossScalaSettings,
+    crossScalaVersions += scala3,
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )

@@ -9,7 +9,9 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 trait CollGens { testSuite =>
-  import Gen._
+  // Exclude `Gen.const` (an implicit `T => Gen[T]` conversion that hijacks Array `.map`/`.flatMap`
+  // on Scala 3, outranking Predef's `ArrayOps`); it is used explicitly as `Gen.const`.
+  import Gen.{const => _, _}
 
   val builder: CollBuilder = sigma.Colls
   val valGen = choose(-100, 100)

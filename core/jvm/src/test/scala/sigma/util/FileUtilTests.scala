@@ -32,7 +32,7 @@ class FileUtilTests extends BaseNestedTests {
 
     it("list all files") {
       listFiles(root).toSet shouldBe Set(A, B)
-      listFiles(empty) shouldBe Array()
+      listFiles(empty).toSeq shouldBe Seq.empty
     }
     it("list directories") {
       listDirectories(root).toSet shouldBe Set(subdir, empty)

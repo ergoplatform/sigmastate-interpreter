@@ -149,7 +149,7 @@ object FileUtil {
     if (fileOrDirectory.exists()) delete(fileOrDirectory)
   }
 
-  def deleteRecursive(path: Path) {
+  def deleteRecursive(path: Path): Unit = {
     Files.walkFileTree(path, new SimpleFileVisitor[Path]() {
       override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
         Files.delete(file)

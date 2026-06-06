@@ -29,7 +29,7 @@ abstract class BaseShouldTests extends AnyFlatSpec with TestUtils {
 
     import resultOfStringPassedToVerb.rest
     val _inner = new InAndIgnoreMethods(resultOfStringPassedToVerb)
-    def beArgFor(testFun: String => Unit) {
+    def beArgFor(testFun: String => Unit): Unit = {
       _inner.in(testFun(rest.trim))
     }
   }

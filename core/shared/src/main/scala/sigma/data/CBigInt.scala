@@ -1,7 +1,7 @@
 package sigma.data
 
 import sigma.util.Extensions.BigIntegerOps
-import sigma.{BigInt, Coll, Colls, UnsignedBigInt, VersionContext}
+import sigma.{BigInt, ByteType, Coll, Colls, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
 

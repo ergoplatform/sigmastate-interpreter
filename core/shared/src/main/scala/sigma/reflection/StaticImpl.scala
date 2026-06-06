@@ -42,7 +42,7 @@ abstract class SRMethod(declaringClass: Class[_], name: String, parameterTypes: 
 
   override def equals(other: Any): Boolean = (this eq other.asInstanceOf[AnyRef]) || (other match {
     case that: SRMethod
-      if getDeclaringClass == that.getDeclaringClass && getName == that.getName =>
+      if getDeclaringClass() == that.getDeclaringClass() && getName == that.getName =>
       parameterTypes == that.getParameterTypes()
     case _ => false
   })
