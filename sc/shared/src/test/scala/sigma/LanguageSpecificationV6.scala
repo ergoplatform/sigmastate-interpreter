@@ -2376,6 +2376,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[BigInt, Long](
       { (bi: BigInt) => SigmaDsl.encodeNbits(bi) },
       """{(bi: BigInt) => Global.encodeNbits(bi) }""".stripMargin,
+      FuncValue(
+        Array((1, SBigInt)),
+        MethodCall.typed[Value[SLong.type]](
+          Global,
+          SGlobalMethods.encodeNBitsMethod,
+          Array(ValUse(1, SBigInt)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2396,6 +2405,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[Long, BigInt](
       { (l: Long) => SigmaDsl.decodeNbits(l) },
       """{(l: Long) => Global.decodeNbits(l) }""".stripMargin,
+      FuncValue(
+        Array((1, SLong)),
+        MethodCall.typed[Value[SBigInt.type]](
+          Global,
+          SGlobalMethods.decodeNBitsMethod,
+          Array(ValUse(1, SLong)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 

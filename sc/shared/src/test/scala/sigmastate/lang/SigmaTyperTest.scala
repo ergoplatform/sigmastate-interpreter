@@ -899,4 +899,65 @@ class SigmaTyperTest extends AnyPropSpec
     }
   }
 
+  property("None inferred from `val` type ascription") {
+    // Should fail in v5
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "{val X: Option[Int] = None; X}"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+    }
+
+    // Should work in v6
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "{val X: Option[Int] = None; X}") shouldBe SOption(SInt)
+      typecheck(env, "{val X: Option[Long] = None; X}") shouldBe SOption(SLong)
+      typecheck(env, "{val X: Option[Coll[Byte]] = None; X}") shouldBe SOption(SCollection(SByte))
+    }
+  }
+
+  property("None inferred from sibling if-branch") {
+    // Should fail in v5
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "if (SELF.R5[Int].isDefined) None else SELF.R5[Int]"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+    }
+
+    // Should work in v6
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "if (SELF.R5[Int].isDefined) None else SELF.R5[Int]") shouldBe SOption(SInt)
+      typecheck(env, "if (SELF.R5[Int].isDefined) SELF.R5[Int] else None") shouldBe SOption(SInt)
+      typecheck(env, "if (HEIGHT > 0) None else getVar[Long](1)") shouldBe SOption(SLong)
+    }
+  }
+
+  property("bare None without context still errors") {
+    // Pre-V6 bare `None` is rejected via the generic unresolved-name path;
+    // `Global.none[T]()` is rejected via the version-gated method lookup.
+    runWithVersion((VersionContext.V6SoftForkVersion - 1).toByte) {
+      assertExceptionThrown(
+        typecheck(env, "None"),
+        exceptionLike[TyperException]("Cannot assign type for variable 'None'")
+      )
+      assertExceptionThrown(
+        typecheck(env, "Global.none[Int]()"),
+        exceptionLike[MethodNotFound]("Cannot find method 'none'")
+      )
+    }
+
+    // V6: bare `None` outside any inferring context produces the typer hint.
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      assertExceptionThrown(
+        typecheck(env, "None"),
+        exceptionLike[TyperException]("Cannot infer the type of `None`")
+      )
+      assertExceptionThrown(
+        typecheck(env, "if (HEIGHT > 0) None else 1"),
+        exceptionLike[TyperException]("Cannot infer the type of `None`")
+      )
+    }
+  }
+
 }
