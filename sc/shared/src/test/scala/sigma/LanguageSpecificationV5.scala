@@ -8055,7 +8055,6 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     val n = ExactNumeric.IntIsExactNumeric
     verifyCases(
       {
-        def success[T](v: T, c: Int) = Expected(Success(v), c)
         Seq(
           (Coll[Int](), Expected(Success(Coll[Int]()), 1768, costDetails(0), 1768, Seq.fill(4)(2022))),
           (Coll[Int](1), Expected(Success(Coll[Int](2)), 1771, costDetails(1), 1771, Seq.fill(4)(2025))),
@@ -8151,7 +8150,6 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     if (lowerMethodCallsInTests) {
       verifyCases(
         {
-          def success[T](v: T, c: Int) = Expected(Success(v), c)
           Seq(
             (Coll[Int](), Expected(Success(Coll[Int]()), 1768, costDetails1, 1768, Seq.fill(4)(2054))),
             (Coll[Int](1), Expected(Success(Coll[Int](2)), 1775, costDetails2, 1775, Seq.fill(4)(2061))),
@@ -8280,8 +8278,6 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     val o = ExactOrdering.IntIsExactOrdering
     verifyCases(
       {
-        def success[T](v: T, c: Int) = Expected(Success(v), c)
-
         Seq(
           (Coll[Int](), Expected(Success(Coll[Int]()), 1768, costDetails(0), 1768, Seq.fill(4)(2048))),
           (Coll[Int](1), Expected(Success(Coll[Int](1)), 1775, costDetails(1), 1775, Seq.fill(4)(2055))),

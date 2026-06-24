@@ -458,17 +458,6 @@ class SigmaDslTesting extends AnyPropSpec
           |""".stripMargin)
     }
 
-    private def checkEqualResults(res1: Try[VerificationResult], res2: Try[VerificationResult]): Unit = {
-      (res1, res2) match {
-        case (Success((v1, c1)), Success((v2, c2))) =>
-          v1 shouldBe v2
-        case (Failure(t1), Failure(t2)) =>
-          rootCause(t1) shouldBe rootCause(t2)
-        case _ =>
-          res1 shouldBe res2
-      }
-    }
-
     private def checkExpectedResult(
           res: Try[VerificationResult], expectedCost: Option[Int]): Unit = {
       res match {
@@ -816,11 +805,11 @@ class SigmaDslTesting extends AnyPropSpec
           (Try(scalaFunc(input)), Try(oldF(input)._1)) match {
             case (Success(s), Success(old)) =>
               s shouldBe old
-            case (Failure(e), oldRes @ Success(_)) =>
+            case (Failure(_), oldRes @ Success(_)) =>
               // allow this because of allowNewToSucceed
               oldRes shouldBe expRes
-            case (Success(s), Failure(e)) =>
-              fail(s"Old version fail while scalaFunc succeeds: $s <+++> $e")
+            case (Success(s), Failure(_)) =>
+              fail(s"Old version fail while scalaFunc succeeds: $s")
             case (Failure(e), Failure(old)) =>
               e.getClass shouldBe old.getClass
           }
