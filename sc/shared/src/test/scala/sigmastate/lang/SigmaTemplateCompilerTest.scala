@@ -10,7 +10,6 @@ import sigma.ast.{BinAnd, BoolToSigmaProp, ConstantPlaceholder, ErgoTree, FalseL
 import sigma.compiler.SigmaTemplateCompiler
 import sigma.exceptions.TyperException
 import sigmastate.CompilerTestsBase
-import sigmastate.interpreter.Interpreter.ScriptEnv
 
 class SigmaTemplateCompilerTest extends AnyPropSpec with ScalaCheckPropertyChecks with CompilerTestsBase {
   val templateCompiler = SigmaTemplateCompiler(ErgoAddressEncoder.MainnetNetworkPrefix)

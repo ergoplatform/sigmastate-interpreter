@@ -4,7 +4,6 @@ import org.ergoplatform.{ErgoBox, ErgoHeader}
 import org.ergoplatform.settings.ErgoAlgos
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.containerOfN
-import org.scalacheck.util.Buildable
 import org.scalacheck.{Arbitrary, Gen}
 import sigma.data._
 import scorex.crypto.authds.{ADKey, ADValue}
@@ -17,7 +16,6 @@ import sigmastate.helpers.TestingCommons
 import sigma.serialization.ErgoTreeSerializer
 import sigma.serialization.generators.ObjectGenerators
 import sigmastate.utils.Helpers
-import sigma.ast.{SBoolean, SSigmaProp}
 import sigma.crypto.{EcPointType, SecP256K1Group}
 import ErgoTree.HeaderType
 import sigma.eval.SigmaDsl

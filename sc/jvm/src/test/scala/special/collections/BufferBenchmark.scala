@@ -6,7 +6,6 @@ import org.scalameter.api.Bench
 
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import scala.collection.compat.immutable.ArraySeq
 
 trait BufferBenchmarkCases extends BenchmarkGens { suite: Bench[Double] =>
   val obj = new Object()

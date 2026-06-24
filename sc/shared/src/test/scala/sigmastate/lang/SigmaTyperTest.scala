@@ -8,7 +8,7 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import sigma.{Colls, VersionContext}
 import sigma.ast.SCollection._
 import sigma.ast._
-import sigma.ast.syntax.{SValue, SigmaPropValue, SigmaPropValueOps}
+import sigma.ast.syntax.{SValue, SigmaPropValue}
 import sigma.crypto.CryptoConstants
 import sigma.data.ProveDlog
 import sigmastate._
