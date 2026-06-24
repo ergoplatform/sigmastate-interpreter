@@ -130,9 +130,9 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, """fromBase64("111")""") shouldBe SByteArray
 
     typecheck(env, {
-      implicit val ergoAddressEncoder: ErgoAddressEncoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
+      val encoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
       val pk = ProveDlog(CryptoConstants.dlogGroup.generator)
-      val addr = P2PKAddress(pk)
+      val addr = P2PKAddress(pk)(encoder)
       val str = addr.toString
       s"""PK("${str}")"""
     }) shouldBe SSigmaProp

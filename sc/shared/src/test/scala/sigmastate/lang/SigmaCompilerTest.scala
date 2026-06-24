@@ -33,17 +33,6 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     an [GraphBuildingException] should be thrownBy comp(env, script)
   }
 
-  private def costerFail(env: ScriptEnv, x: String, expectedLine: Int, expectedCol: Int): Unit = {
-    val exception = the[GraphBuildingException] thrownBy comp(env, x)
-    withClue(s"Exception: $exception, is missing source context:") { exception.source shouldBe defined }
-    val sourceContext = exception.source.get
-    sourceContext.line shouldBe expectedLine
-    sourceContext.column shouldBe expectedCol
-  }
-
-  private def costerFail(x: String, expectedLine: Int, expectedCol: Int): Unit =
-    costerFail(env, x, expectedLine, expectedCol)
-
   property("array indexed access") {
     comp(env, "Coll(1)(0)") shouldBe
       ByIndex(ConcreteCollection.fromSeq(Array(IntConstant(1)))(SInt), 0)
@@ -129,9 +118,9 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
   }
 
   property("PK (testnet network prefix)") {
-    implicit val ergoAddressEncoder: ErgoAddressEncoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
+    val encoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
     val dk1 = proveDlogGen.sample.get
-    val encodedP2PK = P2PKAddress(dk1).toString
+    val encodedP2PK = P2PKAddress(dk1)(encoder).toString
     val code = s"""PK("$encodedP2PK")"""
     val res = comp(code)
     res shouldEqual SigmaPropConstant(dk1)
