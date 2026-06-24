@@ -336,7 +336,7 @@ trait Thunks extends Functions { self: IRContext =>
   def thunk_force[A](t: Th[A]): Ref[A] =
     if (isInlineThunksOnForce)
       t.node match {
-        case th @ ThunkDef(_, _) =>
+        case ThunkDef(_, _) =>
           forceThunkByMirror(t)
         case _ => ThunkForce(t)
       }

@@ -18,7 +18,7 @@ trait Tuples extends Base { self: IRContext =>
 
   object IsPair {
     def unapply[A,B](s: Sym): Option[Ref[(A,B)]] = s.elem match {
-      case pe: PairElem[_,_] => Some(s.asInstanceOf[Ref[(A,B)]])
+      case _: PairElem[_,_] => Some(s.asInstanceOf[Ref[(A,B)]])
       case _ => None
     }
   }
@@ -59,7 +59,7 @@ trait Tuples extends Base { self: IRContext =>
   def unzipPair[A, B](p: Ref[(A, B)]): (Ref[A], Ref[B]) = p.node match {
     case Tup(a, b) => (a, b)
     case _ => p.elem match {
-      case pe: PairElem[_, _] =>
+      case _: PairElem[_, _] =>
         if (cachePairs) {
           if (!tuplesCache.containsKey(p)) {
             tuplesCache.put(p, (First(p), Second(p)))

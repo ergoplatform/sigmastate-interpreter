@@ -175,7 +175,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         res.isValid
 
       // Rule: l op Thunk {... prop.isValid} => (TrivialSigma(l) op prop).isValid
-      case ApplyBinOpLazy(op, l, Def(ThunkDef(root @ SigmaM.isValid(prop), sch))) if l.elem == BooleanElement =>
+      case ApplyBinOpLazy(op, l, Def(ThunkDef(SigmaM.isValid(prop), _))) if l.elem == BooleanElement =>
         val l1 = asRep[SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](l)))
         // don't need new Thunk because sigma logical ops always strict
         val res = if (op == And)
