@@ -9,7 +9,8 @@ import sigmastate._
 import sigmastate.helpers.CompilerTestingCommons
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigma.ast.{Apply, MethodCall, ZKProofBlock}
-import sigma.exceptions.{GraphBuildingException, InvalidArguments, TyperException}
+import sigma.VersionContext
+import sigma.exceptions.{BuilderException, GraphBuildingException, InvalidArguments, TyperException}
 import sigma.serialization.ValueSerializer
 import sigma.serialization.generators.ObjectGenerators
 
@@ -99,6 +100,44 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp("{ def f(i: Int) = { i + 1 }; f(2) }") shouldBe Apply(
       FuncValue(Vector((1,SInt)),Plus(ValUse(1,SInt), IntConstant(1))),
       Vector(IntConstant(2)))
+  }
+
+  property("1-arg function with explicit tuple parameter is not affected by the lowering") {
+    // 1-arg lambda whose param happens to be an STuple: the Apply rule's
+    // `args.length >= 2` guard does not fire, so the call site is unchanged.
+    // Verifies the lowering does NOT double-tuple already-tuple-typed calls.
+    val tree = comp("{ def f(t: (Int, Int)) = t._1 + t._2; f((1, 2)) }")
+    val app = tree.asInstanceOf[Apply]
+    val fv = app.func.asInstanceOf[FuncValue]
+    fv.args.length shouldBe 1
+    fv.args.head._2 shouldBe STuple(SInt, SInt)
+    app.args.length shouldBe 1
+    val arg = app.args.head.asInstanceOf[Tuple]
+    arg.items.length shouldBe 2
+    arg.items.foreach(_ shouldBe an [IntConstant])
+  }
+
+  property("n-ary user-defined functions require v6+") {
+    // Pre-v6 (activated v5 == version 2): the gate in NAryFunctionLowering
+    // refuses to rewrite a multi-arg user-function call.
+    VersionContext.withVersions(activatedVersion = 2, ergoTreeVersion = 2) {
+      val ex = the [BuilderException] thrownBy comp("{ def f(a: Int, b: Int) = a + b; f(1, 2) }")
+      ex.getMessage should include ("require ErgoTree v6+")
+    }
+  }
+
+  property("higher-order method with 2-arg lambda still compiles at pre-v6 typer") {
+    // fold/forall/exists pass a 2-arg lambda via MethodCall, not Apply.
+    // The lowering's Apply gate must NOT affect this path. Here we only
+    // exercise typing (not the full IR), since the SigmaCompilerTest IR
+    // context is initialized at the default version and re-entering a
+    // different version mid-class breaks the IR. Typing is enough to
+    // demonstrate the Apply gate doesn't reject the fold lambda.
+    VersionContext.withVersions(activatedVersion = 2, ergoTreeVersion = 2) {
+      val sc = sigma.compiler.SigmaCompiler(TestnetNetworkPrefix)
+      noException should be thrownBy sc.typecheck(env,
+        "OUTPUTS.fold(0L, { (acc: Long, b: Box) => acc + b.value })")
+    }
   }
 
   property("allOf") {

@@ -13,7 +13,7 @@ import sigma.ast._
 import sigma.ast.syntax.SValue
 import SCollectionMethods.{ExistsMethod, ForallMethod, MapMethod}
 import sigma.compiler.ir.{GraphIRReflection, IRContext}
-import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
+import sigma.compiler.phases.{NAryFunctionLowering, SigmaBinder, SigmaTyper}
 import sigmastate.InterpreterReflection
 import sigmastate.lang.SigmaParser
 
@@ -98,7 +98,8 @@ class SigmaCompiler private(settings: CompilerSettings) {
         .zipWithIndex
         .map { case ((name, t), index) => name -> ConstantPlaceholder(index, t) }
         .toMap
-    val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
+    val loweredExpr = NAryFunctionLowering.lower(typedExpr)
+    val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, loweredExpr)
     val compiledTree = IR.buildTree(compiledGraph)
     CompilerResult(env, "<no source code>", compiledGraph, compiledTree)
   }
