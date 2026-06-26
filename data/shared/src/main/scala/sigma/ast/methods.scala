@@ -3,10 +3,7 @@ package sigma.ast
 import org.ergoplatform._
 import org.ergoplatform.validation._
 import sigma.{UnsignedBigInt, _}
-import sigma.{Coll, VersionContext, _}
 import sigma.Evaluation.stypeToRType
-import sigma._
-import sigma.{VersionContext, _}
 import sigma.ast.SCollection.{SBooleanArray, SBoxArray, SByteArray, SByteArray2, SHeaderArray}
 import sigma.ast.SGlobalMethods.{decodeNBitsMethod, encodeNBitsMethod}
 import sigma.ast.SMethod.{MethodCallIrBuilder, MethodCostFunc, javaMethodOf}

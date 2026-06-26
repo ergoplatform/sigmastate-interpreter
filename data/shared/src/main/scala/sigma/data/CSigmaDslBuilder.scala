@@ -6,22 +6,16 @@ import org.ergoplatform.validation.ValidationRules
 import scorex.crypto.hash.{Blake2b256, Sha256}
 import scorex.util.serialization.VLQByteBufferReader
 import scorex.utils.{Ints, Longs}
-import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
-import scorex.utils.Longs
 import sigma.Evaluation.rtypeToSType
-import sigma.ast.{AtLeast, SType, SubstConstants}
-import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
+import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
 import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType, Ecp}
 import sigma.eval.Extensions.EvalCollOps
-import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer}
-import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
-import sigma.serialization.SerializerException
+import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer, SerializerException}
 import sigma.pow.Autolykos2PowValidation
 import sigma.util.Extensions.BigIntegerOps
 import sigma.util.NBitsUtils
 import sigma.validation.SigmaValidationSettings
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
 import java.nio.ByteBuffer

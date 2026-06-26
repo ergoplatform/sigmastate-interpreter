@@ -5,7 +5,7 @@ import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate.eval.{CAvlTreeVerifier, CProfiler}
 import sigmastate.interpreter.Interpreter.ReductionResult
-import sigma.{AvlTree, Coll, Colls, Context, Header, VersionContext}
+import sigma.{AvlTree, Coll, Colls, Context, VersionContext}
 import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey

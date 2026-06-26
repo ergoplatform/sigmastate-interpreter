@@ -4,8 +4,7 @@ import debox.cfor
 import sigma.data.RType
 import sigma.rtypeToClassTag // actually used
 import sigmastate.eval.CPreHeader
-import sigma.{Coll, CollBuilder, PairColl}
-import sigma.{Header, PreHeader}
+import sigma.{Coll, CollBuilder, Header, PairColl, PreHeader}
 
 import scala.collection.compat.BuildFrom
 import scala.collection.{GenIterable, immutable}

@@ -5,14 +5,11 @@ import org.ergoplatform.{ErgoAddressEncoder, P2PKAddress}
 import org.ergoplatform.ErgoBox.RegisterId
 import scorex.util.encode.{Base16, Base58, Base64}
 import sigma.data._
-import sigma.{Colls}
 import sigma.ast.SCollection.{SByteArray, SIntArray}
 import sigma.ast.SOption.SIntOption
 import sigma.ast.syntax._
 import sigma.data.Nullable
-import sigma.data.RType.asType
 import sigma.Evaluation.stypeToRType
-import scala.reflect.ClassTag
 import sigma.exceptions.InvalidArguments
 import sigma.serialization.CoreByteWriter.ArgInfo
 import sigma.serialization.ValueSerializer

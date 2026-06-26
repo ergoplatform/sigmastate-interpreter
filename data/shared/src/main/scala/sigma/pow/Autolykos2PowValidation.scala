@@ -4,7 +4,7 @@ package sigma.pow
 import scorex.crypto.hash.Blake2b256
 import scorex.utils.{Bytes, Ints, Longs}
 import sigma.Header
-import sigma.crypto.{BcDlogGroup, BigIntegers, CryptoConstants}
+import sigma.crypto.{BigIntegers, CryptoConstants}
 import sigma.util.NBitsUtils
 
 /**
