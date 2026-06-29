@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.16, 2.12.20, 2.11.12]
+        scala: [2.13.18, 2.12.21, 2.11.12]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -61,10 +61,11 @@ jobs:
     name: JS - Test and publish snapshots
     env:
       HAS_SECRETS: ${{ secrets.SONATYPE_PASSWORD != '' }}
+      HAS_NPM_SECRETS: ${{ secrets.NPM_TOKEN != '' }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.16]
+        scala: [2.13.18]
         java: [adopt@1.8]
         node-version: [20]
     runs-on: ${{ matrix.os }}
@@ -120,11 +121,12 @@ jobs:
         working-directory: ./sigma-js
 
       - name: Setup JS snapshot
+        if: github.event_name == 'push' && env.HAS_NPM_SECRETS == 'true'
         run: npm run ci:snapshot
         working-directory: ./sigma-js
 
       - name: Publish JS snapshot ${{ github.ref }}
-        if: env.HAS_SECRETS == 'true'
+        if: github.event_name == 'push' && env.HAS_NPM_SECRETS == 'true'
         run: npm publish --tag snapshot
         working-directory: ./sigma-js
         env:

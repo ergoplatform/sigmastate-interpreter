@@ -803,7 +803,7 @@
        
 \end{tabularx}
 
-\subsubsection{\lst{executeFromSelfReg} method (Code 213)}
+\subsubsection{\lst{executeFromSelfRegWithDefault} method (Code 213)}
 \label{sec:appendix:primops:DeserializeRegister}
 \noindent
 \begin{tabularx}{\textwidth}{| l | X |}
@@ -813,14 +813,15 @@
  The original \lst{Coll[Byte]} of the script is available as \lst{SELF.getReg[Coll[Byte]](id)}.
  Type parameter \lst{T} result type of the deserialized script.
  Throws an exception if the actual script type doesn't conform to \lst{T}.
- Returns a result of the script execution in the current context
+ Returns a result of the script execution in the current context or the default value
+ provided when the specified register is unavailable
          \\
   
   \hline
   \bf{Parameters} &
       \(\begin{array}{l l l}
-         \lst{id} & \lst{: Byte} & \text{// identifier of the register} \\
-\lst{default} & \lst{: Option[T]} & \text{// optional default value, if register is not available} \\
+         \lst{id} & \lst{: Int} & \text{// identifier of the register} \\
+\lst{default} & \lst{: T} & \text{// optional default value, if register is not available} \\
       \end{array}\) \\
        
   \hline
