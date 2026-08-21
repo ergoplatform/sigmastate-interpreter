@@ -47,6 +47,16 @@ object VersionContext {
     */
   val MaxSupportedScriptVersion: Byte = 3 // supported versions 0, 1, 2, 3
 
+  /** True when the given activated protocol version is beyond what this
+    * interpreter release understands. In this regime the coarse soft-fork
+    * gate in `Interpreter.checkSoftForkCondition` may accept boxes without
+    * full verification, relying on the >=90% of upgraded nodes that drove
+    * activation. Release-agnostic by design: tracks `MaxSupportedScriptVersion`,
+    * so future protocol bumps don't require revisiting this predicate.
+    */
+  def isFutureActivatedVersion(activatedVersion: Byte): Boolean =
+    activatedVersion > MaxSupportedScriptVersion
+
   /** The first version of ErgoTree starting from which the JIT costing interpreter is used. */
   val JitActivationVersion: Byte = 2
 
