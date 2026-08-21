@@ -2,7 +2,7 @@ package sigma.serialization
 
 import org.ergoplatform.validation.ValidationRules.{CheckDeserializedScriptIsSigmaProp, CheckHeaderSizeBit}
 import sigma.ast.{Constant, DeserializationSigmaBuilder, ErgoTree, SType, UnparsedErgoTree}
-import sigma.ast.syntax.ValueOps
+import sigma.ast.syntax.{SigmaPropValue, ValueOps}
 import sigma.ast.ErgoTree.{EmptyConstants, HeaderType, getVersion}
 import sigma.util.safeNewArray
 import debox.cfor
@@ -151,38 +151,105 @@ class ErgoTreeSerializer {
 
     val tree = try {
       try { // nested try-catch to intercept size limit exceptions and rethrow them as ValidationExceptions
-        VersionContext.withVersions(scriptVersion, treeVersion) {
-          val cs = deserializeConstants(h, r)
-          val previousConstantStore = r.constantStore
-          // reader with constant store attached is required (to get tpe for a constant placeholder)
-          r.constantStore = new ConstantStore(cs)
+        sizeOpt match {
+          case Some(declaredBodySize) =>
+            // Lazy path: the size bit is set, so the body length is known.
+            // We can capture all tree bytes now and defer parsing the root expression until
+            // someone actually reads `ergoTree.root`. Callers that only need `bytes`,
+            // `template`, or `constants` never pay the AST-construction cost.
+            //
+            // Constants are parsed eagerly because:
+            //   - they are cheap (typically a handful of small literals)
+            //   - they are needed for `template`, `substituteConstants`, and address derivation
+            //   - the reader has to advance through them anyway to reach the body
+            VersionContext.withVersions(scriptVersion, treeVersion) {
+              val cs = deserializeConstants(h, r)
+              val constantsBytesConsumed = r.position - bodyPos
+              val rootBytesLen = declaredBodySize - constantsBytesConsumed
+              if (rootBytesLen < 0) {
+                throw SerializerException(
+                  s"Inconsistent size-bit: declared body size $declaredBodySize is smaller than parsed constants section size $constantsBytesConsumed")
+              }
 
-          val wasDeserialize_saved = r.wasDeserialize
-          r.wasDeserialize = false
+              // Snapshot the root body bytes; the reader is advanced past them now so the
+              // outer parser sees the whole tree as consumed.
+              val rootBodyBytes = r.getBytes(rootBytesLen)
 
-          val wasUsingBlockchainContext_saved = r.wasUsingBlockchainContext
-          r.wasUsingBlockchainContext = false
+              // Capture the full propositionBytes (header + size slot + constants + body) so
+              // re-serialization is free and `bytes` lookup is non-allocating.
+              val treeSize = r.position - startPos
+              r.position = startPos
+              val propositionBytes = r.getBytes(treeSize)
 
-          val root = ValueSerializer.deserialize(r)
-          val hasDeserialize = r.wasDeserialize // == true if there was deserialization node
-          r.wasDeserialize = wasDeserialize_saved
+              // The lazy parser uses a fresh reader on the captured body bytes. We snapshot
+              // the version context here because activated/tree version must be the values
+              // that were in force at deserialization time, not at first-access time.
+              val capturedScriptVersion = scriptVersion
+              val capturedTreeVersion = treeVersion
+              val rootThunk: () => Either[UnparsedErgoTree, SigmaPropValue] = () => {
+                try {
+                  VersionContext.withVersions(capturedScriptVersion, capturedTreeVersion) {
+                    val rr = SigmaSerializer.startReader(rootBodyBytes)
+                    rr.constantStore = new ConstantStore(cs)
+                    val rootValue = ValueSerializer.deserialize(rr)
+                    if (checkType) {
+                      CheckDeserializedScriptIsSigmaProp(rootValue)
+                    }
+                    Right(rootValue.asSigmaProp)
+                  }
+                } catch {
+                  case ve: ValidationException =>
+                    Left(UnparsedErgoTree(propositionBytes, ve))
+                }
+              }
 
-          val isUsingBlockchainContext = r.wasUsingBlockchainContext // == true if there was a node using the blockchain context
-          r.wasUsingBlockchainContext = wasUsingBlockchainContext_saved
+              // _hasDeserialize / _isUsingBlockchainContext start as None and will be computed
+              // by forcing `root` if they are ever queried — same code path as today's eager
+              // construction, only deferred. For trees that are never evaluated (the dominant
+              // case in p2p ingest), neither flag is queried and neither parse happens.
+              new ErgoTree(
+                h, cs, rootThunk,
+                propositionBytes,
+                givenDeserialize = None,
+                givenIsUsingBlockchainContext = None)
+            }
 
-          if (checkType) {
-            CheckDeserializedScriptIsSigmaProp(root)
-          }
+          case None =>
+            // Legacy path (no size bit): parse the body eagerly. We cannot defer because
+            // we don't know how many body bytes there are without parsing them.
+            VersionContext.withVersions(scriptVersion, treeVersion) {
+              val cs = deserializeConstants(h, r)
+              val previousConstantStore = r.constantStore
+              // reader with constant store attached is required (to get tpe for a constant placeholder)
+              r.constantStore = new ConstantStore(cs)
 
-          r.constantStore = previousConstantStore
-          // now we know the end position of propositionBytes, read them all at once into array
-          val treeSize = r.position - startPos
-          r.position = startPos
-          val propositionBytes = r.getBytes(treeSize)
+              val wasDeserialize_saved = r.wasDeserialize
+              r.wasDeserialize = false
 
-          new ErgoTree(
-            h, cs, Right(root.asSigmaProp),
-            propositionBytes, Some(hasDeserialize), Some(isUsingBlockchainContext))
+              val wasUsingBlockchainContext_saved = r.wasUsingBlockchainContext
+              r.wasUsingBlockchainContext = false
+
+              val root = ValueSerializer.deserialize(r)
+              val hasDeserialize = r.wasDeserialize // == true if there was deserialization node
+              r.wasDeserialize = wasDeserialize_saved
+
+              val isUsingBlockchainContext = r.wasUsingBlockchainContext // == true if there was a node using the blockchain context
+              r.wasUsingBlockchainContext = wasUsingBlockchainContext_saved
+
+              if (checkType) {
+                CheckDeserializedScriptIsSigmaProp(root)
+              }
+
+              r.constantStore = previousConstantStore
+              // now we know the end position of propositionBytes, read them all at once into array
+              val treeSize = r.position - startPos
+              r.position = startPos
+              val propositionBytes = r.getBytes(treeSize)
+
+              new ErgoTree(
+                h, cs, Right(root.asSigmaProp),
+                propositionBytes, Some(hasDeserialize), Some(isUsingBlockchainContext))
+            }
         }
       }
       catch {

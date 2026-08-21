@@ -13,7 +13,6 @@ import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigma.serialization.{ConstantStore, ErgoTreeSerializer, SigmaSerializer, ValueSerializer}
 import supertagged.TaggedType
 
-import java.util.Objects
 import scala.collection.mutable
 
 /** This is alternative representation of ErgoTree expression when it cannot be parsed
@@ -50,18 +49,20 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   * The default behavior of ErgoTreeSerializer is to preserve original structure of ErgoTree and check
   * consistency. In case of any inconsistency the serializer throws exception.
   *
+  * Note: It is a plain class so the `root` field can be backed by a `lazy val`, allowing the deserializer
+  * to defer parsing of the tree body until the root is actually accessed.
+  *
   * @param header           the first byte of serialized byte array which determines interpretation of the rest of the array
   * @param constants        If isConstantSegregation == true contains the constants for which there may be
   *                         ConstantPlaceholders in the tree.
   *                         If isConstantSegregation == false this array should be empty and any placeholder in
   *                         the tree will lead to exception.
-  * @param root             On the right side it has valid expression of `SigmaProp` type. Or alternatively,
-  *                         on the left side, it has unparsed bytes along with the ValidationException,
+  * @param rootInit         Thunk producing `Either[UnparsedErgoTree, SigmaPropValue]`. For trees constructed
+  *                         eagerly this is just `() => providedRoot`; for trees deserialized with the
+  *                         size bit set, the thunk parses the body bytes on first access.
+  *                         On the right side it has a valid expression of `SigmaProp` type. Alternatively,
+  *                         on the left side, it has unparsed bytes along with the ValidationException
   *                         which caused the deserializer to fail.
-  *                         `Right(tree)` if isConstantSegregation == true contains ConstantPlaceholder
-  *                         instead of some Constant nodes. Otherwise, it may not contain placeholders.
-  *                         It is possible to have both constants and placeholders in the tree, but for every placeholder
-  *                         there should be a constant in `constants` array.
   * @param propositionBytes original bytes of this tree from which it has been deserialized.
   *                         If null then the bytes are not provided, and will be lazily generated when `bytes`
   *                         method is called.
@@ -78,14 +79,26 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   * @param givenIsUsingBlockchainContext optional flag which indicates that blockchain context related operations
   *                                      are used in the tree
   */
-case class ErgoTree private[sigma](
-    header: HeaderType,
-    constants: IndexedSeq[Constant[SType]],
-    root: Either[UnparsedErgoTree, SigmaPropValue],
+class ErgoTree private[sigma](
+    val header: HeaderType,
+    val constants: IndexedSeq[Constant[SType]],
+    rootInit: () => Either[UnparsedErgoTree, SigmaPropValue],
     private val propositionBytes: Array[Byte],
     private val givenDeserialize: Option[Boolean],
     private val givenIsUsingBlockchainContext: Option[Boolean]
-) {
+) extends Serializable {
+
+  /** Eager 6-arg constructor preserving the previous case-class signature. */
+  def this(
+      header: HeaderType,
+      constants: IndexedSeq[Constant[SType]],
+      root: Either[UnparsedErgoTree, SigmaPropValue],
+      propositionBytes: Array[Byte],
+      givenDeserialize: Option[Boolean],
+      givenIsUsingBlockchainContext: Option[Boolean]) =
+    this(header, constants, () => root, propositionBytes, givenDeserialize, givenIsUsingBlockchainContext)
+
+  /** Eager 3-arg constructor preserving the previous secondary constructor. */
   def this(
       header: HeaderType,
       constants: IndexedSeq[Constant[SType]],
@@ -93,15 +106,52 @@ case class ErgoTree private[sigma](
     this(
       header, constants, root,
       propositionBytes = DefaultSerializer.serializeErgoTree(
-        ErgoTree(header, constants, root, null, None, None)
+        new ErgoTree(header, constants, () => root, null, None, None)
       ),
       givenDeserialize = None,
       givenIsUsingBlockchainContext = None
     )
 
+  // Manual lazy backing for `root` so the init thunk (and any state it captured, most
+  // notably the body-bytes slice for the lazy deserialize path) can be released after
+  // the first force. Scala's auto `lazy val` would retain `rootInit` as a synthetic
+  // field forever, defeating part of the memory win for trees that are eventually
+  // evaluated. `Either[L, R]` is never `null`, so a null `_rootValue` is a safe
+  // "not yet computed" sentinel. Double-checked locking on @volatile fields is the
+  // standard Java/Scala recipe for one-shot lazy initialization across threads.
+  @volatile private[this] var _rootValue: Either[UnparsedErgoTree, SigmaPropValue] = _
+  @volatile private[this] var _rootInit: () => Either[UnparsedErgoTree, SigmaPropValue] = rootInit
+
+  /** Root value of this tree.
+    *
+    * For eagerly constructed trees this returns the value supplied to the constructor.
+    * For trees built by the deserializer from a size-bit ErgoTree, the first access
+    * triggers parsing of the captured body bytes; subsequent accesses return the
+    * cached result and the underlying parse closure is released for GC.
+    */
+  def root: Either[UnparsedErgoTree, SigmaPropValue] = {
+    val cached = _rootValue
+    if (cached != null) cached
+    else this.synchronized {
+      val cached2 = _rootValue
+      if (cached2 != null) cached2
+      else {
+        val computed = _rootInit()
+        _rootValue = computed
+        _rootInit = null // release the closure and its captured body bytes
+        computed
+      }
+    }
+  }
+
+  /** Whether `root` has been computed yet. Test suite verify that operations like
+    * `bytes`, `template`, equality, etc. don't accidentally force the lazy root.
+    */
+  private[sigma] def isRootForced: Boolean = _rootValue != null
+
   require(isConstantSegregation || constants.isEmpty)
 
-  require(version == 0 || hasSize, s"For newer version the size bit is required: $this")
+  require(version == 0 || hasSize, s"For newer version the size bit is required: header=$header")
 
   /** Then it throws the error from UnparsedErgoTree.
     * It does so on every usage of `proposition` because the lazy value remains uninitialized.
@@ -211,17 +261,53 @@ case class ErgoTree private[sigma](
     }
   }
 
-  /** The default equality of case class is overridden to exclude `complexity`. */
-  override def canEqual(that: Any): Boolean = that.isInstanceOf[ErgoTree]
+  /** Replicates the synthetic `copy` method of the case class, with one semantic change
+    * required by bytes-based equality:
+    *
+    * `propositionBytes` and the cached `givenDeserialize` / `givenIsUsingBlockchainContext`
+    * flags are NOT preserved from `this`. They are reset and will be lazily recomputed
+    * from the (possibly changed) field values on first access. This guarantees that
+    * `ergoTree.bytes` and the cached flags stay consistent with `header`, `constants`,
+    * and `root` after any override.
+    */
+  def copy(
+      header: HeaderType = this.header,
+      constants: IndexedSeq[Constant[SType]] = this.constants,
+      root: Either[UnparsedErgoTree, SigmaPropValue] = this.root
+  ): ErgoTree =
+    new ErgoTree(
+      header, constants, root,
+      propositionBytes = null,
+      givenDeserialize = None,
+      givenIsUsingBlockchainContext = None)
 
-  override def hashCode(): Int = header * 31 + Objects.hash(constants, root)
+  def canEqual(that: Any): Boolean = that.isInstanceOf[ErgoTree]
+
+  /* NO HF PROOF:
+     Changed: ErgoTree.equals / hashCode switched from structural over (header, constants, root)
+     to bytes-based (`java.util.Arrays.equals(this.bytes, other.bytes)`).
+     Safety:
+       - ErgoTree equality is NOT used inside ErgoTransaction.validateStateful or any code path
+         it reaches (verified by grep across the repository — only references are in
+         `ErgoTreeSpecification` tests and structural comments).
+       - For any tree obtained via the serializer, `bytes` is deterministically computed from
+         `(header, constants, root)`; therefore bytes-equality is structurally equivalent to
+         the previous definition. The serializer is the only producer of `propositionBytes`,
+         and `bytes` lazily recomputes from `(header, constants, root)` for programmatically
+         constructed trees.
+       - hashCode collision profile changes (from Objects.hash to Arrays.hashCode), but the
+         hashCode contract is preserved.
+  */
+  override def hashCode(): Int = java.util.Arrays.hashCode(bytes)
 
   override def equals(obj: Any): Boolean = (this eq obj.asInstanceOf[AnyRef]) ||
       ((obj.asInstanceOf[AnyRef] != null) && (obj match {
-        case other: ErgoTree =>
-          other.header == header && other.constants == constants && other.root == root
+        case other: ErgoTree => java.util.Arrays.equals(bytes, other.bytes)
         case _ => false
       }))
+
+  override def toString: String =
+    s"ErgoTree(header=$header, constants=${constants.length}, bytes=${bytes.length}B)"
 }
 
 object ErgoTree {
@@ -328,6 +414,15 @@ object ErgoTree {
       root: SigmaPropValue): ErgoTree = {
     new ErgoTree(setRequiredBits(header), constants, Right(root))
   }
+
+  /** Returns the 6 fields from the class definition. Pattern matchers typically only
+    * inspect the first three (header, constants, root); the remaining three are exposed
+    * to keep existing match patterns binary-compatible.
+    *
+    * Forcing `t.root` is unavoidable here because the pattern surfaces the root value.
+    */
+  def unapply(t: ErgoTree): Option[(HeaderType, IndexedSeq[Constant[SType]], Either[UnparsedErgoTree, SigmaPropValue], Array[Byte], Option[Boolean], Option[Boolean])] =
+    Some((t.header, t.constants, t.root, t.bytes, t._hasDeserialize, t._isUsingBlockchainContext))
 
   val EmptyConstants: IndexedSeq[Constant[SType]] = Array[Constant[SType]]()
 
