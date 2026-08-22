@@ -190,5 +190,6 @@ object OpCodes {
 
   val ContextCode             : OpCode = newOpCode(142)
   val XorOfCode               : OpCode = newOpCode(143) // equals to 255
+  val StripErgoTreeHeaderCode : OpCode = newOpCode(145)
 
 }

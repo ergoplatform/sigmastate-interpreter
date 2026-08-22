@@ -133,7 +133,12 @@ class SigmaTyper(val builder: SigmaBuilder,
             case Some(method) if method.stype.tDom.length == 1 => // this is like  `groupGenerator` without parentheses
               processGlobalMethod(i.sourceContext, method, IndexedSeq())
             case _ =>
-              error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
+              predefFuncRegistry.funcs.get(n) match {
+                case Some(func) =>
+                  mkIdent(n, func.declaration.tpe)
+                case None =>
+                  error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
+              }
           }
       }
 

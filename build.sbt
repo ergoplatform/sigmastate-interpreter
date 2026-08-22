@@ -2,6 +2,7 @@ import scala.language.postfixOps
 import scala.sys.process.*
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleSplitStyle}
 import sbt.Keys.localStaging
+import sbt.Package
 
 organization := "org.scorexfoundation"
 
@@ -65,7 +66,8 @@ lazy val commonSettings = Seq(
 
 lazy val crossScalaSettings = Seq(
   crossScalaVersions := Seq(scala213, scala212, scala211),
-  scalaVersion := scala213
+  scalaVersion := scala213,
+  Compile / packageBin / packageOptions := Seq(Package.ManifestAttributes("Automatic-Module-Name" -> "org.ergoplatform.sigmastate.interpreter"))
 )
 lazy val crossScalaSettingsJS = Seq(
   crossScalaVersions := Seq(scala213),

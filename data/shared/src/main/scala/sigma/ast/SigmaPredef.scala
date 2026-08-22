@@ -276,6 +276,16 @@ object SigmaPredef {
           Seq(ArgInfo("input", "collection of bytes")))
     )
 
+    val StripErgoTreeHeaderFunc = PredefinedFunc("stripErgoTreeHeader",
+      Lambda(Array("treeBytes" -> SByteArray), SByteArray, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: Value[SByteArray]@unchecked)) =>
+          mkStripErgoTreeHeader(arg)
+        }),
+      OperationInfo(StripErgoTreeHeader, "Removes the header byte from a serialized ErgoTree",
+          Seq(ArgInfo("treeBytes", "serialized ErgoTree bytes")))
+    )
+
     val ByteArrayToBigIntFunc = PredefinedFunc("byteArrayToBigInt",
       Lambda(Array("input" -> SByteArray), SBigInt, None),
       PredefFuncInfo(
@@ -548,6 +558,7 @@ object SigmaPredef {
       FromBase58Func,
       Blake2b256Func,
       Sha256Func,
+      StripErgoTreeHeaderFunc,
       ByteArrayToBigIntFunc,
       ByteArrayToLongFunc,
       DecodePointFunc,

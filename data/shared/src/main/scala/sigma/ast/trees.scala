@@ -607,6 +607,25 @@ object CalcSha256 extends SimpleTransformerCompanion {
 }
 
 /**
+  * Removes the header byte from a serialized ErgoTree
+  */
+case class StripErgoTreeHeader(override val input: Value[SByteArray]) extends Transformer[SByteArray, SByteArray] with NotReadyValueByteArray {
+  override def companion = StripErgoTreeHeader
+  override val opType = StripErgoTreeHeader.OpType
+  protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
+    val inputV = input.evalTo[Coll[Byte]](env)
+    addCost(StripErgoTreeHeader.costKind)
+    inputV.slice(1, inputV.length)
+  }
+}
+object StripErgoTreeHeader extends SimpleTransformerCompanion {
+  override def opCode: OpCode = OpCodes.StripErgoTreeHeaderCode
+  override val costKind = FixedCost(JitCost(10))
+  override def argInfos: Seq[ArgInfo] = StripErgoTreeHeaderInfo.argInfos
+  val OpType = SFunc(SByteArray, SByteArray)
+}
+
+/**
   * Transforms serialized bytes of ErgoTree with segregated constants by replacing constants
   * at given positions with new values. This operation allow to use serialized scripts as
   * pre-defined templates.
