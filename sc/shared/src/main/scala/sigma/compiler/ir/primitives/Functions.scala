@@ -405,7 +405,7 @@ trait Functions extends Base with ProgramGraphs { self: IRContext =>
   /** Composition of two functions (in mathematical notation), where first `g` is applied and them `f`. */
   def compose[A, B, C](f: Ref[B => C], g: Ref[A => B]): Ref[A => C] = {
     implicit val eA = g.elem.eDom
-    implicit val eC = f.elem.eRange
+
     fun { x => f(g(x)) }
   }
 
