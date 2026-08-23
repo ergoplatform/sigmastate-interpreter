@@ -178,7 +178,7 @@ class LetsSpecification extends CompilerTestingCommons with CompilerCrossVersion
 
   val letsTokenId = Digest32Coll @@ Colls.fromArray(Array.fill(32)(Random.nextInt(100).toByte))
 
-  val env = Map(ScriptNameProp -> "withdrawalScriptEnv", "letsToken" -> ByteArrayConstant(letsTokenId))
+  val env = Map("letsToken" -> ByteArrayConstant(letsTokenId))
 
   private val miningRewardsDelay = 720
   private val feeProp = ErgoTreePredef.feeProposition(miningRewardsDelay) // create ErgoTree v0
@@ -235,7 +235,7 @@ class LetsSpecification extends CompilerTestingCommons with CompilerCrossVersion
 
   def userContractHash = Blake2b256(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(exchangeTree))
 
-  def managementScript = compile(env.updated("userContractHash", userContractHash),
+  def managementScript = compile(env.updated("userContractHash", Colls.fromArray(userContractHash)),
     """{
       |
       | val selfOut = OUTPUTS(0)

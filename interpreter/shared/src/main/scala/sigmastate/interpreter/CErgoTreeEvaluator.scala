@@ -5,7 +5,7 @@ import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate.eval.{CAvlTreeVerifier, CProfiler}
 import sigmastate.interpreter.Interpreter.ReductionResult
-import sigma.{AvlTree, Coll, Colls, Context, VersionContext}
+import sigma.{AvlTree, Coll, Colls, Context, Header, VersionContext}
 import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey
@@ -142,9 +142,12 @@ class CErgoTreeEvaluator(
         // the cost of tree lookup is O(bv.treeHeight)
         addSeqCost(InsertIntoAvlTree_Info, nItems) { () =>
           val insertRes = bv.performInsert(key.toArray, value.toArray)
-          // TODO v6.0: throwing exception is not consistent with update semantics
-          //  however it preserves v4.0 semantics (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908)
-          if (insertRes.isFailure) {
+          // For versioned change details, see see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/908
+          // Tree-versioned condition added in 6.0 interpreter code, so after 6.0 activation:
+          //  * 5.0 interpreter will skip v3 tree validation at all
+          //  * 6.0 won't throw exception
+          //  so both clients wont throw exception
+          if (insertRes.isFailure && !VersionContext.current.isV3OrLaterErgoTreeVersion) {
             syntax.error(s"Incorrect insert for $tree (key: $key, value: $value, digest: ${tree.digest}): ${insertRes.failed.get}}")
           }
           res = insertRes.isSuccess
@@ -171,12 +174,46 @@ class CErgoTreeEvaluator(
       // when the tree is empty we still need to add the insert cost
       val nItems = Math.max(bv.treeHeight, 1)
 
-      // here we use forall as looping with fast break on first failed tree oparation
+      // here we use forall as looping with fast break on first failed tree operation
       operations.forall { case (key, value) =>
         var res = true
         // the cost of tree update is O(bv.treeHeight)
         addSeqCost(UpdateAvlTree_Info, nItems) { () =>
           val updateRes = bv.performUpdate(key.toArray, value.toArray)
+          res = updateRes.isSuccess
+        }
+        res
+      }
+      bv.digest match {
+        case Some(d) =>
+          addCost(updateDigest_Info)
+          Some(tree.updateDigest(Colls.fromArray(d)))
+        case _ => None
+      }
+    }
+  }
+
+  override def insertOrUpdate_eval(
+                            mc: MethodCall, tree: AvlTree,
+                            operations: KeyValueColl, proof: Coll[Byte]): Option[AvlTree] = {
+    addCost(isUpdateAllowed_Info)
+    addCost(isInsertAllowed_Info)
+    if (!(tree.isUpdateAllowed && tree.isInsertAllowed)) {
+      None
+    } else {
+      val bv     = createVerifier(tree, proof)
+      // when the tree is empty we still need to add the insert cost
+      val nItems = Math.max(bv.treeHeight, 1)
+
+      // here we use forall as looping with fast break on first failed tree operation
+      operations.forall { case (key, value) =>
+        var res = true
+        // the cost of tree update is O(bv.treeHeight)
+      // Here (and in the previous methods) the cost is not properly approximated. 
+      // When the tree is small (or empty), but there are many `operations`, the treeHeight will grow on every iteration. 
+      // So should the cost on every iteration.
+      addSeqCost(UpdateAvlTree_Info, nItems) { () =>
+          val updateRes = bv.performInsertOrUpdate(key.toArray, value.toArray)
           res = updateRes.isSuccess
         }
         res
@@ -293,7 +330,7 @@ class CErgoTreeEvaluator(
   }
 
   /** @hotspot don't beautify the code */
-  override def addFixedCost(costKind: FixedCost, opDesc: OperationDesc)(block: => Unit): Unit = {
+  override def addFixedCost[R](costKind: FixedCost, opDesc: OperationDesc)(block: => R): R = {
     var costItem: FixedCostItem = null
     if (settings.costTracingEnabled) {
       costItem = FixedCostItem(opDesc, costKind)
@@ -305,16 +342,17 @@ class CErgoTreeEvaluator(
       }
       val start = System.nanoTime()
       coster.add(costKind.cost)
-      val _ = block
+      val res = block
       val end = System.nanoTime()
       profiler.addCostItem(costItem, end - start)
+      res
     } else {
       coster.add(costKind.cost)
       block
     }
   }
 
-  override def addFixedCost(costInfo: OperationCostInfo[FixedCost])(block: => Unit): Unit = {
+  override def addFixedCost[R](costInfo: OperationCostInfo[FixedCost])(block: => R): R = {
     addFixedCost(costInfo.costKind, costInfo.opDesc)(block)
   }
 
@@ -449,7 +487,7 @@ object CErgoTreeEvaluator {
     * HOTSPOT: don't beautify the code
     * Note, `null` is used instead of Option to avoid allocations.
     */
-  def fixedCostOp[R <: AnyRef](costInfo: OperationCostInfo[FixedCost])
+  def fixedCostOp[R](costInfo: OperationCostInfo[FixedCost])
                               (block: => R)(implicit E: ErgoTreeEvaluator): R = {
     if (E != null) {
       var res: R = null.asInstanceOf[R]

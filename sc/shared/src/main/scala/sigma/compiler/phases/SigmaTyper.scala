@@ -1,5 +1,6 @@
 package sigma.compiler.phases
 
+import sigma.VersionContext
 import sigma.ast.SCollection.{SBooleanArray, SByteArray}
 import sigma.ast.SigmaPredef._
 import sigma.ast._
@@ -35,33 +36,67 @@ class SigmaTyper(val builder: SigmaBuilder,
       predefFuncs ++ typeEnv
   }
 
+  /** Extractor for a bare `None` literal whose element type the typer cannot
+    * resolve on its own. Active only on ErgoTree v6+; pre-V6 the extractor
+    * never matches, so callers fall through to the standard identifier path.
+    * Single chokepoint for both the AST shape and the version gate — change
+    * either and every call site (case match and `isBareNone`) follows.
+    */
+  private object BareNone {
+    def unapply(v: SValue): Option[Ident] =
+      if (VersionContext.current.isV3OrLaterErgoTreeVersion) v match {
+        case i @ Ident("None", _) => Some(i)
+        case _ => None
+      } else None
+  }
+
+  /** Boolean adapter for [[BareNone]] — used by the `If` case to pick which
+    * branch to type first, where a pattern match is awkward.
+    */
+  private def isBareNone(v: SValue): Boolean = BareNone.unapply(v).isDefined
+
   private def processGlobalMethod(srcCtx: Nullable[SourceContext],
                                   method: SMethod,
-                                  args: IndexedSeq[SValue]): SValue = {
+                                  args: IndexedSeq[SValue],
+                                  subst: Map[STypeVar, SType] = EmptySubst): SValue = {
     val global = Global.withPropagatedSrcCtx(srcCtx)
     val node = for {
       pf <- method.irInfo.irBuilder if lowerMethodCalls
-      res <- pf.lift((builder, global, method, args, EmptySubst))
+      res <- pf.lift((builder, global, method, args, subst))
     } yield res
-    node.getOrElse(mkMethodCall(global, method, args, EmptySubst).withPropagatedSrcCtx(srcCtx))
+    node.getOrElse(mkMethodCall(global, method, args, subst).withPropagatedSrcCtx(srcCtx))
   }
   /**
     * Rewrite tree to typed tree.  Checks constituent names and types.  Uses
     * the env map to resolve bound variables and their types.
+    *
+    * The optional `expected` type is propagated down at the few points where
+    * the user has supplied contextual type information (e.g. `val x: Option[Int] = ...`
+    * or one branch of an `if` when the other is a bare `None`). Cases that do
+    * not consult `expected` are unchanged.
     */
-  def assignType(env: Map[String, SType], bound: SValue): SValue = ( bound match {
+  def assignType(
+    env: Map[String, SType],
+    bound: SValue,
+    expected: Option[SType] = None
+  ): SValue = ( bound match {
     case Block(bs, res) =>
       var curEnv = env
       val bs1 = ArrayBuffer[Val]()
-      for (v @ Val(n, _, b) <- bs) {
-        if (curEnv.contains(n)) error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
-        val b1 = assignType(curEnv, b)
+      for (v @ Val(n, explicitType, b) <- bs) {
+        if (curEnv.contains(n))
+          error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
+        val expectedForB = if (explicitType != NoType) Some(explicitType) else None
+        val b1 = assignType(curEnv, b, expectedForB)
+        val resultType = SType.getResultType(b1.tpe)
+        if (SType.isAssignableTo(explicitType) && explicitType != resultType)
+          error(s"Expected type ${explicitType}, but got ${b1.tpe}", v.sourceContext)
         curEnv = curEnv + (n -> b1.tpe)
         builder.currentSrcCtx.withValue(v.sourceContext) {
           bs1 += mkVal(n, b1.tpe, b1)
         }
       }
-      val res1 = assignType(curEnv, res)
+      val res1 = assignType(curEnv, res, expected)
       mkBlock(bs1.toSeq, res1)
 
     case Tuple(items) =>
@@ -71,14 +106,32 @@ class SigmaTyper(val builder: SigmaBuilder,
       val newItems = items.map(assignType(env, _))
       assignConcreteCollection(c, newItems)
 
+    case BareNone(i) =>
+      // Bare `None` is a v6.0 feature, gated alongside SGlobalMethods.noneMethod
+      // in SGlobal.getMethods. Infer the element type from the surrounding
+      // context (either a `val` ascription or the sibling branch of an `if`)
+      // and emit a MethodCall on noneMethod.
+      expected match {
+        case Some(SOption(elemTpe)) =>
+          processGlobalMethod(
+            i.sourceContext,
+            SGlobalMethods.noneMethod,
+            IndexedSeq.empty,
+            Map(STypeVar("T") -> elemTpe))
+        case _ =>
+          error(
+            "Cannot infer the type of `None`. Add a type ascription " +
+            "(e.g. `val x: Option[Int] = None`) or use `Global.none[T]()`.",
+            i.sourceContext)
+      }
+
     case i @ Ident(n, _) =>
       env.get(n) match {
         case Some(t) => mkIdent(n, t)
         case None =>
           SGlobalMethods.method(n) match {
             case Some(method) if method.stype.tDom.length == 1 => // this is like  `groupGenerator` without parentheses
-              val srcCtx = i.sourceContext
-              processGlobalMethod(srcCtx, method, IndexedSeq())
+              processGlobalMethod(i.sourceContext, method, IndexedSeq())
             case _ =>
               error(s"Cannot assign type for variable '$n' because it is not found in env $env", bound.sourceContext)
           }
@@ -90,8 +143,8 @@ class SigmaTyper(val builder: SigmaBuilder,
         case tNewObj: SProduct =>
           val method = MethodsContainer.getMethod(tNewObj, n).getOrElse(
             throw new MethodNotFound(
-              s"Cannot find method '$n' in in the object $obj of Product type with methods",
-              obj.sourceContext.toOption))
+              s"Cannot find method '$n' on receiver of type $tNewObj",
+              sel.sourceContext.toOption))
           val tMeth = method.stype
           val tRes = tMeth match {
             case SFunc(args, _, _) =>
@@ -117,7 +170,7 @@ class SigmaTyper(val builder: SigmaBuilder,
             mkSelect(newObj, n, Some(tRes))
           }
         case t =>
-          error(s"Cannot get field '$n' in in the object $obj of non-product type $t", sel.sourceContext)
+          error(s"Cannot select field '$n': receiver has non-product type $t", sel.sourceContext)
       }
 
     case lam @ Lambda(tparams, args, t, body) =>
@@ -134,12 +187,24 @@ class SigmaTyper(val builder: SigmaBuilder,
       res
 
     case Apply(ApplyTypes(sel @ Select(obj, n, _), Seq(rangeTpe)), args) =>
+      // downcast getVarFromInput arguments to short and byte
+      val nArgs = if (n == SContextMethods.getVarFromInputMethod.name &&
+          args.length == 2 &&
+          args(0).isInstanceOf[Constant[_]] &&
+          args(1).isInstanceOf[Constant[_]] &&
+          args(0).tpe.isNumType &&
+          args(1).tpe.isNumType) {
+        IndexedSeq(ShortConstant(SShort.downcast(args(0).asInstanceOf[Constant[SNumericType]].value.asInstanceOf[AnyVal])).withSrcCtx(args(0).sourceContext),
+          ByteConstant(SByte.downcast(args(1).asInstanceOf[Constant[SNumericType]].value.asInstanceOf[AnyVal])).withSrcCtx(args(1).sourceContext))
+      } else args
+
       val newObj = assignType(env, obj)
-      val newArgs = args.map(assignType(env, _))
-      obj.tpe match {
+      val newArgs = nArgs.map(assignType(env, _))
+      newObj.tpe match {
         case p: SProduct =>
           MethodsContainer.getMethod(p, n) match {
-            case Some(method @ SMethod(_, _, genFunTpe @ SFunc(_, _, _), _, _, _, _, _)) =>
+            case Some(method: SMethod) =>
+              val genFunTpe = method.stype
               val subst = Map(genFunTpe.tpeParams.head.ident -> rangeTpe)
               val concrFunTpe = applySubst(genFunTpe, subst)
               val expectedArgs = concrFunTpe.asFunc.tDom.tail
@@ -154,20 +219,31 @@ class SigmaTyper(val builder: SigmaBuilder,
                   .getOrElse(mkMethodCall(newObj, method, newArgs, subst))
               } else {
                 val newSelect = mkSelect(newObj, n, Some(concrFunTpe)).withSrcCtx(sel.sourceContext)
-                mkApply(newSelect, newArgs.toArray[SValue])
+                mkApply(newSelect, newArgs)
               }
             case Some(method) =>
               error(s"Don't know how to handle method $method in obj $p", sel.sourceContext)
             case None =>
-              throw new MethodNotFound(s"Cannot find method '$n' in in the object $obj of Product type $p", obj.sourceContext.toOption)
+              throw new MethodNotFound(s"Cannot find method '$n' on receiver of type $p", sel.sourceContext.toOption)
           }
         case _ =>
-          error(s"Cannot get field '$n' in in the object $obj of non-product type ${obj.tpe}", sel.sourceContext)
+          error(s"Cannot select field '$n': receiver has non-product type ${newObj.tpe}", sel.sourceContext)
       }
 
-    case app @ Apply(sel @ Select(obj, n, _), args) =>
-      val newSel = assignType(env, sel)
+    case app @ Apply(selOriginal @ Select(obj, nOriginal, resType), args) =>
       val newArgs = args.map(assignType(env, _))
+
+      // hack to make possible to write g.exp(ubi) for both unsigned and signed big integers
+      // could be useful for other use cases where the same front-end code could be
+      // translated to different methods under the hood, based on argument types
+      // todo: consider better place for it
+      val (n, sel) = if (nOriginal == "exp" && newArgs(0).tpe.isInstanceOf[SUnsignedBigInt.type]) {
+        val newName = "expUnsigned"
+        (newName, Select(obj, newName, resType))
+      } else {
+        (nOriginal, selOriginal)
+      }
+      val newSel = assignType(env, sel)
       newSel.tpe match {
         case genFunTpe @ SFunc(argTypes, _, _) =>
           // If it's a function then the application has type of that function's return type.
@@ -220,6 +296,11 @@ class SigmaTyper(val builder: SigmaBuilder,
             case (Ident(GetVarFunc.name | ExecuteFromVarFunc.name, _), Seq(id: Constant[SNumericType]@unchecked))
               if id.tpe.isNumType =>
                 Seq(ByteConstant(SByte.downcast(id.value.asInstanceOf[AnyVal])).withSrcCtx(id.sourceContext))
+            case (Ident(SContextMethods.getVarFromInputMethod.name, _),
+                  Seq(inputId: Constant[SNumericType]@unchecked, varId: Constant[SNumericType]@unchecked))
+                  if inputId.tpe.isNumType && varId.tpe.isNumType =>
+              Seq(ShortConstant(SShort.downcast(inputId.value.asInstanceOf[AnyVal])).withSrcCtx(inputId.sourceContext),
+                ByteConstant(SByte.downcast(varId.value.asInstanceOf[AnyVal])).withSrcCtx(varId.sourceContext))
             case _ => typedArgs
           }
           val actualTypes = adaptedTypedArgs.map(_.tpe)
@@ -408,15 +489,22 @@ class SigmaTyper(val builder: SigmaBuilder,
           error(s"Invalid application of type arguments $app: function $input doesn't have type parameters", input.sourceContext)
       }
 
-//    case app @ ApplyTypes(in, targs) =>
-//      val newIn = assignType(env, in)
-//      ApplyTypes(newIn, targs)
-//      error(s"Invalid application of type arguments $app: expression doesn't have type parameters")
-
     case If(c, t, e) =>
       val c1 = assignType(env, c).asValue[SBoolean.type]
-      val t1 = assignType(env, t)
-      val e1 = assignType(env, e)
+      val tIsNone = isBareNone(t)
+      val eIsNone = isBareNone(e)
+      // If exactly one branch is a bare `None`, type the other branch
+      // first and use its type to drive inference for the `None` side.
+      val (t1, e1) =
+        if (tIsNone && !eIsNone) {
+          val eFirst = assignType(env, e, expected)
+          (assignType(env, t, Some(eFirst.tpe)), eFirst)
+        } else if (eIsNone && !tIsNone) {
+          val tFirst = assignType(env, t, expected)
+          (tFirst, assignType(env, e, Some(tFirst.tpe)))
+        } else {
+          (assignType(env, t, expected), assignType(env, e, expected))
+        }
       val ite = mkIf(c1, t1, e1)
       if (c1.tpe != SBoolean)
         error(s"Invalid type of condition in $ite: expected Boolean; actual: ${c1.tpe}", c.sourceContext)
@@ -511,6 +599,7 @@ class SigmaTyper(val builder: SigmaBuilder,
     case v: SigmaBoolean => v
     case v: Upcast[_, _] => v
     case v @ Select(_, _, Some(_)) => v
+    case v @ MethodCall(_, _, _, _) => v
     case v =>
       error(s"Don't know how to assignType($v)", v.sourceContext)
   }).ensuring(v => v.tpe != NoType,

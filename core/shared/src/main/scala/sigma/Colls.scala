@@ -45,6 +45,19 @@ trait Coll[@specialized A] {
     */
   def apply(i: Int): A
 
+  /** The element at given index or None if there is no such element. Indices start at `0`.
+    *
+    *  @param  i       the index
+    *  @return         the element at the given index, or None if there is no such element
+    */
+  def get(i: Int): Option[A] = {
+    if (isDefinedAt(i)) {
+      Some(apply(i))
+    } else {
+      None
+    }
+  }
+
   /** Tests whether this $coll contains given index.
     *
     *  The implementations of methods `apply` and `isDefinedAt` turn a `Coll[A]` into
@@ -75,6 +88,18 @@ trait Coll[@specialized A] {
   /** For this collection (x0, ..., xN) and other collection (y0, ..., yM)
     * produces a collection ((x0, y0), ..., (xK, yK)) where K = min(N, M) */
   def zip[@specialized B](ys: Coll[B]): Coll[(A, B)]
+
+  /**
+    * @return true if first elements of this collection form given `ys` collection, false otherwise.
+    *         E.g. [1,2,3] starts with [1,2]
+    */
+  def startsWith(ys: Coll[A]): Boolean
+
+  /**
+    * @return true if last elements of this collection form given `ys` collection, false otherwise.
+    *         E.g. [1,2,3] ends with [2,3]
+    */
+  def endsWith(ys: Coll[A]): Boolean
 
   /** Tests whether a predicate holds for at least one element of this collection.
     *  @param   p     the predicate used to test elements.

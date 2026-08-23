@@ -3,7 +3,7 @@ package sigmastate
 import org.ergoplatform._
 import org.ergoplatform.validation.ValidationRules._
 import org.scalatest.BeforeAndAfterAll
-import sigma.{Colls, SigmaTestingData}
+import sigma.{Colls, SigmaTestingData, VersionContext}
 import sigma.ast._
 import sigma.ast.SPrimType.MaxPrimTypeCode
 import sigma.ast.TypeCodes.LastConstantCode
@@ -289,7 +289,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
       trySoftForkable(false) {
         action
         true
-      }
+      }(vs)
     }, {
       case ve: ValidationException if ve.rule == rule => true
       case _ => false
@@ -340,12 +340,14 @@ class SoftForkabilitySpecification extends SigmaTestingData
   }
 
   property("CheckMethod rule") {
-    val freeMethodId = 16.toByte
-    val mcBytes = Array[Byte](OpCodes.PropertyCallCode, SCollection.typeId, freeMethodId, Outputs.opCode)
-    val v2vs = vs.updated(CheckAndGetMethod.id, ChangedRule(Array(SCollection.typeId, freeMethodId)))
-    checkRule(CheckAndGetMethod, v2vs, {
-      ValueSerializer.deserialize(mcBytes)
-    })
+    VersionContext.withVersions(3,0) {
+      val freeMethodId = 16.toByte
+      val mcBytes = Array[Byte](OpCodes.PropertyCallCode, SCollection.typeId, freeMethodId, Outputs.opCode)
+      val v2vs = vs.updated(CheckAndGetMethodV6.id, ChangedRule(Array(SCollection.typeId, freeMethodId)))
+      checkRule(CheckAndGetMethodV6, v2vs, {
+        ValueSerializer.deserialize(mcBytes)
+      })
+    }
   }
 
   override protected def afterAll(): Unit = {

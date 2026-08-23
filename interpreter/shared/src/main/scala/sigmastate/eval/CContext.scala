@@ -1,8 +1,11 @@
 package sigmastate.eval
 
 import debox.cfor
+import org.ergoplatform.{ErgoLikeTransactionTemplate, UnsignedInput}
+import sigma.Evaluation.stypeToRType
 import sigma.Extensions.ArrayOps
 import sigma._
+import sigma.ast.SType
 import sigma.data._
 import sigma.exceptions.InvalidType
 
@@ -24,6 +27,7 @@ case class CContext(
                      lastBlockUtxoRootHash: AvlTree,
                      _minerPubKey: Coll[Byte],
                      vars: ContextVarsMap,
+                     spendingTransaction: ErgoLikeTransactionTemplate[_ <: UnsignedInput],
                      override val activatedScriptVersion: Byte,
                      override val currentErgoTreeVersion: Byte
 ) extends Context {
@@ -69,5 +73,12 @@ case class CContext(
     } else None
   }
 
+  override def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit tT: RType[T]): Option[T] = {
+    spendingTransaction.inputs.lift(inputIndex).flatMap(_.extension.get(id)) match {
+      case Some(v) if stypeToRType[SType](v.tpe) == tT => Some(v.value.asInstanceOf[T])
+      case _ =>
+        None
+    }
+  }
 }
 

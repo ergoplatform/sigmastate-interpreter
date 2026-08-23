@@ -5,8 +5,8 @@ import scorex.crypto.hash.Blake2b256
 import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate._
-import sigmastate.helpers.{ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter, CompilerTestingCommons}
-import sigma.Coll
+import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
+import sigma.{Coll, Colls}
 
 
 class ContextEnrichingSpecification extends CompilerTestingCommons
@@ -19,7 +19,7 @@ class ContextEnrichingSpecification extends CompilerTestingCommons
     val preimage = prover.contextExtenders(1).value.asInstanceOf[Coll[Byte]]
     val pubkey = prover.dlogSecrets.head.publicImage
 
-    val env = Map("blake" -> Blake2b256(preimage.toArray), "pubkey" -> pubkey)
+    val env = Map("blake" -> Colls.fromArray(Blake2b256(preimage.toArray)), "pubkey" -> pubkey)
     val prop = compile(env,
       """{
         |  pubkey && blake2b256(getVar[Coll[Byte]](1).get) == blake
@@ -49,7 +49,7 @@ class ContextEnrichingSpecification extends CompilerTestingCommons
     val preimage2 = prover.contextExtenders(2).value.asInstanceOf[Coll[Byte]]
     val pubkey = prover.dlogSecrets.head.publicImage
 
-    val env = Map("blake" -> Blake2b256(preimage1.append(preimage2).toArray), "pubkey" -> pubkey)
+    val env = Map("blake" -> Colls.fromArray(Blake2b256(preimage1.append(preimage2).toArray)), "pubkey" -> pubkey)
     val prop = compile(env,
       """{
         |  pubkey && blake2b256(getVar[Coll[Byte]](1).get ++ getVar[Coll[Byte]](2).get) == blake
@@ -89,7 +89,7 @@ class ContextEnrichingSpecification extends CompilerTestingCommons
       .withContextExtender(k1, ByteArrayConstant(v1))
       .withContextExtender(k2, ByteArrayConstant(v2))
 
-    val env = Map("k1" -> k1.toInt, "k2" -> k2.toInt, "r" -> r)
+    val env = Map("k1" -> k1.toInt, "k2" -> k2.toInt, "r" -> Colls.fromArray(r))
     val prop = compile(env,
       "{ xor(getVar[Coll[Byte]](k1).get, getVar[Coll[Byte]](k2).get) == r }").asBoolValue.toSigmaProp
     val propTree = mkTestErgoTree(prop)
@@ -119,7 +119,7 @@ class ContextEnrichingSpecification extends CompilerTestingCommons
     val prover = new ContextEnrichingTestProvingInterpreter
     val preimage = prover.contextExtenders(1).value.asInstanceOf[Coll[Byte]]
 
-    val env = Map("blake" -> Blake2b256(preimage.toArray))
+    val env = Map("blake" -> Colls.fromArray(Blake2b256(preimage.toArray)))
     val prop = compile(env,
       """{
         |  blake2b256(getVar[Coll[Byte]](1).get) == blake
@@ -149,7 +149,7 @@ class ContextEnrichingSpecification extends CompilerTestingCommons
     val preimage1 = prover.contextExtenders(1).value.asInstanceOf[Coll[Byte]]
     val preimage2 = prover.contextExtenders(2).value.asInstanceOf[Coll[Byte]]
 
-    val env = Map("blake" -> Blake2b256(preimage2.append(preimage1).toArray))
+    val env = Map("blake" -> Colls.fromArray(Blake2b256(preimage2.append(preimage1).toArray)))
     val prop = compile(env,
       """{
         |  blake2b256(getVar[Coll[Byte]](2).get ++ getVar[Coll[Byte]](1).get) == blake

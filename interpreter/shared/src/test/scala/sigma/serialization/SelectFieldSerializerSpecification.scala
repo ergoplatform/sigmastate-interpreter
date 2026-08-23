@@ -4,8 +4,9 @@ import org.scalacheck.Gen
 import sigma.ast.syntax.CollectionOps
 import sigma.ast.{FalseLeaf, IntConstant, SelectField, Tuple}
 import sigma.serialization.OpCodes.{SelectFieldCode, TupleCode}
+import sigmastate.CrossVersionProps
 
-class SelectFieldSerializerSpecification extends TableSerializationSpecification {
+class SelectFieldSerializerSpecification extends TableSerializationSpecification with CrossVersionProps {
 
   property("SelectField: Serializer round trip ") {
     forAll(tupleGen(2, 10)) { tuple: Tuple =>

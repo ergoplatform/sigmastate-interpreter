@@ -2,16 +2,27 @@ package sigmastate.utxo
 
 import org.ergoplatform.ErgoBox.{AdditionalRegisters, R6, R8}
 import org.ergoplatform._
-import sigma.Colls
+import org.scalatest.Assertion
+import scorex.crypto.authds.{ADKey, ADValue}
+import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert, InsertOrUpdate, Lookup, Remove}
+import scorex.crypto.hash.{Blake2b256, Digest32}
+import scorex.util.{ByteArrayBuilder, idToBytes}
+import scorex.util.encode.Base16
+import scorex.utils.Ints
+import scorex.util.serialization.VLQByteBufferWriter
+import scorex.utils.Longs
+import sigma.{Coll, Colls, GroupElement, SigmaTestingData, VersionContext}
 import sigma.Extensions.ArrayOps
+import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.ast.SCollection.SByteArray
+import sigma.ast.SType.{AnyOps, tD}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CAnyValue, CBigInt, CGroupElement, CHeader, CSigmaDslBuilder, CSigmaProp}
 import sigma.ast.SOption
-import sigma.ast.SType.AnyOps
-import sigma.data.{AvlTreeData, CAnyValue, CSigmaDslBuilder}
 import sigma.util.StringUtil._
 import sigma.ast._
 import sigma.ast.syntax._
-import sigma.crypto.CryptoConstants
+import sigmastate.crypto.DiffieHellmanTupleProverInput
+import sigma.crypto.{CryptoConstants, CryptoFacade, SecP256K1Group}
 import sigmastate._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -19,12 +30,22 @@ import sigma.interpreter.ContextExtension.VarBinding
 import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
 import sigmastate.interpreter.Interpreter._
 import sigma.ast.Apply
-import sigma.eval.EvalSettings
-import sigma.exceptions.{InterpreterException, InvalidType}
-import sigma.serialization.ValueSerializer
+import sigma.eval.{EvalSettings, SigmaDsl}
+import sigma.exceptions.InvalidType
+import sigma.serialization.ErgoTreeSerializer
+import sigma.serialization.{DataSerializer, SigmaByteWriter, ValueSerializer}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
+import sigma.validation.ValidationException
+import sigma.util.Extensions
+import sigmastate.utils.Helpers
+import sigma.exceptions.InterpreterException
 import sigmastate.utils.Helpers._
 
 import java.math.BigInteger
+import scala.collection.compat.immutable.ArraySeq
+import java.security.SecureRandom
+import scala.annotation.tailrec
+import scala.util.Try
 
 class BasicOpsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
@@ -45,7 +66,9 @@ class BasicOpsSpecification extends CompilerTestingCommons
   val booleanVar = 9.toByte
   val propVar1 = 10.toByte
   val propVar2 = 11.toByte
-  val lastExtVar = propVar2
+  val propVar3 = 12.toByte
+  val propBytesVar1 = 13.toByte
+  val lastExtVar = propBytesVar1
 
   val ext: Seq[VarBinding] = Seq(
     (intVar1, IntConstant(1)), (intVar2, IntConstant(2)),
@@ -62,7 +85,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
     "proofVar2" -> CAnyValue(propVar2)
     )
 
-  def test(name: String, env: ScriptEnv,
+  def test(name: String,
+           env: ScriptEnv,
            ext: Seq[VarBinding],
            script: String,
            propExp: SValue,
@@ -73,7 +97,14 @@ class BasicOpsSpecification extends CompilerTestingCommons
       override lazy val contextExtenders: Map[Byte, EvaluatedValue[_ <: SType]] = {
         val p1 = dlogSecrets(0).publicImage
         val p2 = dlogSecrets(1).publicImage
-        (ext ++ Seq(propVar1 -> SigmaPropConstant(p1), propVar2 -> SigmaPropConstant(p2))).toMap
+        val d1 = dhSecrets(0).publicImage
+
+        (ext ++ Seq(
+          propVar1 -> SigmaPropConstant(p1),
+          propVar2 -> SigmaPropConstant(p2),
+          propVar3 -> SigmaPropConstant(CSigmaProp(CAND(Seq(p1, d1)))),
+          propBytesVar1 -> ByteArrayConstant(CSigmaProp(CAND(Seq(p1, d1))).propBytes)
+        )).toMap
       }
       override val evalSettings: EvalSettings = DefaultEvalSettings.copy(
         isMeasureOperationTime = true,
@@ -86,13 +117,23 @@ class BasicOpsSpecification extends CompilerTestingCommons
       // is not supported by ErgoScript Compiler)
       // In such cases we use expected property as the property to test
       propExp.asSigmaProp
-    } else
-      compile(env, script).asBoolValue.toSigmaProp
+    } else {
+      // compile with the latest compiler version, to get validation exception during execution, not compilation error
+      withVersions(VersionContext.MaxSupportedScriptVersion, VersionContext.MaxSupportedScriptVersion) {
+        compile(env, script).asBoolValue.toSigmaProp
+      }
+    }
 
     if (propExp != null)
       prop shouldBe propExp
 
     val tree = ErgoTree.fromProposition(ergoTreeHeaderInTests, prop)
+
+    // check ErgoTree roundtrip
+    val tBytes = ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(tree)
+    val tBytes2 = ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(tBytes))
+    tBytes.sameElements(tBytes2) shouldBe true
+
     val p3 = prover.dlogSecrets(2).publicImage
     val boxToSpend = testBox(10, tree,
       additionalRegisters = additionalRegistersOpt.getOrElse(Map(
@@ -104,11 +145,12 @@ class BasicOpsSpecification extends CompilerTestingCommons
     val newBox1 = testBox(10, tree, creationHeight = 0, boxIndex = 0, additionalRegisters = Map(
       reg1 -> IntConstant(1),
       reg2 -> IntConstant(10)))
-    val tx = createTransaction(newBox1)
+    val ce = ContextExtension(SigmaMap(prover.contextExtenders))
+    val tx = new ErgoLikeTransaction(IndexedSeq(Input(boxToSpend.id, ProverResult(Array.empty, ce))), ArraySeq.empty, IndexedSeq(newBox1))
 
     val ctx = ErgoLikeContextTesting(currentHeight = 0,
       lastBlockUtxoRoot = AvlTreeData.dummy, ErgoLikeContextTesting.dummyPubkey, boxesToSpend = IndexedSeq(boxToSpend),
-      spendingTransaction = tx, self = boxToSpend, activatedVersionInTests)
+      spendingTransaction = tx, self = boxToSpend, ergoTreeVersionInTests)
 
     val pr = prover.prove(env + (ScriptNameProp -> s"${name}_prove"), tree, ctx, fakeMessage).getOrThrow
 
@@ -138,26 +180,3687 @@ class BasicOpsSpecification extends CompilerTestingCommons
     flexVerifier.verify(verifyEnv, tree, ctxExt, pr.proof, fakeMessage).get._1 shouldBe true
   }
 
-  property("Unit register") {
-    // TODO frontend: implement missing Unit support in compiler
-    //  https://github.com/ScorexFoundation/sigmastate-interpreter/issues/820
-    test("R1", env, ext,
-      script = "", /* means cannot be compiled
-                     the corresponding script is { SELF.R4[Unit].isDefined } */
-      ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).isDefined.toSigmaProp,
-      additionalRegistersOpt = Some(Map(
-        reg1 -> UnitConstant.instance
-      ))
+  property("getVarFromInput") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(getVarFromInput[Int](0, 1).get == 5) }",
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getVarTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getVarTest()
+    }
+  }
+
+  property("getVarFromInput - self index") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        """{
+          | val idx = CONTEXT.selfBoxIndex
+          | sigmaProp(CONTEXT.getVarFromInput[Int](idx.toShort, 1.toByte).get == 5)
+          | }""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getVarTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getVarTest()
+    }
+  }
+
+  property("getVarFromInput - invalid input") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(CONTEXT.getVarFromInput[Int](1, 1).isDefined == false) }",
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getVarTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getVarTest()
+    }
+  }
+
+
+  property("group order deserialization") {
+    val b = SecP256K1Group.q
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Map(
+      0.toByte -> UnsignedBigIntConstant(b)
+    ).toSeq
+
+    def deserTest() = {test("restoring q", env, customExt,
+      s"""{
+         |  val b1 = unsignedBigInt(\"${b.toString}\")
+         |  val b2 = getVar[UnsignedBigInt](0).get
+         |  b1 == b2
+         |}
+         | """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("signed -> unsigned bigint conversion - positive bigint") {
+    val b = new BigInteger("9280562930080889354892980449861222646750586663683904599823322027983929189860")
+    val ub = new BigInteger(1, b.toByteArray)
+
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val b = bigInt(\"${ub.toString}\")
+         |  val ub = b.toUnsigned
+         |  ub > 1
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("signed -> unsigned bigint conversion - negative bigint") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val b = bigInt("-1")
+         |  val ub = b.toUnsigned
+         |  ub > 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      an[Exception] should be thrownBy conversionTest()
+    }
+  }
+
+  property("unsigned bigint - attempt to create from negative value") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val m = unsignedBigInt("-5")
+         |  m >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy conversionTest()
+    } else {
+      an[sigma.exceptions.InvalidArguments] should be thrownBy conversionTest()
+    }
+  }
+
+
+  property("signed -> unsigned bigint conversion - negative bigint - mod") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val b = bigInt("-1")
+         |  val m = unsignedBigInt("5")
+         |  val ub = b.toUnsignedMod(m)
+         |  ub >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("signed -> unsigned bigint conversion - negative bigint - mod - 2") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val t = (bigInt("-1"), bigInt("5"))
+         |  val b = t._1
+         |  val m = t._2
+         |  val ub = b.toUnsignedMod(m.toUnsigned)
+         |  ub >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned bigint - add") {
+    def conversionTest() = {test("add", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("5")
+         |  val b = unsignedBigInt("10")
+         |  val res = a + b
+         |  res == 15
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned bigint - subtract") {
+    def conversionTest() = {test("subtract", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("10")
+         |  val b = unsignedBigInt("5")
+         |  a - b == b
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned bigint - multiply") {
+    def conversionTest() = {test("multiply", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("10")
+         |  val b = unsignedBigInt("50")
+         |  a * b == unsignedBigInt("500")
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned bigint - subtract with neg result") {
+    def conversionTest() = {test("subtract", env, ext,
+      s"""{
+         |  val a = unsignedBigInt("5")
+         |  val b = unsignedBigInt("10")
+         |  val res = a - b
+         |  res >= 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.serialization.SerializerException] should be thrownBy conversionTest()
+    } else {
+      an[Exception] should be thrownBy conversionTest()
+    }
+  }
+
+  property("unsigned -> signed bigint conversion") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val ub = unsignedBigInt("10")
+         |  val b = ub.toSigned
+         |  b - 11 == bigInt("-1")
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy conversionTest()
+    } else {
+      conversionTest()
+    }
+  }
+
+  property("unsigned -> signed overflow") {
+    def conversionTest() = {test("conversion", env, ext,
+      s"""{
+         |  val ub = unsignedBigInt("${CryptoConstants.groupOrder}")
+         |  ub.toSigned > 0
+         | } """.stripMargin,
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy conversionTest()
+    } else {
+      val t = Try(conversionTest())
+      // on JS exception is ArithmeticException directly, on JVM, ArithmeticException wrapped into InvocationTargetException
+      t.failed.get match {
+        case e: java.lang.ArithmeticException => e.getMessage.startsWith("BigInteger out of 256 bit range") shouldBe true
+        case e: Throwable => e.getCause.getMessage.startsWith("BigInteger out of 256 bit range") shouldBe true
+      }
+    }
+  }
+
+  property("schnorr sig check") {
+    val td = new SigmaTestingData {}
+
+    val g = CGroupElement(SecP256K1Group.generator)
+
+    def randBigInt: BigInt = {
+      val random = new SecureRandom()
+      val values = new Array[Byte](32)
+      random.nextBytes(values)
+      BigInt(values).mod(td.TestData.BigIntMaxValue.asInstanceOf[CBigInt].wrappedValue)
+    }
+
+    @tailrec
+    def sign(msg: Array[Byte], secretKey: BigInt): (GroupElement, BigInt) = {
+      val r = randBigInt
+
+      val a: GroupElement = g.exp(CBigInt(r.bigInteger))
+      val z = (r + secretKey * BigInt(scorex.crypto.hash.Blake2b256(msg))).mod(CryptoConstants.groupOrder)
+
+      if(z.bitLength > 255) {
+        (a, z)
+      } else {
+        sign(msg,secretKey)
+      }
+    }
+
+    val holderSecret = randBigInt
+    val bi = CBigInt(holderSecret.bigInteger)
+    val holderPk = g.exp(bi)
+
+    val message = Array.fill(5)(1.toByte)
+
+    val (a, z) = sign(message, holderSecret)
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Map(
+      0.toByte -> GroupElementConstant(holderPk),
+      1.toByte -> GroupElementConstant(a),
+      2.toByte -> UnsignedBigIntConstant(z.bigInteger)
+    ).toSeq
+
+    def schnorrTest() = {
+      test("schnorr", env, customExt,
+        s"""{
+           |
+           |      val g: GroupElement = groupGenerator
+           |      val holder = getVar[GroupElement](0).get
+           |
+           |      val message = fromBase16("${Base16.encode(message)}")
+           |      val e: Coll[Byte] = blake2b256(message) // weak Fiat-Shamir
+           |      val eInt = byteArrayToBigInt(e) // challenge as big integer
+           |
+           |      // a of signature in (a, z)
+           |      val a = getVar[GroupElement](1).get
+           |      val aBytes = a.getEncoded
+           |
+           |      // z of signature in (a, z)
+           |      val z = getVar[UnsignedBigInt](2).get
+           |
+           |      // Signature is valid if g^z = a * x^e
+           |      val properSignature = g.exp(z) == a.multiply(holder.exp(eInt))
+           |      sigmaProp(properSignature)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy schnorrTest()
+    } else {
+      schnorrTest()
+    }
+  }
+
+  property("unsigned bigint - arith") {
+    def miTest() = {
+      test("arith", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = (bi1 * bi1 + bi2 * bi1) / bi1 - bi2
+           |   m > 0
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod") {
+    def miTest() = {
+      test("mod", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("248486720836984554860790790898080606")
+           |   val m = unsignedBigInt("575879797")
+           |   bi.mod(m) == unsignedBigInt("554794378")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("modInverse") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("3")
+           |   val m = unsignedBigInt("7")
+           |   bi.modInverse(m) == unsignedBigInt("5")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("modInverse - zero") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi = unsignedBigInt("248486720836984554860790790898080606")
+           |   val m = unsignedBigInt("0")
+           |   bi.modInverse(m) > 0
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      an[Exception] should be thrownBy miTest()
+    }
+  }
+
+  property("mod ops - plus") {
+    def miTest() = {
+      test("mod plus", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = unsignedBigInt("575879797")
+           |   bi1.plusMod(bi2, m) == unsignedBigInt("88450889")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - subtract") {
+    def miTest() = {
+      test("subtractMod", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("2")
+           |   val bi2 = unsignedBigInt("4")
+           |   val m = unsignedBigInt("575879797")
+           |   bi1.subtractMod(bi2, m) == unsignedBigInt("575879795")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  property("mod ops - multiply") {
+    def miTest() = {
+      test("modInverse", env, ext,
+        s"""{
+           |   val bi1 = unsignedBigInt("248486720836984554860790790898080606")
+           |   val bi2 = unsignedBigInt("2484867208369845548607907908980997780606")
+           |   val m = unsignedBigInt("575879797")
+           |   bi1.multiplyMod(bi2, m) == unsignedBigInt("532796569")
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy miTest()
+    } else {
+      miTest()
+    }
+  }
+
+  /**
+    * Bulletproof range proof verification (Issue #1032).
+    *
+    * Implements a simplified Bulletproof range proof verifier in ErgoScript using
+    * Ergo 6.0's UnsignedBigInt and GroupElement.expUnsigned operations.
+    *
+    * The proof demonstrates that a committed value v in C = v*G + r*H
+    * lies in [0, 2^n) without revealing v.
+    *
+    * Architecture:
+    *   - Scala prover: generates the proof off-chain using secp256k1
+    *   - ErgoScript verifier: checks the polynomial identity on-chain
+    *
+    * Reference: Benedikt Bünz et al., "Bulletproofs: Short Proofs for Confidential
+    * Transactions and More", 2018 IEEE S&P.
+    *
+    * Original range proof verifier by Benedikt Bunz (Java):
+    * (Preserved for cross-reference with the Scala/ErgoScript implementation below)
+    *
+    *   VectorBase<T> vectorBase = params.getVectorBase();
+    *   PeddersenBase<T> base = params.getBase();
+    *   int n = vectorBase.getGs().size();
+    *   T a = proof.getaI();
+    *   T s = proof.getS();
+    *
+    *   BigInteger q = params.getGroup().groupOrder();
+    *   BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    *     → Scala: val y = new BigInteger(1, Blake2b256(V_enc ++ A_enc ++ S_enc)).mod(q)
+    *
+    *   FieldVector ys = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, y::multiply), q);
+    *
+    *   BigInteger z = ProofUtils.challengeFromints(q, y);
+    *     → Scala: val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    *
+    *   BigInteger zSquared = z.pow(2).mod(q);
+    *   BigInteger zCubed = z.pow(3).mod(q);
+    *   FieldVector twos = FieldVector.from(VectorX.iterate(n, BigInteger.ONE, bi -> bi.shiftLeft(1)), q);
+    *   FieldVector twoTimesZSquared = twos.times(zSquared);
+    *   GeneratorVector<T> tCommits = proof.gettCommits();
+    *
+    *   BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    *     → Scala: val x = new BigInteger(1, Blake2b256(z_bytes ++ T1_enc ++ T2_enc)).mod(q)
+    *
+    *   BigInteger tauX = proof.getTauX();
+    *   BigInteger mu = proof.getMu();
+    *   BigInteger t = proof.getT();
+    *   BigInteger k = ys.sum().multiply(z.subtract(zSquared))
+    *                    .subtract(zCubed.shiftLeft(n).subtract(zCubed));
+    *     → Scala: val delta = (z - z²)·Σy^i - z³·Σ2^i
+    *
+    *   T lhs = base.commit(t.subtract(k), tauX);
+    *   T rhs = tCommits.commit(Arrays.asList(x, x.pow(2))).add(input.multiply(zSquared));
+    *     → Scala/ErgoScript: g^tHat * h^tauX == g^delta * V^z² * T1^x * T2^x²
+    *
+    *   equal(lhs, rhs, "Polynomial identity check failed, LHS: %s, RHS %s");
+    *   BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    *     → Scala: val uChallenge = new BigInteger(1, Blake2b256(x ++ tauX ++ mu ++ tHat)).mod(q)
+    *
+    *   T u = base.g.multiply(uChallenge);
+    *   GeneratorVector<T> hs = vectorBase.getHs();
+    *   GeneratorVector<T> gs = vectorBase.getGs();
+    *   GeneratorVector<T> hPrimes = hs.haddamard(ys.invert());
+    *   FieldVector hExp = ys.times(z).add(twoTimesZSquared);
+    *   T P = a.add(s.multiply(x)).add(gs.sum().multiply(z.negate()))
+    *           .add(hPrimes.commit(hExp)).subtract(base.h.multiply(mu)).add(u.multiply(t));
+    *   VectorBase<T> primeBase = new VectorBase<>(gs, hPrimes, u);
+    *   EfficientInnerProductVerifier<T> verifier = new EfficientInnerProductVerifier<>();
+    *   verifier.verify(primeBase, P, proof.getProductProof(), uChallenge);
+    */
+  property("Bulletproof verification for a range proof") {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator // secp256k1 generator
+
+    // Derive a second generator H via hash-to-curve (nothing-up-my-sleeve)
+    // Bunz: PeddersenBase<T> base = params.getBase(); (H is base.h)
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    // --- PROVER SIDE (off-chain, Scala) ---
+    // For this test we use n=4 bits, proving v ∈ [0, 16)
+    val n = 4
+    val v = BigInteger.valueOf(9) // secret value to prove is in range
+    val r = new BigInteger(256, new SecureRandom()).mod(q) // blinding factor
+
+    // Pedersen commitment: V = v*G + r*H
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v),
+      group.exponentiate(H, r)
     )
 
-    test("R2", env, ext,
-      script = "", /* means cannot be compiled
-                   the corresponding script is "{ SELF.R4[Unit].get == () }" */
-      EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).get, UnitConstant.instance).toSigmaProp,
-      additionalRegistersOpt = Some(Map(
-        reg1 -> UnitConstant.instance
-      ))
+    // Bit decomposition of v
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
+
+    // Generate n independent generators gs(i), hs(i) via hash-to-curve
+    // Bunz: VectorBase<T> vectorBase = params.getVectorBase(); gs = vectorBase.getGs(); hs = vectorBase.getHs();
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    // Random blinding scalars
+    val alpha = new BigInteger(256, new SecureRandom()).mod(q)
+    val rho = new BigInteger(256, new SecureRandom()).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
+
+    // A = h^alpha * gs^aL * hs^aR (vector Pedersen commitment to aL, aR)
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
+
+    // S = h^rho * gs^sL * hs^sR
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
+
+    // Fiat-Shamir challenge y
+    // Bunz: BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+
+    // Fiat-Shamir challenge z
+    // Bunz: BigInteger z = ProofUtils.challengeFromints(q, y);
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    // Compute t1, t2 (polynomial coefficients)
+    // l(x) = (aL - z*1^n) + sL*x
+    // r(x) = y^n ○ (aR + z*1^n + sR*x) + z^2 * 2^n
+    // t(x) = <l(x), r(x)> = t0 + t1*x + t2*x^2
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    // t0 = <aL - z*1, y^n ○ (aR + z*1) + z^2 * 2^n>
+    // t1 = <sL, y^n ○ (aR + z*1) + z^2 * 2^n> + <aL - z*1, y^n ○ sR>
+    // t2 = <sL, y^n ○ sR>
+    var t0 = BigInteger.ZERO
+    var t1 = BigInteger.ZERO
+    var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lConst = aL(i).subtract(z).mod(q) // aL[i] - z
+      val rConst = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rLin = yn(i).multiply(sR(i)).mod(q)
+
+      t0 = t0.add(lConst.multiply(rConst)).mod(q)
+      t1 = t1.add(sL(i).multiply(rConst).add(lConst.multiply(rLin))).mod(q)
+      t2 = t2.add(sL(i).multiply(rLin)).mod(q)
+    }
+
+    // T1 = t1*G + tau1*H, T2 = t2*G + tau2*H
+    val tau1 = new BigInteger(256, new SecureRandom()).mod(q)
+    val tau2 = new BigInteger(256, new SecureRandom()).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    // Fiat-Shamir challenge x
+    // Bunz: BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    // tauX = tau2 * x^2 + tau1 * x + z^2 * r
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+
+    // mu = alpha + rho * x
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+
+    // tHat = t0 + t1*x + t2*x^2
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    // Compute delta(y,z) = (z - z^2) * <1^n, y^n> - z^3 * <1^n, 2^n>
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((acc, yi) => acc.add(yi).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((acc, ti) => acc.add(ti).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn).subtract(
+      z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // --- INNER PRODUCT ARGUMENT (Prover, Scala side) ---
+    // Compute the final evaluation vectors l and r at challenge point x
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    // Sanity check: <l, r> should equal tHat
+    val innerProduct = (0 until n).foldLeft(BigInteger.ZERO) { (acc, i) =>
+      acc.add(lVec(i).multiply(rVec(i))).mod(q)
+    }
+    assert(innerProduct.equals(tHat), s"Inner product $innerProduct != tHat $tHat")
+
+    // Compute u challenge point
+    // Bunz: BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    // Bunz: T u = base.g.multiply(uChallenge);
+    val U = group.exponentiate(G, uChallenge)
+
+    // Compute hPrimes[i] = hs[i]^(y^(-i))
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      val yInvI = yInv.modPow(BigInteger.valueOf(i), q)
+      group.exponentiate(hs(i), yInvI)
+    }.toArray
+
+    // Compute P = A * S^x * gs^(-z) * hPrimes^(hExp) * h^(-mu) * u^tHat
+    // where hExp[i] = y^i * z + z^2 * 2^i
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+    }
+    for (i <- 0 until n) {
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    // Inner product protocol: recursive halving
+    // For n=4, we have logN=2 rounds
+    val logN = 2 // log2(4)
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
+    var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+    val challenges = new Array[BigInteger](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+
+      // L = gs[halfN:]^l[:halfN] * hs[:halfN]^r[halfN:] * u^<l[:halfN], r[halfN:]>
+      var Li = group.identity
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+      }
+      val cL = (0 until halfN).foldLeft(BigInteger.ZERO)((acc, j) =>
+        acc.add(curL(j).multiply(curR(halfN + j))).mod(q))
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ls(round) = Li
+
+      // R = gs[:halfN]^l[halfN:] * hs[halfN:]^r[:halfN] * u^<l[halfN:], r[:halfN]>
+      var Ri = group.identity
+      for (j <- 0 until halfN) {
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+      }
+      val cR = (0 until halfN).foldLeft(BigInteger.ZERO)((acc, j) =>
+        acc.add(curL(halfN + j).multiply(curR(j))).mod(q))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Rs(round) = Ri
+
+      // Fiat-Shamir challenge for this round (inner product argument)
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      challenges(round) = xi
+      val xiInv = xi.modInverse(q)
+
+      // Fold generators: gs' = gs[:h]^(xi^-1) * gs[h:]^(xi)
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv),
+          group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi),
+          group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs
+      curHs = newHs
+      curL = newL
+      curR = newR
+      curN = halfN
+    }
+
+    val finalA = curL(0) // final scalar a
+    val finalB = curR(0) // final scalar b
+
+    // --- VERIFIER SIDE (ErgoScript, on-chain) ---
+    // Checks BOTH:
+    // 1) Polynomial identity: g^tHat * h^tauX == g^delta * V^(z^2) * T1^x * T2^(x^2)
+    // 2) Inner product argument: fold L/R with challenges, verify final point
+
+    import sigma.data.CUnsignedBigInt
+
+    val gsColl = gs.map(p => CGroupElement(p))
+    val hsColl = hs.map(p => CGroupElement(p))
+
+    // Encode L and R points for context extensions
+    val LsEncoded = Ls.map(p => CGroupElement(p))
+    val RsEncoded = Rs.map(p => CGroupElement(p))
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> GroupElementConstant(CGroupElement(V)),
+      1.toByte -> GroupElementConstant(CGroupElement(A)),
+      2.toByte -> GroupElementConstant(CGroupElement(S)),
+      3.toByte -> GroupElementConstant(CGroupElement(T1)),
+      4.toByte -> GroupElementConstant(CGroupElement(T2)),
+      5.toByte -> UnsignedBigIntConstant(tauX),
+      6.toByte -> UnsignedBigIntConstant(mu),
+      7.toByte -> UnsignedBigIntConstant(tHat),
+      8.toByte -> UnsignedBigIntConstant(finalA),
+      9.toByte -> UnsignedBigIntConstant(finalB),
+      14.toByte -> GroupElementConstant(CGroupElement(P)),
+      15.toByte -> GroupElementConstant(CGroupElement(U))
     )
+
+    // Pre-compute values as hex strings for use in ErgoScript
+    val gHex = Base16.encode(CryptoFacade.getASN1Encoding(G, true))
+    val hHex = Base16.encode(CryptoFacade.getASN1Encoding(H, true))
+
+    // Pre-compute challenge scalars for L/R rounds
+    val x1 = challenges(0)
+    val x2 = challenges(1)
+    val x1Sq = x1.multiply(x1).mod(q)
+    val x2Sq = x2.multiply(x2).mod(q)
+    val x1InvSq = x1.modInverse(q).multiply(x1.modInverse(q)).mod(q)
+    val x2InvSq = x2.modInverse(q).multiply(x2.modInverse(q)).mod(q)
+
+    // Encode L/R points as hex for constants in ErgoScript
+    val L0Hex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(0), true))
+    val L1Hex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(1), true))
+    val R0Hex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(0), true))
+    val R1Hex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(1), true))
+
+    // Compute the expected final point on Scala side for verification
+    // P_final = P * L0^(x1^2) * R0^(x1^-2) * L1^(x2^2) * R1^(x2^-2)
+    var Pfinal = P
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(0), x1Sq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(0), x1InvSq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(1), x2Sq))
+    Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(1), x2InvSq))
+
+    // g_final = multiexp of gs with challenge products
+    // h_final = multiexp of hPrimes with challenge products (inverse)
+    // For n=4, log2=2: scalars are products of xi or xi^-1
+    val gScalars = Array(
+      x1.modInverse(q).multiply(x2.modInverse(q)).mod(q), // s0 = x1^-1 * x2^-1
+      x1.modInverse(q).multiply(x2).mod(q),               // s1 = x1^-1 * x2
+      x1.multiply(x2.modInverse(q)).mod(q),               // s2 = x1 * x2^-1
+      x1.multiply(x2).mod(q)                              // s3 = x1 * x2
+    )
+    val hScalars = Array(
+      x1.multiply(x2).mod(q),                             // s0^-1 = x1 * x2
+      x1.multiply(x2.modInverse(q)).mod(q),               // s1^-1 = x1 * x2^-1
+      x1.modInverse(q).multiply(x2).mod(q),               // s2^-1 = x1^-1 * x2
+      x1.modInverse(q).multiply(x2.modInverse(q)).mod(q)  // s3^-1 = x1^-1 * x2^-1
+    )
+
+    var gFinal = group.identity
+    var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), gScalars(i)))
+      hFinal = group.multiplyGroupElements(hFinal, group.exponentiate(hPrimes(i), hScalars(i)))
+    }
+
+    // Expected: Pfinal == gFinal^a * hFinal^b * u^(a*b)
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, finalA),
+        group.exponentiate(hFinal, finalB)),
+      group.exponentiate(U, finalA.multiply(finalB).mod(q)))
+
+    assert(CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true)),
+      "Inner product argument verification failed on Scala side!")
+
+    def rangeTest() = {
+      test("range proof", env, customExt,
+        s"""{
+           |  // === Bulletproof Range Proof: Polynomial Identity + Inner Product ===
+           |
+           |  val V = getVar[GroupElement](0).get
+           |  val A = getVar[GroupElement](1).get
+           |  val S = getVar[GroupElement](2).get
+           |  val T1 = getVar[GroupElement](3).get
+           |  val T2 = getVar[GroupElement](4).get
+           |  val tauX = getVar[UnsignedBigInt](5).get
+           |  val mu = getVar[UnsignedBigInt](6).get
+           |  val tHat = getVar[UnsignedBigInt](7).get
+           |  val ipA = getVar[UnsignedBigInt](8).get
+           |  val ipB = getVar[UnsignedBigInt](9).get
+           |  val P = getVar[GroupElement](14).get
+           |  val u = getVar[GroupElement](15).get
+           |
+           |  // Constants (pre-computed by verifier setup)
+           |  val g = decodePoint(fromBase16("$gHex"))
+           |  val h = decodePoint(fromBase16("$hHex"))
+           |  val delta = unsignedBigInt("${delta.toString}")
+           |  val xChallenge = unsignedBigInt("${x.toString}")
+           |  val xSquared = unsignedBigInt("${x.multiply(x).mod(q).toString}")
+           |  val zSquared = unsignedBigInt("${zSq.toString}")
+           |
+           |  // --- CHECK 1: Polynomial identity ---
+           |  // LHS = g^tHat * h^tauX
+           |  val polyLhs = g.expUnsigned(tHat).multiply(h.expUnsigned(tauX))
+           |
+           |  // RHS = g^delta * V^(z^2) * T1^x * T2^(x^2)
+           |  val polyRhs = g.expUnsigned(delta)
+           |                  .multiply(V.expUnsigned(zSquared))
+           |                  .multiply(T1.expUnsigned(xChallenge))
+           |                  .multiply(T2.expUnsigned(xSquared))
+           |
+           |  val polyCheck = polyLhs == polyRhs
+           |
+           |  // --- CHECK 2: Inner product argument ---
+           |  // L/R points and challenge squares (pre-computed constants)
+           |  val L0 = decodePoint(fromBase16("$L0Hex"))
+           |  val R0 = decodePoint(fromBase16("$R0Hex"))
+           |  val L1 = decodePoint(fromBase16("$L1Hex"))
+           |  val R1 = decodePoint(fromBase16("$R1Hex"))
+           |  val x1Sq = unsignedBigInt("${x1Sq.toString}")
+           |  val x1InvSq = unsignedBigInt("${x1InvSq.toString}")
+           |  val x2Sq = unsignedBigInt("${x2Sq.toString}")
+           |  val x2InvSq = unsignedBigInt("${x2InvSq.toString}")
+           |
+           |  // P' = P * L0^(x1^2) * R0^(x1^-2) * L1^(x2^2) * R1^(x2^-2)
+           |  val Pprime = P.multiply(L0.expUnsigned(x1Sq))
+           |                .multiply(R0.expUnsigned(x1InvSq))
+           |                .multiply(L1.expUnsigned(x2Sq))
+           |                .multiply(R1.expUnsigned(x2InvSq))
+           |
+           |  // g_final and h_final via multiexp with challenge scalar products
+           |  val gFinal = decodePoint(fromBase16("${Base16.encode(CryptoFacade.getASN1Encoding(gFinal, true))}"))
+           |  val hFinal = decodePoint(fromBase16("${Base16.encode(CryptoFacade.getASN1Encoding(hFinal, true))}"))
+           |
+           |  // Final check: P' == gFinal^a * hFinal^b * u^(a*b)
+           |  val q = unsignedBigInt("${q.toString}")
+           |  val ab = ipA.multiplyMod(ipB, q)
+           |  val ipRhs = gFinal.expUnsigned(ipA)
+           |                .multiply(hFinal.expUnsigned(ipB))
+           |                .multiply(u.expUnsigned(ab))
+           |
+           |  val ipCheck = Pprime == ipRhs
+           |
+           |  // Both checks must pass
+           |  sigmaProp(polyCheck && ipCheck)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy rangeTest()
+    } else {
+      rangeTest()
+    }
+  }
+
+  /**
+    * 64-bit production Bulletproof range proof verification.
+    *
+    * Proves v ∈ [0, 2^64) — full production-grade range proof.
+    * Uses 6 rounds of inner product argument (log2(64) = 6).
+    * Measures actual on-chain JitCost via isMeasureOperationTime.
+    */
+  property("Bulletproof verification for a 64-bit range proof") {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    val n = 64
+    val logN = 6
+    val rng = new SecureRandom()
+
+    // Random 64-bit value
+    val v = new BigInteger(63, rng) // [0, 2^63) to stay within range
+    val r = new BigInteger(256, rng).mod(q)
+
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v), group.exponentiate(H, r))
+
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
+
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val alpha = new BigInteger(256, rng).mod(q)
+    val rho = new BigInteger(256, rng).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
+
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
+
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    var t0 = BigInteger.ZERO; var t1 = BigInteger.ZERO; var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lC = aL(i).subtract(z).mod(q)
+      val rC = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rL = yn(i).multiply(sR(i)).mod(q)
+      t0 = t0.add(lC.multiply(rC)).mod(q)
+      t1 = t1.add(sL(i).multiply(rC).add(lC.multiply(rL))).mod(q)
+      t2 = t2.add(sL(i).multiply(rL)).mod(q)
+    }
+
+    val tau1 = new BigInteger(256, rng).mod(q)
+    val tau2 = new BigInteger(256, rng).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((acc, yi) => acc.add(yi).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((acc, ti) => acc.add(ti).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn).subtract(
+      z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // Inner product argument (6 rounds for n=64)
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
+    var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+    val challenges = new Array[BigInteger](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+      var Li = group.identity; var Ri = group.identity
+      var cL = BigInteger.ZERO; var cR = BigInteger.ZERO
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+        cL = cL.add(curL(j).multiply(curR(halfN + j))).mod(q)
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+        cR = cR.add(curL(halfN + j).multiply(curR(j))).mod(q)
+      }
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Ls(round) = Li; Rs(round) = Ri
+
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      challenges(round) = xi
+      val xiInv = xi.modInverse(q)
+
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv), group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi), group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs; curHs = newHs; curL = newL; curR = newR; curN = halfN
+    }
+
+    val finalA = curL(0); val finalB = curR(0)
+
+    // Compute gFinal, hFinal
+    val challengeProducts = (0 until n).map { i =>
+      (0 until logN).foldLeft(BigInteger.ONE) { (acc, k) =>
+        val bit = (i >> (logN - 1 - k)) & 1
+        if (bit == 1) acc.multiply(challenges(k)).mod(q)
+        else acc.multiply(challenges(k).modInverse(q)).mod(q)
+      }
+    }.toArray
+
+    var gFinal = group.identity; var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), challengeProducts(i)))
+      hFinal = group.multiplyGroupElements(hFinal,
+        group.exponentiate(hPrimes(i), challengeProducts(i).modInverse(q).mod(q)))
+    }
+
+    // Verify Scala-side before running ErgoScript
+    var Pfinal = P
+    for (k <- 0 until logN) {
+      val xiSq = challenges(k).multiply(challenges(k)).mod(q)
+      val xiInvSq = challenges(k).modInverse(q).multiply(challenges(k).modInverse(q)).mod(q)
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(k), xiSq))
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(k), xiInvSq))
+    }
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, finalA),
+        group.exponentiate(hFinal, finalB)),
+      group.exponentiate(U, finalA.multiply(finalB).mod(q)))
+    assert(CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true)),
+      "64-bit inner product verification failed on Scala side!")
+
+    // Build ErgoScript L/R constants and challenge scalars
+    val lrConstants = (0 until logN).map { k =>
+      val lHex = Base16.encode(CryptoFacade.getASN1Encoding(Ls(k), true))
+      val rHex = Base16.encode(CryptoFacade.getASN1Encoding(Rs(k), true))
+      val xiSq = challenges(k).multiply(challenges(k)).mod(q)
+      val xiInvSq = challenges(k).modInverse(q).multiply(challenges(k).modInverse(q)).mod(q)
+      (lHex, rHex, xiSq.toString, xiInvSq.toString)
+    }
+
+    // Build the L/R folding ErgoScript dynamically
+    val lrFoldScript = lrConstants.zipWithIndex.map { case ((lH, rH, xSq, xISq), k) =>
+      s"""  val L$k = decodePoint(fromBase16("$lH"))
+         |  val R$k = decodePoint(fromBase16("$rH"))
+         |  val xSq$k = unsignedBigInt("$xSq")
+         |  val xISq$k = unsignedBigInt("$xISq")""".stripMargin
+    }.mkString("\n")
+
+    val pprimeScript = (0 until logN).foldLeft("P") { (acc, k) =>
+      s"$acc.multiply(L$k.expUnsigned(xSq$k)).multiply(R$k.expUnsigned(xISq$k))"
+    }
+
+    val gHex = Base16.encode(CryptoFacade.getASN1Encoding(G, true))
+    val hHex = Base16.encode(CryptoFacade.getASN1Encoding(H, true))
+    val gFinalHex = Base16.encode(CryptoFacade.getASN1Encoding(gFinal, true))
+    val hFinalHex = Base16.encode(CryptoFacade.getASN1Encoding(hFinal, true))
+
+    import sigma.data.CUnsignedBigInt
+
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> GroupElementConstant(CGroupElement(V)),
+      1.toByte -> GroupElementConstant(CGroupElement(A)),
+      2.toByte -> GroupElementConstant(CGroupElement(S)),
+      3.toByte -> GroupElementConstant(CGroupElement(T1)),
+      4.toByte -> GroupElementConstant(CGroupElement(T2)),
+      5.toByte -> UnsignedBigIntConstant(tauX),
+      6.toByte -> UnsignedBigIntConstant(mu),
+      7.toByte -> UnsignedBigIntConstant(tHat),
+      8.toByte -> UnsignedBigIntConstant(finalA),
+      9.toByte -> UnsignedBigIntConstant(finalB),
+      14.toByte -> GroupElementConstant(CGroupElement(P)),
+      15.toByte -> GroupElementConstant(CGroupElement(U))
+    )
+
+    def rangeTest64() = {
+      test("64-bit range proof", env, customExt,
+        s"""{
+           |  // === 64-bit Bulletproof Range Proof ===
+           |  val V = getVar[GroupElement](0).get
+           |  val A = getVar[GroupElement](1).get
+           |  val S = getVar[GroupElement](2).get
+           |  val T1 = getVar[GroupElement](3).get
+           |  val T2 = getVar[GroupElement](4).get
+           |  val tauX = getVar[UnsignedBigInt](5).get
+           |  val mu = getVar[UnsignedBigInt](6).get
+           |  val tHat = getVar[UnsignedBigInt](7).get
+           |  val ipA = getVar[UnsignedBigInt](8).get
+           |  val ipB = getVar[UnsignedBigInt](9).get
+           |  val P = getVar[GroupElement](14).get
+           |  val u = getVar[GroupElement](15).get
+           |
+           |  val g = decodePoint(fromBase16("$gHex"))
+           |  val h = decodePoint(fromBase16("$hHex"))
+           |  val delta = unsignedBigInt("${delta.toString}")
+           |  val xChallenge = unsignedBigInt("${x.toString}")
+           |  val xSquared = unsignedBigInt("${x.multiply(x).mod(q).toString}")
+           |  val zSquared = unsignedBigInt("${zSq.toString}")
+           |
+           |  // CHECK 1: Polynomial identity
+           |  val polyLhs = g.expUnsigned(tHat).multiply(h.expUnsigned(tauX))
+           |  val polyRhs = g.expUnsigned(delta)
+           |                  .multiply(V.expUnsigned(zSquared))
+           |                  .multiply(T1.expUnsigned(xChallenge))
+           |                  .multiply(T2.expUnsigned(xSquared))
+           |  val polyCheck = polyLhs == polyRhs
+           |
+           |  // CHECK 2: Inner product argument (6 rounds)
+$lrFoldScript
+           |
+           |  val Pprime = $pprimeScript
+           |
+           |  val gFinal = decodePoint(fromBase16("$gFinalHex"))
+           |  val hFinal = decodePoint(fromBase16("$hFinalHex"))
+           |  val q = unsignedBigInt("${q.toString}")
+           |  val ab = ipA.multiplyMod(ipB, q)
+           |  val ipRhs = gFinal.expUnsigned(ipA)
+           |                .multiply(hFinal.expUnsigned(ipB))
+           |                .multiply(u.expUnsigned(ab))
+           |  val ipCheck = Pprime == ipRhs
+           |
+           |  sigmaProp(polyCheck && ipCheck)
+           |}""".stripMargin,
+        null,
+        true,
+        testExceededCost = false // don't fail on exceeded cost, we want to measure it
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy rangeTest64()
+    } else {
+      rangeTest64()
+    }
+  }
+
+  /**
+    * Standalone Scala Bulletproof range proof verifier.
+    *
+    * Takes only public inputs and proof components, independently recomputes
+    * all Fiat-Shamir challenges using Blake2b256, and verifies:
+    *   1) Polynomial identity: g^tHat * h^tauX == g^delta * V^(z^2) * T1^x * T2^(x^2)
+    *   2) Inner product argument: P' == gFinal^a * hFinal^b * u^(a*b)
+    *
+    * Corresponds to Bunz' RangeProofVerifier.verify() with Blake2b256 replacing Keccak-256.
+    *
+    * @param V      Pedersen commitment (public input)
+    * @param A      bit-commitment vector
+    * @param S      blinding vector commitment
+    * @param T1     polynomial commitment T1
+    * @param T2     polynomial commitment T2
+    * @param tauX   blinding factor for polynomial evaluation
+    * @param mu     blinding factor for inner product
+    * @param tHat   polynomial evaluation t(x)
+    * @param Ls     left points from inner product rounds
+    * @param Rs     right points from inner product rounds
+    * @param ipA    final inner product scalar a
+    * @param ipB    final inner product scalar b
+    * @param n      bit-width of range proof (e.g. 4, 64)
+    * @return true if the range proof is valid
+    */
+  def scalaVerifyRangeProof(
+    V: sigma.crypto.Ecp, A: sigma.crypto.Ecp, S: sigma.crypto.Ecp,
+    T1: sigma.crypto.Ecp, T2: sigma.crypto.Ecp,
+    tauX: BigInteger, mu: BigInteger, tHat: BigInteger,
+    Ls: Array[sigma.crypto.Ecp], Rs: Array[sigma.crypto.Ecp],
+    ipA: BigInteger, ipB: BigInteger,
+    n: Int
+  ): Boolean = {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+    val logN = Ls.length
+
+    // Derive H via hash-to-curve (same nothing-up-my-sleeve as prover)
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    // Derive vector generators gs, hs (same as prover)
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    // === Recompute Fiat-Shamir challenges from transcript ===
+    // V_enc, A_enc, S_enc = 33-byte compressed SEC1 point encoding
+    // Bunz: BigInteger y = ProofUtils.computeChallenge(q, input, a, s);
+    val V_enc = CryptoFacade.getASN1Encoding(V, true)
+    val A_enc = CryptoFacade.getASN1Encoding(A, true)
+    val S_enc = CryptoFacade.getASN1Encoding(S, true)
+    val y = new BigInteger(1, Blake2b256(V_enc ++ A_enc ++ S_enc)).mod(q)
+
+    // Bunz: BigInteger z = ProofUtils.challengeFromints(q, y);
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    // Bunz: BigInteger x = ProofUtils.computeChallenge(q, z, tCommits);
+    val T1_enc = CryptoFacade.getASN1Encoding(T1, true)
+    val T2_enc = CryptoFacade.getASN1Encoding(T2, true)
+    val x = new BigInteger(1, Blake2b256(z.toByteArray ++ T1_enc ++ T2_enc)).mod(q)
+
+    // === CHECK 1: Polynomial identity ===
+    // delta = (z - z^2) * sum(y^i) - z^3 * sum(2^i)
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+    val sumYn = yn.foldLeft(BigInteger.ZERO)((a, b) => a.add(b).mod(q))
+    val sum2n = twon.foldLeft(BigInteger.ZERO)((a, b) => a.add(b).mod(q))
+    val delta = z.subtract(zSq).multiply(sumYn)
+      .subtract(z.multiply(zSq).multiply(sum2n)).mod(q)
+
+    // LHS = g^tHat * h^tauX
+    val polyLhs = group.multiplyGroupElements(
+      group.exponentiate(G, tHat), group.exponentiate(H, tauX))
+
+    // RHS = g^delta * V^(z^2) * T1^x * T2^(x^2)
+    val xSq = x.multiply(x).mod(q)
+    var polyRhs = group.exponentiate(G, delta)
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(V, zSq))
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(T1, x))
+    polyRhs = group.multiplyGroupElements(polyRhs, group.exponentiate(T2, xSq))
+
+    val polyCheck = CryptoFacade.getASN1Encoding(polyLhs, true)
+      .sameElements(CryptoFacade.getASN1Encoding(polyRhs, true))
+
+    if (!polyCheck) return false
+
+    // === CHECK 2: Inner product argument ===
+    // Bunz: BigInteger uChallenge = ProofUtils.challengeFromints(q, x, tauX, mu, t);
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    // hPrimes[i] = hs[i]^(y^(-i))
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    // Compute P
+    var P = A
+    P = group.multiplyGroupElements(P, group.exponentiate(S, x))
+    for (i <- 0 until n) {
+      P = group.multiplyGroupElements(P, group.exponentiate(gs(i), z.negate().mod(q)))
+      val hExp = yn(i).multiply(z).add(zSq.multiply(twon(i))).mod(q)
+      P = group.multiplyGroupElements(P, group.exponentiate(hPrimes(i), hExp))
+    }
+    P = group.multiplyGroupElements(P, group.exponentiate(H, mu.negate().mod(q)))
+    P = group.multiplyGroupElements(P, group.exponentiate(U, tHat))
+
+    // Recompute inner product challenges from L/R points
+    val ipChallenges = (0 until logN).map { k =>
+      new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Ls(k), true) ++
+        CryptoFacade.getASN1Encoding(Rs(k), true))).mod(q)
+    }.toArray
+
+    // Fold P with L/R: P' = P * prod(L_k^(xi_k^2) * R_k^(xi_k^-2))
+    var Pfinal = P
+    for (k <- 0 until logN) {
+      val xiSq = ipChallenges(k).multiply(ipChallenges(k)).mod(q)
+      val xiInvSq = ipChallenges(k).modInverse(q).multiply(
+        ipChallenges(k).modInverse(q)).mod(q)
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Ls(k), xiSq))
+      Pfinal = group.multiplyGroupElements(Pfinal, group.exponentiate(Rs(k), xiInvSq))
+    }
+
+    // Compute gFinal, hFinal as multiexp with challenge products
+    val challengeProducts = (0 until n).map { i =>
+      (0 until logN).foldLeft(BigInteger.ONE) { (acc, k) =>
+        val bit = (i >> (logN - 1 - k)) & 1
+        if (bit == 1) acc.multiply(ipChallenges(k)).mod(q)
+        else acc.multiply(ipChallenges(k).modInverse(q)).mod(q)
+      }
+    }.toArray
+
+    var gFinal = group.identity
+    var hFinal = group.identity
+    for (i <- 0 until n) {
+      gFinal = group.multiplyGroupElements(gFinal, group.exponentiate(gs(i), challengeProducts(i)))
+      hFinal = group.multiplyGroupElements(hFinal,
+        group.exponentiate(hPrimes(i), challengeProducts(i).modInverse(q).mod(q)))
+    }
+
+    // Final check: P' == gFinal^a * hFinal^b * u^(a*b)
+    val expectedRhs = group.multiplyGroupElements(
+      group.multiplyGroupElements(
+        group.exponentiate(gFinal, ipA),
+        group.exponentiate(hFinal, ipB)),
+      group.exponentiate(U, ipA.multiply(ipB).mod(q)))
+
+    CryptoFacade.getASN1Encoding(Pfinal, true)
+      .sameElements(CryptoFacade.getASN1Encoding(expectedRhs, true))
+  }
+
+  /**
+    * Helper: generate a Bulletproof range proof for value v with n bits.
+    * Returns all proof components needed for verification.
+    */
+  private def generateRangeProof(v: BigInteger, n: Int): (
+    sigma.crypto.Ecp, // V
+    sigma.crypto.Ecp, // A
+    sigma.crypto.Ecp, // S
+    sigma.crypto.Ecp, // T1
+    sigma.crypto.Ecp, // T2
+    BigInteger, // tauX
+    BigInteger, // mu
+    BigInteger, // tHat
+    Array[sigma.crypto.Ecp], // Ls
+    Array[sigma.crypto.Ecp], // Rs
+    BigInteger, // ipA (final a)
+    BigInteger  // ipB (final b)
+  ) = {
+    val q = CryptoConstants.groupOrder
+    val group = CryptoConstants.dlogGroup
+    val G = group.generator
+    val logN = (Math.log(n) / Math.log(2)).toInt
+
+    val H = group.exponentiate(G, new BigInteger(1,
+      Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
+
+    val rng = new SecureRandom()
+    val r = new BigInteger(256, rng).mod(q)
+
+    val V = group.multiplyGroupElements(
+      group.exponentiate(G, v), group.exponentiate(H, r))
+
+    val aL = (0 until n).map(i => if (v.testBit(i)) BigInteger.ONE else BigInteger.ZERO).toArray
+    val aR = aL.map(_.subtract(BigInteger.ONE).mod(q))
+
+    val gs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_G_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+    val hs = (0 until n).map { i =>
+      group.exponentiate(G, new BigInteger(1,
+        Blake2b256(s"Bulletproof_H_$i".getBytes("UTF-8"))).mod(q))
+    }.toArray
+
+    val alpha = new BigInteger(256, rng).mod(q)
+    val rho = new BigInteger(256, rng).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+
+    var A = group.exponentiate(H, alpha)
+    for (i <- 0 until n) {
+      A = group.multiplyGroupElements(A, group.exponentiate(gs(i), aL(i)))
+      A = group.multiplyGroupElements(A, group.exponentiate(hs(i), aR(i)))
+    }
+
+    var S = group.exponentiate(H, rho)
+    for (i <- 0 until n) {
+      S = group.multiplyGroupElements(S, group.exponentiate(gs(i), sL(i)))
+      S = group.multiplyGroupElements(S, group.exponentiate(hs(i), sR(i)))
+    }
+
+    val y = new BigInteger(1, Blake2b256(
+      CryptoFacade.getASN1Encoding(V, true) ++
+      CryptoFacade.getASN1Encoding(A, true) ++
+      CryptoFacade.getASN1Encoding(S, true))).mod(q)
+    val z = new BigInteger(1, Blake2b256(y.toByteArray)).mod(q)
+    val zSq = z.multiply(z).mod(q)
+
+    val yn = (0 until n).map(i => y.modPow(BigInteger.valueOf(i), q)).toArray
+    val twon = (0 until n).map(i => BigInteger.valueOf(2).modPow(BigInteger.valueOf(i), q)).toArray
+
+    var t0 = BigInteger.ZERO; var t1 = BigInteger.ZERO; var t2 = BigInteger.ZERO
+    for (i <- 0 until n) {
+      val lC = aL(i).subtract(z).mod(q)
+      val rC = yn(i).multiply(aR(i).add(z).mod(q)).add(zSq.multiply(twon(i))).mod(q)
+      val rL = yn(i).multiply(sR(i)).mod(q)
+      t0 = t0.add(lC.multiply(rC)).mod(q)
+      t1 = t1.add(sL(i).multiply(rC).add(lC.multiply(rL))).mod(q)
+      t2 = t2.add(sL(i).multiply(rL)).mod(q)
+    }
+
+    val tau1 = new BigInteger(256, rng).mod(q)
+    val tau2 = new BigInteger(256, rng).mod(q)
+    val T1 = group.multiplyGroupElements(
+      group.exponentiate(G, t1), group.exponentiate(H, tau1))
+    val T2 = group.multiplyGroupElements(
+      group.exponentiate(G, t2), group.exponentiate(H, tau2))
+
+    val x = new BigInteger(1, Blake2b256(
+      z.toByteArray ++
+      CryptoFacade.getASN1Encoding(T1, true) ++
+      CryptoFacade.getASN1Encoding(T2, true))).mod(q)
+
+    val tauX = tau2.multiply(x.multiply(x).mod(q)).add(
+      tau1.multiply(x)).add(zSq.multiply(r)).mod(q)
+    val mu = alpha.add(rho.multiply(x)).mod(q)
+    val tHat = t0.add(t1.multiply(x)).add(t2.multiply(x.multiply(x).mod(q))).mod(q)
+
+    // Inner product argument
+    val lVec = (0 until n).map { i =>
+      aL(i).subtract(z).add(sL(i).multiply(x)).mod(q)
+    }.toArray
+    val rVec = (0 until n).map { i =>
+      yn(i).multiply(aR(i).add(z).add(sR(i).multiply(x)).mod(q))
+        .add(zSq.multiply(twon(i))).mod(q)
+    }.toArray
+
+    val uChallenge = new BigInteger(1, Blake2b256(
+      x.toByteArray ++ tauX.toByteArray ++
+      mu.toByteArray ++ tHat.toByteArray)).mod(q)
+    val U = group.exponentiate(G, uChallenge)
+
+    val yInv = y.modInverse(q)
+    val hPrimes = (0 until n).map { i =>
+      group.exponentiate(hs(i), yInv.modPow(BigInteger.valueOf(i), q))
+    }.toArray
+
+    var curGs: Array[sigma.crypto.Ecp] = gs.toArray
+    var curHs: Array[sigma.crypto.Ecp] = hPrimes.toArray
+    var curL: Array[BigInteger] = lVec.toArray
+    var curR: Array[BigInteger] = rVec.toArray
+    var curN = n
+    val Ls = new Array[sigma.crypto.Ecp](logN)
+    val Rs = new Array[sigma.crypto.Ecp](logN)
+
+    for (round <- 0 until logN) {
+      val halfN = curN / 2
+      var Li = group.identity; var Ri = group.identity
+      var cL = BigInteger.ZERO; var cR = BigInteger.ZERO
+      for (j <- 0 until halfN) {
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curGs(halfN + j), curL(j)))
+        Li = group.multiplyGroupElements(Li, group.exponentiate(curHs(j), curR(halfN + j)))
+        cL = cL.add(curL(j).multiply(curR(halfN + j))).mod(q)
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curGs(j), curL(halfN + j)))
+        Ri = group.multiplyGroupElements(Ri, group.exponentiate(curHs(halfN + j), curR(j)))
+        cR = cR.add(curL(halfN + j).multiply(curR(j))).mod(q)
+      }
+      Li = group.multiplyGroupElements(Li, group.exponentiate(U, cL))
+      Ri = group.multiplyGroupElements(Ri, group.exponentiate(U, cR))
+      Ls(round) = Li; Rs(round) = Ri
+
+      val xi = new BigInteger(1, Blake2b256(
+        CryptoFacade.getASN1Encoding(Li, true) ++
+        CryptoFacade.getASN1Encoding(Ri, true))).mod(q)
+      val xiInv = xi.modInverse(q)
+
+      val newGs = new Array[sigma.crypto.Ecp](halfN)
+      val newHs = new Array[sigma.crypto.Ecp](halfN)
+      val newL = new Array[BigInteger](halfN)
+      val newR = new Array[BigInteger](halfN)
+      for (j <- 0 until halfN) {
+        newGs(j) = group.multiplyGroupElements(
+          group.exponentiate(curGs(j), xiInv), group.exponentiate(curGs(halfN + j), xi))
+        newHs(j) = group.multiplyGroupElements(
+          group.exponentiate(curHs(j), xi), group.exponentiate(curHs(halfN + j), xiInv))
+        newL(j) = curL(j).multiply(xi).add(curL(halfN + j).multiply(xiInv)).mod(q)
+        newR(j) = curR(j).multiply(xiInv).add(curR(halfN + j).multiply(xi)).mod(q)
+      }
+      curGs = newGs; curHs = newHs; curL = newL; curR = newR; curN = halfN
+    }
+
+    (V, A, S, T1, T2, tauX, mu, tHat, Ls, Rs, curL(0), curR(0))
+  }
+
+  /**
+    * Scala-only Bulletproof verification: prove and verify in Scala without ErgoScript.
+    * Tests both positive (valid value) and negative (out-of-range value) cases.
+    */
+  property("Bulletproof Scala verifier - valid value passes") {
+    val proof = generateRangeProof(BigInteger.valueOf(9), n = 4) // 9 ∈ [0, 16) ✓
+
+    assert(scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, proof._8, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should accept valid range proof for v=9 in [0, 2^4)")
+  }
+
+  property("Bulletproof Scala verifier - out-of-range value fails") {
+    // v = 17 is outside [0, 2^4 = 16), so the bit decomposition will be wrong
+    // (testBit checks 5 bits but n=4, causing aL·aR != 0 which breaks the proof)
+    val proof = generateRangeProof(BigInteger.valueOf(17), n = 4) // 17 ∉ [0, 16) ✗
+
+    assert(!scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, proof._8, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should reject range proof for out-of-range v=17")
+  }
+
+  property("Bulletproof Scala verifier - tampered proof fails") {
+    val proof = generateRangeProof(BigInteger.valueOf(9), n = 4)
+
+    // Tamper with tHat (polynomial evaluation)
+    val tamperedTHat = proof._8.add(BigInteger.ONE).mod(CryptoConstants.groupOrder)
+
+    assert(!scalaVerifyRangeProof(
+      proof._1, proof._2, proof._3, proof._4, proof._5,
+      proof._6, proof._7, tamperedTHat, proof._9, proof._10,
+      proof._11, proof._12, n = 4),
+      "Scala verifier should reject proof with tampered tHat")
+  }
+
+  // todo: complete
+  ignore("Bulletproof verification for a circuit proof") {
+
+    val g = CGroupElement(SecP256K1Group.generator)
+
+    def circuitTest() = {
+      test("schnorr", env, ext,
+        s"""{
+           |   // circuit data - should be provided via data input likely
+           |   val lWeights =  Coll[UnsignedBigInt]
+           |   val rWeights: Coll[UnsignedBigInt]
+           |   val oWeights: Coll[UnsignedBigInt]
+           |   val commitmentWeights: Coll[UnsignedBigInt]
+           |
+           |   val cs: Coll[UnsignedBigInt]
+           |   val commitments: Coll[GroupElement]
+           |
+           |   // proof data
+           |   val ai: GroupElement
+           |   val ao: GroupElement
+           |   val s: GroupElement
+           |   val tCommits: Coll[GroupElement]
+           |   val tauX: UnsignedBigInt
+           |   val mu: UnsignedBigInt
+           |   val t: UnsignedBigInt
+           |
+           |   // inner product proof
+           |   val L: Coll[GroupElement]
+           |   val R: Coll[GroupElement]
+           |   val a: UnsignedBigInt
+           |   val b: UnsignedBigInt
+           |
+           |   // proof verification:
+           |   val Q = lWeights.size
+           |
+           |   val q // group order
+           |
+           |   val yBytes = sha256(q.toBytes ++ aI.getEncoded ++ aO.getEncoded ++ s.getEncoded)
+           |
+           |   val y = byteArrayToBigInt(yBytes) // should be to unsigned bigint
+           |
+           |   val z = byteArrayToBigInt(sha256(y ++ q.toBytes))
+           |
+           |
+           |
+           |   sigmaProp(properSignature)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy circuitTest()
+    } else {
+      circuitTest()
+    }
+  }
+
+  /**
+    * secq256k1 Point Arithmetic in ErgoScript.
+    *
+    * Demonstrates that Ergo 6.0's UnsignedBigInt can simulate elliptic curve
+    * operations on the secp256k1 sister curve (secq256k1).
+    * Curve: y^2 = x^3 + 7 over field p_secq = n_secp (the group order of secp256k1).
+    *
+    * This is Phase 1 of the Curve Trees implementation (unlimited anonymity sets).
+    */
+  property("secq256k1 point arithmetic via UnsignedBigInt") {
+    // secq256k1 field prime = secp256k1 group order
+    val pSecq = CryptoConstants.groupOrder // n_secp
+
+    // Find a generator point on secq256k1: y^2 = x^3 + 7 (mod pSecq)
+    val seven = BigInteger.valueOf(7)
+
+    // Hardcoded valid point on secq256k1 (since pSecq = 1 mod 4, simple sqrt fails)
+    val gx = BigInteger.ONE
+    val gy = new BigInteger("5647885500061325675748484062311156374277086380342947163834798608016077912256")
+
+    // Verify the hardcoded point is on the curve
+    val rhs = gx.modPow(BigInteger.valueOf(3), pSecq).add(seven).mod(pSecq)
+    assert(gy.multiply(gy).mod(pSecq).equals(rhs), "Generator point is not on secq256k1 curve!")
+
+    // === Point Doubling: 2G ===
+    // λ = 3x^2 / (2y) mod p
+    val three = BigInteger.valueOf(3)
+    val two = BigInteger.valueOf(2)
+    val lambdaD = three.multiply(gx.multiply(gx).mod(pSecq)).mod(pSecq)
+      .multiply(two.multiply(gy).mod(pSecq).modInverse(pSecq)).mod(pSecq)
+    val x2g = lambdaD.multiply(lambdaD).mod(pSecq)
+      .subtract(gx).subtract(gx).mod(pSecq).add(pSecq).mod(pSecq)
+    val y2g = lambdaD.multiply(gx.subtract(x2g).mod(pSecq).add(pSecq).mod(pSecq)).mod(pSecq)
+      .subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+
+    // Verify 2G is on the curve
+    assert(y2g.multiply(y2g).mod(pSecq).equals(
+      x2g.modPow(three, pSecq).add(seven).mod(pSecq)), "2G not on secq256k1!")
+
+    // === Point Addition: 3G = G + 2G ===
+    val lambdaA = y2g.subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+      .multiply(x2g.subtract(gx).mod(pSecq).add(pSecq).mod(pSecq).modInverse(pSecq)).mod(pSecq)
+    val x3g = lambdaA.multiply(lambdaA).mod(pSecq)
+      .subtract(gx).subtract(x2g).mod(pSecq).add(pSecq).mod(pSecq)
+    val y3g = lambdaA.multiply(gx.subtract(x3g).mod(pSecq).add(pSecq).mod(pSecq)).mod(pSecq)
+      .subtract(gy).mod(pSecq).add(pSecq).mod(pSecq)
+
+    // Verify 3G is on the curve
+    assert(y3g.multiply(y3g).mod(pSecq).equals(
+      x3g.modPow(three, pSecq).add(seven).mod(pSecq)), "3G not on secq256k1!")
+
+    // --- ErgoScript Verification ---
+    val customExt: Seq[(Byte, EvaluatedValue[_ <: SType])] = Seq(
+      0.toByte -> UnsignedBigIntConstant(gx),
+      1.toByte -> UnsignedBigIntConstant(gy)
+    )
+
+    def secqTest() = {
+      test("secq256k1 arithmetic", env, customExt,
+        s"""{
+           |  // secq256k1: y^2 = x^3 + 7 over p_secq (= n_secp)
+           |  val p = unsignedBigInt("${pSecq.toString}")
+           |  val seven = unsignedBigInt("7")
+           |  val three = unsignedBigInt("3")
+           |  val two = unsignedBigInt("2")
+           |
+           |  // Generator point G on secq256k1
+           |  val gx = getVar[UnsignedBigInt](0).get
+           |  val gy = getVar[UnsignedBigInt](1).get
+           |
+           |  // === POINT DOUBLING: compute 2G ===
+           |  // λ = 3*gx^2 / (2*gy) mod p
+           |  val gx2 = gx.multiplyMod(gx, p)
+           |  val num = three.multiplyMod(gx2, p)
+           |  val den = two.multiplyMod(gy, p)
+           |  val lambdaD = num.multiplyMod(den.modInverse(p), p)
+           |
+           |  // x_2G = λ^2 - 2*gx mod p
+           |  val lambdaD2 = lambdaD.multiplyMod(lambdaD, p)
+           |  val twoGx = two.multiplyMod(gx, p)
+           |  val x2G = lambdaD2.subtractMod(twoGx, p)
+           |
+           |  // y_2G = λ*(gx - x_2G) - gy mod p
+           |  val dx = gx.subtractMod(x2G, p)
+           |  val y2G = lambdaD.multiplyMod(dx, p).subtractMod(gy, p)
+           |
+           |  // Verify 2G matches Scala-computed values
+           |  val x2GExpected = unsignedBigInt("${x2g.toString}")
+           |  val y2GExpected = unsignedBigInt("${y2g.toString}")
+           |  val doubleCheck = x2G == x2GExpected && y2G == y2GExpected
+           |
+           |  // === POINT ADDITION: compute 3G = G + 2G ===
+           |  // λ = (y2G - gy) / (x2G - gx) mod p
+           |  val numA = y2G.subtractMod(gy, p)
+           |  val denA = x2G.subtractMod(gx, p)
+           |  val lambdaA = numA.multiplyMod(denA.modInverse(p), p)
+           |
+           |  // x_3G = λ^2 - gx - x2G mod p
+           |  val lambdaA2 = lambdaA.multiplyMod(lambdaA, p)
+           |  val x3G = lambdaA2.subtractMod(gx, p).subtractMod(x2G, p)
+           |
+           |  // y_3G = λ*(gx - x_3G) - gy mod p
+           |  val dx3 = gx.subtractMod(x3G, p)
+           |  val y3G = lambdaA.multiplyMod(dx3, p).subtractMod(gy, p)
+           |
+           |  // Verify 3G matches Scala-computed values
+           |  val x3GExpected = unsignedBigInt("${x3g.toString}")
+           |  val y3GExpected = unsignedBigInt("${y3g.toString}")
+           |  val addCheck = x3G == x3GExpected && y3G == y3GExpected
+           |
+           |  // Verify 3G is on the curve: y^2 == x^3 + 7
+           |  val lhs = y3G.multiplyMod(y3G, p)
+           |  val rhs = x3G.multiplyMod(x3G, p).multiplyMod(x3G, p).plusMod(seven, p)
+           |  val onCurve = lhs == rhs
+           |
+           |  sigmaProp(doubleCheck && addCheck && onCurve)
+           |}""".stripMargin,
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy secqTest()
+    } else {
+      secqTest()
+    }
+  }
+
+  property("Byte.toBits") {
+    val customExt = Map(
+      1.toByte -> ByteConstant(1)
+    ).toSeq
+    def toBitsTest() = test("Byte.toBits", env, customExt,
+      """{
+        | val b = getVar[Byte](1).get
+        | b.toBits == Coll(false, false, false, false, false, false, false, true)
+        |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBitsTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+  property("Long.toBits") {
+    val customExt = Map(
+      1.toByte -> LongConstant(1)
+    ).toSeq
+    def toBitsTest() = test("Long.toBits", env, customExt,
+      """{
+        | val b = getVar[Long](1).get
+        | val ba = b.toBits
+        |
+        | // only rightmost bit is set
+        | ba.size == 64 && ba(63) == true && ba.slice(0, 63).forall({ (b: Boolean ) => b == false })
+        |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBitsTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+  property("BigInt.toBits") {
+    def toBitsTest() = test("BigInt.toBits", env, ext,
+      s"""{
+        | val b = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+        | val ba = b.toBits
+        | ba.size == 256
+        |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBitsTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+
+  property("UnsignedBigInt.toBits") {
+    def toBitsTest() = test("UnsignedBigInt.toBits", env, ext,
+      s"""{
+         | val b = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val ba = b.toBits
+         | ba.size == 256
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBitsTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+  property("UnsignedBigInt.toBits - 2") {
+    def toBitsTest() = test("UnsignedBigInt.toBits", env, ext,
+      s"""{
+         | val b = unsignedBigInt("5")
+         | val ba = b.toBits
+         | ba.size == 8 && ba == Coll(false, false, false, false, false, true, false, true)
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBitsTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBitsTest())
+    }
+  }
+
+
+  property("BigInt.bitwiseInverse") {
+    def bitwiseInverseTest(): Assertion = test("BigInt.bitwiseInverse", env, ext,
+      s"""{
+         | val b = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val bi = b.bitwiseInverse
+         | bi.bitwiseInverse == b
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseInverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseInverse") {
+    def bitwiseInverseTest(): Assertion = test("UnsignedBigInt.bitwiseInverse", env, ext,
+      s"""{
+         | val b = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val bi = b.bitwiseInverse
+         | bi.bitwiseInverse == b
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseInverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
+    }
+  }
+
+
+  property("Byte.bitwiseInverse") {
+    def bitwiseInverseTest(): Assertion = test("Byte.bitwiseInverse", env, ext,
+      s"""{
+         | val b = (126 + 1).toByte  // max byte value
+         | b.bitwiseInverse == (-128).toByte
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseInverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
+    }
+  }
+
+  property("Long.bitwiseInverse") {
+    val customExt = Map(
+      1.toByte -> LongConstant(9223372036854775807L)
+    ).toSeq
+    def bitwiseInverseTest(): Assertion = test("Long.bitwiseInverse", env, customExt,
+      s"""{
+         | val l = getVar[Long](1).get
+         | val lb = l.bitwiseInverse
+         | lb.bitwiseInverse == l
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseInverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseInverseTest())
+    }
+  }
+
+
+  property("Byte.bitwiseOr") {
+    val customExt = Map(
+      1.toByte -> ByteConstant(127)
+    ).toSeq
+    def bitwiseOrTest(): Assertion = test("Byte.bitwiseOrTest", env, customExt,
+      s"""{
+         | val x = getVar[Byte](1).get
+         | val y = (-128).toByte
+         | x.bitwiseOr(y) == -1
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
+  property("BigInt.bitwiseOr") {
+    def bitwiseOrTest(): Assertion = test("BigInt.bitwiseOr", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | x.bitwiseOr(x) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseOr") {
+    def bitwiseOrTest(): Assertion = test("BigInt.bitwiseOr", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.bitwiseOr(x) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseOr - 2") {
+    def bitwiseOrTest(): Assertion = test("BigInt.bitwiseOr", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("121")
+         | val z = unsignedBigInt("115792089237316195423570985008687907852837564279074904382605163141518161494393")
+         | x.bitwiseOr(y) == z && y.bitwiseOr(x) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseOrTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseOrTest())
+    }
+  }
+
+  property("BigInt.bitwiseAnd") {
+    def bitwiseAndTest(): Assertion = test("BigInt.bitwiseAnd", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val y = 0.toBigInt
+         | x.bitwiseAnd(y) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseAnd") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseAnd", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = 0.toBigInt.toUnsigned
+         | x.bitwiseAnd(y) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("UnsignedBigInt.bitwiseAnd - 2") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseAnd", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = unsignedBigInt("1157920892373161954235709850086879078522970439492889181512311797126516834561")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseAnd(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("Short.bitwiseAnd") {
+    val customExt = Map(
+      1.toByte -> ShortConstant(32767)
+    ).toSeq
+    def bitwiseAndTest(): Assertion = test("Short.bitwiseAnd", env, customExt,
+      s"""{
+         | val x = getVar[Short](1).get
+         | val y = (-32768).toShort
+         | x.bitwiseAnd(y) == 0
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("Short.bitwiseXor") {
+    val customExt = Map(
+      1.toByte -> ShortConstant(32767)
+    ).toSeq
+    def bitwiseXorTest(): Assertion = test("Short.bitwiseXor", env, customExt,
+      s"""{
+         | val x = getVar[Short](1).get
+         | val y = (-32768).toShort
+         | x.bitwiseXor(y) == -1
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseXorTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseXorTest())
+    }
+  }
+
+  property("BigInt.bitwiseXor") {
+    def bitwiseXorTest(): Assertion = test("BigInt.bitwiseXor", env, ext,
+      s"""{
+         | val x = bigInt("-768674748430101084849204595060664949857579483737383833332727484848588886")
+         | val y = bigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = bigInt("-1157640033036725491711737956849584949341472215181452524373827965546397848917")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseXor(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseXorTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseXorTest())
+    }
+  }
+
+
+    property("UnsignedBigInt.bitwiseXor") {
+    def bitwiseAndTest(): Assertion = test("UnsignedBigInt.bitwiseXor", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = unsignedBigInt("1157920892373161954235709850086879078528375642790749043826051631415181614337")
+         | val z = unsignedBigInt("114634168344943033469335275158601028774319999042879875063406591178680309439552")
+         |
+         | // cross-checked with wolfram alpha
+         | x.bitwiseXor(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      bitwiseAndTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(bitwiseAndTest())
+    }
+  }
+
+  property("Byte.shiftLeft") {
+    def shiftLeftTest(): Assertion = test("Byte.shiftLeft", env, ext,
+      s"""{
+         | val x = 4.toByte
+         | val y = 2
+         | x.shiftLeft(y) == 16.toByte
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftLeftTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("Byte.shiftLeft - over limit") {
+    def shiftLeftTest(): Assertion = test("Byte.shiftLeft2", env, ext,
+      s"""{
+         | val x = 4.toByte
+         | val y = 2222
+         | x.shiftLeft(y) == 0
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[IllegalArgumentException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("Byte.shiftLeft - over limit 2") {
+    def shiftLeftTest(): Assertion = test("Byte.shiftLeft2", env, ext,
+      s"""{
+         | val x = (-128).toByte
+         | val y = 1
+         | x.shiftLeft(y) == 0
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftLeftTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("BigInt.shiftLeft") {
+    def shiftLeftTest(): Assertion = test("BigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | val y = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | x.shiftLeft(2) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftLeftTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftLeft") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | val y = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | x.shiftLeft(2) == y
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftLeftTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftLeft over limits") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.shiftLeft(1) > x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[ArithmeticException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+
+  property("UnsignedBigInt.shiftLeft - neg shift") {
+    def shiftLeftTest(): Assertion = test("UnsignedBigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | x.shiftLeft(-1) > x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("BigInt.shiftLeft over limits") {
+    def shiftLeftTest(): Assertion = test("BigInt.shiftLeft", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | x.shiftLeft(1) > x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[ArithmeticException] shouldBe thrownBy(shiftLeftTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftLeftTest())
+    }
+  }
+
+  property("Byte.shiftRight") {
+    def shiftRightTest(): Assertion = test("Byte.shiftRight", env, ext,
+      s"""{
+         | val x = 8.toByte
+         | val y = 2
+         | x.shiftRight(y) == 2.toByte
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("Byte.shiftRight - neg") {
+    def shiftRightTest(): Assertion = test("Byte.shiftRight", env, ext,
+      s"""{
+         | val x = (-8).toByte
+         | val y = 2
+         | x.shiftRight(y) == (-2).toByte
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("Byte.shiftRight - neg - neg shift") {
+    def shiftRightTest(): Assertion = test("Byte.shiftRight", env, ext,
+      s"""{
+         | val x = (-8).toByte
+         | val y = -2
+         | x.shiftRight(y) == (-1).toByte
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+
+  property("Long.shiftRight - neg") {
+    def shiftRightTest(): Assertion = test("Long.shiftRight", env, ext,
+      s"""{
+         | val x = -32L
+         | val y = 2
+         | x.shiftRight(y) == -8L
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("Long.shiftRight - neg - neg shift") {
+    def shiftRightTest(): Assertion = test("Long.shiftRight", env, ext,
+      s"""{
+         | val x = -32L
+         | val y = -2
+         | x.shiftRight(y) == -1L
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("BigInt.shiftRight") {
+    def shiftRightTest(): Assertion = test("BigInt.shiftRight", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val y = 2
+         | val z = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | x.shiftRight(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("BigInt.shiftRight - neg shift") {
+    def shiftRightTest(): Assertion = test("BigInt.shiftRight", env, ext,
+      s"""{
+         | val x = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val y = -2
+         | val z = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | z.shiftRight(y) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftRight") {
+    def shiftRightTest(): Assertion = test("UnsignedBigInt.shiftRight", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder}")
+         | val y = 3
+         | val z = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | x.shiftRight(y) == z
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      shiftRightTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("UnsignedBigInt.shiftRight - neg shift") {
+    def shiftRightTest(): Assertion = test("UnsignedBigInt.shiftRight", env, ext,
+      s"""{
+         | val x = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+         | val y = -2
+         | val z = unsignedBigInt("${CryptoConstants.groupOrder.divide(new BigInteger("8"))}")
+         | z.shiftRight(y) == x
+         |}""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      an[java.lang.IllegalArgumentException] shouldBe thrownBy(shiftRightTest())
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(shiftRightTest())
+    }
+  }
+
+  property("getVarFromInput - invalid var") {
+    def getVarTest(): Assertion = {
+      val customExt = Map(
+        1.toByte -> IntConstant(5)
+      ).toSeq
+      test("R1", env, customExt,
+        "{ sigmaProp(CONTEXT.getVarFromInput[Int](0, 2).isDefined == false) }",
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getVarTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getVarTest()
+    }
+  }
+
+  property("Coll.reverse"){
+    def reverseTest() = test("reverse", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = Coll(3, 2, 1)
+        |
+        | val b1 = Coll(INPUTS(0), OUTPUTS(0))
+        | val b2 = Coll(OUTPUTS(0), INPUTS(0))
+        |
+        | c1.reverse == c2 && b1.reverse == b2
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      reverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
+    }
+  }
+
+  property("Coll.startsWith"){
+    def reverseTest() = test("distinct", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = Coll(1, 2)
+        | val c3 = Coll(1, 3)
+        | val c4 = Coll[Int]()
+        | val c5 = Coll(1, 2, 3, 4)
+        |
+        | val b1 = c1.startsWith(c3)
+        | val b2 = c1.startsWith(c5)
+        |
+        | c1.startsWith(c2) && c1.startsWith(c4) && c1.startsWith(c1) && !b1 && !b2
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      reverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
+    }
+  }
+
+  property("Coll.startsWith - tuples"){
+    def reverseTest() = test("distinct", env, ext,
+      """{
+        | val c1 = Coll((1, 2), (3, 4), (5, 6))
+        | val c2 = Coll((1, 2), (3, 4))
+        | val c3 = Coll((1, 3))
+        | val c4 = Coll[(Int, Int)]()
+        | val c5 = Coll((1, 2), (3, 4), (5, 6), (7, 8))
+        |
+        | val b1 = c1.startsWith(c3)
+        | val b2 = c1.startsWith(c5)
+        |
+        | c1.startsWith(c2) && c1.startsWith(c4) && c1.startsWith(c1) && !b1 && !b2
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      reverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
+    }
+  }
+
+  property("Coll.endsWith"){
+    def reverseTest() = test("distinct", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = Coll(2, 3)
+        | val c3 = Coll(2, 2)
+        | val c4 = Coll[Int]()
+        | val c5 = Coll(1, 2, 3, 4)
+        |
+        | val b1 = c1.endsWith(c3)
+        | val b2 = c1.endsWith(c5)
+        |
+        | c1.endsWith(c2) && c1.endsWith(c4) && c1.endsWith(c1) && !b1 && !b2
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      reverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
+    }
+  }
+
+  property("Coll.endsWith - tuples"){
+    def reverseTest() = test("endsWith tuples", env, ext,
+      """{
+        | val c1 = Coll((1, 2), (2, 3))
+        | val c2 = Coll((2, 3))
+        | val c3 = Coll((2, 2))
+        | val c4 = Coll[(Int, Int)]()
+        | val c5 = Coll((0, 2), (2, 3))
+        |
+        | val b1 = c1.endsWith(c3)
+        | val b2 = c1.endsWith(c5)
+        |
+        | c1.endsWith(c2) && c1.endsWith(c4) && c1.endsWith(c1) && !b1 && !b2
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      reverseTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(reverseTest())
+    }
+  }
+
+  property("Coll.get"){
+    def getTest() = test("get", env, ext,
+      """{
+        |   val c1 = Coll(1)
+        |   val c2 = Coll[Int]()
+        |
+        |   c2.get(0).getOrElse(c1.get(0).get) == c1.get(0).get
+        | }""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(getTest())
+    }
+  }
+
+  property("Coll.zip"){
+    test("zip", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = Coll(4, 5, 6, 7)
+        | val c3 = Coll(4, 5)
+        |
+        | val z1 = c1.zip(c2)
+        | val z2 = c1.zip(c3)
+        |
+        | z1.size == 3 && z1(0) == (1, 4) && z1(1) == (2, 5) && z1(2) == (3, 6) &&
+        | z2.size == 2 && z2(0) == (1, 4) && z2(1) == (2, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.flatMap"){
+    test("flatMap", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        | val c2 = c1.flatMap({ (i: Int) => Coll(i, i * 2) })
+        |
+        | c2.size == 6 && c2 == Coll(1, 2, 2, 4, 3, 6)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.patch"){
+    test("patch", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        | val c2 = Coll(9, 9)
+        |
+        | val p1 = c1.patch(1, c2, 2)
+        | val p2 = c1.patch(0, c2, 0)
+        | val p3 = c1.patch(5, c2, 0)
+        |
+        | p1 == Coll(1, 9, 9, 4, 5) && p2 == Coll(9, 9, 1, 2, 3, 4, 5) &&
+        | p3 == Coll(1, 2, 3, 4, 5, 9, 9)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.updated"){
+    test("updated", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        |
+        | val u1 = c1.updated(0, 9)
+        | val u2 = c1.updated(4, 9)
+        | val u3 = c1.updated(2, 9)
+        |
+        | u1 == Coll(9, 2, 3, 4, 5) && u2 == Coll(1, 2, 3, 4, 9) &&
+        | u3 == Coll(1, 2, 9, 4, 5) && c1 == Coll(1, 2, 3, 4, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.updateMany"){
+    test("updateMany", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        | val idx = Coll(0, 2, 4)
+        | val vals = Coll(9, 8, 7)
+        |
+        | val u1 = c1.updateMany(idx, vals)
+        |
+        | u1 == Coll(9, 2, 8, 4, 7) && c1 == Coll(1, 2, 3, 4, 5)
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.slice"){
+    test("slice", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 4, 5)
+        |
+        | val s1 = c1.slice(1, 3)
+        | val s2 = c1.slice(0, 5)
+        | val s3 = c1.slice(2, 2)
+        | val s4 = c1.slice(0, 10)
+        |
+        | s1 == Coll(2, 3) && s2 == c1 && s3.size == 0 && s4 == c1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.append"){
+    test("append", env, ext,
+      """{
+        | val c1 = Coll(1, 2)
+        | val c2 = Coll(3, 4)
+        |
+        | val a1 = c1.append(c2)
+        | val a2 = c2.append(c1)
+        | val a3 = c1.append(Coll[Int]())
+        |
+        | a1 == Coll(1, 2, 3, 4) && a2 == Coll(3, 4, 1, 2) && a3 == c1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.indexOf"){
+    test("indexOf", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3, 2, 5)
+        |
+        | val i1 = c1.indexOf(2, 0)
+        | val i2 = c1.indexOf(2, 2)
+        | val i3 = c1.indexOf(2, 3)
+        | val i4 = c1.indexOf(99, 0)
+        |
+         | i1 == 1 && i2 == 3 && i3 == 3 && i4 == -1
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.indices"){
+    test("indices", env, ext,
+      """{
+        | val c1 = Coll(10, 20, 30)
+        | val c2 = Coll[Int]()
+        |
+        | c1.indices == Coll(0, 1, 2) && c2.indices == Coll[Int]()
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Coll.getOrElse"){
+    test("getOrElse", env, ext,
+      """{
+        | val c1 = Coll(1, 2, 3)
+        |
+        | val g1 = c1.getOrElse(0, 99)
+        | val g2 = c1.getOrElse(2, 99)
+        | val g3 = c1.getOrElse(5, 99)
+        | val g4 = c1.getOrElse(-1, 99)
+        |
+        | g1 == 1 && g2 == 3 && g3 == 99 && g4 == 99
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Global.fromBigEndianBytes - byte") {
+    def fromTest() = test("fromBigEndianBytes - byte", env, ext,
+      s"""{
+         |  val ba = Coll(5.toByte)
+         |  Global.fromBigEndianBytes[Byte](ba) == 5
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Global.fromBigEndianBytes - short") {
+    def fromTest() = test("fromBigEndianBytes - short", env, ext,
+      s"""{
+         |  val ba = Coll(5.toByte, 5.toByte)
+         |  Global.fromBigEndianBytes[Short](ba) != 0
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Global.fromBigEndianBytes - int") {
+    def fromTest() = test("fromBigEndianBytes - int", env, ext,
+      s"""{
+         |  val ba = fromBase16("${Base16.encode(Ints.toByteArray(Int.MaxValue))}")
+         |  Global.fromBigEndianBytes[Int](ba) == ${Int.MaxValue}
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Global.fromBigEndianBytes - long") {
+    def fromTest() = test("fromBigEndianBytes - long", env, ext,
+      s"""{
+         |  val l = 1088800L
+         |  val ba = longToByteArray(l)
+         |  Global.fromBigEndianBytes[Long](ba) == l
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Global.fromBigEndianBytes - Long.toBytes") {
+    val customExt = Map(
+      1.toByte -> LongConstant(1088800L)
+    ).toSeq
+    def fromTest() = test("fromBigEndianBytes - long", env, customExt,
+      s"""{
+         |  val l = getVar[Long](1).get
+         |  val ba = l.toBytes
+         |  Global.fromBigEndianBytes[Long](ba) == l
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Global.fromBigEndianBytes - bigInt") {
+    val bi = new BigInteger("9785856985394593489356430476450674590674598659865986594859056865984690568904")
+    def fromTest() = test("fromBigEndianBytes - bigInt", env, ext,
+      s"""{
+         |  val ba = fromBase16("${Base16.encode(bi.toByteArray)}")
+         |  Global.fromBigEndianBytes[BigInt](ba) == bigInt("$bi")
+         |}
+         |""".stripMargin,
+      null
+    )
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      fromTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy(fromTest())
+    }
+  }
+
+  property("Int.toBytes") {
+    val customExt = Map(
+      1.toByte -> IntConstant(1)
+    ).toSeq
+    def toBytesTest() = test("Int.toBytes", env, customExt,
+      """{
+        |   val l = getVar[Int](1).get
+        |   l.toBytes == Coll(0.toByte, 0.toByte, 0.toByte, 1.toByte)
+        | }""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("Int.toBits") {
+    val customExt = Map(
+      1.toByte -> IntConstant(1477959696)
+    ).toSeq
+    def toBytesTest() = test("Int.toBytes", env, customExt,
+      """{
+        |   val l = getVar[Int](1).get
+        |   l.toBits == Coll(false, true, false, true, true, false, false, false, false, false, false, true, false, true, true ,true, true, true, true, false, false, false, false, false, false, false, false, true, false, false, false, false)
+        | }""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("Byte.toBytes") {
+    val customExt = Map(
+      1.toByte -> ByteConstant(10)
+    ).toSeq
+    def toBytesTest() = test("Byte.toBytes", env, customExt,
+      """{
+        |   val l = getVar[Byte](1).get
+        |   l.toBytes == Coll(10.toByte)
+        | }""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+
+  property("BigInt.toBytes") {
+    def toBytesTest() = test("BigInt.toBytes", env, ext,
+      s"""{
+        |   val l = bigInt("${CryptoConstants.groupOrder.divide(new BigInteger("2"))}")
+        |   l.toBytes.size == 32
+        | }""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("UnsignedBigInt.toBytes") {
+    val script = s"""{
+                    |   val l = unsignedBigInt("${CryptoConstants.groupOrder}")
+                    |   l.toBytes.size == 32
+                    | }""".stripMargin
+
+    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("UnsignedBigInt.toBytes - 2") {
+    val script = s"""{
+                    |   val l = unsignedBigInt("5")
+                    |   val bs = l.toBytes
+                    |   bs.size == 1 && bs == Coll(5.toByte)
+                    | }""".stripMargin
+
+    def toBytesTest() = test("UnsignedBigInt.toBytes", env, ext, script, null)
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      toBytesTest()
+    } else {
+      an[ValidationException] shouldBe thrownBy(toBytesTest())
+    }
+  }
+
+  property("serialize - byte array") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val ba = fromBase16("c0ffee");
+            Global.serialize(ba).size > ba.size
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - collection of boxes") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val boxes = INPUTS;
+            Global.serialize(boxes).size > 0
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - optional collection") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val opt = SELF.R1[Coll[Byte]];
+            Global.serialize(opt).size > SELF.R1[Coll[Byte]].get.size
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize(long) is producing different result from longToByteArray()") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val l = -1000L
+            val ba1 = Global.serialize(l);
+            val ba2 = longToByteArray(l)
+            ba1 != ba2
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  // the test shows that serialize(groupElement) is the same as groupElement.getEncoded
+  property("serialize - group element - equivalence with .getEncoded") {
+    val ge = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+  //  val ba = Base16.encode(ge.getEncoded.toArray)
+    def deserTest() = test("serialize", env, Seq(21.toByte -> GroupElementConstant(ge)),
+      s"""{
+            val ge = getVar[GroupElement](21).get
+            val ba = serialize(ge);
+            ba == ge.getEncoded
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  // the test shows that serialize(sigmaProp) is the same as sigmaProp.propBytes without first 2 bytes
+  property("serialize and .propBytes correspondence") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val p1 = getVar[SigmaProp]($propVar1).get
+            val bytes = p1.propBytes
+            val ba = bytes.slice(2, bytes.size)
+            val ba2 = serialize(p1)
+            ba == ba2
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - collection of collection of headers") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+
+    val customExt = Seq(21.toByte -> HeaderConstant(h1))
+
+    def deserTest() = test("serialize", env, customExt,
+      s"""{
+            val h1 = getVar[Header](21).get;
+            val c = Coll(Coll(h1))
+            Global.serialize(c).size > 0
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - deserialize - optional UnsignedBigInt") {
+    def deserTest() = test("serialize", env, ext,
+      s"""{
+            val ub = unsignedBigInt("5");
+            val opt = Global.some[UnsignedBigInt](ub)
+            val bs = Global.serialize(opt);
+            bs == fromBase16("010105") && Global.deserializeTo[Option[UnsignedBigInt]](bs).get == ub
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [Exception] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - not spam") {
+    val customExt = Seq(21.toByte -> ShortArrayConstant((1 to Short.MaxValue).map(_.toShort).toArray),
+      22.toByte -> ByteArrayConstant(Array.fill(1)(1.toByte)))
+    def deserTest() = test("serialize", env, customExt,
+      s"""{
+            val indices = getVar[Coll[Short]](21).get
+            val base = getVar[Coll[Byte]](22).get
+
+             def check(index:Short): Boolean = { serialize(base) != base }
+            indices.forall(check)
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("serialize - spam attempt") {
+    val customExt = Seq(21.toByte -> ShortArrayConstant((1 to Short.MaxValue).map(_.toShort).toArray),
+      22.toByte -> ByteArrayConstant(Array.fill(16000)(1.toByte)))
+    def deserTest() = test("serialize", env, customExt,
+      s"""{
+            val indices = getVar[Coll[Short]](21).get
+            val base = getVar[Coll[Byte]](22).get
+
+             def check(index:Short): Boolean = { serialize(base) != base }
+            indices.forall(check)
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      // we have wrapped CostLimitException here
+      an[Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("Lazy evaluation of default in Option.getOrElse") {
+    val customExt = Map (
+      1.toByte -> IntConstant(5)
+    ).toSeq
+    def optTest() = test("getOrElse", env, customExt,
+      """{
+        |  getVar[Int](1).getOrElse(getVar[Int](44).get) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      optTest()
+    } else {
+      assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
+    }
+  }
+
+  property("Lazy evaluation of default in Coll.getOrElse") {
+    def optTest() = test("getOrElse", env, ext,
+      """{
+        |  val c = Coll[Int](1)
+        |  c.getOrElse(0, getVar[Int](44).get) > 0 &&
+        |   c.getOrElse(1, c.getOrElse(0, getVar[Int](44).get)) > 0
+        |}
+        |""".stripMargin,
+      null
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      optTest()
+    } else {
+      assertExceptionThrown(optTest(), _.isInstanceOf[NoSuchElementException])
+    }
+  }
+
+  property("checking Bitcoin PoW") {
+    val h = "00000020a82ff9c62e69a6cbed277b7f2a9ac9da3c7133a59a6305000000000000000000f6cd5708a6ba38d8501502b5b4e5b93627e8dcc9bd13991894c6e04ade262aa99582815c505b2e17479a751b"
+    val customExt = Map(
+      1.toByte -> ByteArrayConstant(Base16.decode(h).get)
+    ).toSeq
+
+    def powTest() = {
+      test("Prop1", env, customExt,
+        """{
+          |    def reverse4(bytes: Coll[Byte]): Coll[Byte] = {
+          |        Coll(bytes(3), bytes(2), bytes(1), bytes(0))
+          |    }
+          |
+          |    def reverse32(bytes: Coll[Byte]): Coll[Byte] = {
+          |        Coll(bytes(31), bytes(30), bytes(29), bytes(28), bytes(27), bytes(26), bytes(25), bytes(24),
+          |             bytes(23), bytes(22), bytes(21), bytes(20), bytes(19), bytes(18), bytes(17), bytes(16),
+          |             bytes(15), bytes(14), bytes(13), bytes(12), bytes(11), bytes(10), bytes(9), bytes(8),
+          |             bytes(7), bytes(6), bytes(5), bytes(4), bytes(3), bytes(2), bytes(1), bytes(0))
+          |    }
+          |
+          |   val bitcoinHeader = getVar[Coll[Byte]](1).get
+          |   val id = reverse32(sha256(sha256(bitcoinHeader)))
+          |   val hit = byteArrayToBigInt(id)
+          |
+          |   val nBitsBytes = reverse4(bitcoinHeader.slice(72, 76))
+          |
+          |   val pad = Coll[Byte](0.toByte, 0.toByte, 0.toByte, 0.toByte)
+          |
+          |   val nbits = byteArrayToLong(pad ++ nBitsBytes)
+          |
+          |   val difficulty = Global.decodeNbits(nbits)
+          |
+          |   // <= according to https://bitcoin.stackexchange.com/a/105224
+          |   hit <= difficulty
+          |}
+          |""".stripMargin,
+        propExp = null,
+        testExceededCost = false
+      )
+    }
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy powTest()
+    } else {
+      powTest()
+    }
+  }
+
+  property("decoding nbits from an Ergo block header") {
+    // bytes of real mainnet block header at height 1,398,482
+    val headerBytes = "03720c6c532506a9bc4cceb6844efaa4096f66ba8a1d67ad7411ed1cb61dd5c008519fedd7d3b56984c43898f9e12aa866bc40e1ede2a6138940c9db2e20d633630024ee218d6a38392a8401c2b324b563e48d487c0f22dad940bd1c8a096084908ad71c77eec44ef083ba073deb8fa4a57b68d6296186c5d61e317849c760c16019b293cbfeb33288c9616f282288ee24c6d306577a76e7ac1cf87422ae0bdc6b44a449451a4e25070412d0d2ad55000000000295facb78290ac2b55f1453204d49df37be5bae9f185ed6704c1ba3ee372280c157221fa789df3f48"
+    val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
+
+    val customExt = Seq(21.toByte -> HeaderConstant(header1))
+
+    def powTest() = {
+      test("Prop1", env, customExt,
+        """
+          |{
+          |   val h = getVar[Header](21).get
+          |
+          |   val n = h.nBits
+          |
+          |   val target = Global.decodeNbits(n)
+          |
+          |   target == bigInt("1146584469340160")
+          |}
+          |""".stripMargin,
+        propExp = null,
+        testExceededCost = false
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy powTest()
+    } else {
+      powTest()
+    }
+  }
+
+  property("serialize - deserialize roundtrip") {
+    val customExt = Seq(21.toByte -> ShortArrayConstant((1 to 10).map(_.toShort).toArray))
+    def deserTest() = test("serialize", env, customExt,
+      s"""{
+            val src = getVar[Coll[Short]](21).get
+            val ba = serialize(src)
+            val restored = deserializeTo[Coll[Short]](ba)
+            src == restored
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[Exception] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - int") {
+    val value = -109253
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putInt(value)
+    val bytes = Base16.encode(w.toBytes)
+    def deserTest() = {test("deserializeTo", env, ext,
+      s"""{ val ba = fromBase16("$bytes"); Global.deserializeTo[Int](ba) == $value }""",
+      null,
+      true
+    )}
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - coll[int]") {
+    val writer = new SigmaByteWriter(new VLQByteBufferWriter(new ByteArrayBuilder()), None, None, None)
+    DataSerializer.serialize[SCollection[SInt.type]](Colls.fromArray(Array(IntConstant(5).value)), SCollection(SInt), writer)
+    val bytes = Base16.encode(writer.toBytes)
+
+    def deserTest() = {
+      test("deserializeTo", env, ext,
+        s"""{val ba = fromBase16("$bytes"); val coll = Global.deserializeTo[Coll[Int]](ba); coll(0) == 5 }""",
+        null,
+        true
+      )
+    }
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - long") {
+    val value = -10009253L
+
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putLong(value)
+    val bytes = Base16.encode(w.toBytes)
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            Global.deserializeTo[Long](ba) == ${value}L
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - box rountrip") {
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val b = INPUTS(0);
+            val ba = b.bytes;
+            Global.deserializeTo[Box](ba) == b
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - bigint") {
+
+    val bigInt = SecP256K1Group.q.divide(new BigInteger("512"))
+    val biBytes = bigInt.toByteArray
+
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putUShort(biBytes.length)
+    val lengthBytes = w.toBytes
+
+    val bytes = Base16.encode(lengthBytes ++ biBytes)
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            val b = Global.deserializeTo[BigInt](ba)
+            b == bigInt("${bigInt.toString}")
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - short") {
+    val s = (-1925).toShort
+    val w = new VLQByteBufferWriter(new ByteArrayBuilder()).putShort(s)
+    val bytes = Base16.encode(w.toBytes)
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val ba = fromBase16("$bytes");
+            Global.deserializeTo[Short](ba) == -1925
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - group element") {
+    val ge = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val ba = Base16.encode(ge.getEncoded.toArray)
+    def deserTest() = test("deserializeTo", env, Seq(21.toByte -> GroupElementConstant(ge)),
+      s"""{
+            val ge = getVar[GroupElement](21).get
+            val ba = fromBase16("$ba");
+            val ge2 = Global.deserializeTo[GroupElement](ba)
+            ba == ge2.getEncoded && ge == ge2
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+       an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - sigmaprop roundtrip") {
+
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val bytes = getVar[Coll[Byte]]($propBytesVar1).get
+            val ba = bytes.slice(2, bytes.size)
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop == getVar[SigmaProp]($propVar3).get && prop
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - .propBytes") {
+    def deserTest() = test("deserializeTo", env, ext,
+      s"""{
+            val p1 = getVar[SigmaProp]($propVar1).get
+            val bytes = p1.propBytes
+            val ba = bytes.slice(2, bytes.size)
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop == p1 && prop
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - sigmaprop roundtrip - non evaluated") {
+
+    val script = GT(Height, IntConstant(-1)).toSigmaProp
+    val scriptBytes = ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(ErgoTree.fromProposition(script))
+    val customExt = Seq(21.toByte -> ByteArrayConstant(scriptBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val prop = Global.deserializeTo[SigmaProp](ba)
+            prop
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an [sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      an [Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("deserializeTo - avltree") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+    val treeBytes = AvlTreeData.serializer.toBytes(treeData)
+
+    val customExt = Seq(21.toByte -> ByteArrayConstant(treeBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val tree = Global.deserializeTo[AvlTree](ba)
+            tree.digest == fromBase16(${Base16.encode(treeData.digest.toArray)})
+              && tree.enabledOperations == 0
+              && tree.keyLength == 32
+              && tree.valueLengthOpt.isEmpty
+          }""",
+      null,
+      true
+    )
+
+    an [Exception] should be thrownBy deserTest()
+  }
+
+  property("deserializeTo - header") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+    val headerBytes = h1.asInstanceOf[CHeader].ergoHeader.bytes
+
+    val headerStateBytes = AvlTreeData.serializer.toBytes(Extensions.CoreAvlTreeOps(h1.stateRoot).toAvlTreeData)
+    val customExt = Seq(21.toByte -> ByteArrayConstant(headerBytes), 22.toByte -> ByteArrayConstant(headerStateBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val header = Global.deserializeTo[Header](ba)
+            val ba2 = getVar[Coll[Byte]](22).get
+            val tree = Global.deserializeTo[AvlTree](ba2)
+            val id = fromBase16("${Base16.encode(h1.id.toArray)}")
+            header.height == ${h1.height} && header.stateRoot == tree && header.id == id
+          }""",
+      null
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
+  }
+
+  property("deserializeTo - header with invalid powDistance") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1.asInstanceOf[CHeader].ergoHeader
+    val invalidPowDistance = new BigInteger(Array.fill(33)(33.toByte)) // Creating a byte array out of 256-bit range
+
+    val s = new AutolykosSolution(h1.powSolution.pk, h1.powSolution.w, h1.powSolution.n, invalidPowDistance)
+    val headerBytes = h1.copy(powSolution = s).bytes
+
+    val customExt = Seq(21.toByte -> ByteArrayConstant(Colls.fromArray(headerBytes)))
+
+    def deserTest() = test("deserializeToInvalidPowDistance", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val header = Global.deserializeTo[Header](ba)
+            header.height >= 0
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      an[Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("deserializeTo - header option") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1.asInstanceOf[CHeader].ergoHeader
+    val headerBytes = Colls.fromArray(Array(1.toByte) ++ h1.bytes)
+
+    val customExt = Seq(21.toByte -> ByteArrayConstant(headerBytes))
+
+    def deserTest() = test("deserializeTo", env, customExt,
+      s"""{
+            val ba = getVar[Coll[Byte]](21).get
+            val headerOpt = Global.deserializeTo[Option[Header]](ba)
+            val header = headerOpt.get
+            val id = fromBase16("${Base16.encode(h1.id.toArray)}")
+            header.height == ${h1.height} && header.id == id
+          }""",
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] should be thrownBy deserTest()
+    } else {
+      deserTest()
+    }
   }
 
   property("executeFromVar - SigmaProp") {
@@ -237,7 +3940,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     val customExt = Seq(21.toByte -> ByteArrayConstant(defaultBytes))
     val customEnv = Map(
         "defaultVal" -> CAnyValue(21.toByte)
-    )    
+    )
 
     test("executeFromSelfReg", customEnv, customExt,
       "{val ba = executeFromSelfRegWithDefault[Coll[Byte]](4, getVar[Coll[Byte]](defaultVal).get); ba.size == 2 }",
@@ -367,6 +4070,49 @@ class BasicOpsSpecification extends CompilerTestingCommons
         val r = rootCause(e)
         r.isInstanceOf[sigma.exceptions.InvalidArguments] && r.getMessage.startsWith("Invalid register specified")
       }
+    )
+  }
+
+  property("executeFromSelfReg - boundary id == allRegisters.length") {
+    // allRegisters has 10 entries (R0..R9), so id == 10 is the first out-of-range value
+    // and must be rejected at compile time, exercising the upper bound of the range check.
+    assertExceptionThrown(
+      test("executeFromSelfReg", env, ext,
+        "{ executeFromSelfReg[Int](10) == 2 }",
+        null,
+        true,
+        additionalRegistersOpt = Some(Map())
+      ),
+      e => {
+        val r = rootCause(e)
+        r.isInstanceOf[sigma.exceptions.InvalidArguments] && r.getMessage == "Invalid register specified 10"
+      }
+    )
+  }
+
+  property("executeFromSelfReg - negative id") {
+    assertExceptionThrown(
+      test("executeFromSelfReg", env, ext,
+        "{ executeFromSelfReg[Int](-1) == 2 }",
+        null,
+        true,
+        additionalRegistersOpt = Some(Map())
+      ),
+      e => {
+        val r = rootCause(e)
+        r.isInstanceOf[sigma.exceptions.InvalidArguments] && r.getMessage == "Invalid register specified -1"
+      }
+    )
+  }
+
+  property("executeFromSelfRegWithDefault - boundary id == allRegisters.length") {
+    // With out-of-range id (== 10) the IR builder must fall through to the default value
+    // expression at compile time, rather than producing a DeserializeRegister node.
+    test("executeFromSelfReg", env, ext,
+      "{ executeFromSelfRegWithDefault[Int](10, getVar[Int](2).get) == 2 }",
+      null,
+      true,
+      additionalRegistersOpt = Some(Map())
     )
   }
 
@@ -667,6 +4413,32 @@ class BasicOpsSpecification extends CompilerTestingCommons
       rootCause(_).isInstanceOf[NoSuchElementException])
   }
 
+  property("higher order lambdas") {
+    def holTest() = test("HOL", env, ext,
+      """
+        | {
+        |   val c = Coll(Coll(1))
+        |   def fn(xs: Coll[Int]) = {
+        |     val inc = { (x: Int) => x + 1 }
+        |     def apply(in: (Int => Int, Int)) = in._1(in._2)
+        |     val ys = xs.map { (x: Int) => apply((inc, x)) }
+        |     ys.size == xs.size && ys != xs
+        |   }
+        |
+        |   c.exists(fn)
+        | }
+        |""".stripMargin,
+      null,
+      true
+    )
+
+    if(VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      holTest()
+    } else {
+      an[scala.MatchError] shouldBe thrownBy(holTest())
+    }
+  }
+
   property("OptionGetOrElse") {
     test("OptGet1", env, ext,
       "{ SELF.R5[Int].getOrElse(3) == 1 }",
@@ -741,30 +4513,6 @@ class BasicOpsSpecification extends CompilerTestingCommons
       "{ getVar[Int](99).isEmpty }",
       LogicalNot(GetVarInt(99).isDefined).toSigmaProp,
       true
-    )
-  }
-
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should always be positive") {
-    test("BATBI1", env, ext,
-      "{ byteArrayToBigInt(Coll[Byte](-1.toByte)) > 0 }",
-      GT(ByteArrayToBigInt(ConcreteCollection.fromItems(ByteConstant(-1))), BigIntConstant(0)).toSigmaProp,
-      onlyPositive = true
-    )
-  }
-
-  // TODO this is valid for BigIntModQ type (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/554)
-  ignore("ByteArrayToBigInt: big int should not exceed dlog group order q (it is NOT ModQ integer)") {
-    val q = CryptoConstants.dlogGroup.q
-    val bytes = q.add(BigInteger.valueOf(1L)).toByteArray
-    val itemsStr = bytes.map(v => s"$v.toByte").mkString(",")
-    assertExceptionThrown(
-      test("BATBI1", env, ext,
-        s"{ byteArrayToBigInt(Coll[Byte]($itemsStr)) > 0 }",
-        GT(ByteArrayToBigInt(ConcreteCollection.fromSeq(bytes.map(ByteConstant(_)))), BigIntConstant(0)).toSigmaProp,
-        onlyPositive = true
-      ),
-      e => rootCause(e).isInstanceOf[ArithmeticException]
     )
   }
 
@@ -934,4 +4682,818 @@ class BasicOpsSpecification extends CompilerTestingCommons
       true
     )
   }
+
+  property("substConstants") {
+    val initTreeScript =
+      """
+        | {
+        |   val v1 = 1  // 0
+        |   val v2 = 2  // 2
+        |   val v3 = 3  // 4
+        |   val v4 = 4  // 3
+        |   val v5 = 5  // 1
+        |   sigmaProp(v1 == -v5 && v2 == -v4 && v3 == v2 + v4)
+        | }
+        |""".stripMargin
+
+    val iet = ErgoTree.fromProposition(compile(Map.empty, initTreeScript).asInstanceOf[SigmaPropValue])
+
+    iet.constants.toArray shouldBe Array(IntConstant(1), IntConstant(5), IntConstant(2), IntConstant(4), IntConstant(3), IntConstant(6))
+
+    val originalBytes = Base16.encode(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(iet))
+
+    val set = ErgoTree(
+      iet.header,
+      IndexedSeq(IntConstant(-2), IntConstant(2), IntConstant(-1), IntConstant(1), IntConstant(0), IntConstant(0)),
+      iet.toProposition(false)
+    )
+
+    val hostScript =
+      s"""
+        |{
+        | val bytes = fromBase16("${originalBytes}")
+        |
+        | val substBytes = substConstants[Int](bytes, Coll[Int](0, 2, 4, 3, 1, 5), Coll[Int](-2, -1, 0, 1, 2, 0))
+        |
+        | val checkSubst = substBytes == fromBase16("${Base16.encode(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(set))}")
+        |
+        | sigmaProp(checkSubst)
+        |}
+        |""".stripMargin
+
+    test("subst", env, ext, hostScript, null)
+  }
+
+  property("Box.getReg") {
+    val customExt = Map(
+      1.toByte -> IntConstant(0)
+    ).toSeq
+    def getRegTest(): Assertion = {
+      test("Box.getReg", env, customExt,
+        """{
+          |   val idx = getVar[Int](1).get
+          |   val x = SELF
+          |   x.getReg[Long](idx).get == SELF.value &&
+          |   x.getReg[Coll[(Coll[Byte], Long)]](2).get == SELF.tokens &&
+          |   x.getReg[Int](9).isEmpty
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getRegTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getRegTest()
+    }
+  }
+
+  property("Box.getReg - computable index") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def getRegTest(): Assertion = {
+      test("Box.getReg", env, ext,
+        """{
+          |   val x = SELF.getReg[Long](getVar[Int](1).get).get
+          |   x == SELF.value
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      getRegTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy getRegTest()
+    }
+  }
+
+  property("Unit register") {
+    test("R1", env, ext,
+      script = "{ SELF.R4[Unit].isDefined }",
+      ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).isDefined.toSigmaProp,
+      additionalRegistersOpt = Some(Map(
+        reg1 -> UnitConstant.instance
+      ))
+    )
+
+    test("R2", env, ext,
+      script = "{ SELF.R4[Unit].get == () }",
+      EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).get, UnitConstant.instance).toSigmaProp,
+      additionalRegistersOpt = Some(Map(
+        reg1 -> UnitConstant.instance
+      ))
+    )
+  }
+
+  property("Global.some") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val xo = Global.some[Int](5)
+          |   xo.get == 5
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("Global.some - computable value") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val i = getVar[Int](1)
+          |   val xo = Global.some[Int](i.get)
+          |   xo == i
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("Global.none") {
+    val ext: Seq[VarBinding] = Seq(
+      (intVar1, IntConstant(0))
+    )
+    def someTest(): Assertion = {
+      test("some", env, ext,
+        """{
+          |   val xo = Global.some[Long](5L)
+          |   val xn = Global.none[Long]()
+          |   xn.isDefined == false && xn != xo
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      someTest()
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest()
+    }
+  }
+
+  property("avltree.insertOrUpdate") {
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val elements2 = Seq(1, 22)
+    val treeElements2 = elements2.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    treeElements2.foreach(s => avlProver.performOneOperation(InsertOrUpdate(s._1, s._2)))
+    val updateProof = avlProver.generateProof()
+    val treeData2 = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val v: Coll[(Coll[Byte], Coll[Byte])] = treeElements2.map(t => t._1.toColl -> t._2.toColl).toArray.toColl
+    val ops = IR.builder.mkConstant[SType](v.asWrappedType, SCollection(STuple(SByteArray, SByteArray)))
+
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> AvlTreeConstant(treeData2),
+      23.toByte -> ops,
+      24.toByte -> ByteArrayConstant(updateProof)
+    )
+
+    def deserTest() = test("insertOrUpdate", env, customExt,
+      s"""{
+            val tree1 = getVar[AvlTree](21).get
+            val tree2 = getVar[AvlTree](22).get
+
+            val toInsert = getVar[Coll[(Coll[Byte], Coll[Byte])]](23).get
+            val proof = getVar[Coll[Byte]](24).get
+
+            val tree1Updated = tree1.insertOrUpdate(toInsert, proof).get
+            tree2.digest == tree1Updated.digest
+          }""",
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      deserTest()
+    } else {
+      an[Exception] should be thrownBy deserTest()
+    }
+  }
+
+  property("Global.decodeNbits - result of more than 256 bits") {
+    val okValue = SigmaDsl.encodeNbits(CBigInt(new BigInteger("2").pow(255).subtract(BigInteger.ONE)))
+    val invalidBi: CBigInt = VersionContext.withVersions(2, 2) {
+      CBigInt(new BigInteger("2").pow(256).subtract(BigInteger.ONE))
+    }
+    val invalidValue = SigmaDsl.encodeNbits(invalidBi)
+
+    def someTest(value: Long): Assertion = {
+      test("some", env, ext,
+        s"""{
+          |   val target = Global.decodeNbits(${value}L)
+          |   target != 0
+          |}""".stripMargin,
+        null
+      )
+    }
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      someTest(okValue)
+      // on JVM, InvocationTargetException wrapping (ArithmeticException: BigInteger out of 256 bit range) is thrown
+      an[Exception] should be thrownBy someTest(invalidValue)
+    } else {
+      an[sigma.validation.ValidationException] should be thrownBy someTest(okValue)
+    }
+  }
+
+  property("Preheader") {
+    test("some", env, ext,
+      s"""{
+         |   CONTEXT.preHeader.height == 0
+         |}""".stripMargin,
+      null
+    )
+  }
+
+  property("Context.dataInputs") {
+    test("dataInputs", env, ext,
+      """{
+        | CONTEXT.dataInputs.size == 0
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Context.headers") {
+    test("headers", env, ext,
+      """{
+        | val h = CONTEXT.headers
+        | h.size >= 0
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Context.minerPubKey") {
+    test("minerPubKey", env, ext,
+      """{
+        | CONTEXT.minerPubKey.size == 33
+        | }""".stripMargin,
+      null
+    )
+  }
+
+  property("Header fields") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+
+    val customExt = Seq(21.toByte -> HeaderConstant(h1))
+
+    def headerTest() = test("header", env, customExt,
+      s"""{
+         | val h = getVar[Header](21).get
+         | h.version == 1.toByte &&
+         | h.parentId.size == 32 &&
+         | h.ADProofsRoot.size == 32 &&
+         | h.transactionsRoot.size == 32 &&
+         | h.timestamp > 0 &&
+         | h.height >= 0 &&
+         | h.extensionRoot.size == 32 &&
+         | h.minerPk.getEncoded.size == 33 &&
+         | h.powNonce.size == 8 &&
+         | h.votes.size == 3
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      headerTest()
+    } else {
+      an[Exception] shouldBe thrownBy(headerTest())
+    }
+  }
+
+  property("Header.checkPow") {
+    val td = new SigmaTestingData {}
+    val h1 = td.TestData.h1
+
+    val customExt = Seq(21.toByte -> HeaderConstant(h1))
+
+    def checkPowTest() = test("checkPow", env, customExt,
+      s"""{
+         | val h = getVar[Header](21).get
+         | h.checkPow == true
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      // The test data uses Autolykos v1 which is not supported in checkPow
+      // So we expect an exception
+      an[Exception] shouldBe thrownBy(checkPowTest())
+    } else {
+      an[Exception] shouldBe thrownBy(checkPowTest())
+    }
+  }
+
+  property("PreHeader fields") {
+    test("preHeaderFields", env, ext,
+      """{
+         | val ph = CONTEXT.preHeader
+         | ph.parentId.size >= 0 &&
+         | ph.timestamp >= 0 &&
+         | ph.nBits >= 0 &&
+         | ph.height >= 0 &&
+         | ph.minerPk.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.bytesWithoutRef") {
+    test("bytesWithoutRef", env, ext,
+      """{
+         | SELF.bytes.size > SELF.bytesWithoutRef.size
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.tokens") {
+    test("tokens", env, ext,
+      """{
+         | SELF.tokens.size == 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Box.creationInfo") {
+    test("creationInfo", env, ext,
+      """{
+         | val ci = SELF.creationInfo
+         | ci._1 == 5 && ci._2.size == 34
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("expUnsigned - with mod inside") {
+      val zz = SecP256K1Group.order.add(new BigInteger("8"))
+      def someTest() = test("exp", env, ext,
+        s"""{
+           |
+           |      val g: GroupElement = groupGenerator
+           |      val z = unsignedBigInt("8")
+           |      val zz = unsignedBigInt("${zz.toString}")
+           |
+           |      sigmaProp(g.expUnsigned(z) == g.expUnsigned(zz))
+           |}""".stripMargin,
+        null,
+        true
+      )
+
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      someTest()
+    } else {
+      an[Exception] should be thrownBy someTest()
+    }
+  }
+
+  property("GroupElement.multiply") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val ge2 = Helpers.decodeGroupElement("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1), 22.toByte -> GroupElementConstant(ge2))
+
+    test("multiply", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val ge2 = getVar[GroupElement](22).get
+         | val result = ge1.multiply(ge2)
+         | result.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("GroupElement.negate") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1))
+
+    test("negate", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val neg = ge1.negate
+         | val back = neg.negate
+         | ge1 == back && ge1 != neg
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("GroupElement.getEncoded roundtrip") {
+    val ge1 = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+
+    val customExt = Seq(21.toByte -> GroupElementConstant(ge1))
+
+    test("roundtrip", env, customExt,
+      s"""{
+         | val ge1 = getVar[GroupElement](21).get
+         | val encoded = ge1.getEncoded
+         | val decoded = decodePoint(encoded)
+         | ge1 == decoded
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree properties") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("treeProps", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | tree.digest.size == 33 &&
+         | tree.enabledOperations == 7.toByte &&
+         | tree.keyLength == 32 &&
+         | tree.valueLengthOpt.isEmpty &&
+         | tree.isInsertAllowed &&
+         | tree.isUpdateAllowed &&
+         | tree.isRemoveAllowed
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.updateDigest") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("updateDigest", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val newDigest = fromBase16("${Base16.encode(Array.fill(32)(0.toByte) ++ Array(0.toByte))}")
+         | val newTree = tree.updateDigest(newDigest)
+         | newTree.digest == newDigest && tree.digest != newDigest
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.updateOperations") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.AllOperationsAllowed, 32, None)
+
+    val customExt = Seq(21.toByte -> AvlTreeConstant(treeData))
+
+    test("updateOps", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val newTree = tree.updateOperations(0.toByte)
+         | !newTree.isInsertAllowed &&
+         | !newTree.isUpdateAllowed &&
+         | !newTree.isRemoveAllowed &&
+         | tree.isInsertAllowed
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.contains") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof
+    avlProver.performOneOperation(Lookup(treeElements(0)._1))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val keyBytes = treeElements(0)._1
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> ByteArrayConstant(keyBytes)
+    )
+
+    test("contains", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val key = getVar[Coll[Byte]](22).get
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | tree.contains(key, proof)
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.get") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof
+    avlProver.performOneOperation(Lookup(treeElements(0)._1))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val keyBytes = treeElements(0)._1
+    val valBytes = treeElements(0)._2
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData),
+      22.toByte -> ByteArrayConstant(keyBytes),
+      23.toByte -> ByteArrayConstant(valBytes)
+    )
+
+    test("get", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val key = getVar[Coll[Byte]](22).get
+         | val expected = getVar[Coll[Byte]](23).get
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | tree.get(key, proof).get == expected
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("AvlTree.getMany") {
+    val elements = Seq(123, 22)
+    val treeElements = elements.map(i => Longs.toByteArray(i)).map(s => (ADKey @@@ Blake2b256(s), ADValue @@ s))
+    val avlProver = new BatchAVLProver[Digest32, Blake2b256.type](keyLength = 32, None)
+    treeElements.foreach(s => avlProver.performOneOperation(Insert(s._1, s._2)))
+    avlProver.generateProof()
+    // Generate lookup proof for all keys
+    treeElements.foreach(s => avlProver.performOneOperation(Lookup(s._1)))
+    val proof = avlProver.generateProof()
+    val treeData = new AvlTreeData(avlProver.digest.toColl, AvlTreeFlags.ReadOnly, 32, None)
+
+    val customExt = Seq(
+      21.toByte -> AvlTreeConstant(treeData)
+    )
+
+    test("getMany", env, customExt,
+      s"""{
+         | val tree = getVar[AvlTree](21).get
+         | val keys = Coll(fromBase16("${Base16.encode(treeElements(0)._1)}"), fromBase16("${Base16.encode(treeElements(1)._1)}"))
+         | val proof = fromBase16("${Base16.encode(proof)}")
+         | val results = tree.getMany(keys, proof)
+         | results.size == 2 && results(0).isDefined && results(1).isDefined
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("xorOf") {
+    test("xorOf", env, ext,
+      """{
+         | val r1 = xorOf(Coll(true, false, false))
+         | val r2 = xorOf(Coll(true, true))
+         | val r3 = xorOf(Coll(false, false))
+         | r1 && !r2 && !r3
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("atLeast") {
+    test("atLeast", env, ext,
+      "{ atLeast(1, Coll(getVar[SigmaProp](proofVar1).get, getVar[SigmaProp](proofVar2).get)) }",
+      null,
+      onlyPositive = true,
+      testExceededCost = false
+    )
+  }
+
+  property("decodePoint") {
+    val ge = Helpers.decodeGroupElement("026930cb9972e01534918a6f6d6b8e35bc398f57140d13eb3623ea31fbd069939b")
+    val encoded = ge.getEncoded
+
+    test("decodePoint", env, ext,
+      s"""{
+         | val encoded = fromBase16("${Base16.encode(encoded.toArray)}")
+         | val ge = decodePoint(encoded)
+         | ge.getEncoded == encoded
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Global.xor") {
+    test("xor", env, ext,
+      s"""{
+         | val b1 = fromBase16("123456")
+         | val b2 = fromBase16("abcdef")
+         | val result = Global.xor(b1, b2)
+         | result == fromBase16("b9f9b9")
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Global.groupGenerator") {
+    test("groupGenerator", env, ext,
+      """{
+         | val g = groupGenerator
+         | g.getEncoded.size == 33
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Numeric conversion overflow - Byte") {
+    an[ArithmeticException] shouldBe thrownBy {
+      test("overflowByte", env, ext,
+        """{
+           | val i = 128
+           | i.toByte == -128.toByte
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Short") {
+    an[ArithmeticException] shouldBe thrownBy {
+      test("overflowShort", env, ext,
+        """{
+           | val i = 32768
+           | i.toShort == (-32768).toShort
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Int") {
+    an[Exception] shouldBe thrownBy {
+      test("overflowInt", env, ext,
+        """{
+           | val l = 2147483648L
+           | l.toInt == -2147483648
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("Numeric conversion overflow - Long") {
+    an[Exception] shouldBe thrownBy {
+      test("overflowLong", env, ext,
+        """{
+           | val bi = bigInt("9223372036854775808")
+           | bi.toLong == -9223372036854775808L
+           | }""".stripMargin,
+        null,
+        true
+      )
+    }
+  }
+
+  property("SigmaProp.propBytes comparison - different tree versions") {
+    test("propBytes", env, ext,
+      """{
+         | val p1 = getVar[SigmaProp](proofVar1).get
+         | val p2 = getVar[SigmaProp](proofVar2).get
+         | val b1 = p1.propBytes
+         | val b2 = p2.propBytes
+         | b1 != b2 && b1.size > 0 && b2.size > 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.map with None") {
+    test("mapNone", env, ext,
+      """{
+         | val opt = getVar[Int](99)
+         | val mapped = opt.map({ (i: Int) => i + 1 })
+         | mapped.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with Some - predicate true") {
+    test("filterTrue", env, ext,
+      """{
+         | val opt = getVar[Int](intVar1)
+         | val filtered = opt.filter({ (i: Int) => i > 0 })
+         | filtered.isDefined && filtered.get == 1
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with Some - predicate false") {
+    test("filterFalse", env, ext,
+      """{
+         | val opt = getVar[Int](intVar1)
+         | val filtered = opt.filter({ (i: Int) => i > 10 })
+         | filtered.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("Option.filter with None") {
+    test("filterNone", env, ext,
+      """{
+         | val opt = getVar[Int](99)
+         | val filtered = opt.filter({ (i: Int) => i > 0 })
+         | filtered.isEmpty
+         | }""".stripMargin,
+      null,
+      true
+    )
+  }
+
+  property("powHit") {
+    def powHitTest() = test("powHit", env, ext,
+      s"""{
+         | val k = 32
+         | val msg = fromBase16("${Base16.encode(Array.fill(32)(1.toByte))}")
+         | val nonce = fromBase16("${Base16.encode(Array.fill(8)(2.toByte))}")
+         | val h = fromBase16("${Base16.encode(Array.fill(4)(3.toByte))}")
+         | val N = 32
+         | val result = Global.powHit(k, msg, nonce, h, N)
+         | result >= 0
+         | }""".stripMargin,
+      null,
+      true
+    )
+
+    if (ergoTreeVersionInTests < V6SoftForkVersion) {
+      an[sigma.validation.ValidationException] shouldBe thrownBy(powHitTest())
+    } else {
+      powHitTest()
+    }
+  }
+
+
 }

@@ -39,7 +39,6 @@ class AtomicSwapExampleSpecification extends CompilerTestingCommons with Compile
     val deadlineB = 500
 
     val env = Map(
-      ScriptNameProp -> "atomic",
       "height1" -> height1, "height2" -> height2,
       "deadlineBob" -> deadlineB, "deadlineAlice" -> deadlineA,
       "pubkeyA" -> pubkeyA, "pubkeyB" -> pubkeyB, "hx" -> hx)

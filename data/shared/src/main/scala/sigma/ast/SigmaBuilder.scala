@@ -10,7 +10,7 @@ import sigma.data.Nullable
 import sigma.exceptions.ConstraintFailed
 import sigma.serialization.OpCodes
 import sigma.serialization.ValueCodes.OpCode
-import sigma.{AnyValue, Coll, Colls, Environment, Evaluation, Platform}
+import sigma.{AnyValue, Coll, Colls, Environment, Evaluation, Platform, VersionContext}
 
 import scala.util.DynamicVariable
 
@@ -151,6 +151,12 @@ abstract class SigmaBuilder {
   def mkConcreteCollection[T <: SType](items: Seq[Value[T]],
                                        elementType: T): Value[SCollection[T]]
 
+  /** Retained on the trait so third-party `SigmaBuilder` implementations
+    * remain source/binary compatible. Internal call sites are the serializer
+    * dispatch table only; the ErgoScript compiler does not produce these
+    * nodes. Scheduled for consensus-level rejection in v7.0.
+    */
+  @deprecated("Use mkGetVar / mkValUse; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
   def mkTaggedVariable[T <: SType](varId: Byte, tpe: T): TaggedVariable[T]
 
   def mkBlock(bindings: Seq[Val], result: Value[SType]): Value[SType]
@@ -516,6 +522,7 @@ class StdSigmaBuilder extends SigmaBuilder {
                                                 elementType: T): Value[SCollection[T]] =
     ConcreteCollection(items, elementType).withSrcCtx(currentSrcCtx.value)
 
+  @annotation.nowarn("cat=deprecation")
   override def mkTaggedVariable[T <: SType](varId: Byte, tpe: T): TaggedVariable[T] =
     TaggedVariableNode(varId, tpe).withSrcCtx(currentSrcCtx.value).asInstanceOf[TaggedVariable[T]]
 
@@ -664,7 +671,7 @@ class TransformingSigmaBuilder extends StdSigmaBuilder {
     * @param right operand of the operation (right sub-expression)
     * @return a pair (l,r) of the arguments appropriately upcasted.
     */
-  private def applyUpcast[T <: SType](left: Value[T], right: Value[T]): (Value[T], Value[T]) =
+  protected def applyUpcast[T <: SType](left: Value[T], right: Value[T]): (Value[T], Value[T]) =
     (left.tpe, right.tpe) match {
       case (t1: SNumericType, t2: SNumericType) if t1 != t2 =>
         val tmax = t1 max t2
@@ -740,7 +747,22 @@ case object CheckingSigmaBuilder extends CheckingSigmaBuilder
 case object TransformingSigmaBuilder extends TransformingSigmaBuilder
 
 /** Builder of ErgoTree nodes which is used in deserializers. */
-case object DeserializationSigmaBuilder extends TransformingSigmaBuilder
+case object DeserializationSigmaBuilder extends TransformingSigmaBuilder {
+  // since v3 trees, Upcast nodes are not inserted automatically
+  // when v3 nodes appeared on the Ergo blockchain, 90+% of
+  // mining nodes are rejecting trees invalid auto-upcast,
+  // so no such trees expected in the longest chain
+  // the reason to remove auto-upcast is to make deserialization
+  // always producing tree which was serialized
+  override protected def applyUpcast[T <: SType](left: Value[T], right: Value[T]): (Value[T], Value[T]) = {
+    if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
+      (left, right)
+    } else {
+      super.applyUpcast(left, right)
+    }
+  }
+}
+
 
 object Constraints {
   /** Represents a constraint on arguments of binary operation. */

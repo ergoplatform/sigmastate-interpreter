@@ -3,6 +3,7 @@ package sigmastate.utxo.examples
 import java.math.BigInteger
 import org.ergoplatform.ErgoBox.{R4, R5}
 import scorex.crypto.hash.Blake2b256
+import sigma.Colls
 import sigma.data.{AvlTreeData, ProveDHTuple, ProveDlog}
 import sigma.util.Extensions.EcpOps
 import sigmastate.CompilerCrossVersionProps
@@ -41,7 +42,6 @@ class MixExampleSpecification extends CompilerTestingCommons
     //      val alicePubKey:ProveDlog = ProveDlog(g_x)
 
     val fullMixEnv = Map(
-      ScriptNameProp -> "fullMixEnv",
       "g" -> g.toGroupElement,
       "gX" -> gX.toGroupElement
     )
@@ -60,10 +60,9 @@ class MixExampleSpecification extends CompilerTestingCommons
     ).asSigmaProp)
 
     val halfMixEnv = Map(
-      ScriptNameProp -> "halfMixEnv",
       "g" -> g.toGroupElement,
       "gX" -> gX.toGroupElement,
-      "fullMixScriptHash" -> Blake2b256(fullMixScript.bytes)
+      "fullMixScriptHash" -> Colls.fromArray(Blake2b256(fullMixScript.bytes))
     )
 
     // Note that below script allows Alice to spend the half-mix output anytime before Bob spends it.

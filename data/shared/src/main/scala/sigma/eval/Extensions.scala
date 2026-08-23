@@ -2,7 +2,7 @@ package sigma.eval
 
 import sigma.ast.syntax.SigmaPropValue
 import sigma.data.{CAnyValue, CSigmaDslBuilder, Nullable, RType, SigmaBoolean}
-import sigma.{BigInt, Coll, Colls, Evaluation, Platform}
+import sigma.{BigInt, Coll, Colls, Evaluation, Platform, UnsignedBigInt}
 import sigma.ast.{Constant, ConstantNode, SBoolean, SCollection, SCollectionType, SType, SigmaPropConstant, SigmaPropIsProven, TransformingSigmaBuilder, Value}
 
 import java.math.BigInteger
@@ -19,6 +19,7 @@ object Extensions {
   implicit class IntExt(val x: Int) extends AnyVal {
     /** Convert this value to BigInt. */
     @inline def toBigInt: BigInt = CSigmaDslBuilder.BigInt(BigInteger.valueOf(x.toLong))
+    @inline def toUnsignedBigInt: UnsignedBigInt = CSigmaDslBuilder.UnsignedBigInt(BigInteger.valueOf(x.toLong))
   }
 
   implicit class LongExt(val x: Long) extends AnyVal {

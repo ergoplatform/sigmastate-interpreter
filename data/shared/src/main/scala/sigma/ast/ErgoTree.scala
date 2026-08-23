@@ -75,6 +75,8 @@ case class UnparsedErgoTree(bytes: mutable.WrappedArray[Byte], error: Validation
   *                         for optimized execution.
   *                         ErgoTreeSerializer parsing method computes the value of
   *                         this flag and provides it to the constructor.
+  * @param givenIsUsingBlockchainContext optional flag which indicates that blockchain context related operations
+  *                                      are used in the tree
   */
 case class ErgoTree private[sigma](
     header: HeaderType,
@@ -375,13 +377,13 @@ object ErgoTree {
     * 3) write the `tree` to the Writer's buffer obtaining `treeBytes`;
     * 4) deserialize `tree` with ConstantPlaceholders.
     *
-    * @param headerFlags additional header flags to combine with
+    * @param header      additional header flags to combine with
     *                    ConstantSegregationHeader flag.
     * @param prop        expression to be transformed into ErgoTree
     * */
   def withSegregation(header: HeaderType, prop: SigmaPropValue): ErgoTree = {
     val constantStore = new ConstantStore()
-    val w             = SigmaSerializer.startWriter(constantStore)
+    val w             = SigmaSerializer.startWriter(Some(constantStore))
     // serialize value and segregate constants into constantStore
     ValueSerializer.serialize(prop, w)
     val extractedConstants = constantStore.getAll
@@ -411,4 +413,5 @@ object ErgoTree {
   def fromBytes(bytes: Array[Byte]): ErgoTree = {
     ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(bytes)
   }
+
 }

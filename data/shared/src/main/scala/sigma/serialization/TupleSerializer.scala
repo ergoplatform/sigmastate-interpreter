@@ -26,7 +26,7 @@ case class TupleSerializer(cons: Seq[Value[SType]] => Value[SType])
 
   override def parse(r: SigmaByteReader): Value[SType] = {
     val size = r.getByte()
-    // note, in v4.x, v5.x tuples always has 2 elements, this may change in v6.0
+    // note, in v4.x, v5.x, v6.x tuples always has 2 elements, this may change in v7.0
     // in which case allocation can be avoided for empty tuples
     val values = safeNewArray[SValue](size)
     cfor(0)(_ < size, _ + 1) { i =>

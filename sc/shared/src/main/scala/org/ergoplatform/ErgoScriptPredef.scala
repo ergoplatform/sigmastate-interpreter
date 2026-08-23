@@ -1,6 +1,7 @@
 package org.ergoplatform
 
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
+import sigma.Colls
 import sigma.ast.SType
 import sigma.ast.syntax.SigmaPropValue
 import sigma.ast.Value
@@ -32,7 +33,7 @@ object ErgoScriptPredef {
       networkPrefix: NetworkPrefix)
       (implicit IR: IRContext): SigmaPropValue = {
     val env = emptyEnv +
-        ("tokenId" -> tokenId, "thresholdAmount" -> thresholdAmount)
+        ("tokenId" -> Colls.fromArray(tokenId), "thresholdAmount" -> thresholdAmount)
     val res = compileWithCosting(env,
       """{
        |  val sumValues = { (xs: Coll[Long]) => xs.fold(0L, { (acc: Long, amt: Long) => acc + amt }) }

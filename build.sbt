@@ -1,13 +1,14 @@
 import scala.language.postfixOps
 import scala.sys.process.*
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleSplitStyle}
+import sbt.Keys.localStaging
 
 organization := "org.scorexfoundation"
 
 name := "sigma-state"
 
-lazy val scala213 = "2.13.16"
-lazy val scala212 = "2.12.20"
+lazy val scala213 = "2.13.18"
+lazy val scala212 = "2.12.21"
 lazy val scala211 = "2.11.12"
 
 lazy val allConfigDependency = "compile->compile;test->test"
@@ -26,9 +27,9 @@ lazy val commonSettings = Seq(
     }
   },
   javacOptions ++= javacReleaseOption,
-  resolvers += Resolver.sonatypeRepo("public"),
+  resolvers ++= Resolver.sonatypeOssRepos("releases"),
   licenses := Seq("CC0" -> url("https://creativecommons.org/publicdomain/zero/1.0/legalcode")),
-  homepage := Some(url("https://github.com/ScorexFoundation/sigmastate-interpreter")),
+  homepage := Some(url("https://github.com/ergoplatform/sigmastate-interpreter")),
   description := "Interpreter of a Sigma-State language",
   pomExtra :=
       <developers>
@@ -49,11 +50,15 @@ lazy val commonSettings = Seq(
         </developer>
       </developers>,
   publishMavenStyle := true,
-  publishTo := sonatypePublishToBundle.value,
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
+  },
   scmInfo := Some(
       ScmInfo(
-          url("https://github.com/ScorexFoundation/sigmastate-interpreter"),
-          "scm:git@github.com:ScorexFoundation/sigmastate-interpreter.git"
+          url("https://github.com/ergoplatform/sigmastate-interpreter"),
+          "scm:git@github.com:ergoplatform/sigmastate-interpreter.git"
       )
   )
 )
@@ -80,42 +85,25 @@ ThisBuild / dynverSonatypeSnapshots := true
 // use "-" instead of default "+"
 ThisBuild / dynverSeparator := "-"
 
-val bouncycastleBcprov = "org.bouncycastle" % "bcprov-jdk15on" % "1.66"
+val bouncycastleBcprov = "org.bouncycastle" % "bcprov-jdk15to18" % "1.85.1"
 
-val scrypto            = "org.scorexfoundation" %% "scrypto" % "3.0.0"
 val scryptoDependency =
-  libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.0.0"
+  libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.1.1"
 
-val scorexUtil         = "org.scorexfoundation" %% "scorex-util" % "0.2.1"
 val scorexUtilDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.1"
 
 val debox              = "org.scorexfoundation" %% "debox" % "0.10.0"
 val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 
-val fastparse          = "com.lihaoyi" %% "fastparse" % "2.3.3"
 val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
 
 val supertaggedDependency =
   libraryDependencies += "org.rudogma" %%% "supertagged" % "2.0-RC2"
 
-val scalaCompat        = "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0"
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
-
-lazy val circeCore211 = "io.circe" %% "circe-core" % "0.10.0"
-lazy val circeGeneric211 = "io.circe" %% "circe-generic" % "0.10.0"
-lazy val circeParser211 = "io.circe" %% "circe-parser" % "0.10.0"
-
-lazy val circeCore = "io.circe" %% "circe-core" % "0.13.0"
-lazy val circeGeneric = "io.circe" %% "circe-generic" % "0.13.0"
-lazy val circeParser = "io.circe" %% "circe-parser" % "0.13.0"
-
-def circeDeps(scalaVersion: String) = if (scalaVersion == scala211)
-  Seq(circeCore211, circeGeneric211, circeParser211)
-else
-  Seq(circeCore, circeGeneric, circeParser)
 
 def circeDependency = {
   libraryDependencies ++= {
@@ -125,15 +113,15 @@ def circeDependency = {
       "io.circe" %%% "circe-generic" % "0.10.0",
       "io.circe" %%% "circe-parser" % "0.10.0")
     val deps212 = Seq(
-      "io.circe" %%% "circe-core" % "0.13.0",
-      "io.circe" %%% "circe-generic" % "0.13.0",
-      "io.circe" %%% "circe-parser" % "0.13.0")
+      "io.circe" %%% "circe-core" % "0.14.15",
+      "io.circe" %%% "circe-generic" % "0.14.15",
+      "io.circe" %%% "circe-parser" % "0.14.15")
     if (version == scala211) deps211 else deps212
   }
 }
 
-lazy val scalatest = "org.scalatest" %% "scalatest" % "3.2.14" % Test
-lazy val scalactic = "org.scalactic" %% "scalactic" % "3.2.14" % Test
+lazy val scalatest = "org.scalatest" %% "scalatest" % "3.2.20" % Test
+lazy val scalactic = "org.scalactic" %% "scalactic" % "3.2.20" % Test
 lazy val pprint = "com.lihaoyi" %% "pprint" % "0.6.3" % Test
 lazy val scalameter = "com.storm-enroute" %% "scalameter" % "0.19" % Test
 
@@ -147,8 +135,8 @@ lazy val testingDependencies = Seq(
 
 lazy val testingDependencies2 =
   libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.2.14" % Test,
-    "org.scalactic" %%% "scalactic" % "3.2.14" % Test,
+    "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
+    "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
     "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
     "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
     "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
@@ -178,6 +166,10 @@ Test / publishArtifact := true
 
 pomIncludeRepository := { _ => false }
 
+def moduleNameSetting(moduleName: String) =
+  Compile / packageBin / packageOptions +=
+    Package.ManifestAttributes("Automatic-Module-Name" -> moduleName)
+
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
 lazy val commonDependenies2 = libraryDependencies ++= Seq(
@@ -198,6 +190,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigma"),
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )
@@ -240,7 +233,10 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(
+    crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigma.data")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     useYarn := true
@@ -258,7 +254,10 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(
+    crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigmastate")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     useYarn := true
@@ -277,7 +276,8 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      moduleNameSetting("org.scorexfoundation.sigmastate.parsers")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -302,7 +302,8 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      moduleNameSetting("org.ergoplatform.sdk")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -335,6 +336,7 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .settings(publish / skip := true)
     .jvmSettings(
       crossScalaSettings,
+      moduleNameSetting("org.scorexfoundation.sigma.sc"),
       libraryDependencies ++= Seq(scalameter),
       // exclude version-conditional SigmaMap ordering tests from legs where they are
       // meaningless (they are tagged instead of using runtime `assume`, so that reports
@@ -373,7 +375,7 @@ lazy val scJS = sc.js
 
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
-  .settings(libraryDefSettings, rootSettings)
+  .settings(libraryDefSettings, rootSettings, moduleNameSetting("org.scorexfoundation.sigmastate"))
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
 
@@ -398,7 +400,7 @@ credentials ++= (for {
 credentials ++= (for {
   username <- Option(System.getenv().get("SONATYPE_USERNAME"))
   password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
-} yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq
+} yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)).toSeq
 
 
 // PGP key for signing a release build published to sonatype

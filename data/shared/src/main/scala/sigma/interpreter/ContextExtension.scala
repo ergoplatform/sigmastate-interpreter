@@ -1,7 +1,9 @@
 package sigma.interpreter
 
 import debox.cfor
+import org.ergoplatform.validation.ValidationRules.CheckV6Type
 import sigma.ast.{EvaluatedValue, SType}
+import sigma.interpreter.ContextExtension.VarBinding
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 
 /**
@@ -15,7 +17,21 @@ import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
   *
   * @param values internal container of the key-value pairs
   */
-case class ContextExtension(values: SigmaMap)
+case class ContextExtension(values: SigmaMap) {
+
+  /**
+    * @return this extension with `bindings` added
+    */
+  def add(bindings: VarBinding*): ContextExtension = {
+    ContextExtension(SigmaMap(values.iterator.toMap ++ bindings))
+  }
+
+  /**
+    * @param varId - index of context variable
+    * @return context variable with provided index or None if it is not there
+    */
+  def get(varId: Byte): Option[EvaluatedValue[_ <: SType]] = values.get(varId)
+}
 
 object ContextExtension {
   /** Immutable instance of empty ContextExtension, which can be shared to avoid
@@ -55,6 +71,7 @@ object ContextExtension {
           }
           keys(i) = key
           values(i) = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
+          CheckV6Type(values(i))
         }
         ContextExtension(SigmaMap(keys, values))
       }

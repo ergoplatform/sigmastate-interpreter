@@ -58,8 +58,8 @@ class ErgoTreePredefSpec extends CompilerTestingCommons with CompilerCrossVersio
       boxesToSpend = inputBoxes,
       spendingTransaction,
       self = inputBox, activatedVersionInTests)
-    val pr = prover.prove(emptyEnv + (ScriptNameProp -> "boxCreationHeight_prove"), propTree, ctx, fakeMessage).get
-    verifier.verify(emptyEnv + (ScriptNameProp -> "boxCreationHeight_verify"), propTree, ctx, pr, fakeMessage).get._1 shouldBe true
+    val pr = prover.prove(emptyEnv, propTree, ctx, fakeMessage).get
+    verifier.verify(emptyEnv, propTree, ctx, pr, fakeMessage).get._1 shouldBe true
   }
 
   property("collect coins from the founders' box") {
@@ -118,8 +118,8 @@ class ErgoTreePredefSpec extends CompilerTestingCommons with CompilerCrossVersio
         boxesToSpend = inputBoxes,
         spendingTransaction,
         self = inputBoxes.head, activatedVersionInTests)
-      val pr = prover.prove(emptyEnv + (ScriptNameProp -> "checkSpending_prove"), prop, ctx, fakeMessage).get
-      verifier.verify(emptyEnv + (ScriptNameProp -> "checkSpending_verify"), prop, ctx, pr, fakeMessage).get._1 shouldBe true
+      val pr = prover.prove(emptyEnv, prop, ctx, fakeMessage).get
+      verifier.verify(emptyEnv, prop, ctx, pr, fakeMessage).get._1 shouldBe true
     }
   }
 
@@ -148,13 +148,13 @@ class ErgoTreePredefSpec extends CompilerTestingCommons with CompilerCrossVersio
       self = inputBoxes.head, activatedVersionInTests)
 
     // should not be able to collect before minerRewardDelay
-    val prove = prover.prove(emptyEnv + (ScriptNameProp -> "rewardOutputScript_prove"), prop, ctx, fakeMessage).get
-    verifier.verify(emptyEnv + (ScriptNameProp -> "rewardOutputScript_verify"), prop, prevBlockCtx, prove, fakeMessage)
+    val prove = prover.prove(emptyEnv, prop, ctx, fakeMessage).get
+    verifier.verify(emptyEnv, prop, prevBlockCtx, prove, fakeMessage)
       .getOrThrow should matchPattern { case (false,_) => }
 
     // should be able to collect after minerRewardDelay
-    val pr = prover.prove(emptyEnv + (ScriptNameProp -> "prove"), prop, ctx, fakeMessage).getOrThrow
-    verifier.verify(emptyEnv + (ScriptNameProp -> "verify"), prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
+    val pr = prover.prove(emptyEnv, prop, ctx, fakeMessage).getOrThrow
+    verifier.verify(emptyEnv, prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
   }
 
   property("create transaction collecting the emission box") {
@@ -232,8 +232,8 @@ class ErgoTreePredefSpec extends CompilerTestingCommons with CompilerCrossVersio
         self = inputBoxes.head,
         activatedVersionInTests).withCostLimit(scriptCostLimitInTests * 10)
 
-      val pr = prover.prove(emptyEnv + (ScriptNameProp -> "tokenThresholdScript_prove"), prop, ctx, fakeMessage).getOrThrow
-      verifier.verify(emptyEnv + (ScriptNameProp -> "tokenThresholdScript_verify"), prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
+      val pr = prover.prove(emptyEnv, prop, ctx, fakeMessage).getOrThrow
+      verifier.verify(emptyEnv, prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
     }
 
 
@@ -308,8 +308,8 @@ class ErgoTreePredefSpec extends CompilerTestingCommons with CompilerCrossVersio
       boxesToSpend = inputBoxes,
       spendingTransaction,
       self = inputBoxes.head, activatedVersionInTests)
-    val pr = prover.prove(emptyEnv + (ScriptNameProp -> "checkRewardTx_prove"), prop, ctx, fakeMessage).getOrThrow
-    verifier.verify(emptyEnv + (ScriptNameProp -> "checkRewardTx_verify"), prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
+    val pr = prover.prove(emptyEnv, prop, ctx, fakeMessage).getOrThrow
+    verifier.verify(emptyEnv, prop, ctx, pr, fakeMessage).getOrThrow._1 shouldBe true
     spendingTransaction
   }
 

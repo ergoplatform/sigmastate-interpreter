@@ -8,7 +8,8 @@ import sigma.ast.TypeCodes.ConstantCode
 import sigma.ast.syntax._
 import sigma.crypto.{CryptoConstants, EcPointType}
 import sigma.data.OverloadHack.Overloaded1
-import sigma.data.{CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
+import sigma.data.{CSigmaDslBuilder, CSigmaProp, CUnsignedBigInt, Nullable, RType, SigmaBoolean}
+import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, CSigmaProp, Nullable, RType, SigmaBoolean}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 import sigma.eval.{ErgoTreeEvaluator, SigmaDsl}
 import sigma.exceptions.InterpreterException
@@ -306,7 +307,7 @@ trait PerItemCostValueCompanion extends ValueCompanion {
   *
   * @see Constant, ConcreteCollection, Tuple
   */
-abstract class EvaluatedValue[+S <: SType] extends Value[S] {
+sealed trait EvaluatedValue[+S <: SType] extends Value[S] {
   /** The evaluated data value of the corresponding underlying data type. */
   val value: S#WrappedType
 
@@ -423,13 +424,34 @@ object ConstantPlaceholder extends ValueCompanion {
 trait NotReadyValue[S <: SType] extends Value[S] {
 }
 
-// TODO v6.0: remove these TaggedVariable and TaggedVariableNode (https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584)
+// Retirement plan for TaggedVariable / opcode 0x71.
+//
+// Phase 1: the AST/builder types are deprecated. The on-wire format is unchanged:
+// opcode 0x71 is still registered in the ValueSerializer dispatch table and still
+// round-trips (pinned by TaggedVariableSerializerSpecification). The companion object
+// itself MUST remain non-deprecated because it is referenced by the dispatch table via
+// `ValueCompanion.opCode`.
+//
+// Phase 2 (future, version-gated): once the next protocol version that rejects
+// opcode 0x71 is activated (targeted at v7.0), the serializer entry will start
+// throwing for trees at ergoTreeVersion >= V7SoftForkVersion. The opcode slot will
+// be reserved permanently and never reassigned.
 
-/** Reference a context variable by id. */
+/** Reference a context variable by id.
+  *
+  * @deprecated
+  * Unreachable from the ErgoScript compiler since the introduction of
+  * `GetVar` / `ValUse`. Retained only to preserve binary compatibility
+  * for deserialization of legacy ErgoTrees. Scheduled for consensus-level
+  * rejection in the v7.0 protocol update.
+  */
+@deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
 trait TaggedVariable[T <: SType] extends NotReadyValue[T] {
   val varId: Byte
 }
 
+/** @see [[TaggedVariable]] for the retirement plan. */
+@deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
 case class TaggedVariableNode[T <: SType](varId: Byte, override val tpe: T)
     extends TaggedVariable[T] {
   override def companion = TaggedVariable
@@ -437,11 +459,19 @@ case class TaggedVariableNode[T <: SType](varId: Byte, override val tpe: T)
   def opType: SFunc = Value.notSupportedError(this, "opType")
 }
 
+/** Companion object for [[TaggedVariable]].
+  *
+  * NOTE: this object is intentionally NOT deprecated — it must stay reachable
+  * because the serializer dispatch table looks up `opCode` on it. Only the
+  * `apply` constructor is marked deprecated to discourage new producers of
+  * `TaggedVariableNode` while keeping the parse path intact.
+  */
 object TaggedVariable extends ValueCompanion {
   override def opCode: OpCode = TaggedVariableCode
 
   override def costKind: CostKind = FixedCost(JitCost(1))
 
+  @deprecated("Use ValUse / GetVar; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
   def apply[T <: SType](varId: Byte, tpe: T): TaggedVariable[T] =
     TaggedVariableNode(varId, tpe)
 }
@@ -499,6 +529,20 @@ object BigIntConstant {
   def apply(value: Long): Constant[SBigInt.type] = Constant[SBigInt.type](SigmaDsl.BigInt(BigInteger.valueOf(value)), SBigInt)
 }
 
+object UnsignedBigIntConstant {
+  def apply(value: UnsignedBigInt): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](value, SUnsignedBigInt)
+  }
+
+  def apply(value: BigInteger): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](CUnsignedBigInt(value), SUnsignedBigInt)
+  }
+
+  def apply(value: Long): Constant[SUnsignedBigInt.type] = {
+    Constant[SUnsignedBigInt.type](CUnsignedBigInt(BigInteger.valueOf(value)), SUnsignedBigInt)
+  }
+}
+
 object StringConstant {
   def apply(value: String): Constant[SString.type] = Constant[SString.type](value, SString)
 
@@ -536,6 +580,7 @@ object SigmaPropConstant {
 
 object AvlTreeConstant {
   def apply(value: AvlTree): Constant[SAvlTree.type] = Constant[SAvlTree.type](value, SAvlTree)
+  def apply(value: AvlTreeData): Constant[SAvlTree.type] = Constant[SAvlTree.type](CAvlTree(value), SAvlTree)
 }
 
 object PreHeaderConstant {
@@ -555,6 +600,7 @@ object HeaderConstant {
     case _ => None
   }
 }
+
 
 trait NotReadyValueInt extends NotReadyValue[SInt.type] {
   override def tpe = SInt
@@ -1298,6 +1344,10 @@ case class MethodCall(
     method: SMethod,
     args: IndexedSeq[Value[SType]],
     typeSubst: Map[STypeVar, SType]) extends Value[SType] {
+
+  require(method.explicitTypeArgs.forall(tyArg => typeSubst.contains(tyArg)),
+    s"Generic method call should have concrete type for each explicit type parameter, but was: $this")
+
   override def companion = if (args.isEmpty) PropertyCall else MethodCall
 
   override def opType: SFunc = SFunc(obj.tpe +: args.map(_.tpe), tpe)

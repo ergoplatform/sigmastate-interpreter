@@ -31,7 +31,6 @@ class ColdWalletContractExampleSpecification extends CompilerTestingCommons
     val minSpend = 100
 
     val env = Map(
-      ScriptNameProp -> "env",
       "alice" -> alicePubKey,
       "bob" -> bobPubKey,
       "blocksIn24h" -> IntConstant(blocksIn24h),

@@ -37,7 +37,7 @@ trait ContractsTestkit {
     new CContext(
       noInputs.toColl, noHeaders, dummyPreHeader,
       inputs.toColl, outputs.toColl, height, self, inputs.indexOf(self), tree,
-      minerPk.toColl, vars, activatedScriptVersion, currErgoTreeVersion)
+      minerPk.toColl, vars, null, activatedScriptVersion, currErgoTreeVersion)
 
   def newContext(
       height: Int,

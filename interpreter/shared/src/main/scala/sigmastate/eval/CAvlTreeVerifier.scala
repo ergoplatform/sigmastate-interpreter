@@ -1,6 +1,6 @@
 package sigmastate.eval
 
-import scorex.crypto.authds.avltree.batch.{BatchAVLVerifier, Insert, Lookup, Remove, Update}
+import scorex.crypto.authds.avltree.batch.{BatchAVLVerifier, Insert, InsertOrUpdate, Lookup, Remove, Update}
 import scorex.crypto.authds.{ADDigest, ADKey, ADValue, SerializedAdProof}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import sigma.data.CAvlTree
@@ -31,6 +31,9 @@ class CAvlTreeVerifier private(
 
   override def performUpdate(key: Array[Byte], value: Array[Byte]): Try[Option[Array[Byte]]] =
     performOneOperation(Update(ADKey @@ key, ADValue @@ value))
+
+  override def performInsertOrUpdate(key: Array[Byte], value: Array[Byte]): Try[Option[Array[Byte]]] =
+    performOneOperation(InsertOrUpdate(ADKey @@ key, ADValue @@ value))
 
   override def performRemove(key: Array[Byte]): Try[Option[Array[Byte]]] =
     performOneOperation(Remove(ADKey @@ key))

@@ -305,7 +305,14 @@ object ContractTemplate {
       constants.foreach(c => r.constantStore.put(c)(DeserializationSigmaBuilder))
 
       val _ = r.getUInt().toInt
-      val expressionTree = ValueSerializer.deserialize(r)
+      // Use the template's treeVersion for deserialization context so that
+      // version-gated methods (e.g. serialize in v6) are recognized.
+      // Falls back to JitActivationVersion when treeVersion is not specified,
+      // which is conservative — v6 templates must set treeVersion explicitly.
+      val deserVersion = treeVersion.getOrElse(sigma.VersionContext.JitActivationVersion)
+      val expressionTree = sigma.VersionContext.withVersions(deserVersion, deserVersion) {
+        ValueSerializer.deserialize(r)
+      }
       if (!expressionTree.tpe.isSigmaProp) {
         throw SerializerException(
           s"Failed deserialization, expected deserialized script to have type SigmaProp; got ${expressionTree.tpe}")
@@ -387,14 +394,24 @@ object ContractTemplate {
             name <- cursor.downField("name").as[String]
             description <- cursor.downField("description").as[String]
             parameters <- cursor.downField("parameters").as[IndexedSeq[Parameter]]
-          } yield new ContractTemplate(
-            treeVersion,
-            name,
-            description,
-            constTypes,
-            constValuesOpt,
-            parameters,
-            ValueSerializer.deserialize(r).toSigmaProp)
+          } yield {
+            // Use the template's treeVersion for deserialization context so that
+            // version-gated methods (e.g. serialize in v6) are recognized.
+            // Falls back to JitActivationVersion when treeVersion is not specified,
+            // which is conservative — v6 templates must set treeVersion explicitly.
+            val deserVersion = treeVersion.getOrElse(sigma.VersionContext.JitActivationVersion)
+            val expressionTree = sigma.VersionContext.withVersions(deserVersion, deserVersion) {
+              ValueSerializer.deserialize(r)
+            }
+            new ContractTemplate(
+              treeVersion,
+              name,
+              description,
+              constTypes,
+              constValuesOpt,
+              parameters,
+              expressionTree.toSigmaProp)
+          }
         case _ => Left(DecodingFailure("Failed to decode contract template", cursor.history))
       }
     })

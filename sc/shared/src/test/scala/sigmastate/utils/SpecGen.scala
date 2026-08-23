@@ -70,13 +70,22 @@ trait SpecGen {
         .groupBy(_.docInfo.flatMap(i => i.opDesc.map(_.opCode)))
     //      .map { case p @ (k, xs) => p.ensuring({ k.isEmpty || xs.length == 1}, p) }
 
+    // Multiple predefined functions may legitimately share an opCode (e.g. the overloads
+    // `executeFromSelfReg` / `executeFromSelfRegWithDefault`, which both lower to
+    // DeserializeRegister). They must differ in arity so the richest-signature pick below is
+    // unambiguous and deterministic; it selects the `WithDefault` variant whose `default`
+    // argument is referenced by DeserializeRegisterSerializer.
     val funcsByOpCode = funcs
         .groupBy(_.docInfo.opDesc.map(_.opCode))
-        .ensuring(g => g.forall{ case (k, xs) => xs.length <= 1})
+        .ensuring(g => g.forall { case (_, xs) =>
+          xs.map(_.declaration.args.length).distinct.length == xs.length
+        })
 
     val table = ops.map { case (opCode, opDesc) =>
       val methodOpt = methodsByOpCode.get(Some(opCode)).map(_.head)
-      val funcOpt = funcsByOpCode.get(Some(opCode)).map(_.head)
+      // Pick the function with the richest signature (most declared args) deterministically.
+      val funcOpt = funcsByOpCode.get(Some(opCode))
+          .map(_.maxBy(_.declaration.args.length))
       (opCode, opDesc, methodOpt, funcOpt)
     }
     val rowsWithInfo =

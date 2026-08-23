@@ -154,7 +154,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         syntax.error(s"Undefined context property: currentErgoTreeVersion"))
     CContext(
       dataInputs, headers, preHeader, inputs, outputs, preHeader.height, selfBox, selfIndex, avlTree,
-      preHeader.minerPk.getEncoded, contextExtVars, activatedScriptVersion, ergoTreeVersion)
+      preHeader.minerPk.getEncoded, contextExtVars, spendingTransaction, activatedScriptVersion, ergoTreeVersion)
   }
 
 

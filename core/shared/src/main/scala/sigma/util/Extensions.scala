@@ -216,14 +216,39 @@ object Extensions {
       * not exactly fit in a 256 bit range.
       * @see BigInteger#longValueExact
       */
-    @inline final def to256BitValueExact: BigInteger = {
+    @inline final def toSignedBigIntValueExact: BigInteger = {
       if (fitsIn256Bits) x
       else
         throw new ArithmeticException("BigInteger out of 256 bit range");
     }
 
+    /** Checks this {@code BigInteger} can be cast to unsigned 256 bit representation,
+      * If the value of this {@code BigInteger}
+      * is out of the range of the 256 bits, then an {@code ArithmeticException} is thrown.
+      *
+      * @return this {@code BigInteger} if the check is successful
+      * @throws ArithmeticException if the value of {@code this} will
+      * not exactly fit in a 256 bit range.
+      * @see BigInteger#longValueExact
+      */
+    @inline final def toUnsignedBigIntValueExact: BigInteger = {
+      if (x.compareTo(BigInteger.ZERO) >= 0 && x.bitLength() <= 256) {
+        x
+      } else {
+        throw new ArithmeticException("Unsigned BigInteger out of 256 bit range or negative")
+      }
+    }
+
     /** Converts `x` to [[sigma.BigInt]] */
     def toBigInt: sigma.BigInt = CBigInt(x)
+
+    /** Converts `x` to [[sigma.UnsignedBigInt]] */
+    def toUnsignedBigInt: sigma.UnsignedBigInt = {
+      if(x.compareTo(BigInteger.ZERO) < 0){
+        throw new IllegalArgumentException("toUnsignedBigInt arg < 0")
+      }
+      CUnsignedBigInt(x)
+    }
   }
 
   implicit class BigIntOps(val x: sigma.BigInt) extends AnyVal {

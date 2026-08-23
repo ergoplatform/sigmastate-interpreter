@@ -9,7 +9,6 @@ import scalan.BaseCtxTests
 import sigma.ast.syntax.SigmaPropValue
 import sigma.data.ProveDlog
 import sigmastate.lang.LangTests
-import sigma.util.BenchmarkUtil._
 import sigmastate.crypto.DLogProtocol.DLogProverInput
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 
@@ -102,4 +101,5 @@ class EvaluationTest extends BaseCtxTests
       ctx,
       true)
   }
+
 }
