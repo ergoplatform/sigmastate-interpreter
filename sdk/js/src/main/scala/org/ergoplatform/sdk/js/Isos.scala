@@ -7,9 +7,7 @@ import sigma.ast.{Constant, SType}
 import sigma.data.Iso
 import sigma.data.Iso.{isoStringToArray, isoStringToColl}
 import sigma.data.js.{Isos => DataIsos}
-import sigma.interpreter.{ContextExtension, ProverResult}
-import sigma.js.AvlTree
-import sigma.data.{CBigInt, CGroupElement, Digest32Coll, Digest32CollRType, Iso}
+import sigma.data.{CBigInt, CGroupElement, Digest32Coll, Digest32CollRType}
 import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.js.{AvlTree, GroupElement}
 import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
@@ -164,7 +162,7 @@ object Isos {
       val res = new Object().asInstanceOf[contextExtensionMod.ContextExtension]
       x.values.iterator.foreach { case (k, v: Constant[_]) =>
         val hex = DataIsos.isoHexStringToConstant.from(v)
-        res.update(k, hex) // todo: will be order respected after?
+        res.update(k, hex) // traversal order is deterministic (see SigmaMap scaladoc)
       }
       res
     }

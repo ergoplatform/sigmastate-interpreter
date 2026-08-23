@@ -355,10 +355,9 @@ class SigmaDslTesting extends AnyPropSpec
             )
 
             // We add ctx as it's own variable with id = 1
-            val ctxVar = Constant[SContext.type](ctx, SContext) //  sigma.eval.Extensions.toAnyValue[sigma.Context](ctx)(sigma.ContextRType)
+            val ctxVar = Constant[SContext.type](ctx, SContext)
             val carolVar = ByteArrayConstant(pkCarolBytes.toColl)
             val newCtx = ctx
-                // .withUpdatedVars( 1 -> ctxVar, 2 -> carolVar)
                 .copy(
                   vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap ++ Map(1.toByte -> ctxVar, 2.toByte -> carolVar)),
                   selfBox = newSelf,

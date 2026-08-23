@@ -48,19 +48,15 @@ object ContextExtension {
         val size = extSize
         val keys = new Array[Byte](size)
         val values = new Array[EvaluatedValue[_ <: SType]](size)
-        var maxKey: Byte = -1
         cfor(0)(_ < size, _ + 1) { i =>
           val key = r.getByte()
           if (key < 0) {
             error(s"Negative key in context extension: $key")
           }
-          if (key > maxKey) {
-            maxKey = key
-          }
           keys(i) = key
           values(i) = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
         }
-        ContextExtension(SigmaMap(keys, values, maxKey))
+        ContextExtension(SigmaMap(keys, values))
       }
     }
   }

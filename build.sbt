@@ -335,7 +335,17 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .settings(publish / skip := true)
     .jvmSettings(
       crossScalaSettings,
-      libraryDependencies ++= Seq(scalameter)
+      libraryDependencies ++= Seq(scalameter),
+      // exclude version-conditional SigmaMap ordering tests from legs where they are
+      // meaningless (they are tagged instead of using runtime `assume`, so that reports
+      // show no canceled entries)
+      Test / testOptions ++= {
+        val pv = CrossVersion.partialVersion(scalaVersion.value)
+        val exclude = Seq.newBuilder[String]
+        if (pv != Some((2, 12))) { exclude += "-l"; exclude += "SigmaMap212Only" }
+        if (pv == Some((2, 11))) { exclude += "-l"; exclude += "SigmaMapNot211" }
+        Seq(Tests.Argument(TestFrameworks.ScalaTest, exclude.result(): _*))
+      }
     )
     .jsSettings(
       crossScalaSettingsJS,
