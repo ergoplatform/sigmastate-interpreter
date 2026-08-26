@@ -5,9 +5,9 @@ import org.ergoplatform._
 import org.ergoplatform.sdk.ExtendedInputBox
 import org.ergoplatform.sdk.wallet.protocol.context.BlockchainStateContext
 import org.scalacheck.Arbitrary
-import sigma.ast.{Constant, SType}
+import sigma.ast.{Constant, EvaluatedValue, IntConstant, SType}
 import sigma.data.Iso
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.js.AvlTree
 import sigma.{Coll, GroupElement}
 import sigma.data.js.{Isos => DataIsos}
@@ -76,6 +76,31 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
     forAll { (c: ContextExtension) =>
       roundtrip(Isos.isoContextExtension)(c)
     }
+  }
+
+  property("Iso.isoContextExtension round-trip preserves large-map traversal order") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      10.toByte -> IntConstant(10),
+      20.toByte -> IntConstant(20),
+      30.toByte -> IntConstant(30),
+      40.toByte -> IntConstant(40),
+      50.toByte -> IntConstant(50)
+    )))
+    val jsObj = Isos.isoContextExtension.from(ext)
+    val restored = Isos.isoContextExtension.to(jsObj)
+    restored shouldBe ext
+    restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](10, 20, 50, 40, 30)
+  }
+
+  property("Iso.isoContextExtension round-trip for small maps preserves content") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      73.toByte -> IntConstant(73),
+      35.toByte -> IntConstant(35),
+      31.toByte -> IntConstant(31),
+      0.toByte -> IntConstant(0)
+    )))
+    val restored = Isos.isoContextExtension.to(Isos.isoContextExtension.from(ext))
+    restored shouldBe ext
   }
 
   property("Iso.isoProverResult") {

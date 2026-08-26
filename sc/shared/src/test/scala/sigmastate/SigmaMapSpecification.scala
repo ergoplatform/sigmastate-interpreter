@@ -109,4 +109,70 @@ class SigmaMapSpecification extends TestingCommons {
     sm.size shouldBe 1
     sm.iterator.toList.map(_._1) shouldBe Seq(id)
   }
+
+  property("empty constructions return the singleton EmptySigmaMap") {
+    SigmaMap(Map.empty[Byte, EvaluatedValue[_ <: SType]]) shouldBe theSameInstanceAs(SigmaMap.empty)
+    SigmaMap(Array.empty[Byte], Array.empty[EvaluatedValue[_ <: SType]]) shouldBe theSameInstanceAs(SigmaMap.empty)
+  }
+
+  property("exactly 4 entries are traversed in insertion order") {
+    val insertion = Array[Byte](73, 35, 31, 0)
+    val sm = SigmaMap(insertion, valuesFor(insertion))
+    sm.size shouldBe 4
+    sm.iterator.toList.map(_._1) shouldBe insertion.toList
+  }
+
+  property("exactly 5 entries are traversed in hash-trie order, not insertion order") {
+    val insertion = Array[Byte](10, 20, 30, 40, 50)
+    val sm = SigmaMap(insertion, valuesFor(insertion))
+    sm.size shouldBe 5
+    // recorded under Scala 2.12.20; see SigmaMap.indices
+    sm.iterator.toList.map(_._1) shouldBe Seq[Byte](10, 20, 50, 40, 30)
+  }
+
+  property("apply(scala.collection.Map) with duplicate keys keeps first position and last value") {
+    val map = scala.collection.immutable.Map[Byte, EvaluatedValue[_ <: SType]](
+      5.toByte -> v(50), 7.toByte -> v(70), 5.toByte -> v(55)
+    )
+    val sm = SigmaMap(map)
+    sm.size shouldBe 2
+    sm.iterator.toList shouldBe List((5.toByte, v(55)), (7.toByte, v(70)))
+    sm.get(5) shouldBe Some(v(55))
+  }
+
+  property("apply(scala.collection.Map) with negative key is rejected") {
+    val map = scala.collection.immutable.Map[Byte, EvaluatedValue[_ <: SType]](
+      (-1).toByte -> v(1)
+    )
+    an[IllegalArgumentException] should be thrownBy SigmaMap(map)
+  }
+
+  property("apply(keys, values) rejects all-negative keys") {
+    an[IllegalArgumentException] should be thrownBy
+      SigmaMap(Array[Byte](-1, -2, -3), Array[EvaluatedValue[_ <: SType]](v(1), v(2), v(3)))
+  }
+
+  property("anyIterator yields the same order with AnyValue payloads") {
+    val keys = Array[Byte](10, 20, 30, 40, 50)
+    val sm = SigmaMap(keys, valuesFor(keys))
+    val any = sm.anyIterator.toList
+    val normal = sm.iterator.toList
+    any.map(_._1) shouldBe normal.map(_._1)
+    any.map(_._2.asInstanceOf[sigma.data.CAnyValue[_]].value) shouldBe
+      normal.map(_._2.value)
+  }
+
+  property("sparse max key in SigmaMapMulti is handled correctly") {
+    val sm = mk(127)
+    sm.maxKey shouldBe 127
+    sm.size shouldBe 1
+    sm.contains(127.toByte) shouldBe true
+    sm.contains(126.toByte) shouldBe false
+    sm.get(127.toByte) shouldBe Some(v(127))
+    sm.getNullable(127.toByte) should not be null
+    sm.getNullable(126.toByte) shouldBe null
+  }
+
+  private def valuesFor(keys: Array[Byte]): Array[EvaluatedValue[_ <: SType]] =
+    keys.map(k => v(k.toInt))
 }
