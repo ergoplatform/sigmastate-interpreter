@@ -1,27 +1,21 @@
 package sigma.data
 
 import debox.cfor
-import org.ergoplatform.{ErgoBox, ErgoHeader}
-import org.ergoplatform.validation.ValidationRules
+import org.ergoplatform.ErgoBox
 import scorex.crypto.hash.{Blake2b256, Sha256}
 import scorex.util.serialization.VLQByteBufferReader
 import scorex.utils.{Ints, Longs}
 import sigma.ast.{AtLeast, SBigInt, SType, SUnsignedBigInt, SubstConstants}
-import scorex.utils.Longs
 import sigma.Evaluation.rtypeToSType
-import sigma.ast.{AtLeast, SType, SubstConstants}
 import sigma.crypto.{CryptoConstants, EcPointType, Ecp}
-import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType, Ecp}
+import sigma.crypto.BigIntegers
 import sigma.eval.Extensions.EvalCollOps
 import sigma.serialization.{ConstantStore, DataSerializer, GroupElementSerializer, SigmaByteReader, SigmaSerializer}
-import sigma.serialization.{DataSerializer, GroupElementSerializer, SigmaSerializer}
 import sigma.serialization.SerializerException
 import sigma.pow.Autolykos2PowValidation
 import sigma.util.Extensions.BigIntegerOps
 import sigma.util.NBitsUtils
-import sigma.validation.SigmaValidationSettings
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, VersionContext}
-import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
+import sigma.{AvlTree, BigInt, Box, Coll, CollBuilder, Evaluation, GroupElement, SigmaDslBuilder, SigmaProp, UnsignedBigInt, VersionContext}
 
 import java.math.BigInteger
 import java.nio.ByteBuffer
@@ -36,7 +30,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
 
   override def BigInt(n: BigInteger): BigInt = CBigInt(n)
 
-  override def UnsignedBigInt(n: BigInteger): UnsignedBigInt = CUnsignedBigInt(n)
+  override def unsignedBigInt(n: BigInteger): UnsignedBigInt = CUnsignedBigInt(n)
 
   override def toBigInteger(n: BigInt): BigInteger = n.asInstanceOf[CBigInt].wrappedValue
 
@@ -270,7 +264,7 @@ class CSigmaDslBuilder extends SigmaDslBuilder { dsl =>
 
   override def powHit(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte], N: Int): UnsignedBigInt = {
     val bi = Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N)
-    this.UnsignedBigInt(bi.bigInteger)
+    this.unsignedBigInt(bi.bigInteger)
   }
 
 

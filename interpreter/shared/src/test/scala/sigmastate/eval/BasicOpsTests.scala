@@ -81,7 +81,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
     val context = new CContext(
       noInputs.toColl, noHeaders, dummyPreHeader,
       Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
-      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion, true)
 
     val evaluator = new CErgoTreeEvaluator(
       context = context,
@@ -118,7 +118,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
     val context = new CContext(
       noInputs.toColl, noHeaders, dummyPreHeader,
       Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
-      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion, true)
 
     val evaluator = new CErgoTreeEvaluator(
       context = context,

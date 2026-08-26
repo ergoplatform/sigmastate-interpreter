@@ -65,11 +65,11 @@ lazy val commonSettings = Seq(
 
 lazy val crossScalaSettings = Seq(
   crossScalaVersions := Seq(scala213, scala212, scala211),
-  scalaVersion := scala213
+  scalaVersion := scala212
 )
 lazy val crossScalaSettingsJS = Seq(
-  crossScalaVersions := Seq(scala213),
-  scalaVersion := scala213
+  crossScalaVersions := Seq(scala212),
+  scalaVersion := scala212
 )
 
 def javacReleaseOption = {

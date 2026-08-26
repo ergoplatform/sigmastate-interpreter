@@ -4392,7 +4392,8 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             CAnyValue(true))),
       spendingTransaction = null,
       activatedScriptVersion = activatedVersionInTests,
-      currentErgoTreeVersion = ergoTreeVersionInTests
+      currentErgoTreeVersion = ergoTreeVersionInTests,
+      softFieldsAllowed = true
     )
     val ctx2 = ctx.copy(vars = Coll[AnyValue](null, null, null))
     val ctx3 = ctx.copy(vars = Coll[AnyValue]())

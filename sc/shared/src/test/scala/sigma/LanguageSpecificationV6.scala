@@ -1877,7 +1877,8 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           CAnyValue(true))),
       spendingTransaction = tx,
       activatedScriptVersion = activatedVersionInTests,
-      currentErgoTreeVersion = ergoTreeVersionInTests
+      currentErgoTreeVersion = ergoTreeVersionInTests,
+      true
     )
     val ctx2 = ctx.copy(spendingTransaction = tx2)
     val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))

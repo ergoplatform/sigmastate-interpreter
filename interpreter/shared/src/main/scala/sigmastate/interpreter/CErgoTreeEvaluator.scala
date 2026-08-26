@@ -560,7 +560,7 @@ object CErgoTreeEvaluator {
     val costAccumulator = new CostAccumulator(
       initialCost = JitCost.fromBlockCost(context.initCost.toIntExact),
       costLimit = Some(JitCost.fromBlockCost(context.costLimit.toIntExact)))
-    val sigmaContext = context.toSigmaContext()
+    val sigmaContext = context.toSigmaContext
     eval(sigmaContext, costAccumulator, constants, exp, evalSettings)
   }
 

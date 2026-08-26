@@ -1846,6 +1846,12 @@ case object SPreHeaderMethods extends MonoTypeMethods {
   lazy val minerPkMethod          = propertyCall("minerPk", SGroupElement, 6, FixedCost(JitCost(10)))
   lazy val votesMethod            = propertyCall("votes", SByteArray, 7, FixedCost(JitCost(10)))
 
+  /**
+    * Soft methods are methods getting preheader data which is not defined by the protocol so could be changed by
+    * a miner from one block candidate to another
+    */
+  lazy val softMethodIds: Set[Byte] = Set(timestampMethod.methodId, minerPkMethod.methodId, votesMethod.methodId)
+
   protected override def getMethods() = super.getMethods() ++ Seq(
     versionMethod, parentIdMethod, timestampMethod, nBitsMethod, heightMethod, minerPkMethod, votesMethod
   )

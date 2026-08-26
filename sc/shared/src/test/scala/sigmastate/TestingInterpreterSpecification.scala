@@ -8,6 +8,10 @@ import sigmastate.interpreter._
 import Interpreter._
 import org.ergoplatform._
 import org.scalatest.BeforeAndAfterAll
+import scorex.util.encode.Base58
+import sigma.crypto.CryptoConstants
+import sigma.data.{AvlTreeData, CAND, ProveDlog, SigmaBoolean, TrivialProp}
+import sigma.exceptions.SoftFieldAccessException
 import scorex.util.encode.{Base16, Base58}
 import sigma.Colls
 import sigma.VersionContext.{V6SoftForkVersion, withVersions}
@@ -35,7 +39,7 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
 
   lazy val verifier = new ErgoLikeTestInterpreter
   
-  def testingContext(h: Int = 614401) = {
+  private def testingContext(h: Int = 614401, softFieldsAllowed: Boolean = true) = {
     // bytes of real mainnet block header at height 614,440
     val headerBytes = "02ac2101807f0000ca01ff0119db227f202201007f62000177a080005d440896d05d3f80dcff7f5e7f59007294c180808d0158d1ff6ba10000f901c7f0ef87dcfff17fffacb6ff7f7f1180d2ff7f1e24ffffe1ff937f807f0797b9ff6ebdae007e5c8c00b8403d3701557181c8df800001b6d5009e2201c6ff807d71808c00019780f087adb3fcdbc0b3441480887f80007f4b01cf7f013ff1ffff564a0000b9a54f00770e807f41ff88c00240000080c0250000000003bedaee069ff4829500b3c07c4d5fe6b3ea3d3bf76c5c28c1d4dcdb1bed0ade0c0000000000003105"
     val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
@@ -48,15 +52,52 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       nBits = 0,
       height = h,
       minerPk = GroupElementSerializer.parse(SigmaSerializer.startReader(ErgoLikeContextTesting.dummyPubkey)).toGroupElement,
-      votes = Colls.emptyColl[Byte]
+      votes = Colls.fromArray(Array.fill(3)(0.toByte))
     )
 
-    new ErgoLikeContext(
+    val ctx = new ErgoLikeContext(
       header1.stateRoot.asInstanceOf[CAvlTree].treeData, Colls.fromArray(Array(header1)),
       preHeader, noBoxes,
       boxesToSpend, ErgoLikeTransaction(IndexedSeq.empty, IndexedSeq.empty),
       boxesToSpend.indexOf(fakeSelf), ContextExtension.empty, vs, DefaultEvalSettings.scriptCostLimitInEvaluator,
       initCost = 0L, activatedVersionInTests).withErgoTreeVersion(ergoTreeVersionInTests)
+
+    if(!softFieldsAllowed) {
+      ctx.withSoftFieldsAllowed(false)
+    } else {
+      ctx
+    }
+  }
+
+  def testEval(code: String, softFieldsAllowed: Boolean = true) = {
+    val reg1 = ErgoBox.nonMandatoryRegisters.head
+    val reg2 = ErgoBox.nonMandatoryRegisters(1)
+
+    val dk1 = prover.dlogSecrets(0).publicImage
+    val dk2 = prover.dlogSecrets(1).publicImage
+    val ctx = testingContext(614401, softFieldsAllowed)
+    val env = Map(
+      "dk1" -> dk1,
+      "dk2" -> dk2,
+      "bytes1" -> Colls.fromArray(Array[Byte](1, 2, 3)),
+      "bytes2" -> Colls.fromArray(Array[Byte](4, 5, 6)),
+      "box1" -> (if(VersionContext.current.isJitActivated) {
+        CBox(testBox(10, TrueTree, 0, Seq(), Map(
+          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+        )))} else {
+        testBox(10, TrueTree, 0, Seq(), Map(
+          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
+          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
+        ))
+      })
+    )
+    val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
+    val challenge = Array.fill(32)(Random.nextInt(100).toByte)
+    val proof1 = prover.prove(prop, ctx, challenge).get.proof
+    verifier.verify(Interpreter.emptyEnv, prop, ctx, proof1, challenge)
+      .map(_._1)
+      .getOrElse(false) shouldBe true
   }
 
   property("Reduction to crypto #1") {
@@ -133,36 +174,6 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
     }
   }
 
-  def testEval(code: String) = {
-    val reg1 = ErgoBox.nonMandatoryRegisters.head
-    val reg2 = ErgoBox.nonMandatoryRegisters(1)
-
-    val dk1 = prover.dlogSecrets(0).publicImage
-    val dk2 = prover.dlogSecrets(1).publicImage
-    val ctx = testingContext()
-    val env = Map(
-      "dk1" -> dk1,
-      "dk2" -> dk2,
-      "bytes1" -> Colls.fromArray(Array[Byte](1, 2, 3)),
-      "bytes2" -> Colls.fromArray(Array[Byte](4, 5, 6)),
-      "box1" -> (if(VersionContext.current.isJitActivated) {
-        CBox(testBox(10, TrueTree, 0, Seq(), Map(
-        reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
-        reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
-      )))} else {
-        testBox(10, TrueTree, 0, Seq(), Map(
-          reg1 -> IntArrayConstant(Array[Int](1, 2, 3)),
-          reg2 -> BoolArrayConstant(Array[Boolean](true, false, true))
-        ))
-      })
-    )
-    val prop = mkTestErgoTree(compile(env, code)(IR).asBoolValue.toSigmaProp)
-    val challenge = Array.fill(32)(Random.nextInt(100).toByte)
-    val proof1 = prover.prove(prop, ctx, challenge).get.proof
-    verifier.verify(Interpreter.emptyEnv, prop, ctx, proof1, challenge)
-      .map(_._1)
-      .getOrElse(false) shouldBe true
-  }
 
   property("Evaluate array ops") {
     testEval(
@@ -494,6 +505,51 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
   property("deserialize") {
     val str = Base58.encode(ValueSerializer.serialize(ByteArrayConstant(Array[Byte](2))))
     testEval(s"""deserialize[Coll[Byte]]("$str")(0) == 2""")
+  }
+
+  property("preheader soft fields access - CONTEXT.preHeader.votes") {
+    testEval(s"""CONTEXT.preHeader.votes.size == 3""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.votes.size == 3""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+  }
+
+  property("preheader soft fields access - CONTEXT.preHeader.timestamp") {
+    testEval(s"""CONTEXT.preHeader.timestamp >= 0""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.timestamp >= 0""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+  }
+
+  property("preheader soft fields access - CONTEXT.preHeader.minerPk") {
+    testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.preHeader.minerPk.getEncoded.size == 33""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+  }
+
+  property("preheader soft fields access - CONTEXT.minerPubKey") {
+    testEval(s"""CONTEXT.minerPubKey.size == 33""", true)
+    assertExceptionThrown(
+      testEval(s"""CONTEXT.minerPubKey.size == 33""", false),
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
+  }
+
+  property("preheader soft fields access - MinerPubKey AST node") {
+    val prop = mkTestErgoTree(EQ(SizeOf(MinerPubkey), 33))
+    val msg = Array.fill(32)(Random.nextInt(100).toByte)
+    val proof = NoProof
+    val env = testingContext(614401, softFieldsAllowed = true)
+    verifier.verify(prop, env, proof, msg).map(_._1).getOrElse(false) shouldBe true
+
+    assertExceptionThrown(
+      verifier.verify(prop, testingContext(614401, softFieldsAllowed = false), proof, msg).get,
+      rootCause(_).isInstanceOf[SoftFieldAccessException]
+    )
   }
 
   property("header.id") {
