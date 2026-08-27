@@ -19,7 +19,7 @@ import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.eval.Extensions.SigmaBooleanOps
-import sigma.interpreter.{ContextExtension, CostedProverResult, ProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, ProverResult, SigmaMap}
 import sigma.serialization.{SerializationSpecification, ValueSerializer}
 import sigmastate.utils.Helpers._
 
@@ -750,7 +750,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
       val boxToSpend = testBox(10, ergoTree, creationHeight = 5)
       val ctx = ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
           .withExtension(
-            ContextExtension(Seq(script).toMap)) // provide script bytes in context variable
+            ContextExtension(SigmaMap(Seq(script).toMap))) // provide script bytes in context variable
 
       val prover = new ErgoLikeTestProvingInterpreter()
       prover.prove(ergoTree, ctx, fakeMessage).getOrThrow
@@ -773,7 +773,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
       }
       val ctx = ErgoLikeContextTesting.dummy(boxToSpend, 3)
         .withExtension(
-          ContextExtension(Seq(script).toMap)) // provide script bytes in context variable
+          ContextExtension(SigmaMap(Seq(script).toMap))) // provide script bytes in context variable
         .withValidationSettings(updVs)
 
       val prover = new ErgoLikeTestProvingInterpreter()

@@ -2,7 +2,7 @@ package sigmastate.helpers
 
 import sigma.ast.{ErgoTree, SType}
 import sigma.ast.EvaluatedValue
-import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, SigmaMap}
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigmastate.interpreter.{HintsBag, ProverInterpreter}
 
@@ -15,12 +15,14 @@ import scala.util.Try
   * Note: context is included into message (under hash function), thus changed context
   * also changes message. This trait may be useful for tests, that sign fake messages,
   * or for transactions which inputs does not require signatures.
+  *
+  * USED IN TESTS ONLY
   */
 trait ContextEnrichingProverInterpreter extends ProverInterpreter {
 
   def contextExtenders: Map[Byte, EvaluatedValue[_ <: SType]] = Map.empty
 
-  val knownExtensions = ContextExtension(contextExtenders)
+  def knownExtensions = ContextExtension(SigmaMap(contextExtenders))
 
   /**
     * Replace context.extension to knownExtensions and prove script in different context.

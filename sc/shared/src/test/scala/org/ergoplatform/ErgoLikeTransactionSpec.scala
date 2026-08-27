@@ -4,6 +4,7 @@ import io.circe.parser
 import org.ergoplatform.ErgoBox.TokenId
 import org.ergoplatform.sdk.JsonCodecs
 import org.ergoplatform.settings.ErgoAlgos
+import org.scalacheck.Gen
 import scorex.util.encode.Base16
 import scorex.util.{ModifierId, Random}
 import sigma.Extensions._
@@ -13,7 +14,7 @@ import sigma.ast.syntax.{ErgoBoxCandidateRType, TrueSigmaProp}
 import sigma.ast._
 import sigma.data.{CSigmaProp, Digest32Coll, TrivialProp}
 import sigma.eval.Extensions.{EvalCollOps, EvalIterableOps}
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.serialization.SigmaSerializer
 import sigmastate.helpers.TestingHelpers.copyTransaction
 import sigmastate.utils.Helpers
@@ -214,7 +215,10 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
         (itx6.messageToSign sameElements initialMessage) shouldBe false
 
         // transaction with modified input extension
-        val newExtension7 = ContextExtension(headInput.spendingProof.extension.values ++ Map(Byte.MinValue -> ByteArrayConstant(Random.randomBytes(32))))
+        val newExtension7 = ContextExtension(SigmaMap(
+          headInput.spendingProof.extension.values.iterator.toMap ++
+            Map(Byte.MaxValue -> ByteArrayConstant(Random.randomBytes(32)))
+        ))
         val newProof7 = new ProverResult(headInput.spendingProof.proof, newExtension7)
         val headInput7 = headInput.copy(spendingProof = newProof7)
         val itx7 = new ErgoLikeTransaction(headInput7 +: tailInputs, di, txIn.outputCandidates)
@@ -294,32 +298,39 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
   }
 
   property("context extension serialization") {
-    forAll { (tx: ErgoLikeTransaction, startIndex: Byte, endIndex: Byte) =>
-      whenever(endIndex >= startIndex) {
-        val idRange = endIndex - startIndex
+    forAll { tx: ErgoLikeTransaction =>
+      forAll(Gen.chooseNum(0, 126), Gen.chooseNum(0, 126)) { (a: Int, b: Int) =>
+        // keys are drawn from the valid range 0..126 so that a map of at most
+        // Byte.MaxValue entries is created (no discards via whenever)
+        val startIndex = math.min(a, b)
+        val endIndex = math.max(a, b)
 
-        val ce = ContextExtension(startIndex.to(endIndex).map(id => id.toByte -> IntConstant(4)).toMap)
+        val ce = ContextExtension(SigmaMap(startIndex.to(endIndex).map(id => id.toByte -> IntConstant(4)).toMap))
         val wrongInput = Input(tx.inputs.head.boxId, ProverResult(Array.emptyByteArray, ce))
         val ins = IndexedSeq(wrongInput) ++ tx.inputs.tail
         val tx2 = copyTransaction(tx)(inputs = ins)
 
-        def roundtrip() = {
-          val bs = ErgoLikeTransactionSerializer.toBytes(tx2)
-          val restored = ErgoLikeTransactionSerializer.parse(
-            SigmaSerializer.startReader(bs, 0)
-          )
-          restored.inputs.head.extension.values.size shouldBe tx2.inputs.head.extension.values.size
-        }
-
-        if(idRange < 127) {
-          roundtrip()
-        } else {
-          assertExceptionThrown(
-            roundtrip(),
-            { _ => true }
-          )
-        }
+        val bs = ErgoLikeTransactionSerializer.toBytes(tx2)
+        val restored = ErgoLikeTransactionSerializer.parse(
+          SigmaSerializer.startReader(bs, 0)
+        )
+        restored.inputs.head.extension.values.size shouldBe tx2.inputs.head.extension.values.size
       }
+    }
+  }
+
+  property("context extension serialization with too many values fails") {
+    forAll { tx: ErgoLikeTransaction =>
+      // 128 distinct keys cannot be serialized (limit is Byte.MaxValue)
+      val ce = ContextExtension(SigmaMap((0 to Byte.MaxValue).map(id => id.toByte -> IntConstant(4)).toMap))
+      val wrongInput = Input(tx.inputs.head.boxId, ProverResult(Array.emptyByteArray, ce))
+      val ins = IndexedSeq(wrongInput) ++ tx.inputs.tail
+      val tx2 = copyTransaction(tx)(inputs = ins)
+
+      assertExceptionThrown(
+        ErgoLikeTransactionSerializer.toBytes(tx2),
+        { _ => true }
+      )
     }
   }
 

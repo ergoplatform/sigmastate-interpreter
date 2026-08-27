@@ -31,7 +31,7 @@ import sigma.Extensions.ArrayOps
 import sigma.crypto.CryptoConstants
 import sigma.data.CSigmaDslBuilder.Colls
 import sigma.exceptions.InterpreterException
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 
 import java.lang.reflect.InvocationTargetException
 import java.math.BigInteger
@@ -113,6 +113,91 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       (Short.MaxValue, Expected(Success(Coll(-2.toByte, -1.toByte, 3.toByte)), expectedCostTrace))
     )
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Int]") {
+    lazy val serializeInt = mkSerializeFeature[Int]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (Int.MinValue, Expected(Success(Coll[Byte](-1, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace)),
+      (-1, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1, Expected(Success(Coll(2.toByte)), expectedCostTrace)),
+      (Int.MaxValue, Expected(Success(Coll[Byte](-2, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeInt, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Long]") {
+    lazy val serializeLong = mkSerializeFeature[Long]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (-1L, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0L, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1L, Expected(Success(Coll(2.toByte)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeLong, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Coll[Byte]]") {
+    lazy val serializeCollByte = mkSerializeFeature[Coll[Byte]]
+    val baseCostItems = baseTrace ++ Array(
+      FixedCostItem(Global),
+      FixedCostItem(MethodCall),
+      FixedCostItem(ValUse),
+      FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+      FixedCostItem(NamedDesc("SigmaByteWriter.putUNumeric"), FixedCost(JitCost(3)))
+    )
+    val emptyCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 0)
+      )
+    )
+    val threeByteCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 3)
+      )
+    )
+    val cases = Seq(
+      (Coll[Byte](), Expected(Success(Coll(0.toByte)), emptyCostTrace)),
+      (Coll[Byte](1, 2, 3), Expected(Success(Coll[Byte](3, 1, 2, 3)), threeByteCostTrace))
+    )
+    verifyCases(cases, serializeCollByte, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[(Long, Long)]") {
+    lazy val serializePair = mkSerializeFeature[(Long, Long)]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      ((0L, 0L), Expected(Success(Coll[Byte](0, 0)), expectedCostTrace)),
+      ((42L, 100L), Expected(Success(Coll[Byte](84, -56.toByte, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializePair, preGeneratedSamples = None)
   }
 
   property("Boolean.toByte") {
@@ -1745,17 +1830,17 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
 
     val tx2 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(true)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> BooleanConstant(true))))))),
       IndexedSeq(input.wrappedValue)
     )
 
     val tx3 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> IntConstant(0)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> IntConstant(0))))))),
       IndexedSeq(input.wrappedValue)
     )
 
     val tx4 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(false)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> BooleanConstant(false))))))),
       IndexedSeq(input.wrappedValue)
     )
 
@@ -1785,18 +1870,16 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         )
       ),
       _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-      vars = Colls
-        .replicate[AnyValue](10, null) // reserve 10 vars
-        .append(Coll[AnyValue](
-          CAnyValue(Helpers.decodeBytes("00")),
-          CAnyValue(true))),
+      vars = SigmaMap(Map(
+        10.toByte -> ByteArrayConstant(Helpers.decodeBytes("00")),
+        11.toByte -> BooleanConstant(true))),
       spendingTransaction = tx,
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
     val ctx2 = ctx.copy(spendingTransaction = tx2)
-    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))
-    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = ctx.vars.patch(11, Coll(CAnyValue(false)), 1))
+    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap.updated(11.toByte, IntConstant(0))))
+    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap.updated(11.toByte, BooleanConstant(false))))
 
     (ctx, ctx2, ctx3, ctx4)
   }
@@ -2291,6 +2374,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[BigInt, Long](
       { (bi: BigInt) => SigmaDsl.encodeNbits(bi) },
       """{(bi: BigInt) => Global.encodeNbits(bi) }""".stripMargin,
+      FuncValue(
+        Array((1, SBigInt)),
+        MethodCall.typed[Value[SLong.type]](
+          Global,
+          SGlobalMethods.encodeNBitsMethod,
+          Array(ValUse(1, SBigInt)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2311,6 +2403,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[Long, BigInt](
       { (l: Long) => SigmaDsl.decodeNbits(l) },
       """{(l: Long) => Global.decodeNbits(l) }""".stripMargin,
+      FuncValue(
+        Array((1, SLong)),
+        MethodCall.typed[Value[SBigInt.type]](
+          Global,
+          SGlobalMethods.decodeNBitsMethod,
+          Array(ValUse(1, SLong)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2396,11 +2497,20 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
+    val generator = CryptoConstants.dlogGroup.generator
+    val order = CryptoConstants.dlogGroup.order
+    // Max representable UnsignedBigInt (bitLength = 256), strictly > group order.
+    // Cross-checks that the JS bridge reduces scalars `mod order` consistently with BC. See #731.
+    val maxUnsigned = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE)
+    val expMaxUnsigned = CryptoConstants.dlogGroup.exponentiate(generator, maxUnsigned.mod(order))
+
     verifyCases(
       Seq(
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.generator)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(CryptoConstants.dlogGroup.order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None))
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order.add(BigInteger.ONE))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(maxUnsigned)) -> Expected(ExpectedResult(Success(CGroupElement(expMaxUnsigned)), None))
       ),
       f
     )

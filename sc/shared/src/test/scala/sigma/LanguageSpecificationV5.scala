@@ -30,6 +30,10 @@ import sigmastate.eval.Extensions.AvlTreeOps
 import sigmastate.eval._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter._
+import sigma.ast.{Apply, MethodCall, PropertyCall}
+import sigma.exceptions.InvalidType
+import sigma.interpreter.SigmaMap
+import sigma.serialization.ValueCodes.OpCode
 import sigmastate.utils.Extensions._
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
@@ -4385,17 +4389,13 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )
       ),
       _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-      vars = Colls
-          .replicate[AnyValue](10, null) // reserve 10 vars
-          .append(Coll[AnyValue](
-            CAnyValue(Helpers.decodeBytes("00")),
-            CAnyValue(true))),
+      vars = SigmaMap(Map(10.toByte -> ByteArrayConstant(Helpers.decodeBytes("00")), 11.toByte -> BooleanConstant(true))),
       spendingTransaction = null,
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
-    val ctx2 = ctx.copy(vars = Coll[AnyValue](null, null, null))
-    val ctx3 = ctx.copy(vars = Coll[AnyValue]())
+    val ctx2 = ctx.copy(vars = SigmaMap(Map.empty))
+    val ctx3 = ctx.copy(vars = SigmaMap(Map.empty))
 
     (input, dataBox, header, ctx, ctx2, ctx3)
   }
@@ -9298,6 +9298,23 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ErgoTree.setConstantSegregation(ZeroHeader),
       Vector(IntConstant(10)),
       BoolToSigmaProp(EQ(ConstantPlaceholder(0, SInt), IntConstant(20))))
+    
+    // Custom generator that produces valid ErgoTree bytes to avoid NegativeArraySizeException
+    // from deserializing random bytes with invalid size values
+    implicit val arbErgoTreeBytesAndInt: Arbitrary[(Coll[Byte], Int)] = Arbitrary {
+      for {
+        treeBytes <- Gen.oneOf(
+          Coll(t1.bytes: _*),
+          Coll(t2.bytes: _*),
+          Coll(t3.bytes: _*),
+          Helpers.decodeBytes("000008d3"),
+          Helpers.decodeBytes("100008d3"),
+          Helpers.decodeBytes("100108d37300")
+        )
+        idx <- Gen.choose(0, 10)
+      } yield (treeBytes, idx)
+    }
+    
     def costDetails(i: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),

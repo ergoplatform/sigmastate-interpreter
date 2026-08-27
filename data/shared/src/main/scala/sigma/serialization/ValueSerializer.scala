@@ -91,7 +91,10 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     LogicalTransformerSerializer(AND, mkAND),
     LogicalTransformerSerializer(OR, mkOR),
     LogicalTransformerSerializer(XorOf, mkXorOf),
-    TaggedVariableSerializer(mkTaggedVariable), // TODO v7.0: remove this serializer https://github.com/ScorexFoundation/sigmastate-interpreter/issues/584
+    // Opcode 0x71. Deprecated; scheduled for version-gated rejection in Phase 2 of the retirement plan.
+    // The rejection target is v7.0. DO NOT remove the entry and DO NOT reassign opcode 0x71.
+    // Doing so changes consensus.
+    TaggedVariableSerializer(mkTaggedVariable),
     GetVarSerializer(mkGetVar),
     MapCollectionSerializer(mkMapCollection),
     BooleanTransformerSerializer[SType](Exists, mkExists),

@@ -787,7 +787,7 @@ trait Context {
     */
   def getVarFromInput[T](inputIndex: Short, id: Byte)(implicit cT: RType[T]): Option[T]
 
-  def vars: Coll[AnyValue]
+  def vars: ContextVarsMap
 
   /** Maximum version of ErgoTree currently activated on the network.
     * See [[ErgoLikeContext]] class for details. */

@@ -3,6 +3,7 @@ package org.ergoplatform.dsl
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 
 import scala.collection.mutable
+import sigma.interpreter.{CostedProverResult, ProverResult, SigmaMap}
 import sigma.interpreter.{CostedProverResult, ProverResult}
 
 import scala.collection.mutable.ArrayBuffer
@@ -92,7 +93,7 @@ case class TestContractSpec(testSuite: CompilerTestingCommons)(implicit val IR: 
       ctx
     }
     def runDsl(extensions: Map[Byte, EvaluatedValue[_ <: SType]] = Map()): SigmaProp = {
-      val ctx = toErgoContext.withExtension(ContextExtension(extensions)).toSigmaContext()
+      val ctx = toErgoContext.withExtension(ContextExtension(SigmaMap(extensions))).toSigmaContext()
       val res = utxoBox.propSpec.dslSpec(ctx)
       res
     }

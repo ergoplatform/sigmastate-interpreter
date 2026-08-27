@@ -14,7 +14,7 @@ import sigma.data.{AvlTreeData, Digest32Coll, ProveDlog}
 import sigma.{Coll, Header, PreHeader}
 import sigma.ast._
 import sigma.crypto.CryptoConstants
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.serialization.SerializationSpecification
 import sigmastate.utils.Helpers.DecoderResultOps  // required for Scala 2.11
 
@@ -84,6 +84,60 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
 
   property("ContextExtension should be encoded into JSON and decoded back correctly") {
     forAll(contextExtensionGen, MinSuccessful(500)) { v: ContextExtension => jsonRoundTrip(v) }
+  }
+
+  property("ContextExtension JSON encoder outputs keys in SigmaMap traversal order (small map)") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      73.toByte -> IntConstant(73),
+      35.toByte -> IntConstant(35),
+      31.toByte -> IntConstant(31),
+      0.toByte -> IntConstant(0)
+    )))
+    val json = ext.asJson
+    val keys = json.asObject.get.toList.map(_._1)
+    keys shouldBe Seq("73", "35", "31", "0")
+  }
+
+  property("ContextExtension JSON encoder outputs keys in SigmaMap traversal order (large map)") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      10.toByte -> IntConstant(10),
+      20.toByte -> IntConstant(20),
+      30.toByte -> IntConstant(30),
+      40.toByte -> IntConstant(40),
+      50.toByte -> IntConstant(50)
+    )))
+    val json = ext.asJson
+    val keys = json.asObject.get.toList.map(_._1)
+    keys shouldBe Seq("10", "20", "50", "40", "30")
+  }
+
+  property("ContextExtension JSON round-trip preserves SigmaMap traversal order") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      10.toByte -> IntConstant(10),
+      20.toByte -> IntConstant(20),
+      30.toByte -> IntConstant(30),
+      40.toByte -> IntConstant(40),
+      50.toByte -> IntConstant(50)
+    )))
+    val decoded = ext.asJson.as[ContextExtension].toTry.get
+    decoded shouldBe ext
+    decoded.values.iterator.toList.map(_._1) shouldBe ext.values.iterator.toList.map(_._1)
+  }
+
+  property("ContextExtension JSON decode normalizes arbitrary JSON key order to SigmaMap order") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      10.toByte -> IntConstant(10),
+      20.toByte -> IntConstant(20),
+      30.toByte -> IntConstant(30),
+      40.toByte -> IntConstant(40),
+      50.toByte -> IntConstant(50)
+    )))
+    val originalJson = ext.asJson
+    val fields = originalJson.asObject.get.toList
+    val reversed = Json.obj(fields.reverse: _*)
+    val decoded = reversed.as[ContextExtension].toTry.get
+    decoded shouldBe ext
+    decoded.values.iterator.toList.map(_._1) shouldBe Seq[Byte](10, 20, 50, 40, 30)
   }
 
   property("AdditionalRegisters should be encoded into JSON and decoded back correctly") {

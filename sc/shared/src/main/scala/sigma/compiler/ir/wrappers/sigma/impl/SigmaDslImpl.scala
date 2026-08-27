@@ -2752,6 +2752,16 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
       def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
     }
 
+    object serialize {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Any])] = d match {
+        case MethodCall(receiver, method, args, _) if method.getName == "serialize" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+          val res = (receiver, args(0))
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Any])]]
+        case _ => Nullable.None
+      }
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Any])] = unapply(exp.node)
+    }
+
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */
     object avlTree {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])] = d match {

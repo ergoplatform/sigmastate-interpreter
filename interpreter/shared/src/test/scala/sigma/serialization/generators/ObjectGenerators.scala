@@ -29,11 +29,10 @@ import ErgoTree.ZeroHeader
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CBox, CHeader, COR, CTHRESHOLD, Digest32Coll, ProveDHTuple, ProveDlog, RType, SigmaBoolean}
 import sigma.eval.Extensions.{EvalIterableOps, SigmaBooleanOps}
 import sigma.eval.SigmaDsl
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 
 import java.math.BigInteger
 import scala.collection.compat.immutable.ArraySeq
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
@@ -249,7 +248,7 @@ trait ObjectGenerators extends TypeGenerators
 
   lazy val contextExtensionGen: Gen[ContextExtension] = for {
     values: scala.collection.Seq[(Byte, EvaluatedValue[SType])] <- Gen.sequence(contextExtensionValuesGen(0, 5))(Buildable.buildableSeq)
-  } yield ContextExtension(mutable.LinkedHashMap[Byte, EvaluatedValue[SType]](values.sortBy(_._1).toSeq:_*))
+  } yield ContextExtension(SigmaMap(values.sortBy(_._1).toMap))
 
   lazy val serializedProverResultGen: Gen[ProverResult] = for {
     bytes <- arrayOfRange(1, 100, arbByte.arbitrary)
