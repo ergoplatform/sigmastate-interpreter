@@ -11,6 +11,7 @@ import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.js.AvlTree
 import sigma.{Coll, GroupElement}
 import sigma.data.js.{Isos => DataIsos}
+import sigmastate.fleetSdkCommon.{distEsmTypesCommonMod => commonMod, distEsmTypesContextExtensionMod => contextExtensionMod}
 
 import scala.scalajs.js
 
@@ -76,6 +77,25 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
     forAll { (c: ContextExtension) =>
       roundtrip(Isos.isoContextExtension)(c)
     }
+  }
+
+  property("Iso.isoContextExtension JS representation is a native Map preserving insertion order") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      3.toByte -> IntConstant(3),
+      1.toByte -> IntConstant(1),
+      2.toByte -> IntConstant(2)
+    )))
+    val jsObj = Isos.isoContextExtension.from(ext)
+    jsObj.asInstanceOf[js.Any].isInstanceOf[js.Map[_, _]] shouldBe true
+
+    var jsOrder = List.empty[Double]
+    jsObj.forEach { (_: commonMod.HexString, key: Double, _: contextExtensionMod.ContextExtension) =>
+      jsOrder = jsOrder :+ key
+    }
+    jsOrder shouldBe List(3.0, 1.0, 2.0)
+
+    val restored = Isos.isoContextExtension.to(jsObj)
+    restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](3, 1, 2)
   }
 
   property("Iso.isoContextExtension round-trip preserves large-map traversal order") {
