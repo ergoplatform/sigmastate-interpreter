@@ -147,16 +147,16 @@ lazy val testSettings = Seq(
   Test / parallelExecution := false,
   Test / baseDirectory := file("."),
   Test / publishArtifact := true,
-  publishArtifact in(Test, packageSrc) := true,
-  publishArtifact in(Test, packageDoc) := false,
+  Test / packageSrc / publishArtifact := true,
+  Test / packageDoc / publishArtifact := false,
   assembly / test := {})
 
 lazy val testSettings2 = Seq(
   Test / parallelExecution := true,
   Test / baseDirectory := file("."),
   Test / publishArtifact := true,
-  publishArtifact in(Test, packageSrc) := true,
-  publishArtifact in(Test, packageDoc) := false,
+  Test / packageSrc / publishArtifact := true,
+  Test / packageDoc / publishArtifact := false,
   assembly / test := {})
 
 scalacOptions ++= Seq("-feature", "-deprecation")
@@ -377,9 +377,9 @@ lazy val rootSettings = Seq(
   Compile / sources := sources.all(aggregateCompile).value.flatten,
   Compile / sourceDirectories := sourceDirectories.all(aggregateCompile).value.flatten,
   libraryDependencies := libraryDependencies.all(aggregateCompile).value.flatten,
-  mappings in (Compile, packageSrc) ++= (mappings in(Compile, packageSrc)).all(aggregateCompile).value.flatten,
-  mappings in (Test, packageBin) ++= (mappings in(Test, packageBin)).all(aggregateCompile).value.flatten,
-  mappings in(Test, packageSrc) ++= (mappings in(Test, packageSrc)).all(aggregateCompile).value.flatten
+  Compile / packageSrc / mappings ++= (Compile / packageSrc / mappings).all(aggregateCompile).value.flatten,
+  Test / packageBin / mappings ++= (Test / packageBin / mappings).all(aggregateCompile).value.flatten,
+  Test / packageSrc / mappings ++= (Test / packageSrc / mappings).all(aggregateCompile).value.flatten
 )
 
 val credentialFile = Path.userHome / ".sbt" / ".sigma-sonatype-credentials"
