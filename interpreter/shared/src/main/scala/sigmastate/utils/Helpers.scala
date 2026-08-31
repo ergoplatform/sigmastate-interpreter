@@ -54,14 +54,6 @@ object Helpers {
   }
 
   implicit class TryOps[+A](val source: Try[A]) extends AnyVal {
-    def fold[B](onError: Throwable => B, onSuccess: A => B) = source match {
-      case Success(value) => onSuccess(value)
-      case Failure(t) => onError(t)
-    }
-    def toEither: Either[Throwable, A] = source match {
-      case Success(value) => Right(value)
-      case Failure(t) => Left(t)
-    }
     def mapOrThrow[B](f: A => B): B = source.fold(t => throw t, f)
     def getOrThrow: A = source.fold(t => throw t, identity)
   }
@@ -70,33 +62,6 @@ object Helpers {
     def toTry: Try[A] = source match {
       case Right(value) => Success(value)
       case Left(t) => Failure(t)
-    }
-  }
-
-  implicit class EitherOps[+A, +B](val source: Either[A, B]) extends AnyVal {
-    /** The given function is applied if this is a `Right`.
-      *
-      *  {{{
-      *  Right(12).map(x => "flower") // Result: Right("flower")
-      *  Left(12).map(x => "flower")  // Result: Left(12)
-      *  }}}
-      */
-    def mapRight[B1](f: B => B1): Either[A, B1] = source match {
-      case Right(b) => Right(f(b))
-      case _        => this.asInstanceOf[Either[A, B1]]
-    }
-
-    /** Returns a `Some` containing the `Right` value
-      * if it exists or a `None` if this is a `Left`.
-      *
-      * {{{
-      * Right(12).toOption // Some(12)
-      * Left(12).toOption  // None
-      * }}}
-      */
-    def toOption: Option[B] = source match {
-      case Right(value) => Some(value)
-      case _ => None
     }
   }
 
