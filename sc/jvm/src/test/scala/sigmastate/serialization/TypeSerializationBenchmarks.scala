@@ -1,7 +1,6 @@
 package sigmastate.serialization
 
 import org.scalameter.api._
-import org.scalameter.picklers.Implicits._
 import sigma.ast._
 import sigma.serialization.{SigmaSerializer, TypeSerializer}
 

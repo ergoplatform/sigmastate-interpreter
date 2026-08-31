@@ -13,7 +13,6 @@ import sigma.validation.ValidationRules.CheckTypeCode
 import ErgoTree.HeaderType
 import sigma.ast.SBigIntMethods.{ToUnsigned, ToUnsignedMod}
 import sigma.ast.SUnsignedBigIntMethods.{ModInverseMethod, ModMethod, MultiplyModMethod, PlusModMethod, SubtractModMethod, ToSignedMethod}
-import sigmastate.eval.CProfiler
 import sigmastate.helpers.{ErgoLikeContextTesting, SigmaPPrint}
 import sigmastate.interpreter.Interpreter.ReductionResult
 import sigmastate.interpreter.CErgoTreeEvaluator
@@ -23,7 +22,7 @@ import sigma.eval.EvalSettings
 import sigma.exceptions.{CostLimitException, InterpreterException}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.{CrossVersionProps, Plus}
-import sigmastate.utils.Helpers.{TryOps, decodeGroupElement}
+import sigmastate.utils.Helpers.TryOps
 
 
 /** Regression tests with ErgoTree related test vectors.

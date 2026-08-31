@@ -3,11 +3,10 @@ package org.ergoplatform.dsl
 import sigmastate.interpreter.Interpreter.ScriptNameProp
 
 import scala.collection.mutable
-import sigma.interpreter.{CostedProverResult, ProverResult}
-
 import scala.collection.mutable.ArrayBuffer
 import org.ergoplatform.ErgoBox.{NonMandatoryRegisterId, TokenId}
 import sigma.data.{AvlTreeData, CAnyValue, CSigmaProp, Nullable}
+import sigma.interpreter.{CostedProverResult, ProverResult}
 
 import scala.util.Try
 import org.ergoplatform.{ErgoBox, ErgoLikeContext}

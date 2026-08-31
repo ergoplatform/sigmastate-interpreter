@@ -1,7 +1,5 @@
 package sigma.data
 
-import debox.cfor
-import scorex.util.encode.Base16
 import sigma._
 import sigma.data.UnsignedBigIntOrderingOps.UnsignedBigIntOrdering
 import sigma.eval.Extensions.IntExt

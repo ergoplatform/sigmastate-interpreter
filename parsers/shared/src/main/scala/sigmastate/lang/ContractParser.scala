@@ -3,7 +3,7 @@ package sigmastate.lang
 import fastparse._
 import fastparse.NoWhitespace._
 import SigmaParser._
-import sigma.ast.{Constant, SType}
+import sigma.ast.SType
 import sigma.ast.syntax.SValue
 import sigmastate.lang.parsers.Basic
 

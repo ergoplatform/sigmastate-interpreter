@@ -458,17 +458,6 @@ class SigmaDslTesting extends AnyPropSpec
           |""".stripMargin)
     }
 
-    private def checkEqualResults(res1: Try[VerificationResult], res2: Try[VerificationResult]): Unit = {
-      (res1, res2) match {
-        case (Success((v1, c1)), Success((v2, c2))) =>
-          v1 shouldBe v2
-        case (Failure(t1), Failure(t2)) =>
-          rootCause(t1) shouldBe rootCause(t2)
-        case _ =>
-          res1 shouldBe res2
-      }
-    }
-
     private def checkExpectedResult(
           res: Try[VerificationResult], expectedCost: Option[Int]): Unit = {
       res match {
@@ -816,11 +805,11 @@ class SigmaDslTesting extends AnyPropSpec
           (Try(scalaFunc(input)), Try(oldF(input)._1)) match {
             case (Success(s), Success(old)) =>
               s shouldBe old
-            case (Failure(e), oldRes @ Success(_)) =>
+            case (Failure(_), oldRes @ Success(_)) =>
               // allow this because of allowNewToSucceed
               oldRes shouldBe expRes
-            case (Success(s), Failure(e)) =>
-              fail(s"Old version fail while scalaFunc succeeds: $s <+++> $e")
+            case (Success(s), Failure(_)) =>
+              fail(s"Old version fail while scalaFunc succeeds: $s")
             case (Failure(e), Failure(old)) =>
               e.getClass shouldBe old.getClass
           }
@@ -1293,7 +1282,7 @@ class SigmaDslTesting extends AnyPropSpec
 
   type MeasureFormatter[A] = MeasureInfo[A] => String
 
-  def benchmarkCases[A: Ordering : Arbitrary : ClassTag, B]
+  def benchmarkCases[A, B]
       (cases: Seq[A], f: Feature[A, B], nIters: Int, formatter: MeasureFormatter[A])
       (implicit IR: IRContext, evalSettings: EvalSettings): Seq[Long] = {
     val fNew = f.newF
@@ -1400,8 +1389,10 @@ class SigmaDslTesting extends AnyPropSpec
   }
 
   /** Default implementation of [[Sampled]]. */
-  case class SampledData[A](samples: Seq[A])(implicit val arbitrary: Arbitrary[A])
-      extends Sampled[A]
+  case class SampledData[A](samples: Seq[A])(arb: Arbitrary[A])
+      extends Sampled[A] {
+    override def arbitrary: Arbitrary[A] = arb
+  }
 
   /** Arbitrary instance for each type descriptor. */
   private val arbitraryCache = new mutable.HashMap[RType[_], Arbitrary[_]]
@@ -1429,9 +1420,9 @@ class SigmaDslTesting extends AnyPropSpec
         case AnyType => arbAnyVal
         case UnitType => arbUnit
         case p: PairType[a, b] =>
-          implicit val arbA: Arbitrary[a] = lookupArbitrary[a](p.tFst)
-          implicit val arbB: Arbitrary[b] = lookupArbitrary[b](p.tSnd)
-          arbTuple2[a,b]
+          val arbA: Arbitrary[a] = lookupArbitrary[a](p.tFst)
+          val arbB: Arbitrary[b] = lookupArbitrary[b](p.tSnd)
+          arbTuple2(arbA, arbB)
         case opt: OptionType[a] =>
           Arbitrary(frequency((5, None), (5, for (x <- lookupArbitrary(opt.tA).arbitrary) yield Some(x))))
         case coll: CollType[a] =>
@@ -1469,7 +1460,7 @@ class SigmaDslTesting extends AnyPropSpec
       implicit val tagA = t.classTag
       implicit val arb = lookupArbitrary(t)
       val res = new SampledData[A](
-        samples = genSamples[A](DefaultMinSuccessful, None))
+        samples = genSamples[A](DefaultMinSuccessful, None))(arb)
       sampledCache.put(t, res)
       updateArbitrary(t, res)
       res

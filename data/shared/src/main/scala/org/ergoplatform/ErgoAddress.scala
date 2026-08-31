@@ -7,8 +7,8 @@ import scorex.utils.Ints
 import sigma.ast.{DeserializeContext, SInt, SSigmaProp, Slice}
 import sigma.data.{CSigmaProp, ProveDlog}
 import sigma.serialization.GroupElementSerializer
-import sigma.{Coll, SigmaException, VersionContext}
-import sigma.ast.ErgoTree.{ZeroHeader, setVersionBits}
+import sigma.{Coll, SigmaException}
+import sigma.ast.ErgoTree.ZeroHeader
 import sigma.ast._
 import sigma.ast.syntax._
 import sigma.serialization._

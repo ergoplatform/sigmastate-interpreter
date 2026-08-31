@@ -14,15 +14,14 @@ import sigma.VersionContext.{V6SoftForkVersion, withVersions}
 import sigma.data.{CAND, CAvlTree, CBox, CHeader, ProveDlog, SigmaBoolean, TrivialProp}
 import sigma.interpreter.ContextExtension
 import sigma.VersionContext
-import sigma.util.Extensions.IntOps
-import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
-import sigmastate.helpers.TestingHelpers._
 import sigma.serialization.{GroupElementSerializer, SigmaSerializer, ValueSerializer}
 import sigmastate.eval.CPreHeader
 import sigmastate.helpers.ErgoLikeContextTesting.noBoxes
 import sigmastate.interpreter.CErgoTreeEvaluator.DefaultEvalSettings
 import sigmastate.utils.Helpers._
 import sigma.util.Extensions._
+import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter, ErgoLikeTestProvingInterpreter}
+import sigmastate.helpers.TestingHelpers._
 
 import scala.util.Random
 

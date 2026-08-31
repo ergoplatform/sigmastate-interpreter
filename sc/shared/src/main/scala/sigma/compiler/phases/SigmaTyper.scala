@@ -288,7 +288,7 @@ class SigmaTyper(val builder: SigmaBuilder,
           if (args.length != argTypes.length)
             error(s"Invalid argument type of application $app: invalid number of arguments", app.sourceContext)
           val typedArgs = args.zip(argTypes).map {
-            case (arg, expectedType) => assignType(env, arg)
+            case (arg, _) => assignType(env, arg)
           }
           val adaptedTypedArgs = (new_f, typedArgs) match {
             case (AllOfFunc.sym | AnyOfFunc.sym, _) =>

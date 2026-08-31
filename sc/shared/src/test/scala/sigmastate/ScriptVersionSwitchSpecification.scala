@@ -19,7 +19,7 @@ import sigma.data.CBox
 import sigma.eval.EvalSettings
 import sigma.exceptions.InterpreterException
 import sigma.interpreter.{CostedProverResult, ProverResult}
-import sigmastate.utils.Helpers._
+import sigmastate.utils.Helpers.TryOps
 
 /** Specification to verify that the interpreter behaves according to docs/aot-jit-switch.md.
   *

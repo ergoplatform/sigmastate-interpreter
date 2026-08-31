@@ -8,7 +8,7 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import sigma.{Colls, VersionContext}
 import sigma.ast.SCollection._
 import sigma.ast._
-import sigma.ast.syntax.{SValue, SigmaPropValue, SigmaPropValueOps}
+import sigma.ast.syntax.{SValue, SigmaPropValue}
 import sigma.crypto.CryptoConstants
 import sigma.data.ProveDlog
 import sigmastate._
@@ -130,9 +130,9 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, """fromBase64("111")""") shouldBe SByteArray
 
     typecheck(env, {
-      implicit val ergoAddressEncoder: ErgoAddressEncoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
+      val encoder = new ErgoAddressEncoder(TestnetNetworkPrefix)
       val pk = ProveDlog(CryptoConstants.dlogGroup.generator)
-      val addr = P2PKAddress(pk)
+      val addr = P2PKAddress(pk)(encoder)
       val str = addr.toString
       s"""PK("${str}")"""
     }) shouldBe SSigmaProp
