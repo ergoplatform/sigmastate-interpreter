@@ -9,7 +9,6 @@ name := "sigma-state"
 
 lazy val scala213 = "2.13.18"
 lazy val scala212 = "2.12.21"
-lazy val scala211 = "2.11.12"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
@@ -21,8 +20,6 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-Wconf:src=src_managed/.*:silent", "-release", "8")
       case Some((2, 12)) =>
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-release", "8")
-      case Some((2, 11)) =>
-        Seq()
       case _ => sys.error("Unsupported scala version")
     }
   },
@@ -64,7 +61,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val crossScalaSettings = Seq(
-  crossScalaVersions := Seq(scala213, scala212, scala211),
+  crossScalaVersions := Seq(scala213, scala212),
   scalaVersion := scala213
 )
 lazy val crossScalaSettingsJS = Seq(
@@ -105,20 +102,10 @@ val supertaggedDependency =
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
 
-def circeDependency = {
-  libraryDependencies ++= {
-    val version = scalaVersion.value
-    val deps211 = Seq(
-      "io.circe" %%% "circe-core" % "0.10.0",
-      "io.circe" %%% "circe-generic" % "0.10.0",
-      "io.circe" %%% "circe-parser" % "0.10.0")
-    val deps212 = Seq(
-      "io.circe" %%% "circe-core" % "0.14.15",
-      "io.circe" %%% "circe-generic" % "0.14.15",
-      "io.circe" %%% "circe-parser" % "0.14.15")
-    if (version == scala211) deps211 else deps212
-  }
-}
+def circeDependency = libraryDependencies ++= Seq(
+  "io.circe" %%% "circe-core" % "0.14.15",
+  "io.circe" %%% "circe-generic" % "0.14.15",
+  "io.circe" %%% "circe-parser" % "0.14.15")
 
 lazy val scalatest = "org.scalatest" %% "scalatest" % "3.2.20" % Test
 lazy val scalactic = "org.scalactic" %% "scalactic" % "3.2.20" % Test
@@ -127,8 +114,8 @@ lazy val scalameter = "com.storm-enroute" %% "scalameter" % "0.19" % Test
 
 lazy val testingDependencies = Seq(
   scalatest, scalactic,
-  "org.scalacheck" %% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
-  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
+  "org.scalacheck" %% "scalacheck" % "1.15.2" % Test,
+  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test,
   pprint,
   scalameter
 )
@@ -137,8 +124,8 @@ lazy val testingDependencies2 =
   libraryDependencies ++= Seq(
     "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
     "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
-    "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
-    "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
+    "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,
+    "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test,
     "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
   )
 
