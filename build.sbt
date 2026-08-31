@@ -114,8 +114,8 @@ lazy val scalameter = "com.storm-enroute" %% "scalameter" % "0.19" % Test
 
 lazy val testingDependencies = Seq(
   scalatest, scalactic,
-  "org.scalacheck" %% "scalacheck" % "1.15.2" % Test,
-  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test,
+  "org.scalacheck" %% "scalacheck" % "1.18.1" % Test,
+  "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test,
   pprint,
   scalameter
 )
@@ -124,8 +124,8 @@ lazy val testingDependencies2 =
   libraryDependencies ++= Seq(
     "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
     "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
-    "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,
-    "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test,
+    "org.scalacheck" %%% "scalacheck" % "1.18.1" % Test,
+    "org.scalatestplus" %%% "scalacheck-1-18" % "3.2.19.0" % Test,
     "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
   )
 
