@@ -1,11 +1,12 @@
 package sigma.ast
 
 import scorex.util.encode.Base16
+import sigma.{Colls, Evaluation}
 import sigma.VersionContext
 import sigma.ast.ErgoTree.{HeaderType, substConstants}
 import sigma.ast.syntax._
-import sigma.data.{CSigmaProp, SigmaBoolean}
-import sigma.kiama.rewriting.Rewriter.{everywherebu, strategy}
+import sigma.data.{CSigmaProp, RType, SigmaBoolean, TrivialProp}
+import sigma.kiama.rewriting.Rewriter.{everywhere, everywherebu, query, strategy}
 import sigma.validation.ValidationException
 import sigma.ast.syntax.ValueOps
 import sigma.eval.Extensions.SigmaBooleanOps
@@ -211,6 +212,27 @@ case class ErgoTree private[sigma](
     }
   }
 
+  /** Return a copy of this tree with the constant at `index` replaced by `c`.
+    *
+    * Use this when the tree was built from a script containing
+    * `placeholder[T](index)` calls (or from any other code path that produced an
+    * ErgoTree with template slots): supply the actual constants for those slots
+    * before evaluation.
+    *
+    * @throws IndexOutOfBoundsException if `index` is outside `constants`
+    * @throws IllegalArgumentException  if `c.tpe` does not equal `constants(index).tpe`
+    */
+  def withConstant(index: Int, c: Constant[SType]): ErgoTree = {
+    if (index < 0 || index >= constants.length)
+      throw new IndexOutOfBoundsException(
+        s"Cannot replace constant at index $index: tree has ${constants.length} constants")
+    val existing = constants(index)
+    if (existing.tpe != c.tpe)
+      throw new IllegalArgumentException(
+        s"Cannot replace constant at index $index: expected type ${existing.tpe}, got ${c.tpe}")
+    new ErgoTree(header, constants.updated(index, c), root)
+  }
+
   /** The default equality of case class is overridden to exclude `complexity`. */
   override def canEqual(that: Any): Boolean = that.isInstanceOf[ErgoTree]
 
@@ -377,12 +399,21 @@ object ErgoTree {
     * 3) write the `tree` to the Writer's buffer obtaining `treeBytes`;
     * 4) deserialize `tree` with ConstantPlaceholders.
     *
+    * If `prop` already contains `ConstantPlaceholder` nodes (e.g. emitted from
+    * `placeholder[T](id)` in source), the segregation step reserves slots
+    * `0..max(id)` for those user-supplied placeholders and allocates new
+    * indices for the inline constants starting at `max(id) + 1`. The resulting
+    * `constants` array has `defaultZero(T)` filled into each user slot, so the
+    * caller is expected to overwrite those with `ErgoTree.withConstant` before
+    * evaluating the tree.
+    *
     * @param header      additional header flags to combine with
     *                    ConstantSegregationHeader flag.
     * @param prop        expression to be transformed into ErgoTree
     * */
   def withSegregation(header: HeaderType, prop: SigmaPropValue): ErgoTree = {
-    val constantStore = new ConstantStore()
+    val reserved = reservedConstantsFromPlaceholders(prop)
+    val constantStore = new ConstantStore(reserved)
     val w             = SigmaSerializer.startWriter(Some(constantStore))
     // serialize value and segregate constants into constantStore
     ValueSerializer.serialize(prop, w)
@@ -395,6 +426,68 @@ object ErgoTree {
       header = setRequiredBits(setConstantSegregation(header)),
       constants = extractedConstants,
       root = Right(valueWithPlaceholders))
+  }
+
+  /** Walk `prop` collecting every existing `ConstantPlaceholder`'s declared
+    * type, validate that all references to the same id agree on a type, and
+    * build a dense `IndexedSeq` of dummy constants of length `max(id) + 1`
+    * suitable for seeding a `ConstantStore` so that segregated indices start
+    * after the user-supplied ones. Returns `EmptyConstants` when the tree has
+    * no placeholders (preserves the legacy behaviour of `withSegregation`).
+    */
+  private def reservedConstantsFromPlaceholders(
+      prop: SigmaPropValue): IndexedSeq[Constant[SType]] = {
+    val byId = scala.collection.mutable.Map.empty[Int, SType]
+    val recordPlaceholder = query[Any] {
+      case ph: ConstantPlaceholder[_] =>
+        byId.get(ph.id) match {
+          case Some(prev) if prev != ph.tpe =>
+            throw new IllegalArgumentException(
+              s"Inconsistent placeholder types for index ${ph.id}: $prev vs ${ph.tpe}")
+          case _ => byId(ph.id) = ph.tpe
+        }
+    }
+    everywhere(recordPlaceholder)(prop)
+    if (byId.isEmpty) return EmptyConstants
+    val maxId = byId.keysIterator.max
+    (0 to maxId).map(i => defaultZero(byId.getOrElse(i, SInt))).toIndexedSeq
+  }
+
+  /** A typed zero-valued `Constant` used to seed user placeholder slots during
+    * segregation. The value is a placeholder for the caller to overwrite via
+    * [[ErgoTree.withConstant]] before evaluating the tree.
+    *
+    * The `tpe` matters for the deserialization round-trip in [[withSegregation]];
+    * the `value` matters when the resulting `ErgoTree` itself is serialized
+    * (e.g. via [[ErgoTreeSerializer]]) — if the caller hasn't filled the slot
+    * yet, the serializer will write this placeholder value to the bytes.
+    *
+    * Currently throws on types this helper doesn't know how to default. The set
+    * of supported types covers what templates need today (numerics, booleans,
+    * collections, options, sigma props); add more cases here as the need
+    * arises.
+    */
+  private def defaultZero(tpe: SType): Constant[SType] = {
+    val v: Any = tpe match {
+      case SBoolean         => false
+      case SByte            => 0.toByte
+      case SShort           => 0.toShort
+      case SInt             => 0
+      case SLong            => 0L
+      case SBigInt          => sigma.data.CBigInt(java.math.BigInteger.ZERO)
+      case SUnit            => ()
+      case SSigmaProp       => CSigmaProp(TrivialProp.FalseProp)
+      case SCollectionType(elemType) =>
+        implicit val tElement: RType[Any] =
+          Evaluation.stypeToRType(elemType).asInstanceOf[RType[Any]]
+        Colls.fromArray(tElement.emptyArray)
+      case SOption(_)       => None
+      case other =>
+        throw new IllegalArgumentException(
+          s"placeholder of type $other has no built-in default; build the " +
+          "ErgoTree directly with a manually-constructed `constants` array.")
+    }
+    Constant(v.asInstanceOf[SType#WrappedType], tpe)
   }
 
   /** Deserializes an ErgoTree instance from a hexadecimal string.

@@ -148,7 +148,7 @@ object Operations {
   }
 
   object ConstantPlaceholderInfo extends InfoObject {
-    private val func = predefinedOps.specialFuncs("placeholder")
+    private val func = predefinedOps.funcs("placeholder")
     val indexArg: ArgInfo = func.argInfo("index")
     val argInfos: Seq[ArgInfo] = Array(indexArg)
   }
