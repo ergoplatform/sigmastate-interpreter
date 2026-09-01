@@ -1,0 +1,54 @@
+{
+    "name": "ergoscript-lsp-client",
+    "displayName": "ErgoScript Language Support",
+    "description": "Language support for ErgoScript via LSP (MVP)",
+    "version": "0.1.0",
+    "publisher": "ergoscript",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:ergoscript"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "ergoscript",
+                "aliases": [
+                    "ErgoScript",
+                    "ergoscript"
+                ],
+                "extensions": [
+                    ".es",
+                    ".ergo"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ergoscript",
+                "scopeName": "source.ergoscript",
+                "path": "./syntaxes/ergoscript.tmLanguage.json"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p .",
+        "watch": "tsc -w -p .",
+        "package": "vsce package"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.75.0",
+        "typescript": "^5.3.3"
+    }
+}
