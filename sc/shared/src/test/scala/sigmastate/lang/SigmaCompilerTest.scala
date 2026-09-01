@@ -248,6 +248,43 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
       mkMethodCall(Self, SBoxMethods.tokensMethod, IndexedSeq())
   }
 
+  property("equalBoxExcept") {
+    // Use SELF and OUTPUTS(0) so each box reference appears at most once per
+    // surviving check, sidestepping common-subexpression elimination that
+    // would otherwise wrap the result in a BlockValue/ValDef pair.
+    val out0 = ByIndex(Outputs, IntConstant(0))
+
+    // exclude {1, 2}: only the value (R0) check survives
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(1, 2))") shouldBe
+      EQ(ExtractAmount(Self), ExtractAmount(out0))
+
+    // exclude {0, 2}: only the propositionBytes (R1) check survives
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(0, 2))") shouldBe
+      EQ(ExtractScriptBytes(Self), ExtractScriptBytes(out0))
+
+    // exclude {0, 1}: only the tokens (R2) check survives
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(0, 1))") shouldBe
+      EQ(
+        mkMethodCall(Self, SBoxMethods.tokensMethod, IndexedSeq()),
+        mkMethodCall(out0, SBoxMethods.tokensMethod, IndexedSeq()))
+
+    // R3 in exclude is a no-op (always implicit), same shape as {1, 2}
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(1, 2, 3))") shouldBe
+      EQ(ExtractAmount(Self), ExtractAmount(out0))
+
+    // R7, R8 in exclude is a no-op (R4-R9 not compared), same shape as {1, 2}
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(1, 2, 7, 8))") shouldBe
+      EQ(ExtractAmount(Self), ExtractAmount(out0))
+
+    // excluding all comparable mandatory registers collapses to TrueLeaf
+    comp("equalBoxExcept(SELF, OUTPUTS(0), Coll(0, 1, 2))") shouldBe TrueLeaf
+  }
+
+  property("equalBoxExcept rejects non-literal exclude") {
+    an[InvalidArguments] should be thrownBy
+      comp("{ (xs: Coll[Int]) => equalBoxExcept(SELF, SELF, xs) }")
+  }
+
   property("SContext.dataInputs") {
     comp("CONTEXT.dataInputs") shouldBe
       mkMethodCall(Context, SContextMethods.dataInputsMethod, IndexedSeq())

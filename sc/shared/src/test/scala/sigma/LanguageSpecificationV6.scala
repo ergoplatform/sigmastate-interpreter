@@ -3190,4 +3190,68 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     testCases(cases, iou, preGeneratedSamples = Some(Seq.empty))
   }
 
+  // Cross-version test for the equalBoxExcept predef (issue #1034).
+  // The helper is pure compiler sugar that lowers to value/propositionBytes/tokens
+  // equality and uses ErgoTree operations available since v5, so it must behave
+  // identically under v6. LanguageSpecificationBase enables _lowerMethodCalls = false
+  // (okRunTestsWithoutMCLowering), so this property also re-runs without method-call
+  // lowering, exercising the MethodCall(tokensMethod) serialization path.
+  property("equalBoxExcept equivalence") {
+    def mkBox(value: Long, txIdByte: Byte): Box = CBox(new ErgoBox(
+      value,
+      TrueTree,
+      Colls.emptyColl[Token],
+      Map.empty,
+      ModifierId @@ Base16.encode(Array.fill(32)(txIdByte)),
+      0,
+      0))
+    // Two boxes that match on value/propositionBytes/tokens but differ in R3.tail
+    // (different txId). equalBoxExcept must therefore return true on (a, aTwin).
+    val a       = mkBox(10L, 0.toByte)
+    val aTwin   = mkBox(10L, 1.toByte)
+    val bigger  = mkBox(20L, 0.toByte)
+
+    val scalaImpl = { (xs: (Box, Box)) =>
+      xs._1.value == xs._2.value &&
+        xs._1.propositionBytes == xs._2.propositionBytes &&
+        xs._1.tokens == xs._2.tokens
+    }
+    val emptyExclude = existingFeature(scalaImpl,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll[Int]()) }")
+    val noOpExclude  = existingFeature(scalaImpl,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll(3, 7, 8)) }")
+    val excludeValue = existingFeature(
+      { (xs: (Box, Box)) =>
+        xs._1.propositionBytes == xs._2.propositionBytes &&
+          xs._1.tokens == xs._2.tokens
+      },
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll(0)) }")
+    val allExcluded  = existingFeature((_: (Box, Box)) => true,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll(0, 1, 2)) }")
+
+    def expectedBool(v: Boolean) = new Expected[Boolean](ExpectedResult(Success(v), None))
+    val matchCases = Seq(
+      ((a, a),      expectedBool(true)),
+      ((a, aTwin),  expectedBool(true)),   // only R3 differs -> always excluded
+      ((a, bigger), expectedBool(false)),  // value differs
+      ((bigger, a), expectedBool(false))
+    )
+    val excludeValueCases = Seq(
+      ((a, a),      expectedBool(true)),
+      ((a, aTwin),  expectedBool(true)),
+      ((a, bigger), expectedBool(true)),   // value diff allowed
+      ((bigger, a), expectedBool(true))
+    )
+    val allExcludedCases = Seq(
+      ((a, a),      expectedBool(true)),
+      ((a, bigger), expectedBool(true)),
+      ((bigger, a), expectedBool(true))
+    )
+
+    verifyCases(matchCases,        emptyExclude, preGeneratedSamples = Some(Seq.empty))
+    verifyCases(matchCases,        noOpExclude,  preGeneratedSamples = Some(Seq.empty))
+    verifyCases(excludeValueCases, excludeValue, preGeneratedSamples = Some(Seq.empty))
+    verifyCases(allExcludedCases,  allExcluded,  preGeneratedSamples = Some(Seq.empty))
+  }
+
 }
