@@ -211,9 +211,6 @@ object ErgoLikeContext {
 
   type Height = Int
 
-  /** Maximimum number of headers in `headers` collection of the context. */
-  val MaxHeaders = SigmaConstants.MaxHeaders.value
-
   /** Copies the given context allowing also to update fields.
     * NOTE: it can be used ONLY for instances of ErgoLikeContext.
     * @tparam T used here to limit use of this method to only ErgoLikeContext instances
