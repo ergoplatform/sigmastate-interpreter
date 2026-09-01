@@ -74,7 +74,6 @@ object CreateProveDlog extends FixedCostValueCompanion {
   val OpType = SFunc(SGroupElement, SSigmaProp)
 }
 
-// TODO v6.0: implement `eval` method and add support in GraphBuilding (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/907)
 /** Construct a new authenticated dictionary with given parameters and tree root digest.*/
 case class CreateAvlTree(operationFlags: ByteValue,
     digest: Value[SByteArray],
@@ -83,10 +82,21 @@ case class CreateAvlTree(operationFlags: ByteValue,
   override def companion = CreateAvlTree
   override def tpe = SAvlTree
   override def opType = CreateAvlTree.OpType
+  protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
+    if (!VersionContext.current.isV6Activated) {
+      sys.error(s"CreateAvlTree operation is not supported before v6.0 activation")
+    }
+    val flags = operationFlags.evalTo[Byte](env)
+    val digestV = digest.evalTo[Coll[Byte]](env)
+    val keyLengthV = keyLength.evalTo[Int](env)
+    val valueLengthOptV = valueLengthOpt.evalTo[Option[Int]](env)
+    addCost(CreateAvlTree.costKind)
+    SigmaDsl.avlTree(flags, digestV, keyLengthV, valueLengthOptV)
+  }
 }
-object CreateAvlTree extends ValueCompanion {
+object CreateAvlTree extends FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.AvlTreeCode
-  override def costKind: CostKind = Value.notSupportedError(this, "costKind")
+  override val costKind = FixedCost(JitCost(20))
   val OpType = SFunc(Array(SByte, SByteArray, SInt, SIntOption), SAvlTree)
 }
 
