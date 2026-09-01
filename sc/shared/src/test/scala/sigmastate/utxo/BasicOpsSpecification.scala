@@ -4217,6 +4217,40 @@ $lrFoldScript
       onlyPositive = true,
       testExceededCost = false
     )
+    test("PropAllZK", env, ext,
+      "{ allZK(Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get))}",
+      SigmaAnd(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get, GetVarSigmaProp(propVar1).get)),
+      onlyPositive = true,
+      testExceededCost = false
+    )
+    test("PropAnyZK", env, ext,
+      "{ anyZK(Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get))}",
+      SigmaOr(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get, GetVarSigmaProp(propVar1).get)),
+      onlyPositive = true,
+      testExceededCost = false
+    )
+    // 3-of-3 conjunction (all three secrets are known to the prover) -> real SigmaAnd proof
+    test("PropAllZK3", env, ext,
+      "{ allZK(Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get, getVar[SigmaProp](proofVar2).get))}",
+      SigmaAnd(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get, GetVarSigmaProp(propVar1).get, GetVarSigmaProp(propVar2).get)),
+      onlyPositive = true,
+      testExceededCost = false
+    )
+    test("PropAnyZK3", env, ext,
+      "{ anyZK(Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get, getVar[SigmaProp](proofVar2).get))}",
+      SigmaOr(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get, GetVarSigmaProp(propVar1).get, GetVarSigmaProp(propVar2).get)),
+      onlyPositive = true,
+      testExceededCost = false
+    )
+    // nested: (R4 OR proofVar1) AND proofVar2 -> SigmaAnd(SigmaOr(..), ..)
+    test("PropNestedZK", env, ext,
+      "{ allZK(Coll(anyZK(Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get)), getVar[SigmaProp](proofVar2).get))}",
+      SigmaAnd(Seq(
+        SigmaOr(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get, GetVarSigmaProp(propVar1).get)),
+        GetVarSigmaProp(propVar2).get)),
+      onlyPositive = true,
+      testExceededCost = false
+    )
     test("Prop11", env, ext,
       "{ Coll(SELF.R4[SigmaProp].get, getVar[SigmaProp](proofVar1).get).forall({ (p: SigmaProp) => p.isProven }) }",
       SigmaAnd(Seq(ExtractRegisterAs[SSigmaProp.type](Self, reg1).get , GetVarSigmaProp(propVar1).get)),
