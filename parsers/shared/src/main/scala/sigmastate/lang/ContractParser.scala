@@ -156,7 +156,7 @@ object ContractParser {
 
     def word[_: P] = CharsWhile(c => c != ' ')
 
-    def charUntilNewLine[_: P] = CharsWhile(c => c != '\n')
+    def charUntilNewLine[A: P] = CharsWhile(c => c != '\n')
 
     def unsupportedTag[_: P] = P("@" ~ charUntilNewLine.?).map(_ => DocumentationToken(UnsupportedTag))
 
