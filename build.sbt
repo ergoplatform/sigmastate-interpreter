@@ -10,6 +10,7 @@ name := "sigma-state"
 lazy val scala213 = "2.13.18"
 lazy val scala212 = "2.12.21"
 lazy val scala211 = "2.11.12"
+lazy val scala3   = "3.3.5"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
@@ -23,6 +24,8 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-release", "8")
       case Some((2, 11)) =>
         Seq()
+      case Some((3, _)) =>
+        Seq("-source:3.0-migration", "-release", "8")
       case _ => sys.error("Unsupported scala version")
     }
   },
@@ -64,11 +67,11 @@ lazy val commonSettings = Seq(
 )
 
 lazy val crossScalaSettings = Seq(
-  crossScalaVersions := Seq(scala213, scala212, scala211),
+  crossScalaVersions := Seq(scala213, scala212, scala211, scala3),
   scalaVersion := scala213
 )
 lazy val crossScalaSettingsJS = Seq(
-  crossScalaVersions := Seq(scala213),
+  crossScalaVersions := Seq(scala213, scala3),
   scalaVersion := scala213
 )
 
@@ -99,8 +102,14 @@ val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
 
-val supertaggedDependency =
-  libraryDependencies += "org.rudogma" %%% "supertagged" % "2.0-RC2"
+val supertaggedDependency = Seq(
+  libraryDependencies ++= {
+    if (scalaVersion.value.startsWith("2."))
+      Seq("org.rudogma" %%% "supertagged" % "2.0-RC2")
+    else
+      Seq.empty
+  }
+)
 
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
@@ -172,17 +181,22 @@ def moduleNameSetting(moduleName: String) =
 
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
-lazy val commonDependenies2 = libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scorexfoundation" %%% "debox" % "0.10.0",
-  "org.scala-lang.modules" %%% "scala-collection-compat" % "2.7.0"
-)
+lazy val commonDependenies2 = libraryDependencies ++= {
+  val deps = Seq(
+    "org.scorexfoundation" %%% "debox" % "0.10.0",
+    "org.scala-lang.modules" %%% "scala-collection-compat" % "2.7.0"
+  )
+  if (scalaVersion.value.startsWith("2."))
+    deps :+ ("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  else
+    deps
+}
 
 val sigmajsCryptoFacadeVersion = "0.0.7"
 
 lazy val core   = crossProject(JVMPlatform, JSPlatform)
   .in(file("core"))
-  .settings(commonSettings ++ testSettings2,
+  .settings(commonSettings ++ testSettings2 ++ supertaggedDependency,
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency,
