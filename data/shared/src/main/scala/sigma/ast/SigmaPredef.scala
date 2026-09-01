@@ -319,6 +319,96 @@ object SigmaPredef {
         Seq(ArgInfo("input", "value to convert")))
     )
 
+    /**
+      * Debug utility function for ErgoScript development and testing.
+      * 
+      * Outputs the value and optional label during script execution to facilitate debugging.
+      * The function returns the input value unchanged (pass-through semantics), allowing
+      * inline usage in expressions without disrupting the program flow.
+      * 
+      * @note This is a development/debugging tool and should NOT be used in production scripts.
+      *       The output mechanism uses `println` which may not be available in all execution
+      *       environments (e.g., embedded systems, blockchain nodes).
+      * 
+      * @note Security Warning: Do not use debug() on sensitive data in shared environments
+      *       as the output is printed to console and may be logged.
+      * 
+      * @example Basic usage with label:
+      * {{{
+      * val price = debug(SELF.R5[Long].get, "ergPricePerToken")
+      * // Output: DEBUG [ergPricePerToken]: 1000000 (type: Long)
+      * }}}
+      * 
+      * @example Inline usage in conditional:
+      * {{{
+      * if (debug(HEIGHT, "current height") > 100) {
+      *   sigmaProp(true)
+      * } else {
+      *   sigmaProp(false)
+      * }
+      * // Output: DEBUG [current height]: 150 (type: Int)
+      * }}}
+      * 
+      * @example Type preservation in collections:
+      * {{{
+      * val numbers = debug(Coll(1,2,3), "input numbers")
+      * val doubled = numbers.map({ (x: Int) => x * 2 })
+      * // Output: DEBUG [input numbers]: Coll(1,2,3) (type: Coll[Int])
+      * // numbers has type Coll[Int], preserving type safety
+      * }}}
+      * 
+      * @example Debugging oracle data:
+      * {{{
+      * val oracleBox = CONTEXT.dataInputs(0)
+      * val oraclePrice = debug(oracleBox.R4[Long].get, "BTC/ERG price")
+      * sigmaProp(oraclePrice > 1000000L)
+      * }}}
+      * 
+      * @param value The value to inspect and output (accepts any type T)
+      * @param label Optional string label to identify the debug output in logs (default: empty string)
+      * @return The input value unchanged, preserving its type T for further use
+      * 
+      * @since 5.1.0
+      * @see [[sigma.ast.SigmaPredef.globalFuncs]] for other predefined functions
+      */
+    val DebugFunc = PredefinedFunc("debug",
+      Lambda(Seq(paramT), Array("value" -> tT, "label" -> SString), tT, None),
+      PredefFuncInfo(
+        { case (Ident(_, SFunc(_, tpe, _)), args) =>
+          // Extract value and optional label
+          val value = args.head
+          val label = if (args.length > 1) args(1) match {
+            case StringConstant(s) => s
+            case _ => ""
+          } else ""
+          
+          // Output debug information
+          val output = if (label.nonEmpty) {
+            s"DEBUG [$label]: ${value.toString} (type: ${value.tpe})"
+          } else {
+            s"DEBUG: ${value.toString} (type: ${value.tpe})"
+          }
+          println(output)
+          
+          // Return the value unchanged (pass-through)
+          value
+        }),
+      OperationInfo(MethodCall,
+        """Debug utility function that outputs the value and optional label during script execution.
+          |The function returns the input value unchanged, allowing it to be used inline.
+          |This is a development/debugging tool and should not be used in production scripts.
+          |
+          |Example:
+          |```
+          |val price = debug(SELF.R5[Long].get, "ergPricePerToken")
+          |```
+        """.stripMargin,
+        Seq(
+          ArgInfo("value", "value of any type to output for debugging"),
+          ArgInfo("label", "optional string label to identify the debug output")))
+    )
+
+
     val ProveDHTupleFunc = PredefinedFunc("proveDHTuple",
       Lambda(Array("g" -> SGroupElement, "h" -> SGroupElement, "u" -> SGroupElement, "v" -> SGroupElement), SSigmaProp, None),
       PredefFuncInfo(
@@ -552,6 +642,7 @@ object SigmaPredef {
       ByteArrayToLongFunc,
       DecodePointFunc,
       LongToByteArrayFunc,
+      DebugFunc,
       ProveDHTupleFunc,
       ProveDlogFunc,
       AvlTreeFunc,

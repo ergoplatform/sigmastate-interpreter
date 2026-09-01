@@ -1,0 +1,23 @@
+{
+    "name": "ergoscript-lsp-server",
+    "version": "0.1.0",
+    "description": "Language Server for ErgoScript",
+    "author": "Team Dev Engers",
+    "license": "MIT",
+    "main": "./out/server.js",
+    "scripts": {
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
+        "test": "jest"
+    },
+    "dependencies": {
+        "vscode-languageserver": "^9.0.1",
+        "vscode-languageserver-textdocument": "^1.0.11"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "typescript": "^5.3.3",
+        "jest": "^29.7.0",
+        "@types/jest": "^29.5.11"
+    }
+}
