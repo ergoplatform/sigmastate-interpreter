@@ -1,0 +1,63 @@
+{
+  "name": "ergoscript-language-support",
+  "displayName": "ErgoScript Language Support",
+  "description": "Language Server Protocol implementation for ErgoScript with syntax highlighting, completion, and diagnostics",
+  "version": "1.0.0",
+  "publisher": "ergoscript",
+  "author": "ErgoScript LSP Contributors",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "ergoscript",
+    "ergo",
+    "blockchain",
+    "language server"
+  ],
+  "activationEvents": [
+    "onLanguage:ergoscript"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ergoscript",
+        "aliases": [
+          "ErgoScript",
+          "ergoscript"
+        ],
+        "extensions": [
+          ".es"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ergoscript",
+        "scopeName": "source.ergoscript",
+        "path": "./syntaxes/ergoscript.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "clean": "rm -rf dist",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.0",
+    "@types/vscode": "^1.60.0",
+    "@vscode/vsce": "^2.15.0",
+    "typescript": "^4.9.4"
+  }
+}

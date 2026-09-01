@@ -1,0 +1,62 @@
+{
+  "name": "ErgoScript",
+  "scopeName": "source.ergoscript",
+  "fileTypes": ["es"],
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.ergoscript",
+      "match": "//.*"
+    },
+    {
+      "name": "comment.block.ergoscript",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+    {
+      "name": "string.quoted.double.ergoscript",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.ergoscript",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "string.quoted.single.ergoscript",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "name": "constant.character.escape.ergoscript",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "constant.numeric.ergoscript",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    {
+      "name": "keyword.control.ergoscript",
+      "match": "\\b(if|else|for|match|case|def|val)\\b"
+    },
+    {
+      "name": "keyword.control.proposition.ergoscript",
+      "match": "\\b(sigmaProp|proveDlog|proveDhTuple|AND|OR|THRESHOLD)\\b"
+    },
+    {
+      "name": "keyword.constant.ergoscript",
+      "match": "\\b(INPUTS|OUTPUTS|SELF|HEIGHT|true|false)\\b"
+    },
+    {
+      "name": "keyword.type.ergoscript",
+      "match": "\\b(Option|Some|None)\\b"
+    },
+    {
+      "name": "punctuation.bracket.ergoscript",
+      "match": "[\\{\\}\\[\\]\\(\\)]"
+    }
+  ]
+}
