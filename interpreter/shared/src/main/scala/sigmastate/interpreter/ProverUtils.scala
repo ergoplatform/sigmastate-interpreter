@@ -49,7 +49,7 @@ trait ProverUtils extends Interpreter {
                 DLogProver.firstMessage()
               case pdh: ProveDHTuple =>
                 DiffieHellmanTupleProver.firstMessage(pdh)
-              case _ => ???
+              case _ => throw new MatchError(s"Unexpected SigmaLeaf type: $leaf")
             }
             val hints = Seq(OwnCommitment(leaf, r, a, position), RealCommitment(leaf, a, position))
             bag.addHints(hints: _*)
