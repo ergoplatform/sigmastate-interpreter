@@ -5,7 +5,7 @@ import io.circe._
 import io.circe.syntax._
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.{NonMandatoryRegisterId, Token}
-import sigma.data.{CAnyValue, RType}
+import sigma.data.{CAnyValue, CollType, OptionType, PairType, RType, TupleType}
 import scorex.util._
 import sigmastate.lang.SigmaParser
 import sigmastate.eval._
@@ -23,6 +23,12 @@ import sigma.serialization.{DataSerializer, SigmaSerializer}
 import sigma.serialization.ErgoTreeSerializer
 
 object DataJsonEncoder {
+  // TODO: consider switching the JSON envelope to be RType-based in the next major
+  // SDK version. This would require a String -> RType parser (today the "type" 
+  // field is parsed by SigmaParser into SType), and would enable encoding of
+  // RType-only types (FuncType, ThunkType, ArrayType, GeneralType/AnyType).
+  // The current refactor keeps the on-wire format byte-identical and only moves
+  // the internal dispatch to RType.
   def encode[T <: SType](v: T#WrappedType, tpe: T): Json = {
     val encodedType = tpe.toTermString
     val encodedData = encodeData(v, tpe)
@@ -36,122 +42,147 @@ object DataJsonEncoder {
     Base16.encode(bytes).asJson
   })
 
+  // TODO: see note on `encode` above. Once the envelope is RType-based, this can
+  // avoid the rtypeToSType conversion entirely.
   def encodeAnyValue(v: AnyValue): Json = {
-    val encodedType = Evaluation.rtypeToSType(v.tVal)
-    val encodedData = encodeData[SType](v.value.asInstanceOf[SType#WrappedType], encodedType)
+    val rtype = v.tVal.asInstanceOf[RType[Any]]
+    val encodedType = Evaluation.rtypeToSType(rtype)
+    val encodedData = encodeRData(v.value, rtype)
     Json.obj(
       "type" -> Json.fromString(encodedType.toTermString),
       "value" -> encodedData
     )
   }
 
-  def encodeData[T <: SType](v: T#WrappedType, tpe: T): Json = tpe match {
-    case SUnit => Json.fromFields(ArraySeq.empty)
-    case SBoolean => v.asInstanceOf[Boolean].asJson
-    case SByte => v.asInstanceOf[Byte].asJson
-    case SShort => v.asInstanceOf[Short].asJson
-    case SInt => v.asInstanceOf[Int].asJson
-    case SLong => v.asInstanceOf[Long].asJson
-    case SBigInt =>
-      encodeBytes(v.asInstanceOf[BigInt].toBytes.toArray)
-    case SUnsignedBigInt =>
-      encodeBytes(v.asInstanceOf[UnsignedBigInt].toBytes.toArray)
-    case SString =>
-      encodeBytes(v.asInstanceOf[String].getBytes)
-    case tColl: SCollectionType[a] =>
-      val coll = v.asInstanceOf[tColl.WrappedType]
-      tColl.elemType match {
-        case tup: STuple =>
-          val tArr = tup.items.toArray
-          if (tArr.length != 2) {
-            throw new SerializerException("Tuples with length not equal to 2 are not supported")
-          }
-          val rtypeArr = tArr.map(x => Evaluation.stypeToRType(x))
+  /** SType-typed entry point. Kept for backward compatibility; delegates to
+    * the RType-based implementation. */
+  def encodeData[T <: SType](v: T#WrappedType, tpe: T): Json = {
+    val rtype = Evaluation.stypeToRType(tpe).asInstanceOf[RType[Any]]
+    encodeRData(v.asInstanceOf[Any], rtype)
+  }
 
-          val leftSource = { // this code works both for Scala 2.12 and 2.13
-            implicit val ct = rtypeArr(0).classTag
-            mutable.ArrayBuilder.make[SType#WrappedType] // make's signature is changed in 2.13
+  /** RType-driven encoding of a data value into Json.
+    *
+    * Note: this intentionally does not yet handle RType-only descriptors
+    * (FuncType, ThunkType, ArrayType, GeneralType/AnyType) — see the
+    * TODO comment on `encode` above.
+    */
+  private def encodeRData[A](v: A, t: RType[A]): Json = t match {
+    case UnitType => Json.fromFields(ArraySeq.empty)
+    case BooleanType => v.asInstanceOf[Boolean].asJson
+    case ByteType => v.asInstanceOf[Byte].asJson
+    case ShortType => v.asInstanceOf[Short].asJson
+    case IntType => v.asInstanceOf[Int].asJson
+    case LongType => v.asInstanceOf[Long].asJson
+    case BigIntRType =>
+      encodeBytes(v.asInstanceOf[BigInt].toBytes.toArray)
+    case UnsignedBigIntRType =>
+      encodeBytes(v.asInstanceOf[UnsignedBigInt].toBytes.toArray)
+    case StringType =>
+      encodeBytes(v.asInstanceOf[String].getBytes)
+    case ct: CollType[a] =>
+      val coll = v.asInstanceOf[Coll[a]]
+      ct.tItem match {
+        case _: TupleType =>
+          throw new SerializerException("Tuples with length not equal to 2 are not supported")
+
+        case pt: PairType[x, y] =>
+          val len = coll.length
+          val leftSource = {
+            implicit val ctg = pt.tFst.classTag
+            mutable.ArrayBuilder.make[x]
           }
           val rightSource = {
-            implicit val ct = rtypeArr(1).classTag
-            mutable.ArrayBuilder.make[SType#WrappedType]
+            implicit val ctg = pt.tSnd.classTag
+            mutable.ArrayBuilder.make[y]
           }
-          cfor(0)(_ < coll.length, _ + 1) { i =>
-            val arr = Evaluation.fromDslTuple(coll(i), tup).asInstanceOf[tup.WrappedType]
-            leftSource += arr(0)
-            rightSource += arr(1)
+          cfor(0)(_ < len, _ + 1) { i =>
+            (coll(i): Any) match {
+              case t: Tuple2[_, _] =>
+                leftSource += t._1.asInstanceOf[x]
+                rightSource += t._2.asInstanceOf[y]
+              case c: Coll[Any] @unchecked =>
+                leftSource += c(0).asInstanceOf[x]
+                rightSource += c(1).asInstanceOf[y]
+              case other =>
+                sys.error(s"Cannot encode collection element $other as $pt")
+            }
           }
-          val left = Colls.fromArray(leftSource.result())(rtypeArr(0)).asInstanceOf[SType#WrappedType]
-          val leftType: SType = SCollectionType(tArr(0))
-          val right = Colls.fromArray(rightSource.result())(rtypeArr(1)).asInstanceOf[SType#WrappedType]
-          val rightType: SType = SCollectionType(tArr(1))
-
+          val left = Colls.fromArray(leftSource.result())(pt.tFst)
+          val right = Colls.fromArray(rightSource.result())(pt.tSnd)
           Json.fromFields(List(
-            "_1" -> encodeData[SType](left, leftType),
-            "_2" -> encodeData[SType](right, rightType)
+            "_1" -> encodeRData[Coll[x]](left, CollType(pt.tFst)),
+            "_2" -> encodeRData[Coll[y]](right, CollType(pt.tSnd))
           ))
-        case _ =>
+        case elem =>
+          val itemRType = elem.asInstanceOf[RType[Any]]
           val jsons = mutable.ArrayBuffer.empty[Json]
           cfor(0)(_ < coll.length, _ + 1) { i =>
-            val x = coll(i)
-            jsons += encodeData(x, tColl.elemType)
+            jsons += encodeRData(coll(i).asInstanceOf[Any], itemRType)
           }
           Json.fromValues(jsons.toSeq)
       }
 
-    case tOpt: SOption[a] =>
-      val opt = v.asInstanceOf[tOpt.WrappedType]
+    case ot: OptionType[a] =>
+      val opt = v.asInstanceOf[Option[a]]
       if (opt.isDefined) {
         // save the single value as an array with one item
-        val valueJson = encodeData(opt.get, tOpt.elemType)
-        Json.fromValues(Array(valueJson))
+        Json.fromValues(Array(encodeRData(opt.get, ot.tA)))
       } else {
         Json.Null
       }
-    case t: STuple =>
-      val arr = Evaluation.fromDslTuple(v, t).asInstanceOf[t.WrappedType]
-      val tArr = t.items.toArray
-      if (tArr.length != 2) {
-        throw new SerializerException("Tuples with length not equal to 2 are not supported")
+    case _: TupleType =>
+      // STuple(2) is converted to PairType (not TupleType) by stypeToRType,
+      // so this branch is effectively unreachable in practice. Kept defensive.
+      throw new SerializerException("Tuples with length not equal to 2 are not supported")
+    
+    case pt: PairType[a, b] =>
+      val (fst, snd): (Any, Any) = (v: Any) match {
+        case t: Tuple2[_, _] => (t._1, t._2)
+        case c: Coll[Any] @unchecked => (c(0), c(1))
+        case other => sys.error(s"Cannot encode pair value $other as $pt")
       }
-      val len = arr.length
-      assert(len == tArr.length, s"Type $t doesn't correspond to value $arr")
-      val obj = mutable.ArrayBuffer.empty[(String, Json)]
-      cfor(0)(_ < len, _ + 1) { i =>
-        obj += (s"_${i + 1}" -> encodeData[SType](arr(i), tArr(i)))
-      }
-      Json.fromFields(obj)
-    case SGroupElement =>
+      Json.fromFields(List(
+        "_1" -> encodeRData(fst, pt.tFst.asInstanceOf[RType[Any]]),
+        "_2" -> encodeRData(snd, pt.tSnd.asInstanceOf[RType[Any]])
+      ))
+    case GroupElementRType =>
+      val stype = Evaluation.rtypeToSType(t)
       val w = SigmaSerializer.startWriter()
-      DataSerializer.serialize(v, tpe, w)
+      DataSerializer.serialize(v.asInstanceOf[SType#WrappedType], stype, w)
       encodeBytes(w.toBytes)
-    case SHeader =>
+    case HeaderRType =>
+      val stype = Evaluation.rtypeToSType(t)
       val w = SigmaSerializer.startWriter()
-      DataSerializer.serialize(v, tpe, w)
+      DataSerializer.serialize(v.asInstanceOf[SType#WrappedType], stype, w)
       encodeBytes(w.toBytes)
-    case SAvlTree =>
+    case AvlTreeRType =>
+      val stype = Evaluation.rtypeToSType(t)
       val w = SigmaSerializer.startWriter()
-      DataSerializer.serialize(v, tpe, w)
+      DataSerializer.serialize(v.asInstanceOf[SType#WrappedType], stype, w)
       encodeBytes(w.toBytes)
-    case SSigmaProp =>
+    case SigmaPropRType =>
+      val stype = Evaluation.rtypeToSType(t)
       val w = SigmaSerializer.startWriter()
-      DataSerializer.serialize(v, tpe, w)
+      DataSerializer.serialize(v.asInstanceOf[SType#WrappedType], stype, w)
       encodeBytes(w.toBytes)
-    case SBox =>
+    case BoxRType =>
       val ergoBox = v.asInstanceOf[Box]
       val obj = mutable.ArrayBuffer.empty[(String, Json)]
-      obj += ("value" -> encodeData(ergoBox.value.asInstanceOf[SType#WrappedType], SLong))
+      obj += ("value" -> encodeRData(ergoBox.value, LongType))
       obj += ("ergoTree" -> encodeBytes(ErgoTreeSerializer.DefaultSerializer.serializeErgoTree(ergoBox.ergoTree)))
-      obj += "tokens" -> encodeData(
-        ergoBox.additionalTokens.asInstanceOf[SType#WrappedType],
-        SCollectionType(STuple(SCollectionType(SByte), SLong))
+      val tokensRType: RType[Coll[(Coll[Byte], Long)]] =
+        CollType(PairType(CollType(ByteType), LongType))
+      obj += "tokens" -> encodeRData(
+        ergoBox.additionalTokens.asInstanceOf[Coll[(Coll[Byte], Long)]],
+        tokensRType
       )
       ergoBox.additionalRegisters.foreach { case (id, value) =>
         obj += (s"r${id.number}" -> encode[SType](value.value, value.tpe))
       }
       obj += ("txId" -> encodeBytes(ergoBox.transactionId.toBytes))
-      obj += ("index" -> encodeData(ergoBox.index.asInstanceOf[SType#WrappedType], SShort))
-      obj += ("creationHeight" -> encodeData(ergoBox.creationHeight.asInstanceOf[SType#WrappedType], SInt))
+      obj += ("index" -> encodeRData(ergoBox.index, ShortType))
+      obj += ("creationHeight" -> encodeRData(ergoBox.creationHeight, IntType))
       Json.fromFields(obj)
     case t => throw new SerializerException(s"Not defined DataSerializer for type $t")
   }
@@ -164,67 +195,74 @@ object DataJsonEncoder {
     }
   }
 
+  /** SType-typed entry point. Kept for backward compatibility; delegates to
+    * the RType-based implementation. */
   def decodeData[T <: SType](json: Json, tpe: T): (T#WrappedType) = {
-    val res = (tpe match {
-      case SUnit => ()
-      case SBoolean => json.asBoolean.get
-      case SByte => json.asNumber.get.toByte.get
-      case SShort => json.asNumber.get.toShort.get
-      case SInt => json.asNumber.get.toInt.get
-      case SLong => json.asNumber.get.toLong.get
-      case SBigInt =>
+    val rtype = Evaluation.stypeToRType(tpe).asInstanceOf[RType[Any]]
+    decodeRData(json, rtype).asInstanceOf[T#WrappedType]
+  }
+
+  /** RType-driven decoding of a data value from Json. See [[encodeRData]] for
+    * the set of supported types. */
+  private def decodeRData[A](json: Json, t: RType[A]): A = {
+    val res: Any = t match {
+      case UnitType => ()
+      case BooleanType => json.asBoolean.get
+      case ByteType => json.asNumber.get.toByte.get
+      case ShortType => json.asNumber.get.toShort.get
+      case IntType => json.asNumber.get.toInt.get
+      case LongType => json.asNumber.get.toLong.get
+      case BigIntRType =>
         SigmaDsl.BigInt(new BigInteger(decodeBytes(json)))
-      case SUnsignedBigInt =>
+      case UnsignedBigIntRType =>
         SigmaDsl.UnsignedBigInt(BigIntegers.fromUnsignedByteArray(decodeBytes(json)))
-      case SString =>
+      case StringType =>
         new String(decodeBytes(json))
-      case tColl: SCollectionType[a] =>
-        val tpeElem = tColl.elemType
-        decodeColl(json, tpeElem)
-      case tOpt: SOption[a] =>
+      case ct: CollType[a] =>
+        decodeRColl(json, ct.tItem)
+      case ot: OptionType[a] =>
         if (json == Json.Null) {
           None
         } else {
-          // read the array with single value
-          val items = decodeColl(json, tOpt.elemType)
+          val items = decodeRColl(json, ot.tA)
           Some(items(0))
         }
-      case t: STuple =>
-        val tArr = t.items.toArray
-        if (tArr.length != 2) {
-          throw new SerializerException("Tuples with length not equal to 2 are not supported")
-        }
-        val collSource = mutable.ArrayBuilder.make[Any]
-        cfor(1)(_ <= tArr.length, _ + 1) { i =>
-          collSource += decodeData(json.hcursor.downField(s"_${i}").focus.get, tArr(i - 1))
-        }
-        val coll = Colls.fromArray(collSource.result())(sigma.AnyType)
-        Evaluation.toDslTuple(coll, t)
-      case SGroupElement =>
+      case pt: PairType[a, b] =>
+        val l = decodeRData(json.hcursor.downField("_1").focus.get, pt.tFst)
+        val r = decodeRData(json.hcursor.downField("_2").focus.get, pt.tSnd)
+        (l, r)
+      case _: TupleType =>
+        throw new SerializerException("Tuples with length not equal to 2 are not supported")
+      case GroupElementRType =>
+        val stype = Evaluation.rtypeToSType(t)
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
-        DataSerializer.deserialize(SGroupElement, r)
-      case SAvlTree =>
+        DataSerializer.deserialize(stype, r)
+      case AvlTreeRType =>
+        val stype = Evaluation.rtypeToSType(t)
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
-        DataSerializer.deserialize(SAvlTree, r)
-      case SSigmaProp =>
+        DataSerializer.deserialize(stype, r)
+      case SigmaPropRType =>
+        val stype = Evaluation.rtypeToSType(t)
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
-        DataSerializer.deserialize(SSigmaProp, r)
-      case SHeader => // for Sigma < 6.0 , exception will be thrown by DataSerializer
+        DataSerializer.deserialize(stype, r)
+      case HeaderRType =>
+        val stype = Evaluation.rtypeToSType(t)
         val str = decodeBytes(json)
         val r = SigmaSerializer.startReader(str)
-        DataSerializer.deserialize(SHeader, r)
-      case SBox =>
-        val value = decodeData(json.hcursor.downField(s"value").focus.get, SLong)
-        val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(decodeBytes(json.hcursor.downField(s"ergoTree").focus.get))
-        val tokens = decodeData(
-          json.hcursor.downField(s"tokens").focus.get,
-          SCollectionType(STuple(SCollectionType(SByte), SLong))).asInstanceOf[Coll[Token]]
-        val txId = decodeBytes(json.hcursor.downField(s"txId").focus.get).toModifierId
-        val index = decodeData(json.hcursor.downField(s"index").focus.get, SShort)
-        val creationHeight = decodeData(json.hcursor.downField(s"creationHeight").focus.get, SInt)
+        DataSerializer.deserialize(stype, r)
+      case BoxRType =>
+        val value = decodeRData(json.hcursor.downField("value").focus.get, LongType)
+        val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(decodeBytes(json.hcursor.downField("ergoTree").focus.get))
+        val tokensRType: RType[Coll[(Coll[Byte], Long)]] =
+          CollType(PairType(CollType(ByteType), LongType))
+        val tokens = decodeRData(json.hcursor.downField("tokens").focus.get, tokensRType)
+          .asInstanceOf[Coll[Token]]
+        val txId = decodeBytes(json.hcursor.downField("txId").focus.get).toModifierId
+        val index = decodeRData(json.hcursor.downField("index").focus.get, ShortType)
+        val creationHeight = decodeRData(json.hcursor.downField("creationHeight").focus.get, IntType)
         val additionalRegisters = mutable.ArrayBuffer.empty[(NonMandatoryRegisterId, _ <: EvaluatedValue[_ <: SType])]
         for (register <- ErgoBox.nonMandatoryRegisters) {
           val opt = json.hcursor.downField(s"r${register.number}").focus
@@ -236,39 +274,31 @@ object DataJsonEncoder {
         SigmaDsl.Box(new ErgoBox(value, tree, tokens, additionalRegisters.toMap, txId, index, creationHeight))
       case t =>
         throw new SerializerException(s"Not defined DataSerializer for type $t")
-    }).asInstanceOf[T#WrappedType]
-    res
+    }
+    res.asInstanceOf[A]
   }
 
-  private def decodeColl[T <: SType](json: Json, tpe: T): Coll[T#WrappedType] = {
-    implicit val tItem = (tpe match {
-      case tTup: STuple if tTup.items.length == 2 =>
-        Evaluation.stypeToRType(tpe)
-      case _: STuple =>
+  private def decodeRColl[A](json: Json, tItem: RType[A]): Coll[A] = {
+    tItem match {
+      case pt: PairType[x, y] =>
+        val left = decodeRColl(json.hcursor.downField("_1").focus.get, pt.tFst)
+        val right = decodeRColl(json.hcursor.downField("_2").focus.get, pt.tSnd)
+        assert(left.length == right.length)
+        SigmaDsl.Colls.pairColl(left, right).asInstanceOf[Coll[A]]
+      case _: TupleType =>
         throw new SerializerException("Tuples with length not equal to 2 are not supported")
-      case _ =>
-        Evaluation.stypeToRType(tpe)
-    }).asInstanceOf[RType[T#WrappedType]]
-
-    tpe match {
-      case tup: STuple =>
-        val tArr = tup.items.toArray
-        val leftColl = decodeColl(json.hcursor.downField(s"_1").focus.get, tArr(0))
-        val rightColl = decodeColl(json.hcursor.downField(s"_2").focus.get, tArr(1))
-        assert(leftColl.length == rightColl.length)
-        SigmaDsl.Colls.pairColl(leftColl, rightColl).asInstanceOf[Coll[T#WrappedType]]
       case _ =>
         val jsonList = json.as[List[Json]]
         jsonList match {
-          case Right(jsonList) =>
-            val collSource = { // this code works both for Scala 2.12 and 2.13
+          case Right(list) =>
+            val collSource = {
               implicit val ct = tItem.classTag
-              mutable.ArrayBuilder.make[T#WrappedType]
+              mutable.ArrayBuilder.make[A]
             }
-            for (i <- jsonList) {
-              collSource += decodeData(i, tpe).asInstanceOf[T#WrappedType]
+            for (i <- list) {
+              collSource += decodeRData(i, tItem)
             }
-            Colls.fromArray(collSource.result())
+            Colls.fromArray(collSource.result())(tItem)
           case Left(error) => throw new SerializerException(error.getMessage)
         }
     }
@@ -289,7 +319,8 @@ object DataJsonEncoder {
   def decodeAnyValue(json: Json): AnyValue = {
     val tpe = SigmaParser.parseType(json.hcursor.downField("type").focus.get.asString.get)
     val value = json.hcursor.downField("value").focus.get
-    val data = decodeData(value, tpe)
-    CAnyValue(data, Evaluation.stypeToRType(tpe).asInstanceOf[RType[Any]])
+    val rtype = Evaluation.stypeToRType(tpe).asInstanceOf[RType[Any]]
+    val data = decodeRData(value, rtype)
+    CAnyValue(data, rtype)
   }
 }
