@@ -4,7 +4,7 @@ import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.encode.Base58
 import scorex.utils.Ints
-import sigma.ast.{DeserializeContext, SInt, SSigmaProp, Slice}
+import sigma.ast.{Append, DeserializeContext, SInt, SSigmaProp, Slice}
 import sigma.data.{CSigmaProp, ProveDlog}
 import sigma.serialization.GroupElementSerializer
 import sigma.{Coll, SigmaException, VersionContext}
@@ -37,6 +37,7 @@ import scala.util.Try
   * 0x01 - Pay-to-PublicKey(P2PK) address
   * 0x02 - Pay-to-Script-Hash(P2SH)
   * 0x03 - Pay-to-Script(P2S)
+  * 0x04 - Pay-to-Script-Hash-with-version (versioned P2SH, includes ErgoTree version byte)
   *
   * For an address type, we form content bytes as follows:
   *
@@ -218,6 +219,83 @@ object Pay2SHAddress {
   }
 }
 
+/** Implementation of versioned pay-to-script-hash [[ErgoAddress]].
+  *
+  * Extends [[Pay2SHAddress]] by embedding the ErgoTree version in both the address
+  * content bytes and the hash preimage, so the script version is cryptographically pinned.
+  *
+  * Address content = `[treeVersion: 1 byte][hash192(treeVersion ++ scriptBytes): 24 bytes]`
+  *
+  * The guard script prepends the version constant before hashing context variable 126,
+  * and uses a versioned ErgoTree header matching [[treeVersion]].
+  *
+  * @param treeVersion the pinned ErgoTree version byte
+  * @param scriptHash  first 192 bits of Blake2b256 of `(treeVersion +: serialized script bytes)`
+  */
+class Pay2SHAddressVersioned(
+  val treeVersion: Byte,
+  val scriptHash: Array[Byte]
+)(
+  implicit val encoder: ErgoAddressEncoder
+) extends ErgoAddress {
+
+  override val addressTypePrefix: Byte = Pay2SHAddressVersioned.addressTypePrefix
+
+  override val contentBytes: Array[Byte] = treeVersion +: scriptHash
+
+  override def networkPrefix: NetworkPrefix = encoder.networkPrefix
+
+  import Pay2SHAddress.scriptId
+
+  override val script = {
+    val versionPrefix = ByteArrayConstant(Array(treeVersion))
+    val hashEquals = EQ(
+      Slice(
+        CalcBlake2b256(Append(versionPrefix, GetVarByteArray(scriptId).get)),
+        IntConstant(0), IntConstant(24)
+      ),
+      ByteArrayConstant(scriptHash)
+    )
+    val scriptIsCorrect = DeserializeContext(scriptId, SSigmaProp)
+    val header = ErgoTree.headerWithVersion(ErgoTree.ZeroHeader, treeVersion)
+    ErgoTree.withoutSegregation(header, SigmaAnd(hashEquals.toSigmaProp, scriptIsCorrect))
+  }
+
+  override def equals(obj: Any): Boolean = obj match {
+    case p2sh: Pay2SHAddressVersioned =>
+      treeVersion == p2sh.treeVersion && java.util.Arrays.equals(scriptHash, p2sh.scriptHash)
+    case _ => false
+  }
+
+  override def hashCode(): Int = treeVersion * 31 + Ints.fromByteArray(scriptHash)
+
+  override def toString: String = encoder.toString(this)
+}
+
+object Pay2SHAddressVersioned {
+  /** Value added to the prefix byte in the serialized bytes of an encoded versioned P2SH address. */
+  val addressTypePrefix: Byte = 4: Byte
+
+  /** Create versioned Pay-to-script-hash address from an ErgoTree, using its version. */
+  def apply(script: ErgoTree)(implicit encoder: ErgoAddressEncoder): Pay2SHAddressVersioned = {
+    val version = script.version
+    val prop = script.toProposition(replaceConstants = script.isConstantSegregation)
+    apply(prop, version)
+  }
+
+  /** Create versioned Pay-to-script-hash address from a proposition and an explicit version.
+    *
+    * Hash is computed over `version +: ValueSerializer.serialize(prop)` so the version
+    * is cryptographically bound to the script bytes.
+    */
+  def apply(prop: SigmaPropValue, version: Byte)
+           (implicit encoder: ErgoAddressEncoder): Pay2SHAddressVersioned = {
+    val sb = ValueSerializer.serialize(prop)
+    val sbh = ErgoAddressEncoder.hash192(version +: sb)
+    new Pay2SHAddressVersioned(version, sbh)
+  }
+}
+
 /** Implementation of pay-to-script [[ErgoAddress]]. */
 class Pay2SAddress(override val script: ErgoTree,
                    val scriptBytes: Array[Byte])
@@ -318,6 +396,11 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
             throw new Exception(s"Invalid length of the hash bytes in P2SH address: $addrBase58Str")
           }
           new Pay2SHAddress(contentBytes)
+        case Pay2SHAddressVersioned.addressTypePrefix =>
+          if (contentBytes.length != 25) { //1 byte version + 192-bits hash
+            throw new Exception(s"Invalid length of content bytes in versioned P2SH address: $addrBase58Str")
+          }
+          new Pay2SHAddressVersioned(contentBytes(0), contentBytes.tail)
         case Pay2SAddress.addressTypePrefix =>
           val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(contentBytes)
           new Pay2SAddress(tree, contentBytes)
@@ -342,6 +425,25 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
     }
   }
 
+  /** Pattern recognizer of [[Pay2SHAddressVersioned.script]] propositions.
+    * If matched extracts `(treeVersion, scriptHash)`.
+    */
+  object IsPay2SHAddressVersioned {
+    def unapply(exp: SigmaPropValue): Option[(Byte, Coll[Byte])] = exp match {
+      case SigmaAnd(Seq(
+            BoolToSigmaProp(EQ(
+              Slice(hash: CalcHash, ConstantNode(0, SInt), ConstantNode(24, SInt)),
+              ByteArrayConstant(scriptHash))),
+            DeserializeContext(Pay2SHAddress.scriptId, SSigmaProp))) =>
+        hash.input match {
+          case Append(ByteArrayConstant(versionArr), _) if versionArr.length == 1 =>
+            Some((versionArr(0), scriptHash))
+          case _ => None
+        }
+      case _ => None
+    }
+  }
+
   /** Converts the given [[ErgoTree]] to the corresponding [[ErgoAddress]].
     * It is inverse of [[ErgoAddress.script]] such that
     * `ErgoAddressEncoder.fromProposition(addr.script) == addr`
@@ -351,6 +453,7 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
   def fromProposition(proposition: ErgoTree): Try[ErgoAddress] = Try {
     proposition.root match {
       case Right(SigmaPropConstant(CSigmaProp(d: ProveDlog))) => P2PKAddress(d)
+      case Right(IsPay2SHAddressVersioned(version, scriptHash)) => new Pay2SHAddressVersioned(version, scriptHash.toArray)
       case Right(IsPay2SHAddress(scriptHash)) => new Pay2SHAddress(scriptHash.toArray)
       case Right(b: Value[SSigmaProp.type]@unchecked) if b.tpe == SSigmaProp => Pay2SAddress(proposition)
       case Left(unparsedErgoTree) =>
