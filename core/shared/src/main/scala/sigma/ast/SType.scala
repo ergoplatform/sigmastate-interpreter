@@ -212,6 +212,22 @@ object SType {
     case _ => sys.error(s"Unknown type $tpe")
   }
 
+  def isAssignableTo(tpe: SType): Boolean = tpe match {
+    case SBoolean => true
+    case SByte => true
+    case SShort => true
+    case SInt => true
+    case SLong => true
+    case SBigInt => true
+    case SString => true
+    case NoType => false
+    case _ => false
+  }
+
+  def getResultType(tpe: SType): SType = tpe match {
+    case SFunc(_, rangeType, _) => rangeType
+    case _ => tpe
+  }
 
   implicit class AnyOps(val x: Any) extends AnyVal {
     /** Helper method to simplify type casts. */

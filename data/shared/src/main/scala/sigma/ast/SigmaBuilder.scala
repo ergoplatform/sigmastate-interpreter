@@ -151,6 +151,12 @@ abstract class SigmaBuilder {
   def mkConcreteCollection[T <: SType](items: Seq[Value[T]],
                                        elementType: T): Value[SCollection[T]]
 
+  /** Retained on the trait so third-party `SigmaBuilder` implementations
+    * remain source/binary compatible. Internal call sites are the serializer
+    * dispatch table only; the ErgoScript compiler does not produce these
+    * nodes. Scheduled for consensus-level rejection in v7.0.
+    */
+  @deprecated("Use mkGetVar / mkValUse; TaggedVariable is scheduled for retirement in v7.0", since = "7.0.0")
   def mkTaggedVariable[T <: SType](varId: Byte, tpe: T): TaggedVariable[T]
 
   def mkBlock(bindings: Seq[Val], result: Value[SType]): Value[SType]
@@ -516,6 +522,7 @@ class StdSigmaBuilder extends SigmaBuilder {
                                                 elementType: T): Value[SCollection[T]] =
     ConcreteCollection(items, elementType).withSrcCtx(currentSrcCtx.value)
 
+  @annotation.nowarn("cat=deprecation")
   override def mkTaggedVariable[T <: SType](varId: Byte, tpe: T): TaggedVariable[T] =
     TaggedVariableNode(varId, tpe).withSrcCtx(currentSrcCtx.value).asInstanceOf[TaggedVariable[T]]
 

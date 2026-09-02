@@ -292,6 +292,12 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val method = SGlobalMethods.deserializeToMethod.withConcreteTypes(typeSubst)
         builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(bytes)), typeSubst)
 
+      case SDBM.serialize(g, value) =>
+        val valueTpe = elemToSType(value.elem)
+        val typeSubst = Map(tT -> valueTpe): STypeSubst
+        val method = SGlobalMethods.serializeMethod.withConcreteTypes(typeSubst)
+        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(value)), Map.empty)
+
       case BIM.subtract(In(x), In(y)) =>
         mkArith(x.asNumValue, y.asNumValue, MinusCode)
       case BIM.add(In(x), In(y)) =>
@@ -477,7 +483,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
             val specMethod = method.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
             builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
           case None =>
-            error(s"Cannot find method ${m.getName} in object $obj")
+            error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
         }
 
       case Def(d) =>

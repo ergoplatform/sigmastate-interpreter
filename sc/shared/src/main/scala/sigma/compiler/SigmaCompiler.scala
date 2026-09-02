@@ -14,6 +14,8 @@ import sigma.ast.syntax.SValue
 import SCollectionMethods.{ExistsMethod, ForallMethod, MapMethod}
 import sigma.compiler.ir.{GraphIRReflection, IRContext}
 import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
+import sigma.exceptions.CompilerException
+import sigma.Environment
 import sigmastate.InterpreterReflection
 import sigmastate.lang.SigmaParser
 
@@ -61,22 +63,25 @@ class SigmaCompiler private(settings: CompilerSettings) {
 
   /** Parses the given ErgoScript source code and produces expression tree. */
   def parse(x: String): SValue = {
-    SigmaParser(x) match {
-      case Success(v, _) => v
-      case f: Parsed.Failure =>
-        throw new ParserException(s"Syntax error: $f", Some(SourceContext.fromParserFailure(f)))
+    SigmaCompiler.checkStackOverflow(source = None) {
+      SigmaParser(x) match {
+        case Success(v, _) => v
+        case f: Parsed.Failure =>
+          throw new ParserException(s"Syntax error: $f", Some(SourceContext.fromParserFailure(f)))
+      }
     }
   }
 
   /** Typechecks the given parsed expression and assigns types for all sub-expressions. */
   def typecheck(env: ScriptEnv, parsed: SValue): Value[SType] = {
-    val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
-    val binder = new SigmaBinder(env, builder, networkPrefix, predefinedFuncRegistry)
-    val bound = binder.bind(parsed)
-    val typeEnv = env.collect { case (k, v: SType) => k -> v }
-    val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, settings.lowerMethodCalls)
-    val typed = typer.typecheck(bound)
-    typed
+    SigmaCompiler.checkStackOverflow(parsed.sourceContext.toOption) {
+      val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
+      val binder = new SigmaBinder(env, builder, networkPrefix, predefinedFuncRegistry)
+      val bound = binder.bind(parsed)
+      val typeEnv = env.collect { case (k, v: SType) => k -> v }
+      val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, settings.lowerMethodCalls)
+      typer.typecheck(bound)
+    }
   }
 
   def typecheck(env: ScriptEnv, code: String): Value[SType] = {
@@ -91,16 +96,23 @@ class SigmaCompiler private(settings: CompilerSettings) {
     res
   }
 
-  /** Compiles the given typed expression. */
+  /** Compiles the given typed expression.
+    *
+    * @note If this method throws a [[CompilerException]] because of a stack overflow,
+    *       the provided [[IRContext]] may be in a partially-built state and should not be
+    *       reused; callers should create a fresh IR context before compiling again.
+    */
   def compileTyped(env: ScriptEnv, typedExpr: SValue)(implicit IR: IRContext): CompilerResult[IR.type] = {
-    val placeholdersEnv = env
-        .collect { case (name, t: SType) => name -> t }
-        .zipWithIndex
-        .map { case ((name, t), index) => name -> ConstantPlaceholder(index, t) }
-        .toMap
-    val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
-    val compiledTree = IR.buildTree(compiledGraph)
-    CompilerResult(env, "<no source code>", compiledGraph, compiledTree)
+    SigmaCompiler.checkStackOverflow(typedExpr.sourceContext.toOption) {
+      val placeholdersEnv = env
+          .collect { case (name, t: SType) => name -> t }
+          .zipWithIndex
+          .map { case ((name, t), index) => name -> ConstantPlaceholder(index, t) }
+          .toMap
+      val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
+      val compiledTree = IR.buildTree(compiledGraph)
+      CompilerResult(env, "<no source code>", compiledGraph, compiledTree)
+    }
   }
 
   /** Compiles the given parsed contract source. */
@@ -154,6 +166,67 @@ class SigmaCompiler private(settings: CompilerSettings) {
 object SigmaCompiler {
   /** Force initialization of reflection before any instance of SigmaCompiler is used. */
   val _ = (InterpreterReflection, GraphIRReflection)
+
+  /** Returns true if the given throwable represents a stack overflow.
+    *
+    * On the JVM a stack overflow is signalled as a [[StackOverflowError]]. On Scala.js
+    * there is no `StackOverflowError`; instead the JavaScript engine throws a native
+    * `RangeError` ("Maximum call stack size exceeded" / "too much recursion"), which
+    * Scala.js wraps into a `scala.scalajs.js.JavaScriptException`. Since shared code cannot
+    * reference JS-only types, the JS case is detected by inspecting the exception class name
+    * and message.
+    *
+    * The overload taking `isJVM` is package-private so tests can assert both platform
+    * predicates without running on the actual platform.
+    */
+  private[sigma] def isStackOverflow(t: Throwable): Boolean =
+    isStackOverflow(t, Environment.current.isJVM)
+
+  private[sigma] def isStackOverflow(t: Throwable, isJVM: Boolean): Boolean = {
+    if (isJVM)
+      t.isInstanceOf[StackOverflowError]
+    else {
+      // Scala.js: detect the native RangeError wrapped in js.JavaScriptException.
+      // The message strings are engine-specific (V8/JSC vs. SpiderMonkey). If an engine
+      // uses different wording the predicate returns false and the original error
+      // propagates unchanged, which is the safe fallback direction.
+      val className = t.getClass.getName
+      val message = String.valueOf(t.getMessage)
+      className.contains("JavaScriptException") &&
+        (message.contains("call stack size exceeded") ||
+          message.contains("too much recursion"))
+    }
+  }
+
+  /** Creates a [[CompilerException]] for a stack-overflow condition, preserving the
+    * original throwable as its cause.
+    */
+  private[sigma] def compilerStackOverflowException(
+      source: Option[SourceContext],
+      cause: Throwable): CompilerException = {
+    new CompilerException(
+      "Script compilation failed (stack overflow): script is too complex or recursive",
+      source,
+      Some(cause))
+  }
+
+  /** Runs the given computation and converts a stack overflow into a recoverable
+    * [[CompilerException]] while rethrowing all unrelated throwables (including
+    * [[OutOfMemoryError]]) unchanged.
+    */
+  private def checkStackOverflow[A](source: Option[SourceContext])(body: => A): A = {
+    try {
+      body
+    } catch {
+      // Convert a stack overflow (JVM StackOverflowError or JS RangeError) into a checked
+      // CompilerException so that a malformed/pathological script results in a normal
+      // compilation error instead of a fatal runtime error. Unrelated throwables
+      // (including OutOfMemoryError, InternalError, etc.) propagate unchanged because
+      // this partial function does not match them.
+      case t: Throwable if isStackOverflow(t) =>
+        throw compilerStackOverflowException(source, t)
+    }
+  }
 
   /** Constructs an instance for the given settings. */
   def apply(settings: CompilerSettings): SigmaCompiler =

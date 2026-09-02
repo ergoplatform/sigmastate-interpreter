@@ -115,6 +115,91 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
   }
 
+  property("Global.serialize[Int]") {
+    lazy val serializeInt = mkSerializeFeature[Int]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (Int.MinValue, Expected(Success(Coll[Byte](-1, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace)),
+      (-1, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1, Expected(Success(Coll(2.toByte)), expectedCostTrace)),
+      (Int.MaxValue, Expected(Success(Coll[Byte](-2, -1, -1, -1, -1, -1, -1, -1, -1, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeInt, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Long]") {
+    lazy val serializeLong = mkSerializeFeature[Long]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      (-1L, Expected(Success(Coll(1.toByte)), expectedCostTrace)),
+      (0L, Expected(Success(Coll(0.toByte)), expectedCostTrace)),
+      (1L, Expected(Success(Coll(2.toByte)), expectedCostTrace))
+    )
+    verifyCases(cases, serializeLong, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[Coll[Byte]]") {
+    lazy val serializeCollByte = mkSerializeFeature[Coll[Byte]]
+    val baseCostItems = baseTrace ++ Array(
+      FixedCostItem(Global),
+      FixedCostItem(MethodCall),
+      FixedCostItem(ValUse),
+      FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+      FixedCostItem(NamedDesc("SigmaByteWriter.putUNumeric"), FixedCost(JitCost(3)))
+    )
+    val emptyCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 0)
+      )
+    )
+    val threeByteCostTrace = TracedCost(
+      baseCostItems ++ Array(
+        SeqCostItem(NamedDesc("SigmaByteWriter.putChunk"), PerItemCost(JitCost(3), JitCost(1), 1), 3)
+      )
+    )
+    val cases = Seq(
+      (Coll[Byte](), Expected(Success(Coll(0.toByte)), emptyCostTrace)),
+      (Coll[Byte](1, 2, 3), Expected(Success(Coll[Byte](3, 1, 2, 3)), threeByteCostTrace))
+    )
+    verifyCases(cases, serializeCollByte, preGeneratedSamples = None)
+  }
+
+  property("Global.serialize[(Long, Long)]") {
+    lazy val serializePair = mkSerializeFeature[(Long, Long)]
+    val expectedCostTrace = TracedCost(
+      baseTrace ++ Array(
+        FixedCostItem(Global),
+        FixedCostItem(MethodCall),
+        FixedCostItem(ValUse),
+        FixedCostItem(NamedDesc("SigmaByteWriter.startWriter"), FixedCost(JitCost(10))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3))),
+        FixedCostItem(NamedDesc("SigmaByteWriter.putNumeric"), FixedCost(JitCost(3)))
+      )
+    )
+    val cases = Seq(
+      ((0L, 0L), Expected(Success(Coll[Byte](0, 0)), expectedCostTrace)),
+      ((42L, 100L), Expected(Success(Coll[Byte](84, -56.toByte, 1)), expectedCostTrace))
+    )
+    verifyCases(cases, serializePair, preGeneratedSamples = None)
+  }
+
   property("Boolean.toByte") {
     val toByte = newFeature((x: Boolean) => x.toByte, "{ (x: Boolean) => x.toByte }",
       sinceVersion = V6SoftForkVersion
@@ -2291,6 +2376,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[BigInt, Long](
       { (bi: BigInt) => SigmaDsl.encodeNbits(bi) },
       """{(bi: BigInt) => Global.encodeNbits(bi) }""".stripMargin,
+      FuncValue(
+        Array((1, SBigInt)),
+        MethodCall.typed[Value[SLong.type]](
+          Global,
+          SGlobalMethods.encodeNBitsMethod,
+          Array(ValUse(1, SBigInt)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2311,6 +2405,15 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     val f = newFeature[Long, BigInt](
       { (l: Long) => SigmaDsl.decodeNbits(l) },
       """{(l: Long) => Global.decodeNbits(l) }""".stripMargin,
+      FuncValue(
+        Array((1, SLong)),
+        MethodCall.typed[Value[SBigInt.type]](
+          Global,
+          SGlobalMethods.decodeNBitsMethod,
+          Array(ValUse(1, SLong)),
+          Map()
+        )
+      ),
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
@@ -2396,11 +2499,20 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
+    val generator = CryptoConstants.dlogGroup.generator
+    val order = CryptoConstants.dlogGroup.order
+    // Max representable UnsignedBigInt (bitLength = 256), strictly > group order.
+    // Cross-checks that the JS bridge reduces scalars `mod order` consistently with BC. See #731.
+    val maxUnsigned = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE)
+    val expMaxUnsigned = CryptoConstants.dlogGroup.exponentiate(generator, maxUnsigned.mod(order))
+
     verifyCases(
       Seq(
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.generator)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(CryptoConstants.dlogGroup.order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None))
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order.add(BigInteger.ONE))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(maxUnsigned)) -> Expected(ExpectedResult(Success(CGroupElement(expMaxUnsigned)), None))
       ),
       f
     )

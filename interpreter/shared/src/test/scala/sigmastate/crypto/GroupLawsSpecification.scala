@@ -5,6 +5,7 @@ import org.scalacheck.Gen
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import sigma.crypto.{CryptoConstants, CryptoFacade, EcPointType, Ecp}
+import sigma.data.{CBigInt, CGroupElement}
 import sigmastate.TestsBase
 import sigmastate.utils.Helpers
 
@@ -40,6 +41,27 @@ class GroupLawsSpecification extends AnyPropSpec with ScalaCheckPropertyChecks w
       group.exponentiate(ge, BigInteger.ONE) shouldBe ge
       group.exponentiate(ge, group.order) shouldBe identity
       group.exponentiate(ge, group.order.add(BigInteger.ONE)) shouldBe ge
+    }
+  }
+
+  // Pins the invariant that BcDlogGroup.exponentiate (explicit `mod(order)` for negatives)
+  // and CGroupElement.exp (delegating straight to CryptoFacade.exponentiatePoint) agree.
+  // BC and the JS bridge both implement `abs+negate` for negative scalars, which on a
+  // prime-order group equals `mod(order)`.
+  property("BcDlogGroup.exponentiate matches CGroupElement.exp") {
+    // CBigInt rejects bitLength > 255, so bigIntGen (max bitLength 247) is safe.
+    val signedBigIntGen: Gen[BigInteger] = Gen.oneOf(
+      Gen.const(BigInteger.ZERO),
+      Gen.const(BigInteger.ONE),
+      Gen.const(BigInteger.ONE.negate()),
+      bigIntGen,
+      bigIntGen.map(_.negate())
+    )
+    forAll(groupElementGen, signedBigIntGen) { (ge, k) =>
+      val viaBcDlog = group.exponentiate(ge, k)
+      val viaDsl    = CGroupElement(ge).exp(CBigInt(k))
+        .asInstanceOf[CGroupElement].wrappedValue
+      viaDsl shouldBe viaBcDlog
     }
   }
 
