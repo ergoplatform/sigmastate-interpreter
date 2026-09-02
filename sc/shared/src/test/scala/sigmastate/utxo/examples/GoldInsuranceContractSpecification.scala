@@ -7,342 +7,188 @@ import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.CompilerCrossVersionProps
 import sigma._
-import sigma.interpreter.ContextExtension
+import scorex.crypto.hash.Blake2b256
 
 /**
  * Tests for Gold Insurance Contract Pattern
- * 
+ *
  * Based on the ErgoForum post: https://www.ergoforum.org/t/physical-or-digital-gold-simple-insurance-on-ergo/4715
- * 
- * Demonstrates real-world gold insurance use case on Ergo blockchain.
+ *
+ * Use case (from the post): a client buying a right to physical gold delivery within
+ * an insurance period also buys an insurance option. The vault locks digital gold
+ * (gold-pegged tokens) in this contract's box and sends a unique policy NFT to the client:
+ *
+ *  - at any moment before the insurance period end, the holder of the policy NFT can
+ *    present it (in inputs) and order the digital gold transferred to any address;
+ *    the vault can do the same when the client visits the vault to get the physical gold;
+ *  - after the insurance period end, the vault reclaims the unused digital gold.
+ *
+ * Note: unlike SchnorrSignatureVerificationSpecification, this contract does not verify
+ * Schnorr signatures via ErgoScript; the vault path uses the native proveDlog sigma
+ * protocol, and the client path relies on possession of the policy NFT (bearer instrument).
+ *
+ * Registers of the insurance box:
+ *  - R4 - insurance period end (block height)
+ *  - R5 - vault public key (GroupElement)
+ *  - R6 - policy NFT id (Coll[Byte])
  */
-class GoldInsuranceContractSpecification extends CompilerTestingCommons 
+class GoldInsuranceContractSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  
+
   private implicit lazy val IR: TestingIRContext = new TestingIRContext
 
-  /**
-   * Gold Insurance Contract ErgoScript template
-   * Based on the ErgoForum post requirements
-   */
   private val goldInsuranceScript = """
     |{
     |  // Physical/Digital Gold Insurance Contract
     |  // Based on ErgoForum post: https://www.ergoforum.org/t/physical-or-digital-gold-simple-insurance-on-ergo/4715
-    |  // 
-    |  // Use Case:
-    |  // - Client buys physical gold in Dubai with remote delivery
-    |  // - Insurance provides digital gold if physical delivery fails
-    |  // - NFT represents insurance policy
-    |  // - Digital gold tokens are held as insurance
     |  //
-    |  // Redemption paths:
-    |  // 1. Client redemption: Present NFT anytime before period end
-    |  // 2. Vault redemption: After period end, vault reclaims unused insurance
-    |  
-    |  val policyNft = SELF.tokens(0)
+    |  // The insurance box holds digital gold (gold-pegged tokens).
+    |  // The policy NFT itself is held by the client (sent by the vault when the
+    |  // insurance is purchased) and must be presented in inputs to redeem.
     |  val insurancePeriodEnd = SELF.R4[Long].get
     |  val vaultPublicKey = SELF.R5[GroupElement].get
-    |  val currentTime = CONTEXT.headers(0).timestamp
-    |  
-    |  val periodEnded = currentTime >= insurancePeriodEnd
-    |  
+    |  val policyNftId = SELF.R6[Coll[Byte]].get
+    |
+    |  val periodEnded = HEIGHT >= insurancePeriodEnd
+    |
     |  val nftInInputs = INPUTS.exists { (input: Box) =>
     |    input.tokens.exists { (token: (Coll[Byte], Long)) =>
-    |      token._1 == policyNft._1
+    |      token._1 == policyNftId
     |    }
     |  }
-    |  
+    |
     |  val vaultRedemption = periodEnded && proveDlog(vaultPublicKey)
     |  val clientRedemption = !periodEnded && nftInInputs
-    |  
+    |
     |  sigmaProp(vaultRedemption || clientRedemption)
     |}
     |""".stripMargin
 
-  /**
-   * Creates test environment for gold insurance contract
-   */
-  private def createGoldInsuranceEnv(
-    policyNftId: Array[Byte], 
-    periodEnd: Long, 
-    vaultPubKey: Value[SGroupElement.type]
-  ): Map[String, Value[SType]] = {
-    Map(
-      "policyNftId" -> ByteArrayConstant(policyNftId),
-      "periodEnd" -> LongConstant(periodEnd),
-      "vaultPubKey" -> vaultPubKey
-    )
-  }
+  // A stand-in "gold-pegged token" held in the insurance box as collateral
+  private val digitalGoldTokenId: Digest32Coll = Digest32Coll @@ Colls.fromArray(Blake2b256("digital-gold"))
+  private val policyNftId: Digest32Coll = Digest32Coll @@ Colls.fromArray(Blake2b256("gold-insurance-policy"))
 
-  /**
-   * Creates standard test parameters for gold insurance
-   */
-  private def createStandardTestParams(vault: ContextEnrichingTestProvingInterpreter): (Array[Byte], Long, Value[SGroupElement.type]) = {
-    val vaultPubKey = vault.dlogSecrets.head.publicImage
-    val policyNftId = Array[Byte](0x67, 0x6f, 0x6c, 0x64, 0x69, 0x6e, 0x73, 0x75, 0x72, 0x61, 0x6e, 0x63, 0x65) // "goldinsurance" in hex
-    val purchaseTime = 1000L
-    val insurancePeriod = 6 * 30 * 24 * 60 * 60L // 6 months in seconds
-    val periodEnd = purchaseTime + insurancePeriod
-    
-    (policyNftId, periodEnd, GroupElementConstant(vaultPubKey.value))
-  }
+  private val currentHeight = 100000
+  private val periodEndBefore = currentHeight + 100000L   // period still active
+  private val periodEndAfter = currentHeight - 100000L    // period already ended
 
-  property("gold insurance vault redemption with proveDlog") {
-    // Test vault redemption using proveDlog (simplified verification)
-    
-    val vault = new ContextEnrichingTestProvingInterpreter
-    val verifier = new ErgoLikeTestInterpreter
-    
+  private def compileScript: ErgoTree = {
     val scriptProp = compile(Map.empty, goldInsuranceScript).toSigmaProp
-    val scriptTree = mkTestErgoTree(scriptProp)
+    mkTestErgoTree(scriptProp)
+  }
 
-    // Create insurance box with vault public key
-    val insuranceBox = testBox(
+  /** Insurance box holding digital gold and the contract registers (R4, R5, R6 set densely). */
+  private def insuranceBox(tree: ErgoTree, periodEnd: Long, vaultPubKey: Constant[SGroupElement.type]): ErgoBox =
+    testBox(
       1000000L,
-      scriptTree,
-      100000,
+      tree,
+      creationHeight = 100000,
+      additionalTokens = Seq((digitalGoldTokenId, 100L)),
       additionalRegisters = Map(
-        ErgoBox.R5 -> GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
+        ErgoBox.R4 -> LongConstant(periodEnd),
+        ErgoBox.R5 -> vaultPubKey,
+        ErgoBox.R6 -> ByteArrayConstant(policyNftId.toArray)
       )
     )
-    
-    val outputBox = testBox(1000000L, scriptTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(insuranceBox.id)),
-      IndexedSeq(outputBox)
-    )
 
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
+  private def spendingCtx(selfBox: ErgoBox, inputs: IndexedSeq[ErgoBox], tx: UnsignedErgoLikeTransaction): ErgoLikeContext =
+    ErgoLikeContextTesting(
+      currentHeight = currentHeight,
       lastBlockUtxoRoot = AvlTreeData.dummy,
       minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(insuranceBox),
+      boxesToSpend = inputs,
       tx,
-      self = insuranceBox,
+      self = selfBox,
       activatedVersionInTests
     )
 
-    // Vault should succeed in redeeming (proveDlog verification)
-    val pr = vault.prove(scriptTree, ctx, fakeMessage).get
-    verifier.verify(scriptTree, ctx, pr, fakeMessage).get._1 shouldBe true
-  }
-
-  property("gold insurance client redemption with NFT") {
-    // Test client redemption with NFT
-    
-    val vault = new ContextEnrichingTestProvingInterpreter
-    val client = new ContextEnrichingTestProvingInterpreter
-    val verifier = new ErgoLikeTestInterpreter
-    val (policyNftId, periodEnd, vaultPubKey) = createStandardTestParams(vault)
-    
-    val scriptProp = compile(Map.empty, goldInsuranceScript).toSigmaProp
-    val scriptTree = mkTestErgoTree(scriptProp)
-
-    // Convert policyNftId to Digest32Coll
-    val policyNftIdColl: Digest32Coll = Digest32Coll @@ Colls.fromArray(policyNftId)
-
-    // Create insurance box with NFT
-    val insuranceBox = testBox(
-      1000000L,
-      scriptTree,
-      100000,
-      additionalTokens = Seq((policyNftIdColl, 1L)),
-      additionalRegisters = Map(
-        ErgoBox.R5 -> GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
-      )
+  private def unsignedTx(tree: ErgoTree, inputs: IndexedSeq[ErgoBox]): UnsignedErgoLikeTransaction =
+    UnsignedErgoLikeTransaction(
+      inputs.map(b => new UnsignedInput(b.id)),
+      IndexedSeq(testBox(1000000L, tree, 100000))
     )
-    
-    // Create client box WITH the NFT
+
+  property("client redemption before period end with policy NFT") {
+    val vault = new ErgoLikeTestProvingInterpreter
+    val client = new ErgoLikeTestProvingInterpreter
+    val verifier = new ErgoLikeTestInterpreter
+    val tree = compileScript
+    val vaultPubKey = GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
+
+    val insurance = insuranceBox(tree, periodEndBefore, vaultPubKey)
+    // the client holds the policy NFT (sent by the vault when purchasing insurance)
     val clientBox = testBox(
       1000000L,
-      scriptTree,
+      tree,
       100000,
-      additionalTokens = Seq((policyNftIdColl, 1L))
-    )
-    
-    val outputBox = testBox(1000000L, scriptTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(insuranceBox.id), new UnsignedInput(clientBox.id)),
-      IndexedSeq(outputBox)
+      additionalTokens = Seq((policyNftId, 1L))
     )
 
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(insuranceBox, clientBox),
-      tx,
-      self = insuranceBox,
-      activatedVersionInTests
-    )
+    val inputs = IndexedSeq(insurance, clientBox)
+    val ctx = spendingCtx(insurance, inputs, unsignedTx(tree, inputs))
 
-    // Client should succeed in redeeming with NFT
-    val pr = client.prove(scriptTree, ctx, fakeMessage).get
-    verifier.verify(scriptTree, ctx, pr, fakeMessage).get._1 shouldBe true
+    // anyone holding the policy NFT can order the digital gold transfer before period end
+    val pr = client.prove(tree, ctx, fakeMessage).get
+    verifier.verify(tree, ctx, pr, fakeMessage).get._1 shouldBe true
   }
 
-  property("gold insurance vault redemption fails without secret") {
-    // Test that wrong vault cannot redeem
-    
-    val vault = new ContextEnrichingTestProvingInterpreter
-    val wrongVault = new ContextEnrichingTestProvingInterpreter
-    
-    val scriptProp = compile(Map.empty, goldInsuranceScript).toSigmaProp
-    val scriptTree = mkTestErgoTree(scriptProp)
-
-    // Create insurance box with vault public key
-    val insuranceBox = testBox(
-      1000000L,
-      scriptTree,
-      100000,
-      additionalRegisters = Map(
-        ErgoBox.R5 -> GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
-      )
-    )
-    
-    val outputBox = testBox(1000000L, scriptTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(insuranceBox.id)),
-      IndexedSeq(outputBox)
-    )
-
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(insuranceBox),
-      tx,
-      self = insuranceBox,
-      activatedVersionInTests
-    )
-
-    // Wrong vault should fail to redeem
-    wrongVault.prove(scriptTree, ctx, fakeMessage).isSuccess shouldBe false
-  }
-
-  property("gold insurance client redemption fails without NFT") {
-    // Test that client cannot redeem without the NFT
-    
-    val vault = new ContextEnrichingTestProvingInterpreter
-    val client = new ContextEnrichingTestProvingInterpreter
-    val (policyNftId, periodEnd, vaultPubKey) = createStandardTestParams(vault)
-    
-    val scriptProp = compile(Map.empty, goldInsuranceScript).toSigmaProp
-    val scriptTree = mkTestErgoTree(scriptProp)
-
-    // Convert policyNftId to Digest32Coll
-    val policyNftIdColl: Digest32Coll = Digest32Coll @@ Colls.fromArray(policyNftId)
-
-    // Create insurance box with NFT
-    val insuranceBox = testBox(
-      1000000L,
-      scriptTree,
-      100000,
-      additionalTokens = Seq((policyNftIdColl, 1L)),
-      additionalRegisters = Map(
-        ErgoBox.R5 -> GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
-      )
-    )
-    
-    // Create client box WITHOUT the NFT
-    val clientBox = testBox(
-      1000000L,
-      scriptTree,
-      100000
-    )
-    
-    val outputBox = testBox(1000000L, scriptTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(insuranceBox.id), new UnsignedInput(clientBox.id)),
-      IndexedSeq(outputBox)
-    )
-
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(insuranceBox, clientBox),
-      tx,
-      self = insuranceBox,
-      activatedVersionInTests
-    )
-
-    // Client should fail to redeem without NFT
-    client.prove(scriptTree, ctx, fakeMessage).isSuccess shouldBe false
-  }
-
-  property("gold insurance simplified contract verification") {
-    // Create a simplified version of the contract for testing without timestamp dependency
-    val simplifiedGoldInsuranceScript = """
-      |{
-      |  // Simplified Gold Insurance Contract (without timestamp checks)
-      |  // For testing core functionality
-      |  
-      |  val policyNft = SELF.tokens(0)
-      |  val vaultPublicKey = SELF.R5[GroupElement].get
-      |  
-      |  val nftInInputs = INPUTS.exists { (input: Box) =>
-      |    input.tokens.exists { (token: (Coll[Byte], Long)) =>
-      |      token._1 == policyNft._1
-      |    }
-      |  }
-      |  
-      |  val vaultRedemption = proveDlog(vaultPublicKey)
-      |  val clientRedemption = nftInInputs
-      |  
-      |  sigmaProp(vaultRedemption || clientRedemption)
-      |}
-      |""".stripMargin
-
-    val vault = new ContextEnrichingTestProvingInterpreter
+  property("vault redemption after period end") {
+    val vault = new ErgoLikeTestProvingInterpreter
     val verifier = new ErgoLikeTestInterpreter
-    
-    val (policyNftId, periodEnd, vaultPubKey) = createStandardTestParams(vault)
-    
-    val scriptProp = compile(Map.empty, simplifiedGoldInsuranceScript).toSigmaProp
-    val scriptTree = mkTestErgoTree(scriptProp)
+    val tree = compileScript
+    val vaultPubKey = GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
 
-    // Convert policyNftId to Digest32Coll
-    val policyNftIdColl: Digest32Coll = Digest32Coll @@ Colls.fromArray(policyNftId)
+    val insurance = insuranceBox(tree, periodEndAfter, vaultPubKey)
 
-    // Create insurance box with NFT and vault public key
-    val insuranceBox = testBox(
-      1000000L,
-      scriptTree,
-      100000,
-      additionalTokens = Seq((policyNftIdColl, 1L)),
-      additionalRegisters = Map(
-        ErgoBox.R4 -> LongConstant(0L), // Dummy value for R4
-        ErgoBox.R5 -> GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
-      )
-    )
-    
-    val outputBox = testBox(1000000L, scriptTree, 100000)
-    
-    val tx = UnsignedErgoLikeTransaction(
-      IndexedSeq(new UnsignedInput(insuranceBox.id)),
-      IndexedSeq(outputBox)
-    )
+    val inputs = IndexedSeq(insurance)
+    val ctx = spendingCtx(insurance, inputs, unsignedTx(tree, inputs))
 
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(insuranceBox),
-      tx,
-      self = insuranceBox,
-      activatedVersionInTests
-    )
-
-    // Vault should succeed in redeeming (proveDlog verification)
-    val pr = vault.prove(scriptTree, ctx, fakeMessage).get
-    verifier.verify(scriptTree, ctx, pr, fakeMessage).get._1 shouldBe true
+    // after the insurance period end the vault reclaims the unused digital gold
+    val pr = vault.prove(tree, ctx, fakeMessage).get
+    verifier.verify(tree, ctx, pr, fakeMessage).get._1 shouldBe true
   }
 
+  property("vault redemption before period end must fail") {
+    val vault = new ErgoLikeTestProvingInterpreter
+    val tree = compileScript
+    val vaultPubKey = GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
 
+    val insurance = insuranceBox(tree, periodEndBefore, vaultPubKey)
+
+    val inputs = IndexedSeq(insurance)
+    val ctx = spendingCtx(insurance, inputs, unsignedTx(tree, inputs))
+
+    // vault cannot reclaim while the insurance period is still active,
+    // even though it knows the secret (client's NFT right takes precedence)
+    vault.prove(tree, ctx, fakeMessage).isSuccess shouldBe false
+  }
+
+  property("client redemption without policy NFT must fail") {
+    val client = new ErgoLikeTestProvingInterpreter
+    val tree = compileScript
+    val vaultPubKey = GroupElementConstant((new ErgoLikeTestProvingInterpreter).dlogSecrets.head.publicImage.value)
+
+    val insurance = insuranceBox(tree, periodEndBefore, vaultPubKey)
+    // some unrelated input, no policy NFT anywhere
+    val otherBox = testBox(1000000L, tree, 100000)
+
+    val inputs = IndexedSeq(insurance, otherBox)
+    val ctx = spendingCtx(insurance, inputs, unsignedTx(tree, inputs))
+
+    client.prove(tree, ctx, fakeMessage).isSuccess shouldBe false
+  }
+
+  property("redemption with wrong vault secret after period end must fail") {
+    val vault = new ErgoLikeTestProvingInterpreter
+    val wrongVault = new ErgoLikeTestProvingInterpreter
+    val tree = compileScript
+    val vaultPubKey = GroupElementConstant(vault.dlogSecrets.head.publicImage.value)
+
+    val insurance = insuranceBox(tree, periodEndAfter, vaultPubKey)
+
+    val inputs = IndexedSeq(insurance)
+    val ctx = spendingCtx(insurance, inputs, unsignedTx(tree, inputs))
+
+    wrongVault.prove(tree, ctx, fakeMessage).isSuccess shouldBe false
+  }
 }
