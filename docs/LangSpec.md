@@ -1331,7 +1331,53 @@ def executeFromSelfRegWithDefault[T](id: Int, default: T): T
   *         replaced and all other bytes remain exactly the same
   */
 def substConstants[T](scriptBytes: Coll[Byte], positions: Coll[Int], newValues: Coll[T]): Coll[Byte]
+
+/** Returns true if `inBox` and `outBox` have the same monetary value (`value`)
+ * and the same guarding script (`propositionBytes`).
+ * Compiler-level utility: it is expanded at compile time into existing ErgoTree
+ * operations, so no new ErgoTree node is involved (the same holds for all the
+ * `verify*` functions below).
+ */
+def verifySameForBasicRequiredRegisters(inBox: Box, outBox: Box): Boolean
+
+/** Returns true if `inBox` and `outBox` have the same monetary value (`value`),
+ * the same guarding script (`propositionBytes`) and the same secondary `tokens`.
+ */
+def verifySameForRequiredRegisters(inBox: Box, outBox: Box): Boolean
+
+/** Returns true if `box` uses only the first `used` non-mandatory registers,
+ * i.e. all registers with index greater than `used` (counting R4 as 1, ..., R9 as 6)
+ * are empty.
+ * NOTE: when a register beyond the first `used` ones is defined, checking that the
+ * register is empty (`isEmpty` of the register read as `Option[Any]`) fails with an
+ * exception instead of returning false, so the script evaluation fails, which is the
+ * desired behavior when the function is used as a guarding predicate of a box.
+ */
+def verifyUsedAdditionalRegisters(box: Box, used: Int): Boolean
+
+/** Returns true if `box` holds at least one unit of the token with id `token`. */
+def verifyBoxHasMarkerToken(box: Box, token: Coll[Byte]): Boolean
+
+/** Returns true if `box` does not hold the token with id `token`. */
+def verifyBoxHasNoMarkerToken(box: Box, token: Coll[Byte]): Boolean
+
+/** Returns true if every token of `inBox` is preserved in `outBox`, except for the
+ * token with id `token` whose amount in `outBox` must be exactly `amount` less than
+ * in `inBox`.
+ * NOTE: the check is a `forall` over the tokens of `inBox`, hence it is vacuously
+ * true when `inBox` does not hold `token` at all (nothing is spent).
+ * NOTE: spending the token in full (down to zero, i.e. `token` absent in `outBox`)
+ * returns false: the function requires `outBox` to still hold the token.
+ * NOTE: the amount comparison uses checked arithmetic (`outAmount + amount`), so if
+ * the sum overflows `Long` the evaluation fails with an exception instead of
+ * returning false.
+ */
+def verifySpentToken(inBox: Box, outBox: Box, token: Coll[Byte], amount: Long): Boolean
 ```
+
+The names of the predefined functions are reserved: a script that declares a `val` or a
+`def` with the name of a predefined function (e.g. `def verifySpentToken(...)`) is rejected
+by the compiler with a `Variable ... already defined` error.
 
 ## Known Limitations
 
