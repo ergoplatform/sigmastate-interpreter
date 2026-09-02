@@ -10,6 +10,11 @@ import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
 import sigma.ast.{ByteArrayConstant, ErgoTree, GroupElementConstant}
 import sigma.interpreter.ContextExtension
+import sigma.crypto.{BigIntegers, CryptoConstants}
+import sigma.serialization.GroupElementSerializer
+import scorex.crypto.hash.Blake2b256
+
+import java.math.BigInteger
 
 
 class SchnorrSignatureVerificationSpecification extends CompilerTestingCommons with CompilerCrossVersionProps {
@@ -27,6 +32,7 @@ class SchnorrSignatureVerificationSpecification extends CompilerTestingCommons w
     */
   property("Schnorr signature verification contract compiles and verifies correctly") {
     // Run with V6 activation to properly handle rule #1011 replacement
+    forEachActivatedScriptVersion(Seq(VersionContext.V6SoftForkVersion)) {
     VersionContext.withVersions(VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion) {
     // Strong Fiat-Shamir Schnorr signature verification contract
     val schnorrScript = """
@@ -78,7 +84,7 @@ class SchnorrSignatureVerificationSpecification extends CompilerTestingCommons w
     // Full verification: Test the Schnorr signature contract with proper verification flow
     // The contract implements strong Fiat-Shamir Schnorr verification
     
-    val prover = new ContextEnrichingTestProvingInterpreter
+    val prover = new ErgoLikeTestProvingInterpreter
 
     // Use the proving interpreter's secret for the public key
     val secret = prover.dlogSecrets.head
@@ -105,48 +111,92 @@ class SchnorrSignatureVerificationSpecification extends CompilerTestingCommons w
       IndexedSeq(outputBox)
     )
 
-    val ctx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(inputBox),
-      tx,
-      self = inputBox,
-      activatedVersionInTests
+    // Real Schnorr signing off-chain, following the algorithm from the forum post.
+    // Important detail: the contract decodes the challenge with byteArrayToBigInt, which is a
+    // SIGNED two's-complement interpretation (see CSigmaDslBuilder.byteArrayToBigInt), so the
+    // challenge hash must be interpreted as a signed big-endian integer both off-chain and
+    // on-chain. In contrast, z is decoded with UnsignedBigInt (unsigned, 256 bits), so
+    // z = (r + x*e) mod q always fits without the "retry until z fits 255 bits" loop that the
+    // forum version needs (there z was decoded with signed byteArrayToBigInt as well).
+    val group = CryptoConstants.dlogGroup
+    val q = CryptoConstants.groupOrder
+    val x = secret.w
+    val publicKeyPoint = publicKey.value
+
+    /** Sign msgBytes with the strong Fiat-Shamir Schnorr scheme, returning aBytes(33) || zBytes(32). */
+    def sign(msgBytes: Array[Byte]): Array[Byte] = {
+      val r = BigIntegers.createRandomInRange(BigInteger.ONE, q.subtract(BigInteger.ONE), group.secureRandom)
+      val aPoint = group.exponentiate(group.generator, r)
+      val aBytes = GroupElementSerializer.toBytes(aPoint)
+      val pkBytes = GroupElementSerializer.toBytes(publicKeyPoint)
+      val eBytes = Blake2b256(aBytes ++ msgBytes ++ pkBytes)
+      val e = new BigInteger(eBytes) // signed interpretation, same as byteArrayToBigInt on-chain
+      val z = (BigInt(r) + BigInt(x) * BigInt(e)).mod(BigInt(q)).bigInteger
+      val zRaw = z.toByteArray // two's-complement, may carry a leading 0x00 byte
+      val zBytes = new Array[Byte](32)
+      val copyLen = math.min(32, zRaw.length)
+      System.arraycopy(zRaw, zRaw.length - copyLen, zBytes, 32 - copyLen, copyLen)
+      aBytes ++ zBytes
+    }
+
+    def contextWithSignature(sigBytes: Array[Byte], box: ErgoBox = inputBox, transaction: UnsignedErgoLikeTransaction = tx): ErgoLikeContext = {
+      val baseCtx = ErgoLikeContextTesting(
+        currentHeight = 100000,
+        lastBlockUtxoRoot = AvlTreeData.dummy,
+        minerPubkey = ErgoLikeContextTesting.dummyPubkey,
+        boxesToSpend = IndexedSeq(box),
+        transaction,
+        self = box,
+        activatedVersionInTests
+      )
+      baseCtx.withExtension(ContextExtension(Map(
+        0.toByte -> ByteArrayConstant(sigBytes)
+      )))
+    }
+
+    // Test 1: a genuine Schnorr signature must be accepted (positive case)
+    val validSignature = sign(messageBytes)
+    validSignature.length shouldBe 65
+
+    val extendedCtx = contextWithSignature(validSignature)
+
+    prover.prove(schnorrTree, extendedCtx, fakeMessage).isSuccess shouldBe true
+
+    // Test 2: signature over a different message must be rejected.
+    // The box's R5 message differs from what was signed.
+    val otherMessageBytes = "A different message".getBytes("UTF-8")
+    val otherMessageBox = testBox(
+      1000000L,
+      schnorrTree,
+      100000,
+      additionalRegisters = Map(
+        ErgoBox.R4 -> GroupElementConstant(publicKey.value),
+        ErgoBox.R5 -> ByteArrayConstant(otherMessageBytes)
+      )
     )
+    val otherMessageTx = UnsignedErgoLikeTransaction(
+      IndexedSeq(new UnsignedInput(otherMessageBox.id)),
+      IndexedSeq(outputBox)
+    )
+    prover.prove(schnorrTree, contextWithSignature(validSignature, otherMessageBox, otherMessageTx), fakeMessage).isSuccess shouldBe false
 
-    // Test 1: Contract structure verification
-    // The contract should be able to process signature format correctly
-    // Create a properly formatted signature (33 bytes a + 32 bytes z)
-    val mockSignature = Array.fill[Byte](65)(0x01)
-    
-    val contextExtension = ContextExtension(Map(
-      0.toByte -> ByteArrayConstant(mockSignature)
-    ))
+    // Test 3: tampered signature (last byte of z changed) must be rejected
+    val tamperedSignature = validSignature.clone()
+    tamperedSignature(64) = (tamperedSignature(64) ^ 0x01).toByte
+    prover.prove(schnorrTree, contextWithSignature(tamperedSignature), fakeMessage).isSuccess shouldBe false
 
-    val extendedCtx = ctx.withExtension(contextExtension)
-
-    // The contract should be able to process the signature format correctly
-    // Even if the signature itself is invalid, the contract structure should work
-    prover.prove(schnorrTree, extendedCtx, fakeMessage)
-    
-    // Test 2: Test with empty signature - should fail
+    // Test 4: empty signature - should fail
     val emptySignature = Array.empty[Byte]
-    val emptyContextExtension = ContextExtension(Map(
-      0.toByte -> ByteArrayConstant(emptySignature)
-    ))
-    val emptyExtendedCtx = ctx.withExtension(emptyContextExtension)
+    prover.prove(schnorrTree, contextWithSignature(emptySignature), fakeMessage).isSuccess shouldBe false
 
-    prover.prove(schnorrTree, emptyExtendedCtx, fakeMessage).isSuccess shouldBe false
-
-    // Test 3: Test with wrong public key - should fail
-    val wrongProver = new ContextEnrichingTestProvingInterpreter
+    // Test 5: Test with wrong public key - should fail
+    val wrongProver = new ErgoLikeTestProvingInterpreter
     val wrongSecret = wrongProver.dlogSecrets.head
     val wrongPublicKey = wrongSecret.publicImage
 
     val wrongInputBox = testBox(
-      1000000L, 
-      schnorrTree, 
+      1000000L,
+      schnorrTree,
       100000,
       additionalRegisters = Map(
         ErgoBox.R4 -> GroupElementConstant(wrongPublicKey.value),
@@ -159,26 +209,15 @@ class SchnorrSignatureVerificationSpecification extends CompilerTestingCommons w
       IndexedSeq(outputBox)
     )
 
-    val wrongCtx = ErgoLikeContextTesting(
-      currentHeight = 100000,
-      lastBlockUtxoRoot = AvlTreeData.dummy,
-      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
-      boxesToSpend = IndexedSeq(wrongInputBox),
-      wrongTx,
-      self = wrongInputBox,
-      activatedVersionInTests
-    ).withExtension(contextExtension)
+    // signature computed for the right key, but the box carries a different public key
+    prover.prove(schnorrTree, contextWithSignature(validSignature, wrongInputBox, wrongTx), fakeMessage).isSuccess shouldBe false
 
-    prover.prove(schnorrTree, wrongCtx, fakeMessage).isSuccess shouldBe false
-
-    // Test 4: Test with wrong signature format - should fail
-    val wrongFormatSignature = Array.fill[Byte](64)(0x42) // Wrong length
-    val wrongFormatContextExtension = ContextExtension(Map(
-      0.toByte -> ByteArrayConstant(wrongFormatSignature)
-    ))
-    val wrongFormatExtendedCtx = ctx.withExtension(wrongFormatContextExtension)
-
-    prover.prove(schnorrTree, wrongFormatExtendedCtx, fakeMessage).isSuccess shouldBe false
+    // Test 6: signature of wrong total length must be rejected.
+    // Note: the contract has no explicit length checks; a truncated/padded signature is rejected
+    // because the bytes don't decode to a valid point or don't satisfy the verification equation.
+    val wrongLengthSignature = Array.fill[Byte](64)(0x42)
+    prover.prove(schnorrTree, contextWithSignature(wrongLengthSignature), fakeMessage).isSuccess shouldBe false
+    }
     }
   }
 
