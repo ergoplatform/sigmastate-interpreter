@@ -111,7 +111,7 @@ object Platform {
     if (SecP256K1Native.isEnabled && !p.value.isInfinity) {
       SecP256K1Native.multiplyPointByScalar(p.value, n) match {
         case Some(result) => Ecp(result)
-        case None         => Ecp(p.value.multiply(n))  // n == 0 → infinity via BC
+        case None         => Ecp(p.value.multiply(n))  // n ≡ 0 (mod order) → infinity via BC
       }
     } else {
       Ecp(p.value.multiply(n))

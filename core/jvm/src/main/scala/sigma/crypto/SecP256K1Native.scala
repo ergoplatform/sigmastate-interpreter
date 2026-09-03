@@ -19,12 +19,14 @@ private[crypto] object SecP256K1Native {
   private lazy val groupOrder = x9params.getN
 
   /** EC scalar multiplication using the native library.
-    * Returns None when the effective scalar is 0 (result is the point at infinity) or on any
-    * error, so the caller can fall back to BouncyCastle.
+    * Returns None when the scalar is congruent to 0 modulo the group order (result is the point
+    * at infinity) or on any error, so the caller can fall back to BouncyCastle.
     */
   def multiplyPointByScalar(point: ECPoint, n: BigInteger): Option[ECPoint] = {
-    // secp256k1-jni requires a positive scalar in [1, order-1]; normalise negative inputs.
-    val scalar = if (n.signum() < 0) n.mod(groupOrder) else n
+    // secp256k1-jni accepts only a 32-byte scalar in [1, order-1]. Every non-infinity point of
+    // secp256k1 has exactly `groupOrder` as its order, so p * n == p * (n mod order) for any
+    // integer n (negative, or wider than 256 bits), which is what BouncyCastle computes.
+    val scalar = n.mod(groupOrder)
     if (scalar.signum() == 0) return None
     try {
       val pointBytes  = point.getEncoded(true)     // compressed, 33 bytes
@@ -36,16 +38,16 @@ private[crypto] object SecP256K1Native {
     }
   }
 
-  // BigInteger.toByteArray() is signed and variable-length; secp256k1 needs 32 unsigned bytes.
+  /** Big-endian unsigned 32-byte encoding of `n`, which must be in [0, 2^256).
+    * BigInteger.toByteArray() is signed and variable-length: it may carry a leading 0x00 sign
+    * byte (33 bytes for values with bit 255 set) or be shorter than 32 bytes.
+    */
   private def toScalarBytes(n: BigInteger): Array[Byte] = {
+    require(n.signum() >= 0 && n.bitLength() <= 256, s"scalar out of range: $n")
     val raw = n.toByteArray
-    raw.length match {
-      case 33  => raw.tail  // drop leading 0x00 sign byte
-      case 32  => raw
-      case len =>
-        val padded = new Array[Byte](32)
-        System.arraycopy(raw, 0, padded, 32 - len, len)
-        padded
-    }
+    val padded = new Array[Byte](32)
+    val len = math.min(raw.length, 32)
+    System.arraycopy(raw, raw.length - len, padded, 32 - len, len)
+    padded
   }
 }
