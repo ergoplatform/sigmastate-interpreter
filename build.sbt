@@ -192,7 +192,8 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     crossScalaSettings,
     moduleNameSetting("org.scorexfoundation.sigma"),
     libraryDependencies ++= Seq(
-      bouncycastleBcprov
+      bouncycastleBcprov,
+      "org.bitcoin-s" % "bitcoin-s-secp256k1jni" % "1.9.10"
     )
   )
   .jsSettings(
