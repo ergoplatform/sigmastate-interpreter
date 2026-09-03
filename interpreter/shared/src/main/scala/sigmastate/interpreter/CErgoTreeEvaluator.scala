@@ -5,14 +5,14 @@ import sigma.ast._
 import sigma.ast.syntax._
 import sigmastate.eval.{CAvlTreeVerifier, CProfiler}
 import sigmastate.interpreter.Interpreter.ReductionResult
-import sigma.{AvlTree, Coll, Colls, Context, Header, VersionContext}
+import sigma.{AvlTree, Coll, Colls, Context, VersionContext}
 import sigma.util.Extensions._
 import debox.{cfor, Buffer => DBuffer}
 import scorex.crypto.authds.ADKey
 import sigma.ast.SAvlTreeMethods._
 import sigma.ast.SType
 import sigma.data.{CSigmaProp, KeyValueColl, SigmaBoolean}
-import sigma.eval.{AvlTreeVerifier, ErgoTreeEvaluator, EvalSettings, Profiler}
+import sigma.eval.{AvlTreeVerifier, ErgoTreeEvaluator, EvalSettings, Profiler, StarkVerificationCapability}
 import sigma.eval.ErgoTreeEvaluator.DataEnv
 
 import scala.collection.compat.immutable.ArraySeq
@@ -62,7 +62,24 @@ class CErgoTreeEvaluator(
   val constants: Seq[Constant[SType]],
   protected val coster: CostAccumulator,
   val profiler: Profiler,
-  val settings: EvalSettings) extends ErgoTreeEvaluator {
+  val settings: EvalSettings,
+  override val starkVerificationCapability: StarkVerificationCapability)
+    extends ErgoTreeEvaluator {
+
+  /** Binary-compatible pre-EIP constructor. It is deliberately fail-closed. */
+  def this(
+      context: Context,
+      constants: Seq[Constant[SType]],
+      coster: CostAccumulator,
+      profiler: Profiler,
+      settings: EvalSettings) =
+    this(
+      context,
+      constants,
+      coster,
+      profiler,
+      settings,
+      StarkVerificationCapability.Unavailable)
 
   override def createTreeVerifier(tree: AvlTree, proof: Coll[Byte]): AvlTreeVerifier =
     CAvlTreeVerifier(tree, proof)
@@ -561,7 +578,13 @@ object CErgoTreeEvaluator {
       initialCost = JitCost.fromBlockCost(context.initCost.toIntExact),
       costLimit = Some(JitCost.fromBlockCost(context.costLimit.toIntExact)))
     val sigmaContext = context.toSigmaContext()
-    eval(sigmaContext, costAccumulator, constants, exp, evalSettings)
+    eval(
+      sigmaContext,
+      costAccumulator,
+      constants,
+      exp,
+      evalSettings,
+      context.starkVerificationCapability)
   }
 
   /** Evaluate the given expression in the given Ergo context using the given settings.
@@ -580,9 +603,16 @@ object CErgoTreeEvaluator {
            costAccumulator: CostAccumulator,
            constants: Seq[Constant[SType]],
            exp: SValue,
-           evalSettings: EvalSettings): (Any, Int) = {
+           evalSettings: EvalSettings,
+           starkVerificationCapability: StarkVerificationCapability =
+             StarkVerificationCapability.Unavailable): (Any, Int) = {
     val evaluator = new CErgoTreeEvaluator(
-      sigmaContext, constants, costAccumulator, DefaultProfiler, evalSettings)
+      sigmaContext,
+      constants,
+      costAccumulator,
+      DefaultProfiler,
+      evalSettings,
+      starkVerificationCapability)
     val res       = evaluator.eval(Map(), exp)
     val cost = costAccumulator.totalCost.toBlockCost // scale to block cost
     (res, cost)

@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "kind": "eip0045-independent-raw-seal-kat",
+  "description": "Minimal cross-implementation KAT extracted from a real RISC0 v3 succinct receipt verified on an independent JVM implementation.",
+  "source": {
+    "repository": "https://github.com/arkadianet/sigmastate-interpreter",
+    "commit": "a2da7834efd84e0e25433c78584a5872d1fa0458",
+    "branch": "feat/eip-0045-verifystark",
+    "receiptFile": "core/jvm/src/test/resources/stark-kats/proof_inner.bin",
+    "receiptLength": 223253,
+    "receiptSha256": "fbca274ed8ea871b24b641e4a06dd07841ca43c3fa81501898c5a83e89973937",
+    "rawSealOffset": 12,
+    "rawSealLength": 222668,
+    "license": "MIT"
+  },
+  "oracle": {
+    "receiptStructure": "receipt_struct.tsv lines 6, 9, 40, and 47",
+    "claimTranscript": "transcript_capture.tsv lines 4808, 4813, and 4814",
+    "verifier": "risc0-verifier 0.11.0 with the RISC0 v3.0 stock profile"
+  },
+  "expected": {
+    "terminalControlKind": 1,
+    "terminalParameter": 16,
+    "claimDigest": "2aabe9a6f7d57acb9bb9ce89251d5ab6ba094beb9b0a5f79cef75d200f12977c"
+  },
+  "files": [
+    {
+      "path": "raw-seal.bin",
+      "role": "raw-succinct-seal",
+      "length": 222668,
+      "sha256": "d7bdef7d0b3759a6d8ba43c9b531b017112b07e42af2761fbe654a596d759d79"
+    },
+    {
+      "path": "claim-digest.bin",
+      "role": "expected-receipt-claim-digest",
+      "length": 32,
+      "sha256": "e8b4b5217ae717e000f8fb3e36a510aeef5ed5c79d04f2c600b74997b5858cfc"
+    },
+    {
+      "path": "image-id.bin",
+      "role": "guest-image-id",
+      "length": 32,
+      "sha256": "0e3a24e2345c1d8e4c3ef2e769aeb3c15465df56d9355c377c4de54cec97fa69"
+    },
+    {
+      "path": "journal.bin",
+      "role": "guest-journal",
+      "length": 67,
+      "sha256": "be21ccbca9266d302b484d9a4dd01247f6d2cba5e4dc30474a7238f2033ba2e8"
+    }
+  ]
+}

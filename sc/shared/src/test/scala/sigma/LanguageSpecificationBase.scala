@@ -137,8 +137,8 @@ abstract class LanguageSpecificationBase extends SigmaDslTesting
     FixedCostItem(ValUse)
   )
 
-  /** Helper method to create the given expected results for all tree versions. */
-  def expectedSuccessForAllTreeVersions[A](value: A, cost: Int, costDetails: CostDetails) = {
+  /** Helper method to create the given expected results for historical tree versions 0..3. */
+  def expectedSuccessForLegacyTreeVersions[A](value: A, cost: Int, costDetails: CostDetails) = {
     val res = ExpectedResult(Success(value), Some(cost)) -> Some(costDetails)
     Seq(0, 1, 2, 3).map(version => version -> res)
   }

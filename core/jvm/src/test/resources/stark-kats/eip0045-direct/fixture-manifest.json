@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "candidateStatus": "non-final-pre-B3-test-evidence",
+  "upstream": {
+    "repository": "https://github.com/risc0/risc0.git",
+    "commit": "8eb06ab020a92dc5b63ba6dd0836d432aba6d890",
+    "receiptKind": "succinct-single-lift",
+    "receiptOracleVerified": true
+  },
+  "fixture": {
+    "segmentPo2": 15,
+    "outerPo2": 18,
+    "transportChunkLengths": [65535, 65535, 65535, 26063],
+    "files": [
+      {
+        "path": "po2-15-raw-seal.bin",
+        "encoding": "raw-binary",
+        "length": 222668,
+        "sha256": "088e6a306c7143f5a3e057924c42f63a6eb58dd3c30686a8ade5082fac4b386e"
+      },
+      {
+        "path": "po2-15-claim-digest.bin",
+        "encoding": "raw-binary",
+        "length": 32,
+        "sha256": "df9df2763693f97b85acd9d3cda4b13e2421b3dc052a6f91ab995c89ae75ee3c"
+      },
+      {
+        "path": "profile-oracle.tsv",
+        "encoding": "utf8-lf-text",
+        "length": 1349,
+        "sha256": "a8ade4dcc494e5f2475bda1e5e8dae023aba0c1c8531904d92367297b98d71c0"
+      }
+    ]
+  },
+  "sharedCircuitEvidence": [
+    {
+      "path": "../circuit_taps.tsv",
+      "encoding": "utf8-lf-text",
+      "length": 12898,
+      "sha256": "42121cd7201f3e586868fa4eee5389b93d4d686a2475983dc6941984f2baf4c7"
+    },
+    {
+      "path": "../circuit_polyext_ops.tsv",
+      "encoding": "utf8-lf-text",
+      "length": 266094,
+      "sha256": "81d933813e0079a8c98637579ce7d673f695f0aa303a72681715700516dc0d81"
+    }
+  ],
+  "scope": "JVM direct raw-seal verifier interoperability fixture; not an activated profile manifest"
+}

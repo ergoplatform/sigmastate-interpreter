@@ -1,0 +1,649 @@
+EIP-0045 RISC0 V3 SUCCINCT ALGORITHM ARTIFACT
+
+1. STATUS AND RESULT
+
+This artifact defines one total verification predicate. Its immutable inputs are
+the already authenticated profile manifest M, the strictly decoded binary-data
+artifact D, programId, ErgoStatementV1 J, and proofChunks. M and D are profile
+package inputs, not transaction-selected parameters.
+
+PACKAGE_INVALID means that M, D, or a derived verifier parameter is internally
+inconsistent. It prevents activation or node startup. REJECT means that the
+invocation returns false after the host has applied the evaluation and costing
+rules. ACCEPT means that it returns true. No proof-controlled byte, word,
+index, exponent, or length may raise an exception or reach an unchecked shift,
+allocation, offset, or arithmetic operation. Such a condition is REJECT.
+
+All array indices and loop bounds are zero based. Half-open ranges [a,b) include
+a and exclude b. All additions, multiplications, shifts, byte counts, word
+counts, offsets, and allocation sizes are checked in an integer type wide
+enough for the result before conversion to an implementation index. Overflow,
+underflow, a negative value, or an unrepresentable implementation index is the
+result appropriate to its source: PACKAGE_INVALID for M or D, REJECT for proof
+or invocation input.
+
+Byte equality is exact and compares unsigned octets. u16le and u32le are exact
+unsigned little-endian encodings. SHA256 returns the 32 digest bytes in ordinary
+digest byte order. ASCII strings below denote exactly their displayed octets.
+Every parser has strict EOF. There are no optional fields, alternate encodings,
+ignored padding bytes, grinding nonce, receipt wrapper, or implementation-
+selected parameters.
+
+2. PROFILE PACKAGE INPUTS AND B2 DECODER
+
+Use these authenticated manifest fields:
+
+  M.exactProofBytes
+  M.outerPo2
+  M.innerControlRoot, 32 bytes
+  M.entries, in manifest order, each (kind:u8, parameter:u8, controlId[32])
+
+The B2 artifact D is exactly 65119 bytes. It has no magic, version, padding,
+reserved field, alignment gap, optional field, or trailing byte. Unsuffixed
+one-byte fields are u8. Every wider integer is unsigned little endian. Decode
+the fixed header at these half-open byte ranges and require the stated value:
+
+  [0,4)    p:u32                         2013265921
+  [4,5)    extensionDegree               4
+  [5,9)    extensionBeta:u32             11
+  [9,10)   maxRootPo2                    27
+  [10,11)  stateCells                    24
+  [11,12)  rateCells                     16
+  [12,13)  outputCells                   8
+  [13,14)  halfFullRounds                4
+  [14,15)  partialRounds                 21
+  [15,16)  sboxDegree                    7
+  [16,18)  storedRoundConstantCount:u16  213
+  [18,19)  internalDiagonalCount         24
+  [19,20)  queries                       50
+  [20,21)  inverseRate                   4
+  [21,22)  friFold                       16
+  [22,23)  friFoldPo2                    4
+  [23,25)  friMinDegree:u16              256
+  [25,26)  outputSize                    32
+  [26,27)  mixSize                       20
+  [27,28)  checkSize                     16
+  [28,30)  tapCount:u16                  643
+  [30,31)  groupCount                    3
+  [31,34)  groupSizes                    12,23,128
+  [34,35)  combinationCount              5
+  [35,36)  totalCombinationBacks         20
+  [36,38)  instructionCount:u16          12359
+  [38,40)  fieldVariableCount:u16        11130
+  [40,42)  mixVariableCount:u16          1229
+  [42,44)  returnedMixVariable:u16       1228
+  [44,48)  extensionCoefficientRemap     0,2,1,3
+  [48,51)  groupIdentifiers              0,1,2
+  [51,52)  proofSystemInfoLength         16
+  [52,53)  circuitInfoLength             16
+  [53,54)  tapRecordWidth                5
+  [54,55)  extensionChallengeScale       3
+  [55,71)  proofSystemInfo               ASCII("RISC0_STARK:v1__")
+  [71,87)  circuitInfo                   ASCII("RECURSION:rev1v1")
+
+Decode these tables in order:
+
+  [87,199)    reverseRoots: 28 consecutive u32le values
+  [199,1051)  sparseRoundConstants: 213 consecutive u32le values
+  [1051,1147) internalDiagonal: 24 consecutive u32le values
+  [1147,4362) tapRecords: 643 consecutive five-byte records
+  [4362,65119) PolyExt: exactly 12359 variable-width instructions
+
+Require every value in reverseRoots, sparseRoundConstants,
+internalDiagonal, and every Const or ConstExt operand to be in [0,p). A tap
+record is exactly group:u8 || offset:u8 || back:u8 || combo:u8 || skip:u8.
+Require group to be one of groupIdentifiers, offset to be below that group's
+groupSize, combo<combinationCount, and skip>0.
+
+Starting at tap record zero, each skip-sized run is one register. Require the
+run to fit, and every record in it to have the same group, offset, combo, and
+skip. Require its back values to be strictly increasing and therefore unique.
+The registers must enumerate exactly one (group,offset) pair for every column,
+in this lexicographic order: group 0 offsets [0,12), group 1 offsets [0,23),
+then group 2 offsets [0,128). For each combo, all assigned registers must have
+one identical back list. Require all five combos to occur, their five back
+lists to be pairwise distinct, and the sum of those five list lengths to equal
+totalCombinationBacks. The final run must end exactly at tap record 643.
+
+Each PolyExt instruction starts with a one-byte tag and has exactly this wire
+shape and required census:
+
+  tag 0 Const:     value:u32le                         width 5, count 284
+  tag 1 ConstExt:  c0:u32le,c1:u32le,c2:u32le,c3:u32le
+                                                        width 17, count 0
+  tag 2 Get:       tap:u16le                           width 3, count 669
+  tag 3 GetGlobal: arg:u16le,offset:u16le              width 5, count 52
+  tag 4 Add:       left:u16le,right:u16le              width 5, count 4061
+  tag 5 Sub:       left:u16le,right:u16le              width 5, count 1385
+  tag 6 Mul:       left:u16le,right:u16le              width 5, count 4679
+  tag 7 True:      no operands                         width 1, count 1
+  tag 8 AndEqz:    chain:u16le,inner:u16le             width 5, count 1076
+  tag 9 AndCond:   chain:u16le,cond:u16le,inner:u16le width 7, count 152
+
+No other tag exists. Field-variable and mix-variable indices are separate
+zero-based append-only spaces. Const, ConstExt, Get, GetGlobal, Add, Sub, and
+Mul append one field variable. True, AndEqz, and AndCond append one mix
+variable. Get requires tap<tapCount. GetGlobal requires either arg=0 and
+offset<outputSize, or arg=1 and offset<mixSize. Add, Sub, and Mul require both
+operands to name earlier field variables. AndEqz requires an earlier mix chain
+and an earlier field inner value. AndCond requires an earlier mix chain, an
+earlier field condition, and an earlier mix inner value.
+
+After exactly instructionCount instructions, require the computed counts to be
+fieldVariableCount and mixVariableCount, returnedMixVariable to name the last
+mix variable, the instruction census above to match, and the cursor to equal
+65119. Re-encoding the decoded values under this grammar must reproduce every
+byte of D exactly. Any discrepancy is PACKAGE_INVALID. This section is the
+complete B2 grammar; no external prose or JSON participates in its meaning.
+
+The fixed header defines all B2 parameters and dimensions used below. Require
+friFold = 2^friFoldPo2. Require M.innerControlRoot and every
+M.entries[*].controlId, each interpreted as eight u32le words, to have every
+word in [0,p). Artifact-envelope digests are opaque 32-byte BLAKE2b values and
+are not field-decoded. Require exactly ten manifest entries, in this order:
+
+  (kind=1, parameter=15), (kind=1, parameter=16),
+  (kind=1, parameter=17), (kind=1, parameter=18),
+  (kind=1, parameter=19), (kind=1, parameter=20),
+  (kind=1, parameter=21), (kind=1, parameter=22),
+  (kind=2, parameter=0),  (kind=3, parameter=0).
+
+Kind 1 denotes a lift terminal and its parameter is the segment exponent.
+Kind 2 denotes a join terminal and kind 3 denotes a resolve terminal; their
+parameter is the reserved value zero. No other kind, parameter, order,
+duplicate key, or duplicate controlId is admitted. Require all manifest byte
+lengths and the manifest itself to have passed the profile manifest grammar
+before this algorithm is entered.
+
+Let:
+
+  E = extensionDegree
+  Q = queries
+  INV_RATE = inverseRate
+  FOLD = friFold
+  FOLD_PO2 = friFoldPo2
+  MIN_DEGREE = friMinDegree
+  OUTPUT_SIZE = outputSize
+  MIX_SIZE = mixSize
+  CHECK_SIZE = checkSize
+  T = tapCount
+  C = combinationCount
+  ACCUM_GROUP = groupIdentifiers[0]
+  CODE_GROUP = groupIdentifiers[1]
+  DATA_GROUP = groupIdentifiers[2]
+
+The B2 group-identifier order is semantically accum, code, data. groupSizeById
+is the exact mapping from each of those identifiers to the group size at the
+same B2 position. No numeric sort, name lookup, or caller mapping is used.
+
+Require M.outerPo2 <= maxRootPo2. Set TOT_CYCLES = 2^M.outerPo2 and
+DOMAIN = TOT_CYCLES * INV_RATE using checked arithmetic. Require both values to
+be positive powers of two and representable by every verifier index operation.
+Require the exact roots needed by all later root-table indexes to exist.
+
+3. BABYBEAR AND EXT4
+
+Base-field values are canonical integers in [0,p). Define:
+
+  FADD(a,b) = (a+b) mod p
+  FSUB(a,b) = (a-b) mod p
+  FMUL(a,b) = (a*b) mod p
+  FNEG(a)   = (-a) mod p
+  FPOW(a,e) = a^e mod p for e >= 0 by ordinary square-and-multiply
+  FINV(a)   = FPOW(a,p-2), defined only when a != 0
+
+R = 2^32 mod p and RINV = FINV(R). A raw RISC0 BabyBear word w is required to
+be in [0,p) and represents FROM_RAW(w) = FMUL(w,RINV). The raw encoding of a
+canonical value x is TO_RAW(x) = FMUL(x,R). This conversion applies at every
+explicit raw/canonical boundary below. It is never applied to M.outerPo2 when
+that literal raw inserted word is compared.
+
+An Ext4 value is (c0,c1,c2,c3), representing c0+c1*x+c2*x^2+c3*x^3 over
+F_p[x]/(x^4+extensionBeta). Addition, subtraction, and negation are component
+wise. Multiplication is the seven-coefficient schoolbook product followed from
+degree 6 down through degree 4 by replacing x^4 with -extensionBeta. Ext4
+exponentiation uses square-and-multiply. For nonzero a,
+EXT_INV(a) = a^(p^4-2). Define INV_OR_ZERO(a) as Ext4 zero when a is zero and
+EXT_INV(a) otherwise. BASE(a) = (a,0,0,0), EXT_ONE = BASE(1), and
+SCALE((c0,c1,c2,c3),s) = (FMUL(c0,s),FMUL(c1,s),FMUL(c2,s),FMUL(c3,s)).
+
+POLY_EVAL(coeff[0..n),x) evaluates ascending powers: initialize power=EXT_ONE
+and total=0; for i from 0 to n-1 set total=total+coeff[i]*power and
+power=power*x; return total.
+
+4. POSEIDON2
+
+Expand the sparse B2 round-constant stream into roundConstants[r][i]. Let
+RF = halfFullRounds, RP = partialRounds, WIDTH = stateCells, RATE = rateCells,
+and OUT = outputCells. There are 2*RF+RP rounds. For each round in increasing
+order, consume WIDTH stored constants for rounds r<RF or r>=RF+RP. For each
+other round consume one stored constant for cell 0 and set cells [1,WIDTH) to
+zero. Consume the sparse stream exactly; an early or trailing value is
+PACKAGE_INVALID.
+
+SBOX(x) = x^sboxDegree in F_p.
+
+CIRCULANT4(x0,x1,x2,x3) is:
+
+  t0 = x0+x1
+  t1 = x2+x3
+  t2 = 2*x1+t1
+  t3 = 2*x3+t0
+  t4 = 4*t1+t3
+  t5 = 4*t0+t2
+  t6 = t3+t5
+  t7 = t2+t4
+  return (t6,t5,t7,t4)
+
+All operations in that definition are base-field operations. MEXT(state):
+clone old=state, set state to zero, and set tmp[0..4) to zero. For block b from
+0 to WIDTH/4-1, let out=CIRCULANT4(old[4b],old[4b+1],old[4b+2],old[4b+3]);
+for j in [0,4), set tmp[j]=tmp[j]+out[j] and state[4b+j]=out[j]. Then for
+i in [0,WIDTH), set state[i]=state[i]+tmp[i mod 4]. Require WIDTH positive and
+divisible by 4.
+
+MINT(state): clone old=state, set sum to the field sum of all old cells, then
+for i in [0,WIDTH), set state[i]=sum+internalDiagonal[i]*old[i].
+
+POSEIDON_PERMUTE(state) requires exactly WIDTH canonical cells and does:
+
+  MEXT(state)
+  for r in [0,RF):
+    state[i]=SBOX(state[i]+roundConstants[r][i]) for every i
+    MEXT(state)
+  for r in [RF,RF+RP):
+    state[0]=SBOX(state[0]+roundConstants[r][0])
+    MINT(state)
+  for r in [RF+RP,2*RF+RP):
+    state[i]=SBOX(state[i]+roundConstants[r][i]) for every i
+    MEXT(state)
+
+UNPADDED_HASH(input) starts with WIDTH zero canonical cells and cursor=0. For
+each input element in order, overwrite state[cursor] with that element and
+increment cursor. When cursor=RATE, permute and reset cursor=0. After all input,
+if cursor is nonzero, overwrite state[cursor..RATE) with zero and permute. If
+the input is empty, overwrite state[0..RATE) with zero and permute. If a
+nonempty input ended exactly at RATE, do not add another block. Return a copy
+of state[0..OUT). Capacity cells are not cleared between blocks.
+
+HASH_CANONICAL(input) = map TO_RAW over UNPADDED_HASH(input).
+HASH_PAIR_RAW(leftRaw,rightRaw) requires OUT raw words in each input, maps each
+word through FROM_RAW, concatenates left then right, and returns
+HASH_CANONICAL of that 2*OUT-element canonical array.
+
+5. POSEIDON2 RNG AND READIOP
+
+The Fiat-Shamir RNG has WIDTH zero canonical cells and poolUsed=0.
+
+RNG_MIX(digestRaw[OUT]): if poolUsed != 0, permute the state and set
+poolUsed=0. Then for i in [0,OUT), set state[i]=state[i]+FROM_RAW(digestRaw[i]).
+Permute once. Leave poolUsed=0.
+
+RANDOM_ELEM(): if poolUsed=RATE, permute and set poolUsed=0. Return
+state[poolUsed], then increment poolUsed by one.
+
+RANDOM_EXT(): return Ext4(RANDOM_ELEM(), RANDOM_ELEM(), RANDOM_ELEM(),
+RANDOM_ELEM()) in that order.
+
+RANDOM_BITS(n): draw exactly four values. Set v to the first draw. For each of
+the remaining three draws in order, replace v with that draw only if v is zero.
+Return the low n bits of the final unsigned canonical v. There is no loop and
+all four draws are consumed even if the first is nonzero. Require n to be a
+valid fixed verifier-derived bit count.
+
+ReadIOP holds the raw seal-word array W, position pos=0, and a fresh RNG. Its
+operations are:
+
+  READ_RAW(n): if n words are unavailable, REJECT; otherwise return the next n
+    raw words unchanged and advance pos by n.
+  READ_FIELD(n): READ_RAW(n), require every word in [0,p), map FROM_RAW, and
+    return n canonical base-field values.
+  READ_DIGESTS(n): READ_RAW(n*OUT), partition in order into n arrays of OUT raw
+    words, require every digest word in [0,p), and return them.
+  COMMIT(digestRaw): require OUT reduced raw words and call RNG_MIX.
+  RANDOM_ELEM, RANDOM_EXT, RANDOM_BITS: call the corresponding RNG operation.
+  COMPLETE: true exactly when pos equals W.length.
+
+Reads do not alter the RNG. Random draws do not consume W. A COMMIT absorbs
+only the stated digest, never its length or source label.
+
+6. TAPSET RECONSTRUCTION
+
+Reconstruct the TapSet only from the ordered B2 tap records. Each record is
+(group,offset,back,combo,skip). First require each group identifier to equal
+one of the B2 group identifiers, offset < groupSize[group position], combo<C,
+and skip>0. Require records to be partitioned into nonempty contiguous groups
+in the exact B2 group-identifier order. Define groupBegin[g] as the first
+record index of group g and groupBegin[groupCount]=T.
+
+Walk registers with i=0. At record i let k=record[i].skip. Require i+k<=T.
+For j in [0,k), require record[i+j] to have the same group, offset, combo, and
+skip as record[i]. The register is (group,offset,combo,backs), where backs[j]
+is record[i+j].back in that exact order. Append it and set i=i+k. Require the
+walk to end exactly at T. Re-require the B2 decoder invariants at this runtime
+boundary: one register for every (group,offset) in lexicographic group/offset
+order and strictly increasing backs inside every register.
+
+For each combo c, the first register having combo c defines comboBacks[c] as
+an exact copy of its backs. Every later register having combo c must have the
+same length and byte-for-byte equal backs. Require every combo to occur. Define
+comboBegin[0]=0 and comboBegin[c+1]=comboBegin[c]+comboBacks[c].length in combo
+index order. Define comboTaps as the concatenation of comboBacks[0], then
+comboBacks[1], and so on. Require comboBegin[C]=totalCombinationBacks. The tap
+lists for distinct combos must be pairwise distinct. The tap index space is the
+original record index space [0,T); the register index space is the derived
+register order; the combo-back index space is
+[0,totalCombinationBacks).
+
+7. POLYEXT PROGRAM
+
+Validate the B2 instruction stream before activation. Field-variable and
+mix-variable indices are distinct zero-based append-only spaces. Const,
+ConstExt, Get, GetGlobal, Add, Sub, and Mul append one field variable. True,
+AndEqz, and AndCond append one mix variable. Every operand must reference an
+already appended variable in its own space. Get references [0,T). GetGlobal
+arg 0 references [0,OUTPUT_SIZE); arg 1 references [0,MIX_SIZE); no other arg
+is allowed. Require the final counts and returned mix index to equal B2.
+
+Execute the validated instructions in their stored order with empty fp,
+mixTotal, and mixMultiplier arrays. Inputs are tap evaluations u[0..T), global
+arrays args[0]=out and args[1]=mixGlobals, and challenge polyMix.
+
+  Const(v):       append BASE(v) to fp.
+  ConstExt(a,b,c,d): append Ext4(a,b,c,d) to fp.
+  Get(t):         append u[t] to fp.
+  GetGlobal(a,o): append BASE(args[a][o]) to fp.
+  Add(a,b):       append fp[a]+fp[b] to fp.
+  Sub(a,b):       append fp[a]-fp[b] to fp.
+  Mul(a,b):       append fp[a]*fp[b] to fp.
+  True:           append mixTotal=0 and mixMultiplier=EXT_ONE.
+  AndEqz(c,v):    append
+      mixTotal[c] + mixMultiplier[c]*fp[v],
+      mixMultiplier[c]*polyMix.
+  AndCond(c,q,v): append
+      mixTotal[c] + fp[q]*mixTotal[v]*mixMultiplier[c],
+      mixMultiplier[c]*mixMultiplier[v].
+
+Return mixTotal[returnedMixVariable]. No instruction may be reordered, folded,
+deduplicated, or interpreted in a combined field/mix index space.
+
+8. MERKLE TREES
+
+MERKLE_CREATE(iop,rowSize,colSize) requires rowSize to be a positive power of
+two and colSize>0. Let layers=log2(rowSize). Set topLayer=0, then for increasing
+i starting at 1 while i<layers and 2^i<=Q set topLayer=i. Set topSize=2^topLayer.
+Read exactly topSize raw digests with READ_DIGESTS. Treat them as virtual nodes
+[topSize,2*topSize). Reconstruct virtual nodes [1,topSize) bottom-up with
+HASH_PAIR_RAW(left,right), where node i has children 2i and 2i+1. The root is
+virtual node 1, or the only supplied top digest when topSize=1. COMMIT(root).
+Return the immutable tree state including the supplied top row and reconstructed
+upper nodes.
+
+MERKLE_OPEN(tree,iop,index) requires 0<=index<tree.rowSize. Read
+tree.colSize canonical values with READ_FIELD and set cur=HASH_CANONICAL(row).
+Set node=index+tree.rowSize. While node>=2*tree.topSize, read one raw sibling
+digest. If node is odd set cur=HASH_PAIR_RAW(sibling,cur), otherwise set
+cur=HASH_PAIR_RAW(cur,sibling). Then set node=floor(node/2). When the loop ends,
+compare cur exactly with the already stored virtual node at node. Mismatch is
+REJECT. Return the canonical row.
+
+9. EXPECTED CLAIM
+
+Require programId to contain exactly 32 bytes. J is the exact host-constructed
+ErgoStatementV1 byte string and has already passed its global grammar and
+payload bound. Define Z as 32 zero bytes and:
+
+  TS(tag,down[0..n),data[0..m)) =
+    SHA256(SHA256(ASCII(tag)) || down[0] || ... || down[n-1] ||
+           u32le(data[0]) || ... || u32le(data[m-1]) || u16le(n))
+
+The value n fits u16 and every data element fits u32. The value m is not
+serialized and no data-count field is appended. Construct:
+
+  journalDigest = SHA256(J)
+  post = TS("risc0.SystemState", [Z], [0])
+  output = TS("risc0.Output", [journalDigest,Z], [])
+  expectedClaim =
+    TS("risc0.ReceiptClaim", [Z,programId,post,output], [0,0])
+
+No assumptions, non-OK exit code, alternate journal encoding, receipt wrapper,
+or other tagged-structure field is accepted.
+
+10. CANONICAL RAW-SEAL TRANSPORT AND OUTPUT DECODING
+
+Derive chunkCapacity=65535 and
+chunkCount=ceil(M.exactProofBytes/chunkCapacity) with checked arithmetic.
+Require M.exactProofBytes>0. Require proofChunks.length=chunkCount. Every
+nonfinal chunk must contain chunkCapacity bytes and the final chunk must contain
+M.exactProofBytes-chunkCapacity*(chunkCount-1) bytes. Null chunks, empty
+nonfinal chunks, alternate partitions, truncation, and extra bytes are REJECT.
+
+Read the chunks in order as one logical byte stream without inserting or
+removing bytes. Require M.exactProofBytes divisible by 4. Decode every group of
+four bytes as one u32le raw word W[i]. Require every W[i] in [0,p). Require
+W[OUTPUT_SIZE] to equal M.outerPo2 as a literal raw u32, without Montgomery
+decoding. Require exact transport EOF after W.length words.
+
+The first OUTPUT_SIZE words are the recursion output. Decode the inner control
+root from output words [0,16): for root word r in [0,OUT), require W[2r+1]=0,
+set rootWord[r]=FROM_RAW(W[2r]), and append u32le(rootWord[r]). Require the
+result to be exactly 32 bytes. Decode the claim from output words [16,32): for
+j in [0,16), set h=FROM_RAW(W[16+j]), require h<=65535, and append u16le(h).
+Require the result to be exactly 32 bytes. These decoded values are retained
+for the late comparisons in Section 13; they do not replace the original raw
+words in W.
+
+11. STARK AND DEEP-ALI VERIFICATION
+
+Create ReadIOP over W. Compute proofSystemDigest=HASH_CANONICAL of the canonical
+base-field values equal to the unsigned ASCII octets of the B2 proof-system
+information string. Compute circuitDigest identically from the B2 circuit
+information string. COMMIT proofSystemDigest, then COMMIT circuitDigest.
+
+Read OUTPUT_SIZE+1 canonical values as outputSlice with READ_FIELD. COMMIT
+HASH_CANONICAL(outputSlice). Set out=outputSlice[0..OUTPUT_SIZE) and
+outerWord=TO_RAW(outputSlice[OUTPUT_SIZE]). Require outerWord=M.outerPo2.
+
+Create the code Merkle tree first:
+
+  codeTree = MERKLE_CREATE(iop,DOMAIN,groupSizeById[CODE_GROUP])
+
+Convert codeTree.root raw words to exactly OUT consecutive u32le values. Compare
+the resulting 32 bytes with every M.entries controlId. Require exactly one
+match and retain that entry's kind and parameter. No caller value selects this
+entry.
+
+This allowlist applies only to the outermost codeTree root authenticated by the
+STARK. It is not a recursive control-ancestry policy. In particular, selecting
+the join terminal does not require either child to be one of the eight listed
+lift terminals, and selecting the resolve terminal does not restrict the roots
+carried by its assumptions. Descendant control roots need not occur in
+M.entries. Implementations MUST NOT recursively reinterpret this ten-entry
+outer-terminal allowlist as a graph grammar or reject a valid proof merely
+because an inner control root is absent from it.
+
+Only after that unique allowlist match, create:
+
+  dataTree = MERKLE_CREATE(iop,DOMAIN,groupSizeById[DATA_GROUP])
+
+Draw MIX_SIZE values with RANDOM_ELEM into mixGlobals in order. Then create:
+
+  accumTree = MERKLE_CREATE(iop,DOMAIN,groupSizeById[ACCUM_GROUP])
+
+Draw polyMix=RANDOM_EXT. Create:
+
+  checkTree = MERKLE_CREATE(iop,DOMAIN,CHECK_SIZE)
+
+Draw z=RANDOM_EXT. Set backOne=reverseRoots[M.outerPo2].
+
+Read E*(T+CHECK_SIZE) canonical values as coeffWords and COMMIT
+HASH_CANONICAL(coeffWords). Partition consecutive groups of E values into
+coeffU[0..T+CHECK_SIZE), preserving coefficient order c0,c1,c2,c3.
+
+Compute evalU in derived register order. Maintain coeffPos=0 and evalPos=0.
+For each register and each back in that register in order, set
+
+  x = SCALE(z,FPOW(backOne,back))
+  evalU[evalPos] = POLY_EVAL(coeffU[coeffPos..coeffPos+register.size),x)
+
+increment evalPos for every back, then increment coeffPos by register.size once
+per register. Require evalPos=T and coeffPos=T. Run the PolyExt program with
+evalU, out, mixGlobals, and polyMix to obtain result.
+
+Let basis[0]=BASE(1), basis[1]=(0,1,0,0), basis[2]=(0,0,1,0), and
+basis[3]=(0,0,0,1). Initialize check=0 and zi=EXT_ONE. For i in [0,E), let
+r=extensionCoefficientRemap[i], and set:
+
+  check = check +
+    coeffU[T+r]*zi*basis[0] +
+    coeffU[T+r+E]*zi*basis[1] +
+    coeffU[T+r+2E]*zi*basis[2] +
+    coeffU[T+r+3E]*zi*basis[3]
+  zi = zi*z
+
+Then set:
+
+  check = check *
+    (SCALE(z,extensionChallengeScale)^TOT_CYCLES - EXT_ONE)
+
+Require check=result.
+
+Draw friMix=RANDOM_EXT. Allocate comboU[0..totalCombinationBacks+1) as zero,
+tapMixPows for every derived register, and checkMixPows[0..CHECK_SIZE). Set
+curMix=EXT_ONE and coeffPos=0. For each register in order, for each local back
+index j set:
+
+  k = comboBegin[register.combo]+j
+  comboU[k] = comboU[k] + curMix*coeffU[coeffPos+j]
+
+Set tapMixPows[register index]=curMix, then curMix=curMix*friMix and increment
+coeffPos by register.size. For i in [0,CHECK_SIZE), set:
+
+  comboU[totalCombinationBacks] =
+    comboU[totalCombinationBacks] + curMix*coeffU[coeffPos]
+  checkMixPows[i] = curMix
+  curMix = curMix*friMix
+  coeffPos = coeffPos+1
+
+Require coeffPos=T+CHECK_SIZE.
+
+Define ROU_REV(k)=reverseRoots[k] and ROU_FWD(k)=FINV(ROU_REV(k)). Set
+domainGenerator=ROU_FWD(log2(DOMAIN)).
+
+For a FRI query index index, INNER(index) opens, in this exact order:
+
+  accumRow = MERKLE_OPEN(accumTree,iop,index)
+  codeRow  = MERKLE_OPEN(codeTree,iop,index)
+  dataRow  = MERKLE_OPEN(dataTree,iop,index)
+  checkRow = MERKLE_OPEN(checkTree,iop,index)
+
+Set x=BASE(FPOW(domainGenerator,index)). Initialize totals[0..C+1) to zero.
+For every register r in register order set:
+
+  totals[r.combo] = totals[r.combo] +
+    SCALE(tapMixPows[r.index], rowForGroup(r.group)[r.offset])
+
+where rowForGroup selects accumRow for ACCUM_GROUP, codeRow for CODE_GROUP, or
+dataRow for DATA_GROUP and rejects every other identifier. For i in
+[0,CHECK_SIZE), set:
+
+  totals[C] = totals[C] + SCALE(checkMixPows[i],checkRow[i])
+
+Set quotient=0. For combo c in [0,C), let begin=comboBegin[c] and
+end=comboBegin[c+1], then:
+
+  numerator = totals[c] - POLY_EVAL(comboU[begin..end),x)
+  divisor = product over k in [begin,end) of
+    (x - SCALE(z,FPOW(backOne,comboTaps[k])))
+  quotient = quotient + numerator*INV_OR_ZERO(divisor)
+
+Finally set:
+
+  numerator = totals[C] - comboU[totalCombinationBacks]
+  divisor = x - z^INV_RATE
+  quotient = quotient + numerator*INV_OR_ZERO(divisor)
+
+Return quotient.
+
+12. FRI VERIFICATION, NTT, AND BIT REVERSAL
+
+FRI commit phase starts degree=TOT_CYCLES and friDomain=DOMAIN with an empty
+round list. While degree>MIN_DEGREE, require degree and friDomain divisible by
+FOLD, set rows=friDomain/FOLD, create
+
+  roundTree = MERKLE_CREATE(iop,rows,FOLD*E)
+
+then draw roundMix=RANDOM_EXT, append (rows,roundTree,roundMix) to the round list,
+and divide friDomain and degree by FOLD. Preserve creation order.
+
+Read E*degree canonical values as finalWords and COMMIT
+HASH_CANONICAL(finalWords). Construct finalExt[0..degree) in plane-major wire
+order:
+
+  finalExt[i] = Ext4(finalWords[i], finalWords[degree+i],
+                     finalWords[2*degree+i], finalWords[3*degree+i])
+
+Set finalGenerator=ROU_FWD(log2(friDomain)) and
+positionBits=log2(DOMAIN). All log2 calls here require exact positive powers of
+two.
+
+For query number q from 0 to Q-1, draw position=RANDOM_BITS(positionBits) and
+set goal=INNER(position). For each stored FRI round in creation order:
+
+  quotientIndex = floor(position/round.rows)
+  groupIndex = position mod round.rows
+  row = MERKLE_OPEN(round.tree,iop,groupIndex)
+  for k in [0,FOLD):
+    dataExt[k] = Ext4(row[k],row[FOLD+k],row[2*FOLD+k],row[3*FOLD+k])
+  require 0<=quotientIndex<FOLD and dataExt[quotientIndex]=goal
+  rootPo2 = log2(FOLD*round.rows)
+  invWk = FPOW(ROU_REV(rootPo2),groupIndex)
+  INVERSE_NTT(dataExt)
+  BIT_REVERSE(dataExt)
+  goal = POLY_EVAL(dataExt,SCALE(round.mix,invWk))
+  position = groupIndex
+
+After all rounds, set x=BASE(FPOW(finalGenerator,position)) and require
+POLY_EVAL(finalExt,x)=goal.
+
+INVERSE_NTT(io) requires length 2^n. Apply REV_BUTTERFLY(io,0,n), then multiply
+every Ext4 entry by FINV(io.length mod p). REV_BUTTERFLY(io,off,n) does nothing
+when n=0. Otherwise set half=2^(n-1), step=ROU_REV(n), cur=1, and for i in
+[0,half):
+
+  a = io[off+i]
+  b = io[off+i+half]
+  io[off+i] = a+b
+  io[off+i+half] = SCALE(a-b,cur)
+  cur = FMUL(cur,step)
+
+Then recurse first on (io,off,n-1) and second on
+(io,off+half,n-1), in that order.
+
+BIT_REVERSE(io) requires length 2^n. For each i in increasing order, let rev be
+the integer whose low n-bit representation is the reversal of i's low n bits.
+If i<rev, swap io[i] and io[rev].
+
+13. FINAL ORDER AND DECISION
+
+The complete verifier order is exactly:
+
+  1. Validate and snapshot authenticated M and D; derive all fixed bounds.
+  2. Construct expectedClaim from programId and J.
+  3. Validate the canonical chunk partition and decode every raw word.
+  4. Decode and retain the output inner root and output claim.
+  5. Run Sections 11 and 12, including code-root allowlist selection.
+  6. Require ReadIOP COMPLETE. Any remaining word is REJECT.
+  7. Compare the retained decoded inner root with M.innerControlRoot.
+  8. Compare the retained decoded claim with expectedClaim.
+  9. ACCEPT. The predicate result is true. The retained terminal kind and
+     parameter from the unique code-root match are verifier-derived result
+     metadata only.
+
+Every failure before step 9 is REJECT unless this artifact explicitly labels it
+PACKAGE_INVALID. The inner-root and expected-claim comparisons are deliberately
+late: they occur only after the entire STARK, DEEP-ALI, FRI, and strict-EOF
+verification. The code-root allowlist comparison remains at code-tree creation
+because its unique match derives the accepted outer-terminal descriptor; it is
+independent of the late inner-root comparison. A proof whose outermost code
+root belongs to a broader upstream control set but not to M.entries is REJECT.

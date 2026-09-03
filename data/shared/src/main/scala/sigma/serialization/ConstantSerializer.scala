@@ -8,6 +8,12 @@ case class ConstantSerializer(builder: SigmaBuilder)
   extends ValueSerializer[Constant[SType]] {
   override def opDesc = Constant
 
+  override protected def getValueChildren(obj: Constant[SType]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: Constant[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def parse(r: SigmaByteReader): Value[SType] = deserialize(r)
 
   override def serialize(c: Constant[SType], w: SigmaByteWriter): Unit = {

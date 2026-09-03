@@ -17,6 +17,13 @@ case class FuncValueSerializer(cons: (IndexedSeq[(Int, SType)], Value[SType]) =>
   val typeInfo: DataInfo[SType] = ArgInfo("type_i", "type of the i-th argument")
   val bodyInfo: DataInfo[SValue] = ArgInfo("body", "function body, which is parameterized by arguments")
 
+  override protected def getValueChildren(obj: FuncValue): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.body)
+
+  override protected def rebuildValueNode(
+      obj: FuncValue,
+      children: IndexedSeq[Value[SType]]): Value[SType] = cons(obj.args, children(0))
+
   override def serialize(obj: FuncValue, w: SigmaByteWriter): Unit = {
     w.putUInt(obj.args.length, numArgsInfo)
     foreach(numArgsInfo.info.name, obj.args) { case (idx, tpe) =>

@@ -13,6 +13,27 @@ lazy val scala211 = "2.11.12"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
+def legalArtifactMappings(repositoryRoot: File): Seq[(File, String)] = Seq(
+  repositoryRoot / "LICENSE" -> "META-INF/LICENSE",
+  repositoryRoot / "LICENSE-APACHE" -> "META-INF/LICENSE-APACHE",
+  repositoryRoot / "NOTICE" -> "META-INF/NOTICE",
+  repositoryRoot / "docs" / "eip-0045-risc0-source-map.json" ->
+    "META-INF/eip-0045-risc0-source-map.json"
+)
+
+lazy val legalArtifactSettings = Seq(
+  Compile / packageBin / mappings ++=
+    legalArtifactMappings((ThisBuild / baseDirectory).value),
+  Compile / packageSrc / mappings ++=
+    legalArtifactMappings((ThisBuild / baseDirectory).value),
+  Compile / packageDoc / mappings ++=
+    legalArtifactMappings((ThisBuild / baseDirectory).value),
+  Test / packageBin / mappings ++=
+    legalArtifactMappings((ThisBuild / baseDirectory).value),
+  Test / packageSrc / mappings ++=
+    legalArtifactMappings((ThisBuild / baseDirectory).value)
+)
+
 lazy val commonSettings = Seq(
   organization := "org.scorexfoundation",
   scalacOptions ++= {
@@ -188,6 +209,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency,
     publish / skip := true
   )
+  .settings(legalArtifactSettings)
   .jvmSettings(
     crossScalaSettings,
     moduleNameSetting("org.scorexfoundation.sigma"),
@@ -231,6 +253,10 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
+    // Serializer/SType companions contain mutually recursive static
+    // initialization.  Running serializer suites concurrently can deadlock on
+    // the JVM class-initialization monitors before either test body executes.
+    Test / parallelExecution := false,
     publish / skip := true
   )
   .jvmSettings(
@@ -252,6 +278,10 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
+    // Several suites exercise the process-wide mutable default/signature
+    // CProfiler instances. Parallel suites can interleave their evaluator
+    // stacks and fail with "Inconsistent stack" despite passing in isolation.
+    Test / parallelExecution := false,
     publish / skip := true
   )
   .jvmSettings(
@@ -366,6 +396,11 @@ lazy val scJS = sc.js
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
   .settings(libraryDefSettings, rootSettings, moduleNameSetting("org.scorexfoundation.sigmastate"))
+  .settings(legalArtifactSettings)
+  .settings(licenses := Seq(
+    "MIT License" -> url("https://opensource.org/license/mit"),
+    "Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")
+  ))
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
 

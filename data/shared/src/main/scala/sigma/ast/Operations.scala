@@ -546,6 +546,15 @@ object Operations {
     val argInfos: Seq[ArgInfo] = Array(inputArg)
   }
 
+  object VerifyStarkInfo extends InfoObject {
+    private val func = predefinedOps.funcs("verifyStark")
+    val proofChunksArg: ArgInfo = func.argInfo("proofChunks")
+    val applicationPayloadArg: ArgInfo = func.argInfo("applicationPayload")
+    val programIdArg: ArgInfo = func.argInfo("programId")
+    val profileIdArg: ArgInfo = func.argInfo("profileId")
+    val argInfos: Seq[ArgInfo] = Array(proofChunksArg, applicationPayloadArg, programIdArg, profileIdArg)
+  }
+
   object XorInfo extends InfoObject {
     private val func = predefinedOps.funcs("binary_|")
     val leftArg: ArgInfo = func.argInfo("left")

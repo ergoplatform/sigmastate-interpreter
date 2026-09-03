@@ -276,6 +276,30 @@ object SigmaPredef {
           Seq(ArgInfo("input", "collection of bytes")))
     )
 
+    val VerifyStarkFunc = PredefinedFunc("verifyStark",
+      Lambda(
+        Array(
+          "proofChunks" -> SCollection(SByteArray),
+          "applicationPayload" -> SByteArray,
+          "programId" -> SByteArray,
+          "profileId" -> SByteArray
+        ),
+        SBoolean,
+        None
+      ),
+      PredefFuncInfo(
+        { case (_, Seq(proofChunks, applicationPayload, programId, profileId)) =>
+          mkVerifyStark(proofChunks, applicationPayload, programId, profileId)
+        }),
+      OperationInfo(VerifyStark,
+        "Verify a profile-defined canonical STARK proof under an immutable network profile.",
+        Seq(
+          ArgInfo("proofChunks", "canonical proof bytes split into ordered chunks; raw seal for the initial profile"),
+          ArgInfo("applicationPayload", "application-defined public payload"),
+          ArgInfo("programId", "identifier of the proven program"),
+          ArgInfo("profileId", "identifier of the immutable verifier profile")))
+    )
+
     val ByteArrayToBigIntFunc = PredefinedFunc("byteArrayToBigInt",
       Lambda(Array("input" -> SByteArray), SBigInt, None),
       PredefFuncInfo(
@@ -548,6 +572,7 @@ object SigmaPredef {
       FromBase58Func,
       Blake2b256Func,
       Sha256Func,
+      VerifyStarkFunc,
       ByteArrayToBigIntFunc,
       ByteArrayToLongFunc,
       DecodePointFunc,

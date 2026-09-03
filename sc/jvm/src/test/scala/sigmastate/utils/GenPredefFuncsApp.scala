@@ -5,6 +5,11 @@ import sigma.util.PrintExtensions.IterableExtensions
 
 object GenPredefFuncsApp extends SpecGen {
 
+  private[utils] def shouldAbbreviateDescription(description: String): Boolean = {
+    val normalized = description.replace("\r\n", "\n")
+    normalized.length > 150
+  }
+
   /** Generates the contents of `predeffunc_rows.tex` (the summary table rows) and
     * `predeffunc_sections.tex` (the per-function subsections), as a single pair so the
     * two files stay derived from the same ordered list of predefined functions. */
@@ -25,7 +30,7 @@ object GenPredefFuncsApp extends SpecGen {
       val argsTpe = f.declaration.tpe.tDom.rep(_.toTermString)
       val resTpe = f.declaration.tpe.tRange.toTermString
       val serRef = s"\\hyperref[sec:serialization:operation:$mnemonic]{\\lst{$mnemonic}}"
-      val desc = if (info.description.length > 150) "..." else info.description
+      val desc = if (shouldAbbreviateDescription(info.description)) "..." else info.description
       funcRows.append(
         s""" $opCode & $serRef & \\parbox{4cm}{\\lst{$opName:} \\\\ \\lst{($argsTpe)} \\\\ \\lst{  => $resTpe}} & $desc \\\\
           | \\hline

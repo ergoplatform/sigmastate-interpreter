@@ -5,7 +5,7 @@ import sigma.serialization.{SigmaByteReader, SigmaByteWriter, ValueSerializer}
 import sigma.util.safeNewArray
 import sigma.serialization.SigmaByteWriter._
 import debox.cfor
-import sigma.ast.{SigmaTransformer, SigmaTransformerCompanion}
+import sigma.ast.{SType, SigmaTransformer, SigmaTransformerCompanion, Value}
 import sigma.serialization.CoreByteWriter.DataInfo
 
 case class SigmaTransformerSerializer[I <: SigmaPropValue, O <: SigmaPropValue]
@@ -13,6 +13,15 @@ case class SigmaTransformerSerializer[I <: SigmaPropValue, O <: SigmaPropValue]
   extends ValueSerializer[SigmaTransformer[I, O]] {
   val itemsInfo: DataInfo[Seq[SValue]] = opDesc.argInfos(0)
   val itemsItemInfo = valuesItemInfo(itemsInfo)
+
+  override protected def getValueChildren(
+      obj: SigmaTransformer[I, O]): IndexedSeq[Value[SType]] =
+    obj.items.toIndexedSeq.asInstanceOf[IndexedSeq[Value[SType]]]
+
+  override protected def rebuildValueNode(
+      obj: SigmaTransformer[I, O],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children.asInstanceOf[IndexedSeq[SigmaPropValue]])
 
   override def serialize(obj: SigmaTransformer[I, O], w: SigmaByteWriter): Unit =
     w.putValues(obj.items, itemsInfo, itemsItemInfo)

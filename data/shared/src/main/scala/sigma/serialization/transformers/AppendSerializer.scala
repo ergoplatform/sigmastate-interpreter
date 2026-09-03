@@ -11,6 +11,14 @@ case class AppendSerializer(cons: (Value[SCollection[SType]], Value[SCollection[
   extends ValueSerializer[Append[SType]] {
   override def opDesc = Append
 
+  override protected def getValueChildren(obj: Append[SType]): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.input, obj.col2)
+
+  override protected def rebuildValueNode(
+      obj: Append[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asCollection[SType], children(1).asCollection[SType])
+
   override def serialize(obj: Append[SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, AppendInfo.thisArg)
       .putValue(obj.col2, AppendInfo.otherArg)

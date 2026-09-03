@@ -16,6 +16,19 @@ case class BlockValueSerializer(cons: (IndexedSeq[BlockItem], Value[SType]) => V
   val itemInfo: DataInfo[SValue] = ArgInfo("item_i", "block's item in i-th position")
   val resultInfo: DataInfo[SValue] = ArgInfo("result", "result expression of the block")
 
+  override protected def getValueChildren(obj: BlockValue): IndexedSeq[Value[SType]] =
+    obj.items.asInstanceOf[IndexedSeq[Value[SType]]] :+ obj.result
+
+  override protected def rebuildValueNode(
+      obj: BlockValue,
+      children: IndexedSeq[Value[SType]]): Value[SType] = {
+    val items = children.take(obj.items.length).map {
+      case item: BlockItem => item
+      case child => error(s"Cannot rebuild BlockValue: expected BlockItem, got ${child.companion.typeName}")
+    }
+    cons(items, children.last)
+  }
+
   override def serialize(obj: BlockValue, w: SigmaByteWriter): Unit = {
     w.putUInt(obj.items.length, numItemsInfo)
     foreach(numItemsInfo.info.name, obj.items){ i =>

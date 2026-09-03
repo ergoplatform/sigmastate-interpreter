@@ -45,7 +45,10 @@ object VersionContext {
     * - in v6.x must be 3
     * etc.
     */
-  val MaxSupportedScriptVersion: Byte = 3 // supported versions 0, 1, 2, 3
+  /** First ErgoTree version in which EIP-0045 VerifyStark is admissible. */
+  val StarkVerificationVersion: Byte = 4
+
+  val MaxSupportedScriptVersion: Byte = StarkVerificationVersion // supported versions 0 through 4
 
   /** The first version of ErgoTree starting from which the JIT costing interpreter is used. */
   val JitActivationVersion: Byte = 2

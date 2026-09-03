@@ -13,6 +13,14 @@ case class ConcreteCollectionBooleanConstantSerializer(cons: (IndexedSeq[Value[S
   val numBitsInfo: DataInfo[Vlq[U[Short]]] = ArgInfo("numBits", "number of items in a collection of Boolean values")
   val bitsInfo: DataInfo[Bits] = maxBitsInfo("bits", 0x1FFF, "Boolean values encoded as as bits (right most byte is zero-padded on the right)")
 
+  // The elements are encoded as a compact bit payload, not as serialized Value nodes.
+  override protected def getValueChildren(
+      obj: ConcreteCollection[SBoolean.type]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: ConcreteCollection[SBoolean.type],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def serialize(cc: ConcreteCollection[SBoolean.type], w: SigmaByteWriter): Unit = {
     val items = cc.items
     val len = items.length

@@ -578,6 +578,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val e = stypeToElem(d.tpe)
         DeserializeRegisterDef[T](d, e)
 
+      case VerifyStark(proofChunks, applicationPayload, programId, profileId) =>
+        VerifyStarkDef(
+          asRep[Coll[Coll[Byte]]](eval(proofChunks)),
+          asRep[Coll[Byte]](eval(applicationPayload)),
+          asRep[Coll[Byte]](eval(programId)),
+          asRep[Coll[Byte]](eval(profileId)))
+
       case ValUse(valId, _) =>
         env.getOrElse(valId, !!!(s"ValUse $valId not found in environment $env"))
 

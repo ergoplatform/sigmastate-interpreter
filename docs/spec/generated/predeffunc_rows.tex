@@ -54,6 +54,8 @@
  \hline
           183 & \hyperref[sec:serialization:operation:TreeLookup]{\lst{TreeLookup}} & \parbox{4cm}{\lst{treeLookup:} \\ \lst{(AvlTree, Coll[Byte], Coll[Byte])} \\ \lst{  => Option[Coll[Byte]]}} &  \\
  \hline
+          185 & \hyperref[sec:serialization:operation:VerifyStark]{\lst{VerifyStark}} & \parbox{4cm}{\lst{verifyStark:} \\ \lst{(Coll[Coll[Byte]], Coll[Byte], Coll[Byte], Coll[Byte])} \\ \lst{  => Boolean}} & Verify a profile-defined canonical STARK proof under an immutable network profile. \\
+ \hline
           203 & \hyperref[sec:serialization:operation:CalcBlake2b256]{\lst{CalcBlake2b256}} & \parbox{4cm}{\lst{blake2b256:} \\ \lst{(Coll[Byte])} \\ \lst{  => Coll[Byte]}} & Calculate Blake2b hash from \lst{input} bytes. \\
  \hline
           204 & \hyperref[sec:serialization:operation:CalcSha256]{\lst{CalcSha256}} & \parbox{4cm}{\lst{sha256:} \\ \lst{(Coll[Byte])} \\ \lst{  => Coll[Byte]}} & Calculate Sha256 hash from \lst{input} bytes. \\
@@ -109,4 +111,3 @@
  \hline
           255 & \hyperref[sec:serialization:operation:XorOf]{\lst{XorOf}} & \parbox{4cm}{\lst{xorOf:} \\ \lst{(Coll[Boolean])} \\ \lst{  => Boolean}} & Similar to \lst{allOf}, but performing logical XOR operation between all conditions instead of \lst{&&} \\
  \hline
-         

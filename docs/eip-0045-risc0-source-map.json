@@ -1,0 +1,454 @@
+{
+  "formatVersion": 1,
+  "hashAlgorithm": "SHA-256",
+  "hashSemantics": {
+    "sourceCatalog": "SHA-256 of the exact Git blob bytes emitted by `git show <commit>:<path>`; every cataloged source is an LF text blob, so the value is independent of checkout autocrlf settings.",
+    "localTextFiles": "SHA-256 of repository-ready UTF-8 bytes without BOM and with LF line endings.",
+    "evidence": "Local compact-oracle hashes use repository-ready LF bytes; source and generator hashes use the exact pinned Git blob bytes."
+  },
+  "purpose": "Auditable provenance for every production file under core/shared/src/main/scala/sigma/stark.",
+  "repositories": {
+    "risc0": {
+      "url": "https://github.com/risc0/risc0",
+      "commit": "8eb06ab020a92dc5b63ba6dd0836d432aba6d890",
+      "license": "Apache-2.0"
+    },
+    "arkadia": {
+      "url": "https://github.com/arkadianet/sigmastate-interpreter",
+      "commit": "a2da7834efd84e0e25433c78584a5872d1fa0458",
+      "license": "MIT",
+      "role": "Independent pure-JVM stock-profile implementation used as an implementation reference and initial Scala port."
+    }
+  },
+  "sourceCatalog": {
+    "risc0:baby-bear": {
+      "repository": "risc0",
+      "path": "risc0/core/src/field/baby_bear.rs",
+      "sha256": "df3e77d606dd74d78fb6b6f3dbbe72455c5ed5b091f7a74de8c049e85b857ff3"
+    },
+    "risc0:poseidon2": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/core/hash/poseidon2/mod.rs",
+      "sha256": "a2993a2e29fa33345a6a9ce0b4f192efe7412746b92b172b0eed8ce78ee8471f"
+    },
+    "risc0:poseidon2-constants": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/core/hash/poseidon2/consts.rs",
+      "sha256": "5ee51bce046bce1306181a43136aa0731dcf976ab10e2e8d82db88711efdcc41"
+    },
+    "risc0:poseidon2-rng": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/core/hash/poseidon2/rng.rs",
+      "sha256": "8c5868a8b258896835e2c3c93a84cfe01167f1a446e4d74a3b7be94ae1bf8017"
+    },
+    "risc0:read-iop": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/verify/read_iop.rs",
+      "sha256": "40a7027486fbce5979bd045860e3014ebc1d40f242c4b71ce2adf5722b6d81bc"
+    },
+    "risc0:verify-merkle": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/verify/merkle.rs",
+      "sha256": "267ab31c38f7502d9d0d3feebe7eb2fc2cbed9d3af4db66fde349e2c3b61a478"
+    },
+    "risc0:merkle": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/merkle.rs",
+      "sha256": "87bf97f1eb09235bce50b62c4a5fef5517400f6c57554853e9c8043f4b32c64a"
+    },
+    "risc0:verify-fri": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/verify/fri.rs",
+      "sha256": "a601cfad5d01b294f934d697d6d832c57662e4778eac20ac549b1da53d11e377"
+    },
+    "risc0:ntt": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/core/ntt.rs",
+      "sha256": "5e363e48f97bbeb17642fa1829e56488747921cf5923c010ef533d2130b2cb1f"
+    },
+    "risc0:zkp-lib": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/lib.rs",
+      "sha256": "107521d2426442fbc9358b7b9ae5650be92d670ea85e9a34aec7b9e9cc27dc6d"
+    },
+    "risc0:taps": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/taps.rs",
+      "sha256": "f5f69bcbed730cc8acd43da89dd4e37ca7560b9eb991a37238482f3655f7e402"
+    },
+    "risc0:adapter": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/adapter.rs",
+      "sha256": "1d1aca1dd7cc4c12477e0d887a3edfa0825b822efee671170ec667c7dd65ca1d"
+    },
+    "risc0:verify": {
+      "repository": "risc0",
+      "path": "risc0/zkp/src/verify/mod.rs",
+      "sha256": "003a67af89a7cfaeac9ff23808225cdc4d81c41d64956f20243574531b166c4f"
+    },
+    "risc0:recursion-taps": {
+      "repository": "risc0",
+      "path": "risc0/circuit/recursion/src/taps.rs",
+      "sha256": "d32cbf5350d6f724cf3582ef92fb6c392f993b51ee89c5384f7ad79bab43ce83"
+    },
+    "risc0:recursion-poly-ext": {
+      "repository": "risc0",
+      "path": "risc0/circuit/recursion/src/poly_ext.rs",
+      "sha256": "176f99041c0d3867ecd100b7292adbeb29294a0abe7a8f1f0a05807278da43b3"
+    },
+    "risc0:recursion-info": {
+      "repository": "risc0",
+      "path": "risc0/circuit/recursion/src/info.rs",
+      "sha256": "128c29a8ddf0560fb3a69c03fa1d959fab542d2fa09eae6794d28be871e345e9"
+    },
+    "risc0:recursion-control-id": {
+      "repository": "risc0",
+      "path": "risc0/circuit/recursion/src/control_id.rs",
+      "sha256": "6fedf46fad3ca0ce3e537139be7873a43dd68fee5fc803d3e58604b4e9ae16cb"
+    },
+    "risc0:recursion-lib": {
+      "repository": "risc0",
+      "path": "risc0/circuit/recursion/src/lib.rs",
+      "sha256": "c967923d0d005474a1a75efbfed884fbb496a37bf387cef2b93c742f6c02e488"
+    },
+    "arkadia:BabyBear": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/BabyBear.scala",
+      "sha256": "9954fe075565c5b58ff2da187eeca26c33158188740e22db1e97fda5e5c7ea4a"
+    },
+    "arkadia:Ext4": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/Ext4.scala",
+      "sha256": "c2cdc4d9611c59e946acb2ca918fb157ad45f7b1cfb44c93ca0a025db4998637"
+    },
+    "arkadia:Poseidon2": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2.scala",
+      "sha256": "fb2f553de82cd7cd3c59dc5e94cb793c37523b2793889c50356ca573cc957559"
+    },
+    "arkadia:Poseidon2Constants": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2Constants.scala",
+      "sha256": "91e3277db75930d735f8be6a3bbd3f24188cff95ac90becad67ce69a0b23056f"
+    },
+    "arkadia:Poseidon2Rng": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2Rng.scala",
+      "sha256": "09341d715041132ffd2ca9e4fcd5c12669ca84e73188ba6a65173c12f1164fb6"
+    },
+    "arkadia:ReadIop": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/ReadIop.scala",
+      "sha256": "9566782f29ff7667190802d112941d266b0b8ab18169c239777d454ddc948178"
+    },
+    "arkadia:MerkleVerifier": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/MerkleVerifier.scala",
+      "sha256": "e9cf7f12a973f891307a4defd2c0e04da6c720eefe9459c544d672faeb10b930"
+    },
+    "arkadia:FriVerifier": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/FriVerifier.scala",
+      "sha256": "540e4129effbdfcdb44501a8c76c9c4e61998c9175b8f1af594fa95ab4673984"
+    },
+    "arkadia:CircuitTapSet": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/CircuitTapSet.scala",
+      "sha256": "94616df38d94f9e4989dc52fb8ab72f5deb480cd54e82eef5401adf85041c103"
+    },
+    "arkadia:PolyExtTable": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/PolyExtTable.scala",
+      "sha256": "37899a5d9d933b06bf866b84f83de54eb48ab5e8188862a051d98f8b7e6926be"
+    },
+    "arkadia:PolyExtInterpreter": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/PolyExtInterpreter.scala",
+      "sha256": "8019e84066357537a82695365cae44bd08b41c882686e854f6109940b8b8cd6d"
+    },
+    "arkadia:SuccinctVerifier": {
+      "repository": "arkadia",
+      "path": "core/shared/src/main/scala/sigma/stark/SuccinctVerifier.scala",
+      "sha256": "304e4cd18c4d9e006f970d7033980009c609e03711569ad6c08e9d1b32089e09"
+    }
+  },
+  "files": [
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/BabyBear.scala",
+      "sha256": "037ef0e1f005e0ae56fa04abea5151dead38a3c57c0214ac01b3888be101785c",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:BabyBear",
+        "risc0:baby-bear"
+      ],
+      "transformations": [
+        "Retained a small Scala reference-field API.",
+        "Added total canonical/raw Montgomery conversion checks and consensus-oriented documentation.",
+        "Removed test-only or general Rust trait machinery."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/Ext4.scala",
+      "sha256": "ca42ee96a8e6397f6f1af1fe95ed9d7bca8dc509c6de6e9540d744523231274b",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:Ext4",
+        "risc0:baby-bear"
+      ],
+      "transformations": [
+        "Specialized BabyBear degree-4 extension arithmetic to immutable Scala values.",
+        "Used Fermat inversion as a simple reference implementation while preserving the RISC0 polynomial and coefficient order.",
+        "Added total input and exponent handling."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2.scala",
+      "sha256": "0ed59a50f0d766bbc6afe55705f9187ea1c773a7a0e90adc5b3624ab5490f79c",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:Poseidon2",
+        "risc0:poseidon2"
+      ],
+      "transformations": [
+        "Translated the width-24 BabyBear permutation and sponge boundary operations to Scala.",
+        "Specialized all generic hash-suite and field traits to the fixed stock profile.",
+        "Added explicit length and canonical-value rejection.",
+        "Added package-bounded validation-only callbacks after successful content-hash calls and permutations without storing observer state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2Constants.scala",
+      "sha256": "1ddd3e30e9dae1965f74b1c99c0db181fdc6eaf45088d06f659c8a9910787625",
+      "provenance": "generated-numeric-data",
+      "sources": [
+        "arkadia:Poseidon2Constants",
+        "risc0:poseidon2-constants"
+      ],
+      "transformations": [
+        "Extracted the public numeric round constants and internal diagonal into Scala arrays.",
+        "Preserved round-major ordering and zero-filled unused partial-round cells.",
+        "No executable Rust code was copied."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/Poseidon2Rng.scala",
+      "sha256": "77a8dff8acfe825acaa4fcbd12a72c4eef087da708579fe47b896dc51eac3df3",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:Poseidon2Rng",
+        "risc0:poseidon2-rng"
+      ],
+      "transformations": [
+        "Translated the fixed Poseidon2 Fiat-Shamir sponge to Scala.",
+        "Preserved four-draw randomBits behavior and raw-digest absorption.",
+        "Added defensive cloning/validation at public boundaries.",
+        "Added package-bounded validation-only callbacks after successful transcript commits, element draws, and permutations without storing observer state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/ReadIop.scala",
+      "sha256": "cffda5b6fbf10d5f217463ea9a00485c4793389ca78861b2ad1c63eef2863de1",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:ReadIop",
+        "risc0:read-iop"
+      ],
+      "transformations": [
+        "Specialized ReadIOP to an in-memory fixed-profile word stream.",
+        "Converted upstream panic/error paths into Option-returning total reads.",
+        "Made raw-versus-canonical Montgomery conversions and strict EOF explicit.",
+        "Forwarded a package-bounded validation-only operation sink through transcript primitives without retaining it in ReadIOP state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/VerifierOperationObserver.scala",
+      "sha256": "3d11e63ecc087fef6c7778353e29ae5ef6b9ac07665341b08ead09db31a64ed4",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original EIP-0045 validation-only operation observer by A. Shannon.",
+        "Uses sigma-package-bounded integer event IDs without proof payloads, stored state, or thread-local state.",
+        "Extends source visibility from the stark subtree to the enclosing sigma package without changing the existing JVM descriptor, and defines a null no-probe sink for the ordinary verifier path."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/MerkleVerifier.scala",
+      "sha256": "1f589f148bff38861a9cc9a519771c5fdee643974f24090a066b4f1a88df1e6a",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:MerkleVerifier",
+        "risc0:verify-merkle",
+        "risc0:merkle"
+      ],
+      "transformations": [
+        "Translated the fixed Poseidon2 Merkle verifier and tree-parameter calculation to Scala.",
+        "Specialized generics to eight-word digests and BabyBear rows.",
+        "Added typed/total proof rejection and explicit raw/canonical digest boundaries.",
+        "Added package-bounded validation-only callbacks after successful top-tree and query-path pair hashes without retaining observer state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/FriVerifier.scala",
+      "sha256": "048b42cc265d19d26d4d1e2c75099852651a270cdfae4b63a779bbbe8a5d828e",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:FriVerifier",
+        "risc0:verify-fri",
+        "risc0:ntt",
+        "risc0:zkp-lib",
+        "risc0:baby-bear"
+      ],
+      "transformations": [
+        "Translated stock-profile FRI verification, 16-point inverse NTT, bit reversal, and roots of unity to Scala.",
+        "Specialized queries, rate, fold size, and minimum degree to fixed profile parameters.",
+        "Replaced proof-dependent panics with total rejection and bounded allocations.",
+        "Threaded the package-bounded validation-only operation sink through FRI transcript, Merkle, and content-hash calls without storing it in round state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/CircuitTapSet.scala",
+      "sha256": "2fa0219068253833a3780aa3993e50743b0137c278f4d3ce22577b4bf842e270",
+      "provenance": "adapted-data-loader",
+      "sources": [
+        "arkadia:CircuitTapSet",
+        "risc0:taps",
+        "risc0:recursion-taps",
+        "risc0:adapter",
+        "risc0:verify"
+      ],
+      "transformations": [
+        "Defined a strict Scala loader for the extracted recursion TapSet data.",
+        "Reconstructed register runs and checked group/combo coverage, monotone bounded ranges, dimensions, and allocation bounds before slicing or allocation.",
+        "Rejected duplicate metadata, null rows, and every malformed table condition with descriptive Left values."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/PolyExtTable.scala",
+      "sha256": "f55ec34eb4604c3199ef895b1b316ccc35f29551815aa4985a007fc98cf268ed",
+      "provenance": "adapted-data-loader",
+      "sources": [
+        "arkadia:PolyExtTable",
+        "risc0:adapter",
+        "risc0:recursion-poly-ext"
+      ],
+      "transformations": [
+        "Represented the generated recursion constraint program as a closed Scala opcode algebra.",
+        "Added strict token/zero-arity-sentinel, ordering, stack-reference, histogram, census, and canonical reserialization checks.",
+        "Kept u32 constants losslessly until the profile boundary, made parsed operation storage defensively owned, and made null or duplicate metadata input a total rejection."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/circuit/PolyExtInterpreter.scala",
+      "sha256": "73eb25d97ed9f75fda508b8dd4b3429cfebcbc57f50917289142c151c01f3729",
+      "provenance": "adapted",
+      "sources": [
+        "arkadia:PolyExtInterpreter",
+        "risc0:adapter",
+        "risc0:recursion-poly-ext",
+        "risc0:verify"
+      ],
+      "transformations": [
+        "Translated PolyExtExecutor's straight-line fp/mix stack semantics to allocation-bounded Scala loops.",
+        "Specialized globals and tapped evaluations to the recursion circuit.",
+        "Replaced null, negative, and out-of-range access panics/assertions with Left values, rejected non-canonical BabyBear constants instead of reducing them, and enforced exact post-run census checks.",
+        "Centralized all ten PolyExt arithmetic cases in one package-bounded kernel shared by the defensive interpreter API and the production verifier after its immutable program validation barrier."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/RawSealV1Decoder.scala",
+      "sha256": "a713640f0ae8cab95a1b92bc94ad92cc36f01aa5a42df0b8982977c172afc2bb",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original EIP-0045 transport adapter by A. Shannon.",
+        "Streams four canonical Ergo byte chunks into fixed little-endian u32 words, including cross-chunk words.",
+        "Enforces exact byte/word counts, stock outer exponent, field canonicality, output-prefix decoding, odd-root padding, typed rejection, and defensive public access to verifier-owned decoded arrays."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/Risc0ProfilePackageLoader.scala",
+      "sha256": "fffce25c033457952721f128f0b68efa379accdd9dc5240cb166916954eaf6fa",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original EIP-0045 authenticated profile-package construction boundary by A. Shannon.",
+        "Authenticates the exact Manifest V1, B1, B2, and activation-selected profile ID before decoding verifier parameters or constructing a verifier.",
+        "Enforces bounded canonical ASCII B1 with exactly one terminal LF, strict B2 layout and compiled-constant agreement, immutable snapshots, and typed startup rejection."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/ProfileBlake2b256.scala",
+      "sha256": "1abb3f15ebd35aa3cab03b3bc7c3aa71c667a91f4f734e7ad21b452ee1f7648b",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original small platform-neutral BLAKE2b-256 implementation by A. Shannon for startup-only profile artifact and identity authentication.",
+        "Specialized RFC 7693 compression to unkeyed 32-byte one-shot hashing without a JVM provider dependency.",
+        "Cross-checked at every relevant block-finalization boundary and against the Scorex oracle for the frozen EIP-0045 reference proposition."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/ProfileSha256.scala",
+      "sha256": "1f2b83daa8265935d7c5bf2bfc4771e1000daf23a229ca33d8a40a193bfb2478",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original small platform-neutral SHA-256 implementation by A. Shannon for profile-bound host statement and RISC0 claim construction.",
+        "Uses one-shot owned buffers and deterministic padding/compression without a JVM provider dependency."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/ErgoStarkStatement.scala",
+      "sha256": "9127fd34e36ca2af5533c51ae862861a3902a4d08e3a432e5d2f134a5f6d9488",
+      "provenance": "original",
+      "sources": [],
+      "transformations": [
+        "Original EIP-0045 ErgoStatementV1 and RISC0 OK ReceiptClaim binding by A. Shannon.",
+        "Derives the expected claim only from authenticated profile data, chain domain, program ID, contract ID, and bounded application payload.",
+        "Uses defensive input snapshots, exact little-endian statement framing, tagged-struct SHA-256, and typed host-input rejection.",
+        "Rejects any configured payload maximum above the largest V1 statement length representable by the verifier's signed-Int framing.",
+        "Offers package-bounded, payload-free observation of contract-ID, statement, journal-digest, tagged-digest, and OK-claim construction while the production path passes null and retains no observer state."
+      ]
+    },
+    {
+      "path": "core/shared/src/main/scala/sigma/stark/profile/Risc0RawSealVerifier.scala",
+      "sha256": "9856da40ff0dcdf760ad19dfd01064df79da10a5bf588b6b0b7f5bce143d90a6",
+      "provenance": "substantially-adapted",
+      "sources": [
+        "arkadia:SuccinctVerifier",
+        "risc0:verify",
+        "risc0:verify-fri",
+        "risc0:read-iop",
+        "risc0:adapter",
+        "risc0:recursion-info",
+        "risc0:recursion-control-id",
+        "risc0:recursion-lib"
+      ],
+      "transformations": [
+        "Retained the stock RISC0 STARK/DEEP-ALI/FRI verification flow from the independent Scala implementation and pinned RISC0 algorithms.",
+        "Removed bincode receipt parsing, host receipt wrappers, caller-selected control programs, and generic control-set inclusion.",
+        "Added direct fixed raw-seal input, manifest-owned exact control-ID matching, derived segment exponent, late inner-root/claim checks, strict EOF, immutable validated profile snapshots, exact TapSet coverage/distinctness checks, canonical PolyExt constants, fixed circuit/opcode censuses, and typed proof rejection.",
+        "Kept profile construction faults distinct from proof-controlled failures, routes the owned validated constraint-program snapshot through the sole PolyExt arithmetic kernel, and exposed only bounded checkpoint instrumentation.",
+        "Routes the validation probe's package-bounded operation sink through direct-verifier primitives while the production no-probe path supplies null and retains no observer state.",
+        "Adds a package-bounded operation-only adapter for the full evaluator route; its final no-op checkpoint callback keeps labels and proof-derived arrays inside the raw verifier, while the ordinary two-argument entry still installs NoProbe."
+      ]
+    }
+  ],
+  "evidence": {
+    "compactPolyExtOracle": {
+      "path": "core/jvm/src/test/resources/stark-kats/polyext_transcript_oracle.tsv",
+      "sha256": "670544b93e9f15e4266e9324a3f3e247799eb8c01a7cec653a67c11b8482864b",
+      "extraction": "Six checkpoint rows retained verbatim; no values recomputed by Scala.",
+      "source": {
+        "repository": "arkadia",
+        "path": "core/jvm/src/test/resources/stark-kats/transcript_capture.tsv",
+        "sha256": "07d29972d37989d4b96e82af5c54e7d086988c3ffc42fd47261b440a3b6265e3"
+      },
+      "generator": {
+        "repository": "arkadia",
+        "path": "stark-kat/src/bin/transcript_capture.rs",
+        "sha256": "e9d807df558250d560d604458b6351c71ecab4c680da55b384fda41bf154a7d2"
+      }
+    }
+  }
+}

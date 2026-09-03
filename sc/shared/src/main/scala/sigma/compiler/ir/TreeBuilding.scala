@@ -223,6 +223,13 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(DeserializeRegisterDef(d, _)) =>
         d
 
+      case Def(VerifyStarkDef(proofChunks, applicationPayload, programId, profileId)) =>
+        builder.mkVerifyStark(
+          recurse(proofChunks),
+          recurse(applicationPayload),
+          recurse(programId),
+          recurse(profileId))
+
       case Def(IsContextProperty(v)) => v
       case s if s == sigmaDslBuilder => Global
 

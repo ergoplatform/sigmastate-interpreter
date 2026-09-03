@@ -4,6 +4,7 @@ import org.ergoplatform.ErgoAddressEncoder.TestnetNetworkPrefix
 import org.ergoplatform._
 import scorex.util.encode.Base58
 import sigma.ast.{ByIndex, ExtractAmount, GetVar, _}
+import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax._
 import sigmastate._
 import sigmastate.helpers.CompilerTestingCommons
@@ -87,6 +88,43 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp(env, "getVar[Short](10).get") shouldBe GetVarShort(10).get
     comp(env, "getVar[Long](10).get") shouldBe GetVarLong(10).get
     comp(env, "getVar[Coll[Byte]](10).get") shouldBe GetVarByteArray(10).get
+  }
+
+  property("verifyStark compiles the canonical four-child ABI") {
+    val proofChunks = ConcreteCollection(
+      Array(ByteArrayConstant(Array[Byte](1, 2, 3))),
+      SByteArray
+    ).asInstanceOf[Value[SCollection[SCollection[SByte.type]]]]
+    val applicationPayload = ByteArrayConstant(Array[Byte](4, 5))
+    val programId = ByteArrayConstant(Array.fill[Byte](32)(6))
+    val profileId = ByteArrayConstant(Array.fill[Byte](32)(7))
+    val starkEnv = env ++ Map(
+      "proofChunks" -> proofChunks,
+      "applicationPayload" -> applicationPayload,
+      "programId" -> programId,
+      "profileId" -> profileId
+    )
+
+    comp(
+      starkEnv,
+      "verifyStark(proofChunks, applicationPayload, programId, profileId)"
+    ) shouldBe VerifyStark(proofChunks, applicationPayload, programId, profileId)
+  }
+
+  property("verifyStark rejects wrong types and arity three or five") {
+    val proofChunks = ConcreteCollection(
+      Array(ByteArrayConstant(Array[Byte](1))),
+      SByteArray
+    ).asInstanceOf[Value[SCollection[SCollection[SByte.type]]]]
+    val bytes = ByteArrayConstant(Array[Byte](2))
+    val starkEnv = env ++ Map("proofChunks" -> proofChunks, "bytes" -> bytes)
+
+    an[TyperException] should be thrownBy
+      comp(starkEnv, "verifyStark(bytes, bytes, bytes, bytes)")
+    an[TyperException] should be thrownBy
+      comp(starkEnv, "verifyStark(proofChunks, bytes, bytes)")
+    an[TyperException] should be thrownBy
+      comp(starkEnv, "verifyStark(proofChunks, bytes, bytes, bytes, bytes)")
   }
 
   property("global methods") {

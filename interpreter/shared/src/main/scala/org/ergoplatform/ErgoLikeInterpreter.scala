@@ -38,4 +38,30 @@ class ErgoLikeInterpreter extends Interpreter {
       case _ => super.substDeserialize(context, updateContext, node)
     }
 
+  override protected def substDeserializeV4(
+      context: CTX,
+      updateContext: CTX => Unit,
+      node: SValue): Option[SValue] = node match {
+    case d: DeserializeRegister[_] =>
+      context.boxesToSpend(context.selfIndex).get(d.reg).flatMap { value =>
+        value match {
+          case eba: EvaluatedValue[SByteArray]@unchecked if eba.tpe == SByteArray =>
+            val outVal = deserializeMeasuredV4(
+              context,
+              updateContext,
+              eba.value.toArray)
+
+            if (outVal.tpe != d.tpe)
+              sys.error(
+                s"Failed deserialization of $d: expected deserialized value to have type ${d.tpe}; got ${outVal.tpe}")
+            else
+              Some(outVal)
+          case _ =>
+            None
+        }
+      }
+    case _ =>
+      super.substDeserializeV4(context, updateContext, node)
+  }
+
 }

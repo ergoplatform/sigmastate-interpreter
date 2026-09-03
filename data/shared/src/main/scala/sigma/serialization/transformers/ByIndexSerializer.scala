@@ -18,6 +18,19 @@ case class ByIndexSerializer(cons: (Value[SCollection[SType]], Value[SInt.type],
   val indexInfo: DataInfo[SValue] = indexArg
   val defaultInfo: DataInfo[SValue] = defaultArg
 
+  override protected def getValueChildren(obj: ByIndex[SType]): IndexedSeq[Value[SType]] =
+    obj.default match {
+      case Some(default) => IndexedSeq(obj.input, obj.index, default)
+      case None => IndexedSeq(obj.input, obj.index)
+    }
+
+  override protected def rebuildValueNode(
+      obj: ByIndex[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = {
+    val default = if (obj.default.isDefined) Some(children(2)) else None
+    cons(children(0).asCollection[SType], children(1).asValue[SInt.type], default)
+  }
+
   override def serialize(obj: ByIndex[SType], w: SigmaByteWriter): Unit = {
     w.putValue(obj.input, inputInfo)
         .putValue(obj.index, indexInfo)

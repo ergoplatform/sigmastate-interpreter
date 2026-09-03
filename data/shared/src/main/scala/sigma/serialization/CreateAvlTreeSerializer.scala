@@ -21,6 +21,18 @@ case class CreateAvlTreeSerializer(
   val keyLengthInfo: DataInfo[SValue] = keyLengthArg
   val valueLengthOptInfo: DataInfo[SValue] = valueLengthOptArg
 
+  override protected def getValueChildren(obj: CreateAvlTree): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.operationFlags, obj.digest, obj.keyLength, obj.valueLengthOpt)
+
+  override protected def rebuildValueNode(
+      obj: CreateAvlTree,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(
+      children(0).asByteValue,
+      children(1).asByteArray,
+      children(2).asIntValue,
+      children(3).asOption[SInt.type])
+
   override def serialize(obj: CreateAvlTree, w: SigmaByteWriter): Unit = {
     w.putValue(obj.operationFlags, operationFlagsInfo)
     w.putValue(obj.digest, digestInfo)

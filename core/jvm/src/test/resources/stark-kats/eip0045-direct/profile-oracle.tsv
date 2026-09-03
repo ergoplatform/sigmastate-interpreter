@@ -1,0 +1,26 @@
+# RISC Zero stock succinct profile oracle values.
+# Source: risc0/risc0 commit 8eb06ab020a92dc5b63ba6dd0836d432aba6d890.
+# Candidate status: non-final-pre-B3; this is test evidence, not an activated profile manifest.
+param	proof_system_info	RISC0_STARK:v1__
+param	circuit_info	RECURSION:rev1v1
+param	output_size	32
+param	mix_size	20
+param	queries	50
+param	inv_rate	4
+param	ext_size	4
+param	check_size	16
+param	fri_fold	16
+param	fri_fold_po2	4
+param	fri_min_degree	256
+param	outer_po2	18
+inner_control_root	a54dc85ac99f851c92d7c96d7318af41dbe7c0194edfcc37eb4d422a998c1f56
+control	1	15	1ca3ca03030719064ba61b3125bdd326fc57f74e799ef860bdea6f3227381e16
+control	1	16	c32b3627d2b3d60c64adf523a98bd16c0ff607471f3d6630d1f26d5e9406d841
+control	1	17	c9b08054994f542a6310b00d9b6fc6528ed7bb6f4ca5476a686847127cdfdc5b
+control	1	18	e7934a23ddce1423b425cf32aa23be29f48cd40e0b6ff9376dce6f3bf9d0bc35
+control	1	19	8c2fdd36ede09a4b9d316a43c51f1160cbd8876659c5f35810c3a119c60d3843
+control	1	20	34530b42028fb631c90e1226bb0e750d4b9b593840d45216f75dca449dac7734
+control	1	21	fd84d83092a1e1244d423a26d89c892ab098b467c6d82229912deb26e37d2562
+control	1	22	9d9dbf33535ab11f52a93839dfd23b352b7626009e81d9459fd04e488898ec6a
+control	2	0	7a8f24092c34ed3eb81b3d0a0b796c588c615d3488ef9e61c21dbd1e4b83ea6e
+control	3	0	53a7b23d07f99e5d5685e85874f5181e8486aa267a0ae607ffe9ba47c8bdda4a

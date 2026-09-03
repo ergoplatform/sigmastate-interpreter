@@ -1,0 +1,18 @@
+# EIP-0045 fixtures are authenticated byte-for-byte.  Keep textual vectors
+# canonical across platforms and never apply text conversion to binary inputs.
+/LICENSE text eol=lf
+/LICENSE-APACHE text eol=lf
+/NOTICE text eol=lf
+/core/shared/src/main/scala/sigma/stark/** text eol=lf
+/core/jvm/src/test/resources/stark-kats/** text eol=lf
+/core/jvm/src/test/resources/stark-kats/**/*.bin binary !eol
+
+# These review artifacts contain or record reproducibility digests.
+/docs/eip-0045-b5-jvm-benchmark.md text eol=lf
+/docs/eip-0045-b5-local-diagnostic-v1.json text eol=lf
+/docs/eip-0045-risc0-source-map.json text eol=lf
+
+# Legal material shipped with the npm package.
+/sigma-js/LICENSE text eol=lf
+/sigma-js/LICENSE-APACHE text eol=lf
+/sigma-js/NOTICE text eol=lf

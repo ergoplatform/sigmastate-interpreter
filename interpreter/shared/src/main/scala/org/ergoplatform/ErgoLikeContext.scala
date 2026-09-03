@@ -6,6 +6,7 @@ import sigma.ast.SType.{AnyOps, TypeCode}
 import sigma.ast._
 import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
 import sigma.eval.Extensions.toAnyValue
+import sigma.eval.StarkVerificationCapability
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
 import sigma.{AnyValue, Coll, Header, PreHeader}
@@ -56,8 +57,42 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
                       val validationSettings: SigmaValidationSettings,
                       val costLimit: Long,
                       val initCost: Long,
-                      val activatedScriptVersion: Byte
+                      val activatedScriptVersion: Byte,
+                      override val starkVerificationCapability: StarkVerificationCapability
                  ) extends InterpreterContext {
+  /** Binary-compatible pre-EIP constructor. It is deliberately fail-closed. */
+  def this(
+      lastBlockUtxoRoot: AvlTreeData,
+      headers: Coll[Header],
+      preHeader: PreHeader,
+      dataBoxes: IndexedSeq[ErgoBox],
+      boxesToSpend: IndexedSeq[ErgoBox],
+      spendingTransaction: ErgoLikeTransactionTemplate[_ <: UnsignedInput],
+      selfIndex: Int,
+      extension: ContextExtension,
+      validationSettings: SigmaValidationSettings,
+      costLimit: Long,
+      initCost: Long,
+      activatedScriptVersion: Byte) =
+    this(
+      lastBlockUtxoRoot,
+      headers,
+      preHeader,
+      dataBoxes,
+      boxesToSpend,
+      spendingTransaction,
+      selfIndex,
+      extension,
+      validationSettings,
+      costLimit,
+      initCost,
+      activatedScriptVersion,
+      StarkVerificationCapability.Unavailable)
+
+  require(
+    starkVerificationCapability != null,
+    "starkVerificationCapability must not be null")
+
   // TODO lastBlockUtxoRoot should be calculated from headers if it is nonEmpty
 
   /* NOHF PROOF:
@@ -128,6 +163,10 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
   override def withValidationSettings(newVs: SigmaValidationSettings): ErgoLikeContext =
     ErgoLikeContext.copy(this)(validationSettings = newVs)
 
+  def withStarkVerificationCapability(
+      newCapability: StarkVerificationCapability): ErgoLikeContext =
+    ErgoLikeContext.copy(this)(starkVerificationCapability = newCapability)
+
   override def withExtension(newExtension: ContextExtension): ErgoLikeContext =
     ErgoLikeContext.copy(this)(extension = newExtension)
 
@@ -186,7 +225,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         validationSettings == that.validationSettings &&
         costLimit == that.costLimit &&
         initCost == that.initCost &&
-        activatedScriptVersion == that.activatedScriptVersion
+        activatedScriptVersion == that.activatedScriptVersion &&
+        starkVerificationCapability == that.starkVerificationCapability
     case _ => false
   }
 
@@ -196,7 +236,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     val state = Array(
       lastBlockUtxoRoot, headers, preHeader, dataBoxes, boxesToSpend, spendingTransaction,
       selfIndex, extension, validationSettings, costLimit, initCost,
-      activatedScriptVersion)
+      activatedScriptVersion, starkVerificationCapability)
     var h = 0
     cfor(0)(_ < state.length, _ + 1) { i =>
       h = 31 * h + state(i).hashCode
@@ -204,7 +244,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     h
   }
 
-  override def toString = s"ErgoLikeContext(lastBlockUtxoRoot=$lastBlockUtxoRoot, headers=$headers, preHeader=$preHeader, dataBoxes=$dataBoxes, boxesToSpend=$boxesToSpend, spendingTransaction=$spendingTransaction, selfIndex=$selfIndex, extension=$extension, validationSettings=$validationSettings, costLimit=$costLimit, initCost=$initCost, activatedScriptVersion=$activatedScriptVersion)"
+  override def toString = s"ErgoLikeContext(lastBlockUtxoRoot=$lastBlockUtxoRoot, headers=$headers, preHeader=$preHeader, dataBoxes=$dataBoxes, boxesToSpend=$boxesToSpend, spendingTransaction=$spendingTransaction, selfIndex=$selfIndex, extension=$extension, validationSettings=$validationSettings, costLimit=$costLimit, initCost=$initCost, activatedScriptVersion=$activatedScriptVersion, starkVerificationCapability=${starkVerificationCapability.getClass.getSimpleName})"
 }
 
 object ErgoLikeContext {
@@ -231,11 +271,13 @@ object ErgoLikeContext {
       costLimit: Long = ctx.costLimit,
       initCost: Long = ctx.initCost,
       activatedScriptVersion: Byte = ctx.activatedScriptVersion,
+      starkVerificationCapability: StarkVerificationCapability =
+        ctx.starkVerificationCapability,
       currErgoTreeVersion: Option[Byte] = ctx.currentErgoTreeVersion): ErgoLikeContext = {
     new ErgoLikeContext(
       lastBlockUtxoRoot, headers, preHeader, dataBoxes, boxesToSpend,
       spendingTransaction, selfIndex, extension, validationSettings, costLimit, initCost,
-      activatedScriptVersion) {
+      activatedScriptVersion, starkVerificationCapability) {
       override val currentErgoTreeVersion: Option[TypeCode] = currErgoTreeVersion
     }
   }

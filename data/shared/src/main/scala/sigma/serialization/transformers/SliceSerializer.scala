@@ -15,6 +15,14 @@ case class SliceSerializer(cons: (Value[SCollection[SType]], Value[SInt.type], V
   val fromInfo: DataInfo[SValue] = fromArg
   val untilInfo: DataInfo[SValue] = untilArg
 
+  override protected def getValueChildren(obj: Slice[SType]): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.input, obj.from, obj.until)
+
+  override protected def rebuildValueNode(
+      obj: Slice[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asCollection[SType], children(1).asValue[SInt.type], children(2).asValue[SInt.type])
+
   override def serialize(obj: Slice[SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, thisInfo)
       .putValue(obj.from, fromInfo)

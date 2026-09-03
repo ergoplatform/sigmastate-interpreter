@@ -109,7 +109,9 @@ object OpCodes {
   val FilterCode           : OpCode = newOpCode(69)
   val AvlTreeCode          : OpCode = newOpCode(70)
   val AvlTreeGetCode       : OpCode = newOpCode(71)
-  val FlatMapCollectionCode: OpCode = newOpCode(72) // reserved 73 - 80 (8)
+  val FlatMapCollectionCode: OpCode = newOpCode(72)
+  val VerifyStarkCode      : OpCode = newOpCode(73) // EIP-0045: Native STARK Proof Verifier
+  // reserved 74 - 80 (7)
 
   // Type casts codes
   val ExtractAmountCode        : OpCode = newOpCode(81)

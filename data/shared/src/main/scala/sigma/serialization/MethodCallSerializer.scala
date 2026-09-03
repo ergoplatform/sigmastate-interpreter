@@ -20,6 +20,14 @@ case class MethodCallSerializer(cons: (Value[SType], SMethod, IndexedSeq[Value[S
   val argsInfo: DataInfo[Seq[SValue]] = ArgInfo("args", "arguments of the method call")
   val argsItemInfo = valuesItemInfo(argsInfo)
 
+  override protected def getValueChildren(mc: MethodCall): IndexedSeq[Value[SType]] =
+    mc.obj +: mc.args
+
+  override protected def rebuildValueNode(
+      mc: MethodCall,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children.head, mc.method, children.tail, mc.typeSubst)
+
   override def serialize(mc: MethodCall, w: SigmaByteWriter): Unit = {
     w.put(mc.method.objType.typeId, typeCodeInfo)
     w.put(mc.method.methodId, methodCodeInfo)

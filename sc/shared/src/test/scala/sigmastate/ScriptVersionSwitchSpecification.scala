@@ -3,7 +3,7 @@ package sigmastate
 import org.ergoplatform.ErgoBox.AdditionalRegisters
 import org.ergoplatform._
 import scorex.util.ModifierId
-import sigma.VersionContext.MaxSupportedScriptVersion
+import sigma.VersionContext.{MaxSupportedScriptVersion, StarkVerificationVersion}
 import sigma.ast.ErgoTree.{HeaderType, ZeroHeader, setConstantSegregation, setVersionBits}
 import sigma.ast._
 import sigma.{Box, SigmaDslTesting}
@@ -271,15 +271,52 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
     }
   }
 
-  /** Rule#| BlockVer | Block Type| Script Version | Release | Validation Action
-    * -----|----------|-----------|----------------|---------|--------
-    * 19   | 5        | candidate | Script v4      | v6.0    | skip-accept (rely on majority)
-    * 20   | 5        | mined     | Script v4      | v6.0    | skip-accept (rely on majority)
+  property("EIP-0045-capable interpreter fully evaluates ordinary v4 scripts") {
+    forEachActivatedScriptVersion(activatedVers = Array[Byte](StarkVerificationVersion)) {
+      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](StarkVerificationVersion)) {
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
+        val ergoTree = createErgoTree(headerFlags)
+
+        val pr = testProve(ergoTree, activatedScriptVersion = activatedVersionInTests)
+        pr.proof shouldBe Array.emptyByteArray
+        pr.cost shouldBe 24L
+
+        val (ok, cost) = testVerify(ergoTree, activatedScriptVersion = activatedVersionInTests)
+        ok shouldBe true
+        cost shouldBe 24L
+      }
+    }
+  }
+
+  property("v4 scripts are rejected while only v3 is activated") {
+    val previousVersion = (StarkVerificationVersion - 1).toByte
+    forEachActivatedScriptVersion(activatedVers = Array[Byte](previousVersion)) {
+      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](StarkVerificationVersion)) {
+        val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
+        val ergoTree = createErgoTree(headerFlags)
+        val expectedMessage =
+          s"ErgoTree version ${ergoTree.version} is higher than activated $activatedVersionInTests"
+
+        assertExceptionThrown(
+          testProve(ergoTree, activatedScriptVersion = activatedVersionInTests),
+          exceptionLike[InterpreterException](expectedMessage))
+        assertExceptionThrown(
+          testVerify(ergoTree, activatedScriptVersion = activatedVersionInTests),
+          exceptionLike[InterpreterException](expectedMessage))
+      }
+    }
+  }
+
+  /** The generic soft-fork boundary moves forward with
+    * [[MaxSupportedScriptVersion]]: this release understands v4, while a
+    * future v5 tree is still prover-rejected and verifier skip-accepted after
+    * network activation.
     */
-  property("Rules 19,20 | Block v5 | candidate or mined block | Script v4") {
-    forEachActivatedScriptVersion(activatedVers = Array[Byte](4)) // activated version is greater than MaxSupported
+  property("future activated and tree versions above MaxSupported remain soft-forkable") {
+    val futureVersion = (MaxSupportedScriptVersion + 1).toByte
+    forEachActivatedScriptVersion(activatedVers = Array[Byte](futureVersion))
     {
-      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](4, 5)) { // tree version >= activated
+      forEachErgoTreeVersion(ergoTreeVers = Array[Byte](futureVersion, (futureVersion + 1).toByte)) {
         val headerFlags = ErgoTree.defaultHeaderWithVersion(ergoTreeVersionInTests)
         val ergoTree = createErgoTree(headerFlags)
 

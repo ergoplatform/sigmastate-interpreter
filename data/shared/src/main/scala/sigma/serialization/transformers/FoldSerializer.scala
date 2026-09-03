@@ -16,6 +16,14 @@ case class FoldSerializer(cons: (Value[SCollection[SType]], Value[SType], Value[
   val zeroInfo: DataInfo[SValue] = zeroArg
   val opInfo: DataInfo[SValue] = opArg
 
+  override protected def getValueChildren(
+      obj: Fold[SType, SType]): IndexedSeq[Value[SType]] = IndexedSeq(obj.input, obj.zero, obj.foldOp)
+
+  override protected def rebuildValueNode(
+      obj: Fold[SType, SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asCollection[SType], children(1), children(2).asFunc)
+
   override def serialize(obj: Fold[SType, SType], w: SigmaByteWriter): Unit = {
     w.putValue(obj.input, thisInfo)
       .putValue(obj.zero, zeroInfo)

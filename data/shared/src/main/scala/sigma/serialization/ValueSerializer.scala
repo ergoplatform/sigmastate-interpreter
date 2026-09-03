@@ -11,6 +11,7 @@ import sigma.serialization.ValueCodes.OpCode
 import sigma.serialization.transformers._
 import sigma.serialization.trees.{QuadrupleSerializer, Relation2Serializer}
 import sigma.utils.SparseArrayContainer
+import sigma.exceptions.BuilderException
 
 import scala.collection.mutable
 
@@ -20,6 +21,115 @@ abstract class ValueSerializer[V <: Value[SType]] extends SigmaSerializer[Value[
   /** Code of the corresponding tree node (Value.opCode) which is used to lookup this serizalizer
     * during deserialization. It is emitted immediately before the body of this node in serialized byte array. */
   @inline final def opCode: OpCode = opDesc.opCode
+
+  /** Returns only the direct [[Value]] fields emitted by this serializer, in their exact
+    * serialization order. Non-Value metadata (types, ids, method descriptors, collection
+    * lengths, compact bit payloads, etc.) is deliberately opaque.
+    *
+    * Every serializer registered for consensus traversal must declare this shape. Legacy
+    * external subclasses inherit the fail-closed default below. This keeps structural
+    * traversals tied to the consensus serializer instead of to reflection or an
+    * independently maintained AST-product convention.
+    */
+  protected def getValueChildren(obj: V): IndexedSeq[Value[SType]] =
+    error(s"Structural Value children are not declared for ${opDesc.typeName}")
+
+  /** Reconstructs `obj` after replacing exactly the children returned by
+    * [[getValueChildren]]. Implementations must preserve every serialized non-Value
+    * field of `obj`. Arity and child types are checked by [[rebuildValue]] before this
+    * method is called. Non-consensus source annotations are outside this contract.
+    */
+  protected def rebuildValueNode(
+      obj: V,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    error(s"Structural Value rebuild is not declared for ${opDesc.typeName}")
+
+  /** Verifies that [[rebuildValueNode]] retained the replacement children and
+    * preserved the serializer-owned wire shape. Serializers whose encoding has
+    * an explicit compact/non-compact transition may override this hook, but
+    * must still prove directly from the rebuilt AST that every replacement was
+    * retained in order.
+    */
+  protected def validateRebuiltValue(
+      obj: V,
+      children: IndexedSeq[Value[SType]],
+      rebuilt: Value[SType]): Unit = {
+    if (rebuilt.companion != obj.companion || rebuilt.opCode != obj.opCode)
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer changed the node companion or opcode")
+
+    val rebuiltChildren = getValueChildren(rebuilt.asInstanceOf[V])
+    if (rebuiltChildren.length != children.length)
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer changed the structural arity")
+    var i = 0
+    while (i < children.length) {
+      if (!(rebuiltChildren(i).asInstanceOf[AnyRef] eq children(i).asInstanceOf[AnyRef]))
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer did not retain replacement child $i")
+      i += 1
+    }
+  }
+
+  /** Untyped, registry-facing view of [[getValueChildren]]. */
+  final def valueChildren(obj: Value[SType]): IndexedSeq[Value[SType]] = {
+    val typedObj = checkedObject(obj)
+    getValueChildren(typedObj)
+  }
+
+  /** Rebuilds a node from its direct serialized-Value children.
+    *
+    * The replacement is deliberately shape-preserving: the number of children and each
+    * child's Sigma type must match [[valueChildren]] for the original node. Failures use
+    * [[SerializerException]] with stable, serializer-owned diagnostics.
+    */
+  final def rebuildValue(
+      obj: Value[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = {
+    val typedObj = checkedObject(obj)
+    if (children == null)
+      error(s"Cannot rebuild ${opDesc.typeName}: children is null")
+
+    val expected = getValueChildren(typedObj)
+    if (children.length != expected.length)
+      error(s"Cannot rebuild ${opDesc.typeName}: expected ${expected.length} Value children, got ${children.length}")
+
+    var i = 0
+    while (i < expected.length) {
+      val child = children(i)
+      if (child == null)
+        error(s"Cannot rebuild ${opDesc.typeName}: child $i is null")
+      val expectedType = expected(i).tpe
+      if (child.tpe != expectedType)
+        error(s"Cannot rebuild ${opDesc.typeName}: child $i has type ${child.tpe}, expected $expectedType")
+      i += 1
+    }
+
+    val rebuilt = try rebuildValueNode(typedObj, children)
+    catch {
+      case e: SerializerException => throw e
+      case _: ClassCastException =>
+        error(s"Cannot rebuild ${opDesc.typeName}: a replacement child has an incompatible node class")
+      case _: BuilderException =>
+        error(s"Cannot rebuild ${opDesc.typeName}: constructor rejected the replacement children")
+      case _: IllegalArgumentException =>
+        error(s"Cannot rebuild ${opDesc.typeName}: constructor rejected the replacement children")
+      case _: AssertionError =>
+        error(s"Cannot rebuild ${opDesc.typeName}: constructor rejected the replacement children")
+    }
+
+    if (rebuilt == null)
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer returned null")
+    if (rebuilt.tpe != obj.tpe)
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer changed type ${obj.tpe} to ${rebuilt.tpe}")
+    validateRebuiltValue(typedObj, children, rebuilt)
+    rebuilt
+  }
+
+  private def checkedObject(obj: Value[SType]): V = {
+    if (obj == null)
+      error(s"Cannot inspect ${opDesc.typeName}: value is null")
+    if (obj.companion != opDesc)
+      error(s"Cannot inspect ${opDesc.typeName}: got ${obj.companion.typeName}")
+    obj.asInstanceOf[V]
+  }
 }
 
 /** Implements serialization of ErgoTree expressions. Contains global collection of
@@ -151,7 +261,8 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     CreateProveDHTupleSerializer(mkCreateProveDHTuple),
     LogicalNotSerializer(mkLogicalNot),
     OneArgumentOperationSerializer(Negation, mkNegation[SNumericType]),
-    OneArgumentOperationSerializer(BitInversion, mkBitInversion[SNumericType])
+    OneArgumentOperationSerializer(BitInversion, mkBitInversion[SNumericType]),
+    VerifyStarkSerializer
   ))
 
   private def serializable(v: Value[SType]): Value[SType] = {

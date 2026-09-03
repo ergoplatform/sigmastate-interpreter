@@ -653,6 +653,31 @@
        
 \end{tabularx}
 
+\subsubsection{\lst{verifyStark} method (Code 185)}
+\label{sec:appendix:primops:VerifyStark}
+\noindent
+\begin{tabularx}{\textwidth}{| l | X |}
+   \hline
+   \bf{Description} & Verify a profile-defined canonical STARK proof under an immutable network profile. \\
+
+  \hline
+  \bf{Parameters} &
+      \(\begin{array}{l l l}
+         \lst{proofChunks} & \lst{: Coll[Coll[Byte]]} & \text{// canonical proof bytes split into ordered chunks; raw seal for the initial profile} \\
+\lst{applicationPayload} & \lst{: Coll[Byte]} & \text{// application-defined public payload} \\
+\lst{programId} & \lst{: Coll[Byte]} & \text{// identifier of the proven program} \\
+\lst{profileId} & \lst{: Coll[Byte]} & \text{// identifier of the immutable verifier profile} \\
+      \end{array}\) \\
+
+  \hline
+  \bf{Result} & \lst{Boolean} \\
+  \hline
+
+  \bf{Serialized as} & \hyperref[sec:serialization:operation:VerifyStark]{\lst{VerifyStark}} \\
+  \hline
+
+\end{tabularx}
+
 \subsubsection{\lst{blake2b256} method (Code 203)}
 \label{sec:appendix:primops:CalcBlake2b256}
 \noindent

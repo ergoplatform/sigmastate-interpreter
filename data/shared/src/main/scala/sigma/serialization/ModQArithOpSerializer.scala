@@ -12,6 +12,14 @@ case class ModQArithOpSerializer(override val opDesc: ModQArithOpCompanion, cons
   val leftInfo: DataInfo[SValue] = opDesc.argInfos(0)
   val rightInfo: DataInfo[SValue] = opDesc.argInfos(1)
 
+  override protected def getValueChildren(obj: ModQArithOp): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.left, obj.right)
+
+  override protected def rebuildValueNode(
+      obj: ModQArithOp,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asBigInt, children(1).asBigInt)
+
   override def serialize(obj: ModQArithOp, w: SigmaByteWriter): Unit = {
     w.putValue(obj.left, leftInfo)
       .putValue(obj.right, rightInfo)

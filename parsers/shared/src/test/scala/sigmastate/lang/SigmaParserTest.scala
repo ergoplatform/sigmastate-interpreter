@@ -106,6 +106,21 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     parse("g1 + g2") shouldBe MethodCallLike(Ident("g1"), "+", IndexedSeq(Ident("g2")))
   }
 
+  property("verifyStark preserves four argument positions in the parsed tree") {
+    checkParsed(
+      "verifyStark(proofChunks, applicationPayload, programId, profileId)",
+      Apply(
+        Ident("verifyStark"),
+        IndexedSeq(
+          Ident("proofChunks"),
+          Ident("applicationPayload"),
+          Ident("programId"),
+          Ident("profileId")
+        )
+      )
+    )
+  }
+
   property("precedence of binary operations") {
     parse("1 - 2 - 3") shouldBe Minus(Minus(1, 2), 3)
     parse("1 + 2 + 3") shouldBe plus(plus(1, 2), 3)

@@ -15,6 +15,14 @@ case class MapCollectionSerializer(cons: (Value[SCollection[SType]], Value[SFunc
   val thisInfo: DataInfo[SValue] = thisArg
   val fInfo: DataInfo[SValue] = fArg
 
+  override protected def getValueChildren(
+      obj: MapCollection[SType, SType]): IndexedSeq[Value[SType]] = IndexedSeq(obj.input, obj.mapper)
+
+  override protected def rebuildValueNode(
+      obj: MapCollection[SType, SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asValue[SCollection[SType]], children(1).asFunc)
+
   override def serialize(obj: MapCollection[SType, SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, thisInfo)
       .putValue(obj.mapper, fInfo)

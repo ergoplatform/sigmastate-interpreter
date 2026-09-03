@@ -5,7 +5,10 @@
   "files": [
     "dist/",
     "sigmastate-js.d.ts",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "NOTICE"
   ],
   "exports": {
     "./internal-*": null,
@@ -14,7 +17,7 @@
       "default": "./dist/main.js"
     }
   },
-  "license": "MIT",
+  "license": "MIT AND Apache-2.0",
   "publishConfig": {
     "access": "public"
   },
@@ -30,7 +33,7 @@
   "scripts": {
     "test": "jest",
     "clean": "shx rm -rf ./dist/*",
-    "copy-output": "shx mkdir -p ./dist/ && cp -r ../sc/js/target/scala-2.13/sc-fastopt/* ./dist/",
+    "copy-output": "shx mkdir -p ./dist/ && shx cp -r ../sc/js/target/scala-2.13/sc-fastopt/* ./dist/",
     "prepublishOnly": "npm run clean && npm run copy-output",
     "ci:snapshot": "node ./scripts/setSnapshotVersion"
   },

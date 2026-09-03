@@ -13,6 +13,14 @@ case class NumericCastSerializer(opDesc: NumericCastCompanion,
   val inputInfo: DataInfo[SValue] = opDesc.argInfos(0)
   val typeInfo: DataInfo[SType] = ArgInfo("type", "resulting type of the cast operation")
 
+  override protected def getValueChildren(
+      obj: Transformer[SNumericType, SNumericType]): IndexedSeq[Value[SType]] = IndexedSeq(obj.input)
+
+  override protected def rebuildValueNode(
+      obj: Transformer[SNumericType, SNumericType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asNumValue, obj.tpe)
+
   override def serialize(obj: Transformer[SNumericType, SNumericType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, inputInfo)
       .putType(obj.tpe, typeInfo)

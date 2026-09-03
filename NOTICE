@@ -1,0 +1,16 @@
+Sigma State Interpreter
+Copyright (c) 2017 ScorexFoundation
+
+The Sigma State Interpreter is distributed under the MIT License. Certain
+EIP-0045 STARK verifier components contain material adapted from RISC Zero
+projects and are additionally subject to the Apache License, Version 2.0.
+See LICENSE, LICENSE-APACHE, and the notices in the affected source files.
+
+EIP-0045 RISC0 STARK verifier components:
+Copyright 2024-2026 RISC Zero, Inc.
+Initially translated to Scala by arkadianet.
+Modified for Sigma State in 2026 by A. Shannon.
+
+RISC Zero credits https://github.com/nhukc for the initial Poseidon2
+implementation. The Poseidon2 parameters follow the reference parameters at
+https://github.com/HorizenLabs/poseidon2.

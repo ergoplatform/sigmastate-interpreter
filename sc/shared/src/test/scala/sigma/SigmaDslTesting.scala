@@ -1017,6 +1017,32 @@ class SigmaDslTesting extends AnyPropSpec
   }
 
   object Expected {
+    /** V4 adds VerifyStark but does not redefine existing language features.
+      * Expectations which do not name v4 therefore inherit the v3 result once.
+      * The guards deliberately force a conscious test-vector review before any
+      * later language version can be added.
+      */
+    private def inheritV4FromV3[A](
+        commonResults: Seq[(ExpectedResult[A], Option[CostDetails])],
+        explicitResults: Seq[(Int, (ExpectedResult[A], Option[CostDetails]))]) = {
+      require(
+        VersionContext.StarkVerificationVersion.toInt ==
+          VersionContext.V6SoftForkVersion.toInt + 1,
+        "v4 inheritance requires StarkVerificationVersion to immediately follow v3")
+      require(
+        VersionContext.MaxSupportedScriptVersion == VersionContext.StarkVerificationVersion,
+        "a new language version requires an explicit expectation-vector review")
+      require(
+        commonResults.length == VersionContext.StarkVerificationVersion.toInt + 1,
+        s"expected exactly versions 0 through ${VersionContext.StarkVerificationVersion}")
+
+      val updated = commonResults.updateMany(explicitResults).toBuffer
+      val v4 = VersionContext.StarkVerificationVersion.toInt
+      if (!explicitResults.exists(_._1 == v4))
+        updated(v4) = updated(VersionContext.V6SoftForkVersion.toInt)
+      updated.toSeq
+    }
+
     /** Used when exception is expected.
       * @param error expected during execution
       */
@@ -1080,7 +1106,7 @@ class SigmaDslTesting extends AnyPropSpec
      * @param cost            expected verification cost
      * @param expectedDetails expected cost details for all versions <= V3
      * @param expectedNewCost expected new verification cost for all versions <= V3
-     * @param expectedV3Cost expected cost for >=V3
+     * @param expectedV3Costs exact historical costs for versions 0..3; v4 inherits v3
      */
     def apply[A](value: Try[A],
                  cost: Int,
@@ -1089,10 +1115,30 @@ class SigmaDslTesting extends AnyPropSpec
                  expectedV3Costs: Seq[Int]
                  )(implicit dummy: DummyImplicit): Expected[A] =
       new Expected(ExpectedResult(value, Some(cost))) {
-        override val newResults = defaultNewResults.zipWithIndex.map {
-          case ((ExpectedResult(v, _), _), version) => {
-            var cost = if (activatedVersionInTests >= V6SoftForkVersion) expectedV3Costs(version) else expectedNewCost
-            (ExpectedResult(v, Some(cost)), Some(expectedDetails))
+        override val newResults = {
+          require(
+            VersionContext.MaxSupportedScriptVersion == VersionContext.StarkVerificationVersion,
+            "a new language version requires an explicit cost-vector review")
+          require(
+            expectedV3Costs.length == VersionContext.StarkVerificationVersion.toInt,
+            s"expected one historical cost for each version 0 through ${VersionContext.V6SoftForkVersion}")
+
+          defaultNewResults.zipWithIndex.map {
+            case ((ExpectedResult(v, _), _), version) =>
+              val costVersion =
+                if (version <= VersionContext.V6SoftForkVersion.toInt) version
+                else {
+                  require(
+                    version == VersionContext.StarkVerificationVersion.toInt,
+                    s"missing explicit cost for language version $version")
+                  VersionContext.V6SoftForkVersion.toInt
+                }
+              val cost =
+                if (activatedVersionInTests >= V6SoftForkVersion)
+                  expectedV3Costs(costVersion)
+                else
+                  expectedNewCost
+              (ExpectedResult(v, Some(cost)), Some(expectedDetails))
           }
         }
       }
@@ -1118,7 +1164,7 @@ class SigmaDslTesting extends AnyPropSpec
             case (res, _) =>
               (ExpectedResult(res.value, Some(newCost)), Option(expectedDetails))
           }
-          commonNewResults.updateMany(newVersionedResults).toSeq
+          inheritV4FromV3(commonNewResults, newVersionedResults)
         }
       }
 
@@ -1133,7 +1179,7 @@ class SigmaDslTesting extends AnyPropSpec
             case (res, _) =>
               (ExpectedResult(res.value, newCostOpt), Option(expectedDetails))
           }
-          commonNewResults.updateMany(newVersionedResults).toSeq
+          inheritV4FromV3(commonNewResults, newVersionedResults)
         }
       }
   }

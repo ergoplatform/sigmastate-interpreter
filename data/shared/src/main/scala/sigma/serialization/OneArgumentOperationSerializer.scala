@@ -10,6 +10,13 @@ case class OneArgumentOperationSerializer[T <: SType](opDesc: OneArgumentOperati
   extends ValueSerializer[OneArgumentOperation[T, SType]] {
   val objInfo: DataInfo[SValue] = opDesc.argInfos(0)
 
+  override protected def getValueChildren(
+      obj: OneArgumentOperation[T, SType]): IndexedSeq[Value[SType]] = IndexedSeq(obj.input)
+
+  override protected def rebuildValueNode(
+      obj: OneArgumentOperation[T, SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = cons(children(0).asValue[T])
+
   override def serialize(obj: OneArgumentOperation[T, SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, objInfo)
     

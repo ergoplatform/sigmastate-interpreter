@@ -15,6 +15,19 @@ case class CreateProveDHTupleSerializer(cons: (Value[SGroupElement.type],
   import sigma.ast.Operations.CreateProveDHTupleInfo._
   override def opDesc = CreateProveDHTuple
 
+  override protected def getValueChildren(
+      obj: CreateProveDHTuple): IndexedSeq[Value[sigma.ast.SType]] =
+    IndexedSeq(obj.gv, obj.hv, obj.uv, obj.vv)
+
+  override protected def rebuildValueNode(
+      obj: CreateProveDHTuple,
+      children: IndexedSeq[Value[sigma.ast.SType]]): Value[sigma.ast.SType] =
+    cons(
+      children(0).asValue[SGroupElement.type],
+      children(1).asValue[SGroupElement.type],
+      children(2).asValue[SGroupElement.type],
+      children(3).asValue[SGroupElement.type])
+
   override def serialize(obj: CreateProveDHTuple, w: SigmaByteWriter): Unit = {
     w.putValue(obj.gv, gArg)
     w.putValue(obj.hv, hArg)
