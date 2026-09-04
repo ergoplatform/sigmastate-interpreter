@@ -12,11 +12,44 @@ case class DiffieHellmanTupleProverInput(w: BigInteger, commonInput: ProveDHTupl
   extends SigmaProtocolPrivateInput[ProveDHTuple] {
 
   override lazy val publicImage: ProveDHTuple = commonInput
+
+  /** Whether the secret `w` is consistent with the public statement. Cached so
+    * repeated checks during signing are cheap. Always `true` for instances
+    * built via [[DiffieHellmanTupleProverInput.create]] / `random`, but kept
+    * as defense-in-depth against reflective / deserialised input.
+    */
+  lazy val isValidSecret: Boolean =
+    DiffieHellmanTupleProverInput.isValid(w, commonInput)
+
+  /** Shadow the synthetic public `copy` so callers cannot side-step the
+    * validating factory by writing `existing.copy(w = badW)`.
+    */
+  private def copy(
+    w: BigInteger = this.w,
+    commonInput: ProveDHTuple = this.commonInput
+  ) = DiffieHellmanTupleProverInput.create(w, commonInput)
 }
 
 object DiffieHellmanTupleProverInput {
 
   import CryptoConstants.dlogGroup
+
+  /** Check that `w` satisfies the DH-tuple statement `(g, h, u, v)`, i.e.
+    * that `g^w == u` and `h^w == v`.
+    */
+  def isValid(w: BigInteger, dh: ProveDHTuple): Boolean = {
+    dlogGroup.exponentiate(dh.g, w) == dh.u &&
+      dlogGroup.exponentiate(dh.h, w) == dh.v
+  }
+
+  /** Validating factory: builds a [[DiffieHellmanTupleProverInput]] only if `w`
+    * actually satisfies the given DH-tuple statement. Throws
+    * `IllegalArgumentException` otherwise.
+    */
+  def create(w: BigInteger, dh: ProveDHTuple): DiffieHellmanTupleProverInput = {
+    require(isValid(w, dh), "Secret w does not satisfy the given ProveDHTuple statement (g^w != u or h^w != v)")
+    new DiffieHellmanTupleProverInput(w, dh)
+  }
 
   def random(): DiffieHellmanTupleProverInput = {
     val g = dlogGroup.generator
@@ -27,7 +60,7 @@ object DiffieHellmanTupleProverInput {
     val u = dlogGroup.exponentiate(g, w)
     val v = dlogGroup.exponentiate(h, w)
     val ci = ProveDHTuple(g, h, u, v)
-    DiffieHellmanTupleProverInput(w, ci)
+    DiffieHellmanTupleProverInput.create(w, ci)
   }
 }
 

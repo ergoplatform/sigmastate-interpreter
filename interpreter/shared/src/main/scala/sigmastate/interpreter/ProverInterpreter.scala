@@ -528,6 +528,17 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
         .filter(_.isInstanceOf[DiffieHellmanTupleProverInput])
         .find(_.asInstanceOf[DiffieHellmanTupleProverInput].publicImage == dhu.proposition)
 
+      // Defense-in-depth: even if a private input is matched by publicImage equality, its secret `w` may not
+      // actually satisfy the statement (e.g. when constructed bypassing `DiffieHellmanTupleProverInput.create`).
+      // Signing with such an input would produce a proof that the verifier rejects; fail loudly instead.
+      privKeyOpt.foreach { pk =>
+        val dhPk = pk.asInstanceOf[DiffieHellmanTupleProverInput]
+        if (!dhPk.isValidSecret) {
+          throw new InterpreterException(
+            s"DiffieHellmanTupleProverInput secret does not satisfy proposition at position ${dhu.position}")
+        }
+      }
+
       val z = privKeyOpt match {
         case Some(privKey) =>
           hintsBag.ownCommitments.find(_.position == dhu.position).map { oc =>
