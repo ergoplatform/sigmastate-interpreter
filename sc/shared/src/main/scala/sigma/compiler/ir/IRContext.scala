@@ -2,10 +2,9 @@ package sigma.compiler.ir
 
 import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
-import sigma.data.{Nullable, RType}
-import sigma.util.MemoizedFunc
+import sigma.data.Nullable
 import sigma.compiler.ir.wrappers.scala.WOptionsModule
-import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule, WRTypesModule}
+import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule}
 
 /** Aggregate cake with all inter-dependent modules assembled together.
   * Each instance of this class contains independent IR context, thus many
@@ -45,13 +44,11 @@ trait IRContext
   with SigmaDslModule
   with TreeBuilding
   with GraphBuilding
-  with WOptionsModule
-  with WRTypesModule {
+  with WOptionsModule {
 
   import Coll._
   import CollBuilder._
   import WOption._
-  import WRType._
 
   /** Pass configuration which is used to turn-off constant propagation.
     * USED IN TESTS ONLY.
@@ -62,28 +59,11 @@ trait IRContext
 
   type LazyRep[T] = MutableLazy[Ref[T]]
 
-  private val _liftElemMemo = new MemoizedFunc({
-    case eT: Elem[t] =>
-      val lT = Liftables.asLiftable[Any, t](eT.liftable)
-      liftableRType(lT).lift(eT.sourceType.asInstanceOf[RType[Any]])
-  })
-  implicit def liftElem[T](eT: Elem[T]): Ref[WRType[T]] = {
-    _liftElemMemo(eT).asInstanceOf[Ref[WRType[T]]]  // asRep cannot be used for AnyRef
-  }
-
-  override protected def onReset(): Unit = {
-    _liftElemMemo.reset()
-    super.onReset()
-  }
-
   val CM = CollMethods
   private val CBM = CollBuilderMethods
   private val WOptionM = WOptionMethods
 
   def colBuilder: Ref[CollBuilder]
-
-  /** Type descriptor for [[WRType]] */
-  implicit lazy val wRTypeAnyElement: Elem[WRType[Any]] = wRTypeElement(AnyElement)
 
   /** During compilation represent a global value Global, see also SGlobal type. */
   def sigmaDslBuilder: Ref[SigmaDslBuilder]
