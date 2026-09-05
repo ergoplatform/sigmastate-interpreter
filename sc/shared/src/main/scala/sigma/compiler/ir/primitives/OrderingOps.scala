@@ -18,7 +18,6 @@ trait OrderingOps extends Base { self: IRContext =>
     def >=(rhs: Ref[T]) = OrderingGTEQ(n).apply(lhs,rhs)
     def max(rhs: Ref[T]): Ref[T] = OrderingMax(n)(lhs.elem).apply(lhs,rhs)
     def min(rhs: Ref[T]): Ref[T] = OrderingMin(n)(lhs.elem).apply(lhs,rhs)
-    def compare(rhs: Ref[T]): Ref[Int] = OrderingCompare(n).apply(lhs,rhs)
   }
 
   /** Descriptor of binary `<` operation. */
@@ -49,10 +48,5 @@ trait OrderingOps extends Base { self: IRContext =>
   /** Descriptor of binary `min` operation. */
   case class OrderingMin[T: Elem](ord: ExactOrdering[T]) extends BinOp[T, T]("min") {
     override def applySeq(x: T, y: T): T = ord.min(x, y)
-  }
-
-  /** Descriptor of binary `compare` operation. */
-  case class OrderingCompare[T](ord: ExactOrdering[T]) extends BinOp[T, Int]("compare") {
-    override def applySeq(x: T, y: T): Int = ord.compare(x, y)
   }
 }
