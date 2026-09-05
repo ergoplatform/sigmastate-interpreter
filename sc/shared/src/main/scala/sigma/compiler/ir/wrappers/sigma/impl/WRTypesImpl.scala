@@ -8,7 +8,6 @@ import sigma.compiler.ir.wrappers.RTypeWrapSpec
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
-  import sigma.compiler.ir.meta.ModuleInfo
   import sigma.compiler.ir.wrappers.sigma.WRTypes
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.reflection.{RClass, RMethod}
@@ -17,8 +16,6 @@ package impl {
   // Abs -----------------------------------
 trait WRTypesDefs extends Base with WRTypes {
   self: IRContext =>
-
-  registerModule(WRTypesModule)
 
 /** IR implementation for RType methods.
   * Prefix `W` means that this is implementation of IR wrapper over RType.
@@ -115,9 +112,6 @@ registerEntityObject("WRType", WRType)
 
 }
 
-object WRTypesModule extends ModuleInfo("wrappers.scalan", "WRTypes") {
-  val reflection = GraphIRReflection
-}
 }
 
 trait WRTypesModule extends sigma.compiler.ir.wrappers.sigma.impl.WRTypesDefs {self: IRContext =>}
