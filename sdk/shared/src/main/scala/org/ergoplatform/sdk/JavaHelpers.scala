@@ -22,7 +22,6 @@ import sigma.{AnyValue, AvlTree, Coll, Colls, Evaluation, GroupElement, Header}
 import sigma.ast.{Constant, EvaluatedValue, SigmaPropConstant}
 import sigmastate.crypto.DiffieHellmanTupleProverInput
 import sigma.serialization.{ErgoTreeSerializer, SigmaSerializer, ValueSerializer}
-import sigmastate.utils.Helpers._  // required for Scala 2.11
 
 import java.lang.{Boolean => JBoolean, Byte => JByte, Integer => JInt, Long => JLong, Short => JShort, String => JString}
 import java.math.BigInteger

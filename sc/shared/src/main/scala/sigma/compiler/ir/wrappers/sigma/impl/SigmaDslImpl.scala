@@ -10,7 +10,6 @@ import scala.collection.compat.immutable.ArraySeq
 package impl {
   import sigma.Evaluation
   import sigma.ast.SType.tT
-  import sigma.compiler.ir.meta.ModuleInfo
   import sigma.compiler.ir.wrappers.sigma.SigmaDsl
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
@@ -20,8 +19,6 @@ package impl {
   // Abs -----------------------------------
 trait SigmaDslDefs extends Base with SigmaDsl {
   self: IRContext =>
-
-  registerModule(SigmaDslModule)
 
 import AvlTree._
 import BigInt._
@@ -2787,9 +2784,6 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
   registerEntityObject("SigmaDslBuilder", SigmaDslBuilder)
 }
 
-object SigmaDslModule extends ModuleInfo("sigma", "SigmaDsl") {
-  val reflection = GraphIRReflection
-}
 }
 
 trait SigmaDslModule extends SigmaDslDefs {self: IRContext =>}

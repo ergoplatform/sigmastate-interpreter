@@ -7,7 +7,6 @@ import sigma.compiler.ir.wrappers.OptionWrapSpec
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
-  import sigma.compiler.ir.meta.ModuleInfo
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
   import sigma.reflection.{RClass, RMethod}
@@ -231,16 +230,11 @@ class WOptionCls extends EntityObject("WOption") {
   }
 } // of object WOption
 
-  registerModule(WOptionsModule)
-
   object WOption extends WOptionCls
 
   registerEntityObject("WOption", WOption)
 }
 
-object WOptionsModule extends ModuleInfo("sigma.compiler.ir.wrappers.scala", "WOptions") {
-  val reflection = GraphIRReflection
-}
 }
 
 trait WOptionsModule extends sigma.compiler.ir.wrappers.scala.impl.WOptionsDefs {self: IRContext =>}

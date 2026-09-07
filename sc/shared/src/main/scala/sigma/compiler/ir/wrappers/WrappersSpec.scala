@@ -1,6 +1,5 @@
 package sigma.compiler.ir.wrappers
-import _root_.sigma.data.RType
-/** Base class for wrappers of such types as WOption, WRType etc.
+/** Base class for wrappers of such types as WOption.
   * Used in graph IR to implement method invocation.
   */
 trait WrapSpecBase extends WrapSpec {
@@ -14,8 +13,3 @@ class OptionWrapSpec extends WrapSpecBase {
   def filter[A](xs: Option[A], f: A => Boolean): Option[A] = xs.filter(f)
   def isDefined[A](xs: Option[A]): Boolean  = xs.isDefined
 };
-
-/** Wrappers spec for RType */
-class RTypeWrapSpec extends WrapSpecBase {
-  def name[T](d: RType[T]): String = d.name
-}

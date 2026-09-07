@@ -1,6 +1,6 @@
 package sigma.data
 
-import sigma.util.CollectionUtil.TraversableOps // used in Scala 2.11
+import sigma.util.CollectionUtil.TraversableOps // provides distinctBy on Scala 2.12
 
 /** Descriptor of a constant which represents some size value.
   * @tparam T type of the constant value

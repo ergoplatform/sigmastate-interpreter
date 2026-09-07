@@ -19,10 +19,6 @@ trait DefRewriting { scalan: IRContext =>
     case Second(p) if p.node.isInstanceOf[Tup[_,_]] => p.node.asInstanceOf[Tup[_,_]].b
     case Tup(Def(First(a)), Def(Second(b))) if a == b => a
 
-    // Rule: convert(eFrom, eTo, x, conv) if x.elem <:< eFrom  ==>  conv(x)
-    case Convert(eFrom: Elem[from], _: Elem[to], x,  conv) if x.elem <:< eFrom =>
-      mkApply(conv, x)
-
     case Apply(f @ Def(l: Lambda[a,b]), x, mayInline) if mayInline && l.mayInline =>
       mkApply(f, x)
 
