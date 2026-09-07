@@ -18,11 +18,12 @@ sbt:sigma-state> compile
 sbt:sigma-state> test
 ```
 
-By default SBT uses Scala 2.12 for compilation and running tests. To compile for Scala 2.13 use the following commands:
+By default SBT uses Scala 2.13.18 for compilation and running tests. The JVM build
+supports Scala 2.11.12, 2.12.21, 2.13.18, and 3.3.8. To build and test with Scala 3:
 
 ```shell
 $ sbt
-sbt:sigma-state> ++2.13.18
+sbt:sigma-state> ++3.3.8
 sbt:sigma-state> compile
 sbt:sigma-state> test
 ```
@@ -34,6 +35,23 @@ $ sbt
 sbt:sigma-state> +compile
 sbt:sigma-state> +test
 ```
+
+The Scala 3 build uses `-source:3.0-migration`. SBT applies this setting automatically.
+
+The Scala.js build supports Scala 2.13.18 and 3.3.8 and requires Node.js and Yarn.
+To test all six modules and the exported JavaScript API with Scala 3, run from
+the repository root:
+
+```shell
+$ npm ci --prefix sigma-js
+$ sbt '++3.3.8' coreJS/test dataJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test scJS/fastOptJS
+$ cd sigma-js
+$ SIGMA_JS_SCALA_TARGET=3.3.8 npm test -- --runInBand
+```
+
+`SIGMA_JS_SCALA_TARGET` selects the SBT target directory for the JavaScript API
+tests. Leave it unset to use the default Scala 2.13 output; the Scala 3 target
+directory uses the full version `3.3.8`.
 
 To run specific test suite use the following command:
 
