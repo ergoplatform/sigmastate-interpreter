@@ -31,7 +31,7 @@ import sigma.serialization.{MethodCallSerializer, PropertyCallSerializer, SigmaS
   * `parse` is significantly slower than `serialize` because
   * `SMethod.fromIds` + `specializeFor` chase the method registry on every call.
   */
-object MethodCallSerializationBenchmarks extends Bench.LocalTime { suite: Bench[Double] =>
+object MethodCallSerializationBenchmarks extends Bench.LocalTime {
 
   private val mcSer = MethodCallSerializer(DeserializationSigmaBuilder.mkMethodCall)
   private val pcSer = PropertyCallSerializer(DeserializationSigmaBuilder.mkMethodCall)
