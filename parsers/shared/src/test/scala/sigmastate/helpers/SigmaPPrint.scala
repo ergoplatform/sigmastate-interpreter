@@ -37,7 +37,7 @@ object SigmaPPrint extends SigmaPPrinterCompat {
   }
 
   private def jitCostLiteral(cost: JitCost): Tree =
-    Tree.Apply("JitCost", treeifyMany(cost.value))
+    Tree.Apply("JitCost", Iterator(Tree.Literal(cost.value.toString)))
 
   private def tpeName(tpe: SType): String = {
     val name = tpe.toTermString
@@ -207,9 +207,11 @@ object SigmaPPrint extends SigmaPPrinterCompat {
       Tree.Apply("FixedCost", treeifyMany(jitCostLiteral(cost)))
     case PerItemCost(baseCost, perChunkCost, chunkSize) =>
       Tree.Apply("PerItemCost", treeifyMany(
-        jitCostLiteral(baseCost), jitCostLiteral(perChunkCost), chunkSize))
+        jitCostLiteral(baseCost), jitCostLiteral(perChunkCost), Tree.Literal(chunkSize.toString)))
     case GivenCost(cost, actualTimeNano) =>
       Tree.Apply("GivenCost", treeifyMany(jitCostLiteral(cost), actualTimeNano))
+    case SeqCostItem(opDesc, costKind, nItems) =>
+      Tree.Apply("SeqCostItem", treeifyMany(opDesc, costKind, Tree.Literal(nItems.toString)))
     case FixedCostItem(CompanionDesc(c), _) =>
       Tree.Apply("FixedCostItem", treeifySeq(Seq(c)))
     case FixedCostItem(MethodDesc(m), cost) =>
