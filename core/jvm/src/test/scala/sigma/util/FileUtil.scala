@@ -5,6 +5,7 @@ import sigma.util.StringUtil.cleanFileName
 
 import java.io._
 import java.net.{JarURLConnection, URL}
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 import scala.Console
@@ -57,6 +58,10 @@ object FileUtil {
     * @param text the text to write
     */
   def write(file: File, text: String): Unit = withFile(file) { _.print(text) }
+
+  /** Reads the whole content of the specified file as a UTF-8 string. */
+  def read(file: File): String =
+    new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
 
   /** Executes a function with the provided PrintStream as standard output and error streams.
     *

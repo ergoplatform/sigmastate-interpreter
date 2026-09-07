@@ -192,6 +192,10 @@ Test / publishArtifact := true
 
 pomIncludeRepository := { _ => false }
 
+def moduleNameSetting(moduleName: String) =
+  Compile / packageBin / packageOptions +=
+    Package.ManifestAttributes("Automatic-Module-Name" -> moduleName)
+
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
 lazy val commonDependenies2 = libraryDependencies ++= Seq(
@@ -218,6 +222,7 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     crossScalaSettings,
+    moduleNameSetting("org.scorexfoundation.sigma"),
     crossScalaVersions += scala3,
     supertaggedDependency,
     libraryDependencies ++= Seq(
@@ -269,7 +274,11 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings(crossScalaSettings, crossScalaVersions += scala3)
+  .jvmSettings(
+    crossScalaSettings,
+    crossScalaVersions += scala3,
+    moduleNameSetting("org.scorexfoundation.sigma.data")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     crossScalaVersions += scala3,
@@ -288,7 +297,11 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings(crossScalaSettings, crossScalaVersions += scala3)
+  .jvmSettings(
+    crossScalaSettings,
+    crossScalaVersions += scala3,
+    moduleNameSetting("org.scorexfoundation.sigmastate")
+  )
   .jsSettings(
     crossScalaSettingsJS,
     crossScalaVersions += scala3,
@@ -309,7 +322,8 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     )
     .jvmSettings(
       crossScalaSettings,
-      crossScalaVersions += scala3
+      crossScalaVersions += scala3,
+      moduleNameSetting("org.scorexfoundation.sigmastate.parsers")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -336,7 +350,8 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     )
     .jvmSettings(
       crossScalaSettings,
-      crossScalaVersions += scala3
+      crossScalaVersions += scala3,
+      moduleNameSetting("org.ergoplatform.sdk")
     )
     .jsSettings(
       crossScalaSettingsJS,
@@ -370,6 +385,7 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .settings(publish / skip := true)
     .jvmSettings(
       crossScalaSettings,
+      moduleNameSetting("org.scorexfoundation.sigma.sc"),
       crossScalaVersions += scala3,
       libraryDependencies += {
         if (scalaBinaryVersion.value == "3")
@@ -406,7 +422,7 @@ lazy val scJS = sc.js
 
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
-  .settings(libraryDefSettings, rootSettings)
+  .settings(libraryDefSettings, rootSettings, moduleNameSetting("org.scorexfoundation.sigmastate"))
   .settings(crossScalaVersions += scala3)
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)

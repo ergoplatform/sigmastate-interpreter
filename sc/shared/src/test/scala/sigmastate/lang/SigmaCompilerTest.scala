@@ -9,7 +9,8 @@ import sigmastate._
 import sigmastate.helpers.CompilerTestingCommons
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigma.ast.{Apply, MethodCall, ZKProofBlock}
-import sigma.exceptions.{GraphBuildingException, InvalidArguments, TyperException}
+import sigma.compiler.SigmaCompiler
+import sigma.exceptions.{CompilerException, GraphBuildingException, InvalidArguments, TyperException}
 import sigma.serialization.ValueSerializer
 import sigma.serialization.generators.ObjectGenerators
 
@@ -50,6 +51,14 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp(env, "Coll(Coll(1))(0)(0)") shouldBe
         ByIndex(ByIndex(ConcreteCollection.fromSeq(Array(ConcreteCollection.fromItems(IntConstant(1))))(SCollection(SInt)), 0), 0)
     comp(env, "arr1(0)") shouldBe ByIndex(ByteArrayConstant(Array[Byte](1, 2)), 0)
+  }
+
+  property("non-Int numeric index in array apply gets upcasted") {
+    // The typer must wrap a Byte/Short index in Upcast(_, SInt) so the resulting ByIndex node carries an SInt index (the bytecode op requires it).
+    val coll = ConcreteCollection.fromSeq(Array(IntConstant(1), IntConstant(2), IntConstant(3)))(SInt)
+    comp(env, "Coll(1, 2, 3)(getVar[Byte](10).get)")  shouldBe ByIndex(coll, Upcast(GetVarByte(10).get,  SInt), None)
+    comp(env, "Coll(1, 2, 3)(getVar[Short](10).get)") shouldBe ByIndex(coll, Upcast(GetVarShort(10).get, SInt), None)
+    comp(env, "Coll(1, 2, 3)(getVar[Int](10).get)")   shouldBe ByIndex(coll, GetVarInt(10).get, None)
   }
 
   property("array indexed access with default value") {
@@ -345,5 +354,33 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
         GetVarIntArray(2).get,
         GetVar(3.toByte, SCollection(SSigmaProp)).get
       )
+  }
+
+  property("stack overflow during typecheck is wrapped into CompilerException") {
+    // Regression test for a StackOverflowError in the binder's reduce/rewriting loop
+    // (see SrcCtxCallbackRewriter / SigmaBinder.eval). A recursive environment binding,
+    // where a name resolves to an Ident of the same name, makes the binder's reduce
+    // strategy loop forever and overflow the stack. SigmaCompiler.typecheck must catch
+    // the StackOverflowError and rethrow it as a checked CompilerException instead of
+    // letting it escalate to a fatal runtime error.
+    val compiler = SigmaCompiler(TestnetNetworkPrefix)
+    val recursiveEnv: ScriptEnv = Map("x" -> Ident("x", NoType))
+    val parsed = compiler.parse("x")
+    val e = the[CompilerException] thrownBy compiler.typecheck(recursiveEnv, parsed)
+    e.getMessage should include("too complex or recursive")
+    e.getCause should not be null
+  }
+
+  property("compiler is still usable after a stack overflow is caught") {
+    // Ensure that catching a stack overflow does not corrupt the compiler/builder state
+    // so that subsequent compilations on the same instance succeed.
+    val compiler = SigmaCompiler(TestnetNetworkPrefix)
+    val recursiveEnv: ScriptEnv = Map("x" -> Ident("x", NoType))
+    val parsed = compiler.parse("x")
+    the[CompilerException] thrownBy compiler.typecheck(recursiveEnv, parsed)
+
+    // Reuse the same compiler for a normal expression.
+    compiler.typecheck(Map.empty[String, Any], compiler.parse("1 + 2")) shouldBe
+      Plus(IntConstant(1), IntConstant(2))
   }
 }

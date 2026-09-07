@@ -494,4 +494,14 @@ class DeserializationResilience extends DeserializationResilienceTesting {
 
   }
 
+  property("ContextExtension: negative variable id rejected during deserialization") {
+    val ce = ContextExtension(Map((-1).toByte -> IntConstant(1)))
+    val w = SigmaSerializer.startWriter()
+    ContextExtension.serializer.serialize(ce, w)
+    assertExceptionThrown(
+      ContextExtension.serializer.parse(SigmaSerializer.startReader(w.toBytes)),
+      { case SerializerException(msg, _) => msg.contains("Negative id") }
+    )
+  }
+
 }

@@ -19,6 +19,11 @@ case class CGroupElement(override val wrappedValue: Ecp) extends GroupElement wi
 
   override def isIdentity: Boolean = CryptoFacade.isInfinityPoint(wrappedValue)
 
+  // Out-of-range `k` (negative, or magnitude >= group order) is reduced inside
+  // `CryptoFacade.exponentiatePoint`: BouncyCastle `ECPoint.multiply` on JVM and
+  // noble-curves-backed `multiplyPoint` on JS both compute `p^(k mod order)`.
+  // See `GroupLawsSpecification` ("BcDlogGroup.exponentiate matches CGroupElement.exp")
+  // for the equivalence test.
   override def exp(k: BigInt): GroupElement =
     CGroupElement(CryptoFacade.exponentiatePoint(wrappedValue, k.asInstanceOf[CBigInt].wrappedValue))
 

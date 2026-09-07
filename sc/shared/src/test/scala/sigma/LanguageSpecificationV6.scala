@@ -2499,11 +2499,20 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       sinceVersion = VersionContext.V6SoftForkVersion
     )
 
+    val generator = CryptoConstants.dlogGroup.generator
+    val order = CryptoConstants.dlogGroup.order
+    // Max representable UnsignedBigInt (bitLength = 256), strictly > group order.
+    // Cross-checks that the JS bridge reduces scalars `mod order` consistently with BC. See #731.
+    val maxUnsigned = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE)
+    val expMaxUnsigned = CryptoConstants.dlogGroup.exponentiate(generator, maxUnsigned.mod(order))
+
     verifyCases(
       Seq(
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.generator)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
-        (CGroupElement(CryptoConstants.dlogGroup.generator), CUnsignedBigInt(CryptoConstants.dlogGroup.order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None))
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("1"))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(new BigInteger("0"))) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order)) -> Expected(ExpectedResult(Success(CGroupElement(CryptoConstants.dlogGroup.identity)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(order.add(BigInteger.ONE))) -> Expected(ExpectedResult(Success(CGroupElement(generator)), None)),
+        (CGroupElement(generator), CUnsignedBigInt(maxUnsigned)) -> Expected(ExpectedResult(Success(CGroupElement(expMaxUnsigned)), None))
       ),
       f
     )

@@ -311,7 +311,7 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
           restored.inputs.head.extension.values.size shouldBe tx2.inputs.head.extension.values.size
         }
 
-        if(idRange < 127) {
+        if(startIndex >= 0 && idRange < 127) {
           roundtrip()
         } else {
           assertExceptionThrown(

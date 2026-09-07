@@ -56,6 +56,8 @@ object ContextExtension {
       val values = (0 until extSize)
           .map{_ =>
             val k = r.getByte()
+            if (k < 0)
+              error(s"Negative id of context extension variable: $k")
             val v = r.getValue().asInstanceOf[EvaluatedValue[_ <: SType]]
             CheckV6Type(v)
             (k, v)
