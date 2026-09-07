@@ -1,6 +1,6 @@
 package sigma.ast
 
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 /** Encoding of types for serialization. */
 object TypeCodes {

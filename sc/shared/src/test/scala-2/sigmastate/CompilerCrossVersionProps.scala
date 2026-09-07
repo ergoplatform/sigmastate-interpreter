@@ -5,25 +5,18 @@ import org.scalactic.source.Position
 
 
 /** Redefines `property` for cross-version testing of ErgoScript compiler. */
-trait CompilerCrossVersionProps extends CrossVersionProps with CompilerTestsBase {
+trait CompilerCrossVersionProps extends CompilerCrossVersionPropsBase {
 
   override protected def property(testName: String, testTags: Tag*)
                                  (testFun: => Any)
-                                 (implicit pos: Position): Unit = {
-    super.property(testName, testTags:_*)(testFun)
-
-    if (okRunTestsWithoutMCLowering) {
-      val testName2 = s"${testName}_MCLowering"
-      _lowerMethodCalls.withValue(false) {
-        // run testFun for all versions again, but now with this flag
-        super.property(testName2, testTags:_*)(testFun)
-      }
+                                 (implicit pos: Position): Unit =
+    registerCompilerProperties(testName) { name =>
+      super.property(name, testTags: _*)(testFun)(pos)
     }
-  }
 
   /** Explicit registration entry point for suites that need both compiler modes. */
   protected def compilerProperty(testName: String, testTags: Tag*)
                                 (testFun: => Any)
                                 (implicit pos: Position): Unit =
-    property(testName, testTags: _*)(testFun)
+    property(testName, testTags: _*)(testFun)(pos)
 }

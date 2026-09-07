@@ -2,23 +2,18 @@ package sigma.eval
 
 import sigma.BaseTests
 import sigma.eval.EvalSettings.{AotEvaluationMode, EvaluationMode, JitEvaluationMode}
-import sigma.eval.EvalSettings.EvaluationMode.EvaluationModeOps
 
 class EvaluationModeCompatibilityTests extends BaseTests {
-  test("evaluation mode wrappers retain value equality and hashing") {
-    val first = new EvaluationModeOps(AotEvaluationMode)
-    val same = new EvaluationModeOps(AotEvaluationMode)
-    val different = new EvaluationModeOps(JitEvaluationMode)
-    first shouldBe same
-    first.hashCode() shouldBe same.hashCode()
-    first.hashCode() shouldBe 1.hashCode()
-    (first == different) shouldBe false
-    first.equals("AotEvaluationMode") shouldBe false
-  }
-
   test("evaluation mode names") {
     AotEvaluationMode.name shouldBe "AotEvaluationMode"
     JitEvaluationMode.name shouldBe "JitEvaluationMode"
+  }
+
+  test("evaluation modes select only their matching interpreter") {
+    AotEvaluationMode.okEvaluateAot shouldBe true
+    AotEvaluationMode.okEvaluateJit shouldBe false
+    JitEvaluationMode.okEvaluateAot shouldBe false
+    JitEvaluationMode.okEvaluateJit shouldBe true
   }
 
   test("undefined evaluation modes throw MatchError") {

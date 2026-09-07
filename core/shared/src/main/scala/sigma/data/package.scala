@@ -1,6 +1,6 @@
 package sigma
 
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 import scala.reflect.ClassTag
 

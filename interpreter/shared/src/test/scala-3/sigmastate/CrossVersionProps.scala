@@ -1,27 +1,15 @@
 package sigmastate
 
-import debox.cfor
 import org.scalactic.source.Position
 import org.scalatest.{Outcome, Tag}
 import org.scalatest.OutcomeOf.outcomeOf
-import org.scalatest.propspec.AnyPropSpecLike
-import sigma.VersionContext
-import sigmastate.eval.CProfiler
 
 import scala.collection.mutable
-import scala.util.DynamicVariable
 
 /** Scala 3's inline `property` is final, so registration stays with ScalaTest and
   * the fixture hook wraps execution instead. This also retains each caller's source position.
   */
-trait CrossVersionProps extends AnyPropSpecLike with TestsBase {
-  /** Number of times each test property is warmed up before its versioned executions. */
-  def perTestWarmUpIters: Int = 0
-
-  private[sigmastate] val _warmupProfiler = new DynamicVariable[Option[CProfiler]](None)
-
-  def warmupProfiler: Option[CProfiler] = _warmupProfiler.value
-
+trait CrossVersionProps extends CrossVersionPropsBase {
   private val unversionedTestNames = mutable.Set.empty[String]
 
   protected final def markUnversionedProperty(testName: String): Unit =
@@ -48,26 +36,10 @@ trait CrossVersionProps extends AnyPropSpecLike with TestsBase {
         def apply(): Outcome = outcomeOf {
           // ScalaTest converts body exceptions to Outcomes. Re-throw non-successes
           // so testFun_Run prints its version diagnostic and the loops stop immediately.
-          runProperty(test.name, test().toSucceeded)
+          runVersionedProperty(test.name, test().toSucceeded)
         }
       }
       super.withFixture(versionedTest)
-    }
-  }
-
-  private def runProperty(testName: String, testFun: => Any): Unit = {
-    if (perTestWarmUpIters > 0) {
-      _warmupProfiler.withValue(Some(new CProfiler)) {
-        cfor(0)(_ < perTestWarmUpIters, _ + 1) { _ =>
-          testFun_Run(testName, testFun)
-        }
-      }
-      System.gc()
-    }
-    forEachScriptAndErgoTreeVersion(activatedVersions, ergoTreeVersions) {
-      VersionContext.withVersions(activatedVersionInTests, ergoTreeVersionInTests) {
-        testFun_Run(testName, testFun)
-      }
     }
   }
 

@@ -8,6 +8,7 @@ import sigma.ast.SCollection.{SBooleanArray, SByteArray, SByteArray2}
 import sigma.ast.{ConstantNode, FuncValue, MethodCall, ValueCompanion, _}
 import sigma.crypto.EcPointType
 import sigma.data.{AvlTreeData, AvlTreeFlags, CollType, PrimitiveType, TrivialProp}
+import sigma.eval.GivenCost
 import sigma.serialization.GroupElementSerializer
 import sigma.{Coll, GroupElement}
 import sigmastate.crypto.GF2_192_Poly
@@ -34,6 +35,9 @@ object SigmaPPrint extends SigmaPPrinterCompat {
   protected def treeifyMany(head: Any, tail: Any*): Iterator[Tree] = {
     treeifySeq(head +: tail)
   }
+
+  private def jitCostLiteral(cost: JitCost): Tree =
+    Tree.Apply("JitCost", treeifyMany(cost.value))
 
   private def tpeName(tpe: SType): String = {
     val name = tpe.toTermString
@@ -199,6 +203,13 @@ object SigmaPPrint extends SigmaPPrinterCompat {
      .orElse(exceptionHandlers)
      .orElse(dataHandlers)
      .orElse {
+    case FixedCost(cost) =>
+      Tree.Apply("FixedCost", treeifyMany(jitCostLiteral(cost)))
+    case PerItemCost(baseCost, perChunkCost, chunkSize) =>
+      Tree.Apply("PerItemCost", treeifyMany(
+        jitCostLiteral(baseCost), jitCostLiteral(perChunkCost), chunkSize))
+    case GivenCost(cost, actualTimeNano) =>
+      Tree.Apply("GivenCost", treeifyMany(jitCostLiteral(cost), actualTimeNano))
     case FixedCostItem(CompanionDesc(c), _) =>
       Tree.Apply("FixedCostItem", treeifySeq(Seq(c)))
     case FixedCostItem(MethodDesc(m), cost) =>

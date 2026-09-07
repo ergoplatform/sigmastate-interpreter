@@ -1,7 +1,6 @@
 package sigma.eval
 
 import sigma.eval.EvalSettings.EvaluationMode
-import supertagged.TaggedType
 
 /** Configuration parameters of the evaluation run. */
 case class EvalSettings(
@@ -52,40 +51,41 @@ object EvalSettings {
     * This type can be removed in v5.x releases together with AOT implementation once v5.0
     * protocol is activated.
     */
-  object EvaluationMode extends TaggedType[Int] {
-    // Scala 3 cannot emit an AnyVal whose underlying type is this tagged Int.
-    implicit final class EvaluationModeOps(val x: EvaluationMode) {
-      override def equals(other: Any): Boolean = other match {
-        case that: EvaluationModeOps => x == that.x
-        case _ => false
-      }
+  opaque type EvaluationMode = Int
 
-      override def hashCode(): Int = x.hashCode()
+  object EvaluationMode {
+    type Type = EvaluationMode
 
-      def name: String = x match {
+    def apply(value: Int): EvaluationMode = value
+
+    /** Retains the factory syntax used by shared Scala 2 sources. */
+    def @@(value: Int): EvaluationMode = apply(value)
+
+    extension (mode: EvaluationMode) {
+      def value: Int = mode
+
+      def name: String = mode match {
         case AotEvaluationMode => "AotEvaluationMode"
         case JitEvaluationMode => "JitEvaluationMode"
       }
 
       /** Returns true if AOT interpreter should be evaluated. */
       def okEvaluateAot: Boolean = {
-        x == AotEvaluationMode
+        mode == AotEvaluationMode
       }
 
       /** Returns true if JIT interpreter should be evaluated. */
       def okEvaluateJit: Boolean = {
-        x == JitEvaluationMode
+        mode == JitEvaluationMode
       }
     }
   }
 
-  type EvaluationMode = EvaluationMode.Type
-
   /** Evaluation mode when the interpreter is executing using AOT costing implementation
     * of v4.x protocol. */
-  val AotEvaluationMode: EvaluationMode = EvaluationMode @@ 1 // first bit
+  val AotEvaluationMode: EvaluationMode = EvaluationMode(1) // first bit
 
   /** Evaluation mode when the interpreter is executing using JIT costing implementation
     * of v5.x protocol. */
-  val JitEvaluationMode: EvaluationMode = EvaluationMode @@ 2 // second bit
+  val JitEvaluationMode: EvaluationMode = EvaluationMode(2) // second bit
 }

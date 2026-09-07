@@ -27,7 +27,7 @@ class CrossVersionPropsSpecification extends AnyFunSuite {
   private def runSuite(suite: Suite): Vector[Event] = {
     val reporter = new RecordingReporter
     val status = suite.run(None, Args(reporter))
-    assert(status.isCompleted)
+    assert(status.isCompleted())
     reporter.events.toVector
   }
 

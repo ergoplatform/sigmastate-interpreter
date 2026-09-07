@@ -16,9 +16,11 @@ class CompilerPropertyRegistrationSpecification extends AnyFunSuite {
       extends AnyPropSpec with CompilerCrossVersionProps {
     override val okRunTestsWithoutMCLowering: Boolean = additionalMode
     val visits = ArrayBuffer.empty[(Byte, Byte)]
+    val loweringModes = ArrayBuffer.empty[Boolean]
     val registrationLine = Position.here.lineNumber + 1
     compilerProperty("registered", probeTag) {
       visits += ((activatedVersionInTests, ergoTreeVersionInTests))
+      loweringModes += lowerMethodCallsInTests
     }
   }
 
@@ -35,7 +37,8 @@ class CompilerPropertyRegistrationSpecification extends AnyFunSuite {
       names.foreach { name =>
         val data = suite.testDataFor(name)
         assert(data.tags.contains(probeTag.name))
-        assert(data.pos.exists(_.lineNumber == suite.registrationLine))
+        assert(data.pos.exists(_.lineNumber == suite.registrationLine),
+          s"$name position=${data.pos}; expected caller line ${suite.registrationLine}")
       }
 
       val events = ArrayBuffer.empty[Event]
@@ -48,6 +51,8 @@ class CompilerPropertyRegistrationSpecification extends AnyFunSuite {
       assert(!events.exists(_.isInstanceOf[TestFailed]))
       assert(events.count(_.isInstanceOf[TestSucceeded]) == names.size)
       assert(suite.visits.toVector == Vector.fill(names.size)(pairs).flatten)
+      // The existing Scala 2 flag scope surrounds registration, not deferred execution.
+      assert(suite.loweringModes.toVector == Vector.fill(names.size * pairs.size)(true))
       assert(VersionContext.current == before)
     }
   }

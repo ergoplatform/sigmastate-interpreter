@@ -103,16 +103,6 @@ val fastparseDependency =
   libraryDependencies += "com.lihaoyi" %%% "fastparse" %
     (if (scalaBinaryVersion.value == "3") "3.1.1" else "2.3.3")
 
-val supertaggedDependency =
-  libraryDependencies ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      // No supertagged_3 is published; consume the 2.13 artifact (only TaggedType/`@@`, no macros).
-      // On Scala 2.x supertagged arrives transitively via scorex-util, so nothing extra is needed.
-      case Some((3, _)) => Seq(("org.rudogma" %% "supertagged" % "2.0-RC2").cross(CrossVersion.for3Use2_13))
-      case _            => Seq.empty
-    }
-  }
-
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
 
@@ -224,7 +214,6 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     crossScalaSettings,
     moduleNameSetting("org.scorexfoundation.sigma"),
     crossScalaVersions += scala3,
-    supertaggedDependency,
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )
@@ -238,12 +227,6 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
       // rendering) from running fairly.
       "-P:scalajs:nowarnGlobalExecutionContext"
     )),
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value == "3")
-        // Use the published Scala.js artifact; replacing %%%'s cross version loses its sjs1 prefix.
-        Seq("org.rudogma" % "supertagged_sjs1_2.13" % "2.0-RC2")
-      else Seq.empty
-    },
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scala-js-macrotask-executor" % "1.1.1"
     ),
