@@ -7,8 +7,8 @@ import sigma.compiler.ir.primitives.Thunks
 import sigma.data.RType
 import sigma.reflection.ReflectionData.registerClassEntry
 import sigma.reflection.{ReflectionData, mkConstructor, mkMethod}
-import sigma.compiler.ir.wrappers.{OptionWrapSpec, RTypeWrapSpec}
-import sigma.compiler.ir.wrappers.sigma.{SigmaDsl, WRTypes}
+import sigma.compiler.ir.wrappers.OptionWrapSpec
+import sigma.compiler.ir.wrappers.sigma.SigmaDsl
 
 /** Registrations of reflection metadata for graph-ir module (see README.md).
   * Such metadata is only used on JS platform to support reflection-like interfaces of
@@ -630,29 +630,6 @@ object GraphIRReflection {
     )
   }
 
-  { val clazz = classOf[WRTypes#WRType[_]]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "name", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.WRType[_]].name
-        }
-      )
-    )
-  }
-
-  { val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    val clazz = classOf[ctx.WRType.WRTypeElem[_, _]]
-    registerClassEntry(clazz,
-      constructors = Array(
-        mkConstructor(Array(classOf[ctx.WRTypeCls], classOf[TypeDescs#Elem[_]])) { args =>
-          val entityObj = args(0).asInstanceOf[ctx.WRTypeCls]
-          new entityObj.WRTypeElem()(args(1).asInstanceOf[ctx.Elem[_]])
-        }
-      )
-    )
-  }
-
   { val ctx = null.asInstanceOf[IRContext] // ok! type level only
     val clazz = classOf[ctx.Coll.CollElem[_, _]]
     registerClassEntry(clazz,
@@ -687,16 +664,6 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "get", Array[Class[_]](classOf[Option[_]])) { (obj, args) =>
           obj.asInstanceOf[OptionWrapSpec].get(args(0).asInstanceOf[Option[_]])
-        }
-      )
-    )
-  }
-  {
-    val clazz = classOf[RTypeWrapSpec]
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "name", Array[Class[_]](classOf[RType[_]])) { (obj, args) =>
-          obj.asInstanceOf[RTypeWrapSpec].name(args(0).asInstanceOf[RType[_]])
         }
       )
     )

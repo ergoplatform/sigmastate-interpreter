@@ -321,7 +321,7 @@ trait Functions extends Base with ProgramGraphs { self: IRContext =>
     val m = new java.util.HashMap[Sym, Sym](100)
     m.put(lam.x, s)
     val subst = new MapTransformer(m)
-    val t = DefaultMirror.mirrorSymbols(subst, NoRewriting, body)
+    val t = DefaultMirror.mirrorSymbols(subst, body)
     t(lam.y)
   }
 
