@@ -14,8 +14,8 @@ import sigmastate.utils.Helpers._
 import scala.collection.mutable
 import scala.util.{Random, Try}
 import scorex.util._
-import sigma.Colls
-import sigma.data.{AvlTreeData, AvlTreeFlags}
+import sigma.{Colls, LongType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, Digest32CollRType}
 import ErgoTree.ZeroHeader
 import sigma.compiler.ir.IRContext
 import sigma.eval.Extensions.SigmaBooleanOps

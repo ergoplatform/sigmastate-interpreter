@@ -30,5 +30,5 @@ object CostLimitException {
     */
   def msgCostLimitError(
       cost: JitCost,
-      limit: JitCost) = s"Estimated execution cost $cost exceeds the limit $limit"
+      limit: JitCost) = s"Estimated execution cost JitCost(${cost.value}) exceeds the limit JitCost(${limit.value})"
 }

@@ -8,11 +8,11 @@ import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.serialization.{Reader, VLQByteBufferReader}
 import sigma.ast.{SBoolean, SInt, SizeOf, _}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, Digest32CollRType, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckPositionLimit
-import sigma.{Colls, Environment, VersionContext}
+import sigma.{Colls, Environment, LongType, VersionContext}
 import sigma.ast.syntax._
 import sigmastate._
 import sigma.Extensions.ArrayOps

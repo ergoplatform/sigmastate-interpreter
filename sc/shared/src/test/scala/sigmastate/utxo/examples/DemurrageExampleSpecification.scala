@@ -13,7 +13,7 @@ import sigma.ast.syntax._
 class DemurrageExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
   override val printVersions: Boolean = true
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   /**
     * Demurrage currency example.

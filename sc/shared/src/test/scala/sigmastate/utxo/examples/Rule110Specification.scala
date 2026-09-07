@@ -1,5 +1,8 @@
 package sigmastate.utxo.examples
 
+import sigma.LongType
+import sigma.data.Digest32CollRType
+
 import org.ergoplatform._
 import scorex.crypto.hash.Blake2b256
 import scorex.util._
@@ -21,7 +24,7 @@ import sigmastate.utxo.blockchain.BlockchainSimulationTestingCommons._
   */
 class Rule110Specification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
   private val reg1 = ErgoBox.nonMandatoryRegisters.head
   private val reg2 = ErgoBox.nonMandatoryRegisters(1)
   private val reg3 = ErgoBox.nonMandatoryRegisters(2)

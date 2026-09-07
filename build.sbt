@@ -10,6 +10,7 @@ name := "sigma-state"
 lazy val scala213 = "2.13.18"
 lazy val scala212 = "2.12.21"
 lazy val scala211 = "2.11.12"
+lazy val scala3   = "3.3.8"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
@@ -23,6 +24,8 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused:_,imports", "-Ywarn-unused:imports", "-release", "8")
       case Some((2, 11)) =>
         Seq()
+      case Some((3, _)) =>
+        Seq("-source:3.0-migration", "-release", "8")
       case _ => sys.error("Unsupported scala version")
     }
   },
@@ -91,16 +94,14 @@ val scryptoDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.1.1"
 
 val scorexUtilDependency =
-  libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.1"
+  libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.2"
 
 val debox              = "org.scorexfoundation" %% "debox" % "0.10.0"
 val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 
 val fastparseDependency =
-  libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
-
-val supertaggedDependency =
-  libraryDependencies += "org.rudogma" %%% "supertagged" % "2.0-RC2"
+  libraryDependencies += "com.lihaoyi" %%% "fastparse" %
+    (if (scalaBinaryVersion.value == "3") "3.1.1" else "2.3.3")
 
 lazy val scodecBitsDependency =
   libraryDependencies += "org.scodec" %%% "scodec-bits" % "1.1.34"
@@ -134,13 +135,28 @@ lazy val testingDependencies = Seq(
 )
 
 lazy val testingDependencies2 =
-  libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
-    "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
-    "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
-    "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
-    "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
-  )
+  libraryDependencies ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      // scalatest/scalactic 3.2.20 publish _3 and are used on all versions. scalacheck 1.15.2,
+      // scalatestplus scalacheck-1-15 and pprint 0.6.3 are the last releases supporting Scala 2.11
+      // and have no _3 artifacts; on Scala 3 use scalacheck 1.17 with its matching scalatestplus
+      // binding (scalacheck-1-17 3.2.18.0) and pprint 0.8.1.
+      case Some((3, _)) => Seq(
+        "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
+        "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
+        "org.scalacheck" %%% "scalacheck" % "1.17.0" % Test,
+        "org.scalatestplus" %%% "scalacheck-1-17" % "3.2.18.0" % Test,
+        "com.lihaoyi" %%% "pprint" % "0.8.1" % Test
+      )
+      case _ => Seq(
+        "org.scalatest" %%% "scalatest" % "3.2.20" % Test,
+        "org.scalactic" %%% "scalactic" % "3.2.20" % Test,
+        "org.scalacheck" %%% "scalacheck" % "1.15.2" % Test,          // last supporting Scala 2.11
+        "org.scalatestplus" %%% "scalacheck-1-15" % "3.2.3.0" % Test, // last supporting Scala 2.11
+        "com.lihaoyi" %%% "pprint" % "0.6.3" % Test
+      )
+    }
+  }
 
 lazy val testSettings = Seq(
   libraryDependencies ++= testingDependencies,
@@ -173,8 +189,14 @@ def moduleNameSetting(moduleName: String) =
 def libraryDefSettings = commonSettings ++ crossScalaSettings ++ testSettings
 
 lazy val commonDependenies2 = libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scorexfoundation" %%% "debox" % "0.10.0",
+  // debox 0.11.0 is the first release cross-published for Scala 3 (native _3, with the real
+  // specialized Buffer/Set and the `cfor` macro). Used on all Scala versions: it affects no
+  // serialized bytes (consensus-neutral) and on 2.x only bumps minor transitive versions
+  // (spire-macros/algebra/cats-kernel). scala-collection-compat publishes _3 and is kept everywhere.
+  // NB: scala-reflect was previously declared here but is unused (no TypeTag/Manifest/runtime
+  // reflection/macros anywhere — only ClassTag, which lives in scala-library), and on Scala 2.x it
+  // is still provided transitively by scorex-util. So it is no longer declared explicitly.
+  "org.scorexfoundation" %%% "debox" % "0.11.0",
   "org.scala-lang.modules" %%% "scala-collection-compat" % "2.7.0"
 )
 
@@ -191,18 +213,20 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(
     crossScalaSettings,
     moduleNameSetting("org.scorexfoundation.sigma"),
+    crossScalaVersions += scala3,
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )
   )
   .jsSettings(
     crossScalaSettingsJS,
-    scalacOptions ++= Seq(
+    crossScalaVersions += scala3,
+    scalacOptions ++= (if (scalaBinaryVersion.value == "3") Seq.empty else Seq(
       // Suppress warning about the global execution context in Scala.js is based on JS
       // Promises (microtasks). Using it may prevent macrotasks (I/O, timers, UI
       // rendering) from running fairly.
       "-P:scalajs:nowarnGlobalExecutionContext"
-    ),
+    )),
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scala-js-macrotask-executor" % "1.1.1"
     ),
@@ -235,10 +259,12 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     crossScalaSettings,
+    crossScalaVersions += scala3,
     moduleNameSetting("org.scorexfoundation.sigma.data")
   )
   .jsSettings(
     crossScalaSettingsJS,
+    crossScalaVersions += scala3,
     useYarn := true
   )
 lazy val dataJS = data.js
@@ -256,10 +282,12 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     crossScalaSettings,
+    crossScalaVersions += scala3,
     moduleNameSetting("org.scorexfoundation.sigmastate")
   )
   .jsSettings(
     crossScalaSettingsJS,
+    crossScalaVersions += scala3,
     useYarn := true
   )
 lazy val interpreterJS = interpreter.js
@@ -277,10 +305,12 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
     )
     .jvmSettings(
       crossScalaSettings,
+      crossScalaVersions += scala3,
       moduleNameSetting("org.scorexfoundation.sigmastate.parsers")
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       useYarn := true
     )
 lazy val parsersJS = parsers.js
@@ -303,10 +333,12 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
     )
     .jvmSettings(
       crossScalaSettings,
+      crossScalaVersions += scala3,
       moduleNameSetting("org.ergoplatform.sdk")
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       useYarn := true
     )
 lazy val sdkJS = sdk.js
@@ -337,10 +369,18 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .jvmSettings(
       crossScalaSettings,
       moduleNameSetting("org.scorexfoundation.sigma.sc"),
-      libraryDependencies ++= Seq(scalameter)
+      crossScalaVersions += scala3,
+      libraryDependencies += {
+        if (scalaBinaryVersion.value == "3")
+          scalameter.cross(CrossVersion.for3Use2_13)
+            .exclude("org.scala-lang.modules", "scala-xml_2.13")
+            .exclude("org.scala-lang.modules", "scala-collection-compat_2.13")
+        else scalameter
+      }
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       libraryDependencies ++= Seq(
         "org.scala-js" %%% "scala-js-macrotask-executor" % "1.0.0"
       ),
@@ -366,6 +406,7 @@ lazy val scJS = sc.js
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
   .settings(libraryDefSettings, rootSettings, moduleNameSetting("org.scorexfoundation.sigmastate"))
+  .settings(crossScalaVersions += scala3)
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
 
@@ -401,4 +442,3 @@ pgpPublicRing := file("ci/pubring.asc")
 pgpSecretRing := file("ci/secring.asc")
 pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray)
 usePgpKeyHex("C1FD62B4D44BDF702CDF2B726FF59DA944B150DD")
-

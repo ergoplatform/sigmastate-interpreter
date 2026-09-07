@@ -126,7 +126,7 @@ abstract class BcDlogGroup(val ctx: CryptoContext) extends DlogGroup {
   /**
     * @return the identity of this Dlog group
     */
-  override lazy val identity: ElemType = ctx.infinity.asInstanceOf[ElemType]
+  override lazy val identity: ElemType = ctx.infinity().asInstanceOf[ElemType]
 
   /**
     * Calculates the inverse of the given GroupElement.

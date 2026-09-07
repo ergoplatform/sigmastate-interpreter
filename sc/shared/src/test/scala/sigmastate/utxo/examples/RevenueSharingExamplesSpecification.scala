@@ -6,7 +6,7 @@ import sigma.Context
 import sigma.ast.IntConstant
 
 class RevenueSharingExamplesSpecification extends CompilerTestingCommons { suite =>
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   case class RevenueContract[Spec <: ContractSpec]
   (alice: Spec#ProvingParty, bob: Spec#ProvingParty, carol:Spec#ProvingParty)

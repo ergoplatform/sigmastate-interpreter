@@ -151,7 +151,8 @@ object Isos {
       val keys = js.Object.keys(x).sorted
       for ( k <- keys ) {
         val id = k.toInt.toByte
-        val c = DataIsos.isoHexStringToConstant.to(x.apply(id).get.get)
+        val encoded: js.UndefOr[String] = x.apply(id).get
+        val c = DataIsos.isoHexStringToConstant.to(encoded.get)
         map = map + (id -> c)
       }
       ContextExtension(map)

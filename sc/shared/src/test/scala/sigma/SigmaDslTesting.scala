@@ -33,6 +33,7 @@ import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoL
 import sigmastate.interpreter.Interpreter.{ScriptEnv, VerificationResult}
 import sigmastate.interpreter._
 import sigma.ast.Apply
+import sigma.compiler.CompilerSettings
 import sigma.compiler.ir.{CompiletimeIRContext, IRContext}
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -524,7 +525,7 @@ class SigmaDslTesting extends AnyPropSpec
   )(implicit IR: IRContext, val tA: RType[A], val tB: RType[B],
              override val evalSettings: EvalSettings) extends Feature[A, B] {
 
-    implicit val cs = compilerSettingsInTests
+    implicit val cs: CompilerSettings = compilerSettingsInTests
 
     override def sinceVersion: Byte = 0
 
@@ -703,7 +704,7 @@ class SigmaDslTesting extends AnyPropSpec
   )(implicit IR: IRContext, override val evalSettings: EvalSettings, val tA: RType[A], val tB: RType[B])
     extends Feature[A, B] { feature =>
 
-    implicit val cs = compilerSettingsInTests
+    implicit val cs: CompilerSettings = compilerSettingsInTests
 
     override def sinceVersion: Byte = changedInVersion
 
@@ -913,7 +914,7 @@ class SigmaDslTesting extends AnyPropSpec
         sys.error(s"Semantic Scala function is not defined for old implementation: $this")
       }
     }
-    implicit val cs = compilerSettingsInTests
+    implicit val cs: CompilerSettings = compilerSettingsInTests
 
     /** Starting from v5.x the old and the new interpreters are the same */
     val oldImpl = () => funcJit[A, B](script)

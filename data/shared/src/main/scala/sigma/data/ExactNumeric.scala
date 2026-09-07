@@ -1,7 +1,7 @@
 package sigma.data
 
 import debox.cfor
-import sigma.{Coll, Colls}
+import sigma.{BooleanType, Coll, Colls}
 import sigma.data.ExactIntegral._
 
 /** Numeric operations with overflow checks.

@@ -9,7 +9,7 @@ import sigma.ast.{ConstantNode, EvaluatedValue, SInt, STuple, SType}
 import sigma.data.CBox.regs
 import sigma.eval.Extensions.toAnyValue
 import sigma.exceptions.InvalidType
-import sigma.{AnyValue, Box, Coll, Colls}
+import sigma.{AnyValue, AnyValueRType, Box, ByteType, Coll, Colls, IntType, LongType, collRType}
 
 import java.util.Arrays
 

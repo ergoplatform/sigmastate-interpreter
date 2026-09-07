@@ -8,10 +8,10 @@ import sigma.Extensions._
 import sigma.ast.syntax.GroupElementConstant
 import sigma.ast.{Constant, GroupElementConstant, SType}
 import sigma.data.Iso.isoStringToArray
-import sigma.data.{CGroupElement, Digest32Coll, Iso}
+import sigma.data.{CGroupElement, Digest32Coll, Digest32CollRType, Iso}
 import sigma.js.GroupElement
 import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
-import sigma.{Coll, Colls}
+import sigma.{Coll, Colls, LongType}
 import sigmastate.fleetSdkCommon.distEsmTypesCommonMod.HexString
 import sigmastate.fleetSdkCommon.distEsmTypesRegistersMod.NonMandatoryRegisters
 import sigmastate.fleetSdkCommon.{distEsmTypesBoxesMod => boxesMod, distEsmTypesCommonMod => commonMod, distEsmTypesRegistersMod => registersMod, distEsmTypesTokenMod => tokenMod}

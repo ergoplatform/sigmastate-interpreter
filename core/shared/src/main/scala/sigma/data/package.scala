@@ -1,31 +1,31 @@
 package sigma
 
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
-import scala.annotation.nowarn
-import scala.reflect.classTag
+import scala.reflect.ClassTag
 
 /** Contains cores definitions which serves as a basis for [[sigma]] package implementations. */
 package object data {
-  /** Shadow the implicit from sigma package so it doesn't interfere with the resolution
-    * of ClassTags below.
-    */
-  @nowarn private def rtypeToClassTag = ???
-
-  val StringClassTag = classTag[String]
-  val BigIntClassTag = classTag[BigInt]
-  val UnsignedBigIntClassTag = classTag[UnsignedBigInt]
-  val GroupElementClassTag = classTag[GroupElement]
-  val SigmaPropClassTag = classTag[SigmaProp]
-  val SigmaBooleanClassTag = classTag[SigmaBoolean]
-  val AvlTreeClassTag = classTag[AvlTree]
-  val BoxClassTag = classTag[Box]
-  val ContextClassTag = classTag[Context]
-  val HeaderClassTag = classTag[Header]
-  val PreHeaderClassTag = classTag[PreHeader]
-  val AnyValueClassTag = classTag[AnyValue]
-  val SigmaDslBuilderClassTag = classTag[SigmaDslBuilder]
-  val CollBuilderClassTag = classTag[CollBuilder]
+  // ClassTags are built directly from `classOf` rather than via `classTag[T]` (which performs an
+  // implicit ClassTag search). This prevents the `sigma.rtypeToClassTag` implicit from the
+  // enclosing package object from being selected here: on Scala 3 it would be, and during the
+  // cyclic initialization of the `sigma` / `sigma.data` package objects it would dereference a
+  // not-yet-initialized RType, throwing an NPE at class-load time. (On Scala 2 a private
+  // same-named shadow def used to suppress that implicit, but the shadow has no effect in Scala 3.)
+  val StringClassTag = ClassTag[String](classOf[String])
+  val BigIntClassTag = ClassTag[BigInt](classOf[BigInt])
+  val UnsignedBigIntClassTag = ClassTag[UnsignedBigInt](classOf[UnsignedBigInt])
+  val GroupElementClassTag = ClassTag[GroupElement](classOf[GroupElement])
+  val SigmaPropClassTag = ClassTag[SigmaProp](classOf[SigmaProp])
+  val SigmaBooleanClassTag = ClassTag[SigmaBoolean](classOf[SigmaBoolean])
+  val AvlTreeClassTag = ClassTag[AvlTree](classOf[AvlTree])
+  val BoxClassTag = ClassTag[Box](classOf[Box])
+  val ContextClassTag = ClassTag[Context](classOf[Context])
+  val HeaderClassTag = ClassTag[Header](classOf[Header])
+  val PreHeaderClassTag = ClassTag[PreHeader](classOf[PreHeader])
+  val AnyValueClassTag = ClassTag[AnyValue](classOf[AnyValue])
+  val SigmaDslBuilderClassTag = ClassTag[SigmaDslBuilder](classOf[SigmaDslBuilder])
+  val CollBuilderClassTag = ClassTag[CollBuilder](classOf[CollBuilder])
 
   /** Immutable empty array of integers, should be used instead of allocating new empty arrays. */
   val EmptyArrayOfInt = Array.empty[Int]

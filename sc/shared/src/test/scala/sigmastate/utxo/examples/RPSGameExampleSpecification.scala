@@ -15,7 +15,7 @@ import sigma.ast.syntax._
 
 class RPSGameExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
   /** RPS game:
 
      Alice creates a RPS game of "playAmount" ergs by creating a Half-game UTXO called the "halfGameOutput" output below.

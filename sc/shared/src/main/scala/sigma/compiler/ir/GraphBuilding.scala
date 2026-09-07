@@ -87,7 +87,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `anyOf` predefined function.
     */
   object AnyOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
+    def unapply(d: Def[_]): Nullable[CollBuilderMethods.fromItems.Args] = d match {
       case SDBM.anyOf(_, xs) =>
         CBM.fromItems.unapply(xs)
       case _ => Nullable.None
@@ -98,7 +98,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `allOf` predefined function.
     */
   object AllOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
+    def unapply(d: Def[_]): Nullable[CollBuilderMethods.fromItems.Args] = d match {
       case SDBM.allOf(_, xs) =>
         CBM.fromItems.unapply(xs)
       case _ => Nullable.None
@@ -111,7 +111,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   object AnyZk {
     def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
       case SDBM.anyZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
+        fromItemsSigmaTuple(CBM.fromItems.unapply(xs))
       case _ => Nullable.None
     }
   }
@@ -122,7 +122,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   object AllZk {
     def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
       case SDBM.allZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
+        fromItemsSigmaTuple(CBM.fromItems.unapply(xs))
       case _ => Nullable.None
     }
   }
@@ -229,6 +229,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   /** Lazy values, which are immutable, but can be reset, so that the next time they are accessed
     * the expression is re-evaluated. Each value should be reset in onReset() method. */
   private val _sigmaDslBuilder: LazyRep[SigmaDslBuilder] = MutableLazy(variable[SigmaDslBuilder])
+  /** During compilation represent a global value Global, see also SGlobal type. */
   @inline def sigmaDslBuilder: Ref[SigmaDslBuilder] = _sigmaDslBuilder.value
 
   private val _colBuilder: LazyRep[CollBuilder] = MutableLazy(variable[CollBuilder])
@@ -461,19 +462,19 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case Constant(v, tpe) => v match {
         case p: SSigmaProp =>
           assert(tpe == SSigmaProp)
-          val resV = liftConst(p)
+          val resV = liftConst[SSigmaProp, SigmaProp](p)
           resV
         case bi: SBigInt =>
           assert(tpe == SBigInt)
-          val resV = liftConst(bi)
+          val resV = liftConst[SBigInt, BigInt](bi)
           resV
         case ubi: SUnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
-          val resV = liftConst(ubi)
+          val resV = liftConst[SUnsignedBigInt, UnsignedBigInt](ubi)
           resV
         case p: SGroupElement =>
           assert(tpe == SGroupElement)
-          val resV = liftConst(p)
+          val resV = liftConst[SGroupElement, GroupElement](p)
           resV
         case coll: SColl[a] =>
           val tpeA = tpe.asCollection[SType].elemType
@@ -484,10 +485,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               resVals
           }
         case box: SBox =>
-          val boxV = liftConst(box)
+          val boxV = liftConst[SBox, Box](box)
           boxV
         case tree: sigma.AvlTree =>
-          val treeV = liftConst(tree)
+          val treeV = liftConst[sigma.AvlTree, AvlTree](tree)
           treeV
         case s: String =>
           val resV = toRep(s)(stypeToElem(tpe).asInstanceOf[Elem[String]])

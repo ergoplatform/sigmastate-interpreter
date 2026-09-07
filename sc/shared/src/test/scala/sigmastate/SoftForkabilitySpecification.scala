@@ -113,7 +113,7 @@ class SoftForkabilitySpecification extends SigmaTestingData
     override def companion = this
     override val opCode: OpCode = Height2Code // use reserved code
     override val opType = SFunc(SContext, SInt)
-    override val costKind = Height.costKind
+    override val costKind: FixedCost = Height.costKind
     protected final override def eval(env: DataEnv)(implicit E: ErgoTreeEvaluator): Any = {
       addCost(this.costKind)
       E.context.HEIGHT

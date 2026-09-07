@@ -18,7 +18,7 @@ case class SigmaTransformerSerializer[I <: SigmaPropValue, O <: SigmaPropValue]
     w.putValues(obj.items, itemsInfo, itemsItemInfo)
 
   override def parse(r: SigmaByteReader): SigmaPropValue = {
-    val itemsSize = r.getUIntExact
+    val itemsSize = r.getUIntExact()
     // NO-FORK: in v5.x getUIntExact may throw Int overflow exception
     // in v4.x r.getUInt().toInt is used and may return negative Int instead of the overflow
     // in which case the array allocation will throw NegativeArraySizeException

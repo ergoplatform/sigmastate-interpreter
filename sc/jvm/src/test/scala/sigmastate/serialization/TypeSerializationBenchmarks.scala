@@ -43,7 +43,7 @@ import sigma.serialization.{SigmaSerializer, TypeSerializer}
   *   (Int, Long, Box, AvlTree) 0.0020 ms       (Int, Long, Box, AvlTree) 0.0075 ms
   *   (Int x 8)                 0.0024 ms       (Int x 8)                 0.0087 ms
   */
-object TypeSerializationBenchmarks extends Bench.LocalTime { suite: Bench[Double] =>
+object TypeSerializationBenchmarks extends Bench.LocalTime {
 
   // ---- representative types covering each branch of TypeSerializer ----
   private val types: Array[(String, SType)] = Array(
