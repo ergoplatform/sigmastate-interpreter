@@ -95,7 +95,7 @@ class ErgoTreeSerializerSpecification extends SerializationSpecification
           tree.root match {
             case Left(UnparsedErgoTree(unparsedBytes,
                 ValidationException(_, CheckDeserializedScriptIsSigmaProp, _, Some(cause)))) =>
-              unparsedBytes shouldBe bytes
+              unparsedBytes.toArray shouldBe bytes
               rootCauseLike[SerializerException](
                 "Failed deserialization, expected deserialized script to have type SigmaProp;")
                 .apply(cause) shouldBe true

@@ -4,10 +4,10 @@ import org.ergoplatform.ErgoBox.{AdditionalRegisters, Token, allZerosModifierId}
 import org.ergoplatform._
 import scorex.util.ModifierId
 import sigma.ast.ErgoTree
-import sigma.data.{AvlTreeData, CSigmaDslBuilder, CollOverArray, PairOfCols}
+import sigma.data.{AvlTreeData, CSigmaDslBuilder, CollOverArray, Digest32CollRType, PairOfCols}
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
-import sigma.{Coll, Colls, Header, PreHeader}
+import sigma.{Coll, Colls, Header, LongType, PreHeader}
 import scala.collection.compat.immutable.ArraySeq
 
 // TODO refactor: unification is required between two hierarchies of tests

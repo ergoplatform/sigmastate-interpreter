@@ -101,6 +101,10 @@ trait MethodCalls extends Base { self: IRContext =>
     override def transform(t: Transformer) = NewObject(eA, t(args))
   }
 
+  /** Copy only the arguments within the constructor's scope, retaining all call metadata. */
+  protected final def copyMethodCallWithArgs(mc: MethodCall, args: Seq[AnyRef]): MethodCall =
+    mc.copy(args = args)(mc.resultType, mc.isAdapterCall, mc.typeSubst)
+
   /** Creates new MethodCall node and returns its node ref. */
   def mkMethodCall(receiver: Sym,
                    method: RMethod,

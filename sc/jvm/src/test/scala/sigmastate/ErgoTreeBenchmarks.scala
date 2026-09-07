@@ -7,7 +7,7 @@ import sigma.ast.{ArithOp, EQ, IntConstant, SType}
 import sigma.ast.syntax.SValue
 import sigma.serialization.OpCodes.PlusCode
 
-object ErgoTreeBenchmarks extends Bench.LocalTime with BenchmarkGens { suite: Bench[Double] =>
+object ErgoTreeBenchmarks extends Bench.LocalTime with BenchmarkGens {
 
   override def maxSize: Int = 10000
 

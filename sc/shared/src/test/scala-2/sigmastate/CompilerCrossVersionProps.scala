@@ -20,4 +20,10 @@ trait CompilerCrossVersionProps extends CrossVersionProps with CompilerTestsBase
       }
     }
   }
+
+  /** Explicit registration entry point for suites that need both compiler modes. */
+  protected def compilerProperty(testName: String, testTags: Tag*)
+                                (testFun: => Any)
+                                (implicit pos: Position): Unit =
+    property(testName, testTags: _*)(testFun)
 }

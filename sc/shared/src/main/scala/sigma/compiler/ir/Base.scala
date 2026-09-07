@@ -464,7 +464,7 @@ abstract class Base { thisIR: IRContext =>
       * and leave non-Ref items unchanged. */
     final def apply(xs: Seq[Any])(implicit @unused o: Overloaded1): Seq[Any] = {
       val len = xs.length
-      if (len == 0) ArraySeq.empty
+      if (len == 0) ArraySeq.empty[AnyRef]
       else {
         val res = new Array[Any](len)
         cfor(0)(_ < len, _ + 1) { i =>

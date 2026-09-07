@@ -3,7 +3,7 @@ package sigmastate.helpers
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.RegisterId
 import org.ergoplatform.settings.ErgoAlgos
-import pprint.{PPrinter, Tree}
+import pprint.Tree
 import sigma.ast.SCollection.{SBooleanArray, SByteArray, SByteArray2}
 import sigma.ast.{ConstantNode, FuncValue, MethodCall, ValueCompanion, _}
 import sigma.crypto.EcPointType
@@ -20,8 +20,7 @@ import scala.reflect.ClassTag
 
 /** Pretty-printer customized to print [[sigma.ast.Value]] instances
   * into a valid Scala code (can be cut-and-pasted).*/
-object SigmaPPrint extends PPrinter {
-  override def showFieldNames = false
+object SigmaPPrint extends SigmaPPrinterCompat {
   
   /** Apply [[treeify]] for each element of the given sequence producing the iterator of resulting trees. */
   protected def treeifySeq(xs: Seq[Any]): Iterator[Tree] = {
@@ -261,4 +260,3 @@ object SigmaPPrint extends PPrinter {
       Tree.Apply(s"MethodCall.typed[$resTpeName]", Seq(objT, methodT, argsT, substT).iterator)
   }
 }
-

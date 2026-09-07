@@ -27,6 +27,7 @@ import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule, WRTypesMod
   */
 trait IRContext
   extends TypeDescs
+  with SingleTypeExtractorSupport
   with MethodCalls
   with Tuples
   with NumericOps
@@ -81,23 +82,18 @@ trait IRContext
   private val CBM = CollBuilderMethods
   private val WOptionM = WOptionMethods
 
-  def colBuilder: Ref[CollBuilder]
-
   /** Type descriptor for [[WRType]] */
   implicit lazy val wRTypeAnyElement: Elem[WRType[Any]] = wRTypeElement(AnyElement)
 
-  /** During compilation represent a global value Global, see also SGlobal type. */
-  def sigmaDslBuilder: Ref[SigmaDslBuilder]
-
   object IsNumericToInt {
-    def unapply(d: Def[_]): Nullable[Ref[A] forSome {type A}] = d match {
-      case ApplyUnOp(_: NumericToInt[_], x) => Nullable(x.asInstanceOf[Ref[A] forSome {type A}])
+    def unapply(d: Def[_]): Nullable[Ref[_]] = d match {
+      case ApplyUnOp(_: NumericToInt[_], x) => Nullable(x.asInstanceOf[Ref[_]])
       case _ => Nullable.None
     }
   }
   object IsNumericToLong {
-    def unapply(d: Def[_]): Nullable[Ref[A] forSome {type A}] = d match {
-      case ApplyUnOp(_: NumericToLong[_], x) => Nullable(x.asInstanceOf[Ref[A] forSome {type A}])
+    def unapply(d: Def[_]): Nullable[Ref[_]] = d match {
+      case ApplyUnOp(_: NumericToLong[_], x) => Nullable(x.asInstanceOf[Ref[_]])
       case _ => Nullable.None
     }
   }
@@ -105,7 +101,7 @@ trait IRContext
   override def rewriteDef[T](d: Def[T]) = d match {
     case CM.length(ys) => ys.node match {
       // Rule: xs.map(f).length  ==> xs.length
-      case CM.map(xs, _) =>
+      case CM.map(xs: Ref[Coll[a]], _) =>
         xs.length
       // Rule: replicate(len, v).length => len
       case CBM.replicate(_, len, _) =>
@@ -133,7 +129,7 @@ trait IRContext
 
         // Rule: xs.map(f).map(g) ==> xs.map(x => g(f(x)))
         case CM.map(_xs, f: RFunc[a, b]) =>
-          implicit val ea = f.elem.eDom
+          implicit val ea: Elem[a] = f.elem.eDom
           val xs = asRep[Coll[a]](_xs)
           val g  = asRep[b => Any](_f)
           xs.map[Any](fun { x: Ref[a] => g(f(x)) })
@@ -153,7 +149,7 @@ trait IRContext
   override def invokeUnlifted(e: Elem[_], mc: MethodCall, dataEnv: DataEnv): Any = e match {
     case _: CollElem[_,_] => mc match {
       case CollMethods.map(_, f) =>
-        val newMC = mc.copy(args = mc.args :+ f.elem.eRange)(mc.resultType, mc.isAdapterCall, mc.typeSubst)
+        val newMC = copyMethodCallWithArgs(mc, mc.args :+ f.elem.eRange)
         super.invokeUnlifted(e, newMC, dataEnv)
       case _ =>
         super.invokeUnlifted(e, mc, dataEnv)

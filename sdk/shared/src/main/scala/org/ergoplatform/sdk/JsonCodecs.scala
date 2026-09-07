@@ -12,13 +12,13 @@ import scorex.crypto.hash.Digest32
 import scorex.util.ModifierId
 import sigma.Extensions.ArrayOps
 import sigma.ast.{ErgoTree, EvaluatedValue, SType}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CBigInt, CHeader, Digest32Coll, WrapperOf}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CBigInt, CHeader, Digest32Coll, Digest32CollRType, WrapperOf}
 import sigma.eval.Extensions.EvalIterableOps
 import sigma.eval.SigmaDsl
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
 import sigma.validation.SigmaValidationSettings
-import sigma.{AnyValue, Coll, Colls, Header, PreHeader, SigmaException}
+import sigma.{AnyValue, Coll, Colls, Header, LongType, PreHeader, SigmaException}
 import sigmastate.eval.{CPreHeader, _}
 import sigmastate.utils.Helpers._   // required for Scala 2.11
 
@@ -97,7 +97,7 @@ trait JsonCodecs {
   })
 
   implicit val modifierIdEncoder: Encoder[ModifierId] = Encoder.instance(_.asInstanceOf[String].asJson)
-  implicit val modifierIdDecoder: Decoder[ModifierId] = Decoder.instance(ModifierId @@ _.as[String])
+  implicit val modifierIdDecoder: Decoder[ModifierId] = Decoder.instance(cursor => cursor.as[String].map(ModifierId(_)))
 
   implicit val registerIdEncoder: KeyEncoder[NonMandatoryRegisterId] = KeyEncoder.instance({ regId =>
     s"R${regId.number}"

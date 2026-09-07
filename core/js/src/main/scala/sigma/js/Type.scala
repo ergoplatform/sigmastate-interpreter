@@ -15,7 +15,7 @@ class Type(final val rtype: RType[_]) extends js.Object {
   /** Syntactically correct type name (type expression as String) */
   def name: String = rtype.name
 
-  override def toString = s"Type($rtype)"
+  override def toString() = s"Type($rtype)"
 }
 
 @JSExportTopLevel("Type$")

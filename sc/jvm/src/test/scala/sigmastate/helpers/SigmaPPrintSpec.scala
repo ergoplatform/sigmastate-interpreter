@@ -4,9 +4,9 @@ import org.ergoplatform.settings.ErgoAlgos
 import org.ergoplatform.ErgoBox
 import scorex.util.ModifierId
 import sigma.Extensions.ArrayOps
-import sigma.SigmaDslTesting
+import sigma.{LongType, SigmaDslTesting}
 import sigma.ast._
-import sigma.data.{AvlTreeData, AvlTreeFlags, CBox, CollType, Digest32Coll}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CBox, CollType, Digest32Coll, Digest32CollRType}
 import ErgoTree.HeaderType
 import sigma.ast.MethodCall
 import sigma.serialization.OpCodes
@@ -104,7 +104,7 @@ class SigmaPPrintSpec extends SigmaDslTesting {
             (Digest32Coll @@ (ErgoAlgos.decodeUnsafe("6e789ab7b2fffff12280a6cd01557f6fb22b7f80ff7aff8e1f7f15973d7f0001").toColl), 10000000L)
           ),
           Map(),
-          ModifierId @@ ("bc80ffc00100d60101ffd3d3ab7f73800aff80487fff7fffbb010080ff7f0837"),
+          ModifierId("bc80ffc00100d60101ffd3d3ab7f73800aff80487fff7fffbb010080ff7f0837"),
           0.toShort,
             1000000
         )

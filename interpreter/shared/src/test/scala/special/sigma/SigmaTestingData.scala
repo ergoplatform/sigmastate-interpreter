@@ -176,7 +176,7 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
           ErgoBox.R5 -> ByteArrayConstant(Helpers.decodeBytes("7fc87f7f01ff")),
           ErgoBox.R4 -> FalseLeaf
         ),
-        ModifierId @@ ("218301ae8000018008637f0021fb9e00018055486f0b514121016a00ff718080"),
+        ModifierId("218301ae8000018008637f0021fb9e00018055486f0b514121016a00ff718080"),
         22588.toShort,
         677407
       )
@@ -219,7 +219,7 @@ trait SigmaTestingData extends TestingCommons with ObjectGenerators {
           ErgoBox.R7 -> LongConstant(9223372036854775807L),
           ErgoBox.R6 -> LongConstant(2115927197107005906L)
         ),
-        ModifierId @@ ("003bd5c630803cfff6c1ff7f7fb980ff136afc011f8080b8b04ad4dbda2d7f4e"),
+        ModifierId("003bd5c630803cfff6c1ff7f7fb980ff136afc011f8080b8b04ad4dbda2d7f4e"),
         1.toShort,
         1000000
       )

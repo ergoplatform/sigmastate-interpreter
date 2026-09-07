@@ -202,15 +202,15 @@ trait Functions extends Base with ProgramGraphs { self: IRContext =>
   }
 
   implicit class FuncExtensions[A, B](f: Ref[A=>B]) {
-    implicit def eA = f.elem.eDom
+    implicit def eA: Elem[A] = f.elem.eDom
     def getLambda: Lambda[A,B] = f.node match {
       case lam: Lambda[_,_] => lam.asInstanceOf[Lambda[A,B]]
       case _ => !!!(s"Expected symbol of Lambda node but was $f", f)
     }
 
     def zip[C](g: Ref[A=>C]): Ref[A=>(B,C)] = {
-      implicit val eB = f.elem.eRange
-      implicit val eC = g.elem.eRange
+      implicit val eB: Elem[B] = f.elem.eRange
+      implicit val eC: Elem[C] = g.elem.eRange
       fun { (x: Ref[A]) => Pair(f(x), g(x)) }
     }
   }
@@ -404,8 +404,8 @@ trait Functions extends Base with ProgramGraphs { self: IRContext =>
 
   /** Composition of two functions (in mathematical notation), where first `g` is applied and them `f`. */
   def compose[A, B, C](f: Ref[B => C], g: Ref[A => B]): Ref[A => C] = {
-    implicit val eA = g.elem.eDom
-    implicit val eC = f.elem.eRange
+    implicit val eA: Elem[A] = g.elem.eDom
+    implicit val eC: Elem[C] = f.elem.eRange
     fun { x => f(g(x)) }
   }
 

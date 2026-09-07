@@ -606,7 +606,7 @@ class SigmaTyper(val builder: SigmaBuilder,
     v => s"Errors found while assigning types to expression $bound: $v assigned NoType")
     .withEnsuredSrcCtx(bound.sourceContext)
 
-  def assignConcreteCollection(cc: ConcreteCollection[SType], newItems: Seq[Value[SType]]) = {
+  def assignConcreteCollection(cc: ConcreteCollection[_ <: SType], newItems: Seq[Value[SType]]) = {
     val types = newItems.map(_.tpe).distinct
     val tItem = if (cc.items.isEmpty) {
       if (cc.elementType == NoType)

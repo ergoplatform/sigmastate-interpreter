@@ -3,7 +3,7 @@ package org.ergoplatform
 import scorex.crypto.authds.ADDigest
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ModifierId
-import sigma.Colls
+import sigma.{ByteType, Colls}
 import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType}
 import sigma.serialization.{GroupElementSerializer, SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 import sigma.util.Extensions.BigIntegerOps

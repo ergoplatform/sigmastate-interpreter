@@ -150,7 +150,8 @@ trait Transforming { self: IRContext =>
 
     // every mirrorXXX method should return a pair (t + (v -> v1), v1)
     protected def mirrorVar[A](t: Transformer, v: Ref[A]): Transformer = {
-      val newVar = variable(Lazy(mirrorElem(v)))
+      lazy val elem = mirrorElem(v)
+      val newVar = variable(Lazy(elem))
       t + (v, newVar)
     }
 
@@ -159,7 +160,10 @@ trait Transforming { self: IRContext =>
       t + (node, res)
     }
 
-    protected def getMirroredLambdaSym[A, B](node: Ref[A => B]): Sym = placeholder(Lazy(mirrorElem(node)))
+    protected def getMirroredLambdaSym[A, B](node: Ref[A => B]): Sym = {
+      lazy val elem = mirrorElem(node)
+      placeholder(Lazy(elem))
+    }
 
     // require: should be called after oldlam.schedule is mirrored
     private def getMirroredLambdaDef(t: Transformer, oldLam: Lambda[_,_], newRoot: Sym): Lambda[_,_] = {
@@ -259,4 +263,3 @@ trait Transforming { self: IRContext =>
   val DefaultMirror = new Mirror {}
 
 }
-

@@ -166,7 +166,7 @@ trait Thunks extends Functions { self: IRContext =>
     override def isIdentity: Boolean = false
   }
   object ThunkDef {
-    def unapply(d: ThunkDef[_]): Option[(Ref[T], Schedule) forSome {type T}] = d match {
+    def unapply(d: ThunkDef[_]): Option[ThunkDefArgs] = d match {
       case th: ThunkDef[_] => Some((th.root, th.schedule))
       case _ => None
     }
@@ -371,4 +371,3 @@ trait Thunks extends Functions { self: IRContext =>
   }
 
 }
-

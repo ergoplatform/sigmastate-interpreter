@@ -7,11 +7,11 @@ import org.ergoplatform.settings.ErgoAlgos
 import scorex.util.encode.Base16
 import scorex.util.{ModifierId, Random}
 import sigma.Extensions._
-import sigma.{SigmaDslTesting, VersionContext}
+import sigma.{LongType, SigmaDslTesting, VersionContext}
 import sigma.ast.SType._
 import sigma.ast.syntax.{ErgoBoxCandidateRType, TrueSigmaProp}
 import sigma.ast._
-import sigma.data.{CSigmaProp, Digest32Coll, TrivialProp}
+import sigma.data.{CSigmaProp, Digest32Coll, Digest32CollRType, TrivialProp}
 import sigma.eval.Extensions.{EvalCollOps, EvalIterableOps}
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.serialization.SigmaSerializer
@@ -67,17 +67,17 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
         ErgoBox.R5 -> ByteArrayConstant(Helpers.decodeBytes("7fc87f7f01ff")),
         ErgoBox.R4 -> FalseLeaf
       ),
-      ModifierId @@ ("218301ae8000018008637f0021fb9e00018055486f0b514121016a00ff718080"),
+      ModifierId("218301ae8000018008637f0021fb9e00018055486f0b514121016a00ff718080"),
       0.toShort,
       100
     )
-    val expectedTokens = Map[ModifierId, Long](ModifierId @@ token1 -> 10000000L, ModifierId @@ token2 -> 500L)
+    val expectedTokens = Map[ModifierId, Long](ModifierId(token1) -> 10000000L, ModifierId(token2) -> 500L)
     val assetHolder = ErgoBoxAssetsHolder(10L, expectedTokens)
 
     b1.tokens shouldBe expectedTokens
     b1_clone.tokens shouldBe expectedTokens
     b3.tokens shouldBe expectedTokens
-    b2.tokens shouldBe Map[ModifierId, Long](ModifierId @@ token1 -> 10000500L, ModifierId @@ token2 -> 500L)
+    b2.tokens shouldBe Map[ModifierId, Long](ModifierId(token1) -> 10000500L, ModifierId(token2) -> 500L)
 
     assertResult(true)(b1.hashCode() == b1.hashCode())
     assertResult(true)(b1 == b1)
@@ -298,7 +298,7 @@ import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
       whenever(endIndex >= startIndex) {
         val idRange = endIndex - startIndex
 
-        val ce = ContextExtension(startIndex.to(endIndex).map(id => id.toByte -> IntConstant(4)).toMap)
+        val ce = ContextExtension(startIndex.toInt.to(endIndex.toInt).map(id => id.toByte -> IntConstant(4)).toMap)
         val wrongInput = Input(tx.inputs.head.boxId, ProverResult(Array.emptyByteArray, ce))
         val ins = IndexedSeq(wrongInput) ++ tx.inputs.tail
         val tx2 = copyTransaction(tx)(inputs = ins)

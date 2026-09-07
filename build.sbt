@@ -10,7 +10,7 @@ name := "sigma-state"
 lazy val scala213 = "2.13.18"
 lazy val scala212 = "2.12.21"
 lazy val scala211 = "2.11.12"
-lazy val scala3   = "3.3.4"
+lazy val scala3   = "3.3.8"
 
 lazy val allConfigDependency = "compile->compile;test->test"
 
@@ -25,7 +25,7 @@ lazy val commonSettings = Seq(
       case Some((2, 11)) =>
         Seq()
       case Some((3, _)) =>
-        Seq("-release", "8")
+        Seq("-source:3.0-migration", "-release", "8")
       case _ => sys.error("Unsupported scala version")
     }
   },
@@ -88,10 +88,10 @@ ThisBuild / dynverSonatypeSnapshots := true
 // use "-" instead of default "+"
 ThisBuild / dynverSeparator := "-"
 
-val bouncycastleBcprov = "org.bouncycastle" % "bcprov-jdk15on" % "1.70"
+val bouncycastleBcprov = "org.bouncycastle" % "bcprov-jdk15to18" % "1.85.1"
 
 val scryptoDependency =
-  libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.0.0"
+  libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.1.1"
 
 val scorexUtilDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scorex-util" % "0.2.2"
@@ -100,7 +100,8 @@ val debox              = "org.scorexfoundation" %% "debox" % "0.10.0"
 val spireMacros        = "org.typelevel" %% "spire-macros" % "0.17.0-M1"
 
 val fastparseDependency =
-  libraryDependencies += "com.lihaoyi" %%% "fastparse" % "2.3.3"
+  libraryDependencies += "com.lihaoyi" %%% "fastparse" %
+    (if (scalaBinaryVersion.value == "3") "3.1.1" else "2.3.3")
 
 val supertaggedDependency =
   libraryDependencies ++= {
@@ -213,24 +214,31 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     commonDependenies2,
     testingDependencies2,
     scorexUtilDependency,
-    supertaggedDependency,
     publish / skip := true
   )
   .jvmSettings(
     crossScalaSettings,
     crossScalaVersions += scala3,
+    supertaggedDependency,
     libraryDependencies ++= Seq(
       bouncycastleBcprov
     )
   )
   .jsSettings(
     crossScalaSettingsJS,
-    scalacOptions ++= Seq(
+    crossScalaVersions += scala3,
+    scalacOptions ++= (if (scalaBinaryVersion.value == "3") Seq.empty else Seq(
       // Suppress warning about the global execution context in Scala.js is based on JS
       // Promises (microtasks). Using it may prevent macrotasks (I/O, timers, UI
       // rendering) from running fairly.
       "-P:scalajs:nowarnGlobalExecutionContext"
-    ),
+    )),
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value == "3")
+        // Use the published Scala.js artifact; replacing %%%'s cross version loses its sjs1 prefix.
+        Seq("org.rudogma" % "supertagged_sjs1_2.13" % "2.0-RC2")
+      else Seq.empty
+    },
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scala-js-macrotask-executor" % "1.1.1"
     ),
@@ -261,9 +269,10 @@ lazy val data = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(crossScalaSettings, crossScalaVersions += scala3)
   .jsSettings(
     crossScalaSettingsJS,
+    crossScalaVersions += scala3,
     useYarn := true
   )
 lazy val dataJS = data.js
@@ -279,9 +288,10 @@ lazy val interpreter = crossProject(JVMPlatform, JSPlatform)
     scorexUtilDependency, fastparseDependency, circeDependency, scryptoDependency,
     publish / skip := true
   )
-  .jvmSettings( crossScalaSettings )
+  .jvmSettings(crossScalaSettings, crossScalaVersions += scala3)
   .jsSettings(
     crossScalaSettingsJS,
+    crossScalaVersions += scala3,
     useYarn := true
   )
 lazy val interpreterJS = interpreter.js
@@ -298,10 +308,12 @@ lazy val parsers = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      crossScalaVersions += scala3
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       useYarn := true
     )
 lazy val parsersJS = parsers.js
@@ -323,10 +335,12 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform)
       publish / skip := true
     )
     .jvmSettings(
-      crossScalaSettings
+      crossScalaSettings,
+      crossScalaVersions += scala3
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       useYarn := true
     )
 lazy val sdkJS = sdk.js
@@ -356,10 +370,18 @@ lazy val sc = crossProject(JVMPlatform, JSPlatform)
     .settings(publish / skip := true)
     .jvmSettings(
       crossScalaSettings,
-      libraryDependencies ++= Seq(scalameter)
+      crossScalaVersions += scala3,
+      libraryDependencies += {
+        if (scalaBinaryVersion.value == "3")
+          scalameter.cross(CrossVersion.for3Use2_13)
+            .exclude("org.scala-lang.modules", "scala-xml_2.13")
+            .exclude("org.scala-lang.modules", "scala-collection-compat_2.13")
+        else scalameter
+      }
     )
     .jsSettings(
       crossScalaSettingsJS,
+      crossScalaVersions += scala3,
       libraryDependencies ++= Seq(
         "org.scala-js" %%% "scala-js-macrotask-executor" % "1.0.0"
       ),
@@ -385,6 +407,7 @@ lazy val scJS = sc.js
 lazy val sigma = (project in file("."))
   .aggregate(core.jvm, data.jvm, interpreter.jvm, parsers.jvm, sdk.jvm, sc.jvm)
   .settings(libraryDefSettings, rootSettings)
+  .settings(crossScalaVersions += scala3)
   .settings(publish / aggregate := false)
   .settings(publishLocal / aggregate := false)
 
@@ -420,4 +443,3 @@ pgpPublicRing := file("ci/pubring.asc")
 pgpSecretRing := file("ci/secring.asc")
 pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray)
 usePgpKeyHex("C1FD62B4D44BDF702CDF2B726FF59DA944B150DD")
-

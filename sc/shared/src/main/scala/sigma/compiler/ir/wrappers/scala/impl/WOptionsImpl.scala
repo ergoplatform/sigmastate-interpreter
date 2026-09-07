@@ -14,7 +14,7 @@ package impl {
 
   // Abs -----------------------------------
 /** IR representation of Option type and methods. */
-trait WOptionsDefs extends Base with WOptions {
+trait WOptionsDefs extends Base with WOptions with WOptionExtractorSupport {
   self: IRContext =>
 
 class WOptionCls extends EntityObject("WOption") {
@@ -51,7 +51,7 @@ class WOptionCls extends EntityObject("WOption") {
     }
 
     override def map[B](f: Ref[A => B]): Ref[WOption[B]] = {
-      implicit val eB = f.elem.eRange
+      implicit val eB: Elem[B] = f.elem.eRange
       asRep[WOption[B]](mkMethodCall(self,
         WOptionClass.getMethod("map", classOf[Sym]),
         Array[AnyRef](f),
@@ -59,7 +59,7 @@ class WOptionCls extends EntityObject("WOption") {
     }
 
     override def getOrElse[B](default: Ref[Thunk[B]]): Ref[B] = {
-      implicit val eB = default.elem.eItem
+      implicit val eB: Elem[B] = default.elem.eItem
       asRep[B](mkMethodCall(self,
         WOptionClass.getMethod("getOrElse", classOf[Sym]),
         Array[AnyRef](default),
@@ -114,7 +114,7 @@ class WOptionCls extends EntityObject("WOption") {
     }
 
     def map[B](f: Ref[A => B]): Ref[WOption[B]] = {
-      implicit val eB = f.elem.eRange
+      implicit val eB: Elem[B] = f.elem.eRange
       asRep[WOption[B]](mkMethodCall(source,
         WOptionClass.getMethod("map", classOf[Sym]),
         Array[AnyRef](f),
@@ -122,7 +122,7 @@ class WOptionCls extends EntityObject("WOption") {
     }
 
     def getOrElse[B](default: Ref[Thunk[B]]): Ref[B] = {
-      implicit val eB = default.elem.eItem
+      implicit val eB: Elem[B] = default.elem.eItem
       asRep[B](mkMethodCall(source,
         WOptionClass.getMethod("getOrElse", classOf[Sym]),
         Array[AnyRef](default),
@@ -180,53 +180,48 @@ class WOptionCls extends EntityObject("WOption") {
 
   object WOptionMethods {
     object isDefined {
-      def unapply(d: Def[_]): Nullable[Ref[WOption[A]] forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[WOptionRef] = d match {
         case MethodCall(receiver, method, _, _) if method.getName == "isDefined" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[WOption[A]] forSome {type A}]]
+          Nullable(receiver.asInstanceOf[WOptionRef])
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[Ref[WOption[A]] forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[WOptionRef] = unapply(exp.node)
     }
 
     object filter {
-      def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[A => Boolean]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[WOptionFilterArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[A => Boolean]) forSome {type A}]]
+          Nullable(recoverWOptionFilterArgs(receiver, args(0)))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[WOption[A]], Ref[A => Boolean]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[WOptionFilterArgs] = unapply(exp.node)
     }
 
     object map {
-      def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[A => B]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[WOptionMapArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "map" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[A => B]) forSome {type A; type B}]]
+          Nullable(recoverWOptionMapArgs(receiver, args(0)))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[WOption[A]], Ref[A => B]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[WOptionMapArgs] = unapply(exp.node)
     }
 
     object getOrElse {
-      def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[Thunk[B]]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[WOptionGetOrElseArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[Thunk[B]]) forSome {type A; type B}]]
+          Nullable(recoverWOptionGetOrElseArgs(receiver, args(0)))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[WOption[A]], Ref[Thunk[B]]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[WOptionGetOrElseArgs] = unapply(exp.node)
     }
 
     object get {
-      def unapply(d: Def[_]): Nullable[Ref[WOption[A]] forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[WOptionRef] = d match {
         case MethodCall(receiver, method, _, _) if method.getName == "get" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[WOption[A]] forSome {type A}]]
+          Nullable(receiver.asInstanceOf[WOptionRef])
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[Ref[WOption[A]] forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[WOptionRef] = unapply(exp.node)
     }
   }
 } // of object WOption

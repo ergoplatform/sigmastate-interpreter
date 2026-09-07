@@ -34,7 +34,7 @@ case class OutBox(candidate: ErgoBoxCandidate) {
     * @return a new {@link ExtendedInputBox} representing UTXO box as an input of a next transaction.
     */
   def convertToInputWith(txId: String, boxIndex: Short): ExtendedInputBox = {
-    val box = candidate.toBox(ModifierId @@ txId, boxIndex)
+    val box = candidate.toBox(ModifierId(txId), boxIndex)
     ExtendedInputBox(box, ContextExtension.empty)
   }
 }

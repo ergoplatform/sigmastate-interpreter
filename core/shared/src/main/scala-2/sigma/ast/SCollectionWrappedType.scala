@@ -9,7 +9,7 @@ import sigma.Coll
   * element type such as `STuple`'s `SAny.type`, `Coll[SAny.type#WrappedType]` stays a projection
   * that conforms to `Coll[SType#WrappedType]` by subtyping, whereas the alias `Wrapped.Of[SAny.type]`
   * over-normalizes to `Coll[Any]` and would force casts at use sites (e.g. DataJsonEncoder).
-  * The Scala 3 variant widens to `Coll[SType#WrappedType]` since `T#WrappedType` is illegal there.
+  * The Scala 3 variant keeps the same projection using migration mode.
   */
 trait SCollectionWrappedType[T <: SType] {
   type WrappedType = Coll[T#WrappedType]

@@ -51,7 +51,7 @@ class SigmaByteReader(override val r: Reader,
     * @return a sequence of zero of more values read
     */
   @inline def getValues(): IndexedSeq[SValue] = {
-    val size = getUIntExact
+    val size = getUIntExact()
     if (size == 0) Value.EmptySeq // quick short-cut when there is nothing to read
     else {
       val xs = safeNewArray[SValue](size)

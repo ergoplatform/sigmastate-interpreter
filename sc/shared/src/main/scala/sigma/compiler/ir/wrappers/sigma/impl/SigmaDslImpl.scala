@@ -1071,13 +1071,13 @@ object Box extends EntityObject("Box") {
     }
 
     object getReg {
-      def unapply(d: Def[_]): Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[BoxGetRegArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "getReg" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[BoxGetRegArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[BoxGetRegArgs] = unapply(exp.node)
     }
 
     object creationInfo {
@@ -2104,13 +2104,13 @@ object Context extends EntityObject("Context") {
     }
 
     object getVar {
-      def unapply(d: Def[_]): Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[ContextGetVarArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "getVar" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[ContextGetVarArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[ContextGetVarArgs] = unapply(exp.node)
     }
   }
 } // of object Context
@@ -2723,13 +2723,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object substConstants {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[SubstConstantsArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "substConstants" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[SubstConstantsArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[SubstConstantsArgs] = unapply(exp.node)
     }
 
     object decodePoint {
@@ -2743,13 +2743,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object deserializeTo {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[DeserializeToArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[DeserializeToArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[DeserializeToArgs] = unapply(exp.node)
     }
 
     object serialize {

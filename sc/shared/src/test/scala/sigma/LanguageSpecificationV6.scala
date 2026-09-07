@@ -17,7 +17,7 @@ import sigma.ast.syntax.TrueSigmaProp
 import sigma.ast.{SInt, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAnyValue, CAvlTree, CBigInt, CBox, CHeader, CSigmaProp, ExactNumeric, ProveDHTuple, RType}
 import sigma.data.CSigmaDslBuilder
-import sigma.data.{CGroupElement, CUnsignedBigInt}
+import sigma.data.{CGroupElement, CUnsignedBigInt, Digest32CollRType}
 import sigma.crypto.SecP256K1Group
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
@@ -73,7 +73,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5)))
   )
 
-  property("Global.serialize[Byte]") {
+  compilerProperty("Global.serialize[Byte]") {
     lazy val serializeByte = mkSerializeFeature[Byte]
     val expectedCostTrace = TracedCost(
       baseTrace ++ Array(
@@ -94,7 +94,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeByte, preGeneratedSamples = None)
   }
 
-  property("Global.serialize[Short]") {
+  compilerProperty("Global.serialize[Short]") {
     lazy val serializeShort = mkSerializeFeature[Short]
     val expectedCostTrace = TracedCost(
       baseTrace ++ Array(
@@ -115,7 +115,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeShort, preGeneratedSamples = None)
   }
 
-  property("Global.serialize[Int]") {
+  compilerProperty("Global.serialize[Int]") {
     lazy val serializeInt = mkSerializeFeature[Int]
     val expectedCostTrace = TracedCost(
       baseTrace ++ Array(
@@ -136,7 +136,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeInt, preGeneratedSamples = None)
   }
 
-  property("Global.serialize[Long]") {
+  compilerProperty("Global.serialize[Long]") {
     lazy val serializeLong = mkSerializeFeature[Long]
     val expectedCostTrace = TracedCost(
       baseTrace ++ Array(
@@ -155,7 +155,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeLong, preGeneratedSamples = None)
   }
 
-  property("Global.serialize[Coll[Byte]]") {
+  compilerProperty("Global.serialize[Coll[Byte]]") {
     lazy val serializeCollByte = mkSerializeFeature[Coll[Byte]]
     val baseCostItems = baseTrace ++ Array(
       FixedCostItem(Global),
@@ -181,7 +181,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializeCollByte, preGeneratedSamples = None)
   }
 
-  property("Global.serialize[(Long, Long)]") {
+  compilerProperty("Global.serialize[(Long, Long)]") {
     lazy val serializePair = mkSerializeFeature[(Long, Long)]
     val expectedCostTrace = TracedCost(
       baseTrace ++ Array(
@@ -200,7 +200,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, serializePair, preGeneratedSamples = None)
   }
 
-  property("Boolean.toByte") {
+  compilerProperty("Boolean.toByte") {
     val toByte = newFeature((x: Boolean) => x.toByte, "{ (x: Boolean) => x.toByte }",
       sinceVersion = V6SoftForkVersion
     )
@@ -221,7 +221,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       testCases(cases, toByte)
   }
 
-  property("Byte methods - 6.0 features") {
+  compilerProperty("Byte methods - 6.0 features") {
 
     lazy val bitOr = newFeature(
       { (x: (Byte, Byte)) => (x._1 | x._2).toByteExact },
@@ -408,7 +408,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Short - 6.0 methods") {
+  compilerProperty("Short - 6.0 methods") {
 
     lazy val bitOr = newFeature(
       { (x: (Short, Short)) => (x._1 | x._2).toShortExact },
@@ -604,7 +604,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Int - 6.0 methods") {
+  compilerProperty("Int - 6.0 methods") {
 
     lazy val bitOr = newFeature(
       { (x: (Int, Int)) => (x._1 | x._2)},
@@ -807,7 +807,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Long - 6.0 methods") {
+  compilerProperty("Long - 6.0 methods") {
 
     lazy val bitOr = newFeature(
       { (x: (Long, Long)) => (x._1 | x._2)},
@@ -1015,7 +1015,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("BigInt - 6.0 features") {
+  compilerProperty("BigInt - 6.0 features") {
     import sigma.data.OrderingOps.BigIntOrdering
 
     if (ergoTreeVersionInTests < VersionContext.V6SoftForkVersion) {
@@ -1283,7 +1283,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Box properties equivalence (new features)") {
+  compilerProperty("Box properties equivalence (new features)") {
     // related to https://github.com/ScorexFoundation/sigmastate-interpreter/issues/416
     def getReg = newFeature((x: Box) => x.getReg[Long](0).get,
       "{ (x: Box) => x.getReg[Long](0).get }",
@@ -1303,7 +1303,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     } else {
       val value = 10L
       val box = CBox(new ErgoBox(value, TrueTree, Colls.emptyColl[Token], Map.empty,
-                                  ModifierId @@ Base16.encode(Array.fill(32)(0)), 0, 0))
+                                  ModifierId(Base16.encode(Array.fill(32)(0))), 0, 0))
       verifyCases(
         Seq(
           box -> new Expected(ExpectedResult(Success(value), None))
@@ -1314,7 +1314,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   // TODO v6.0 (3h): https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-  property("Coll find method equivalence") {
+  compilerProperty("Coll find method equivalence") {
     val find = newFeature((x: Coll[Int]) => x.find({ (v: Int) => v > 0 }),
       "{ (x: Coll[Int]) => x.find({ (v: Int) => v > 0} ) }",
       sinceVersion = V6SoftForkVersion)
@@ -1330,7 +1330,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   // TODO v6.0 (3h): https://github.com/ScorexFoundation/sigmastate-interpreter/issues/418
-  property("Coll bitwise methods equivalence") {
+  compilerProperty("Coll bitwise methods equivalence") {
     val shiftRight = newFeature(
       { (x: Coll[Boolean]) =>
         if (x.size > 2) x.slice(0, x.size - 2) else Colls.emptyColl[Boolean]
@@ -1349,7 +1349,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   // TODO v6.0 (3h): https://github.com/ScorexFoundation/sigmastate-interpreter/issues/479
-  property("Coll diff methods equivalence") {
+  compilerProperty("Coll diff methods equivalence") {
     val diff = newFeature((x: (Coll[Int], Coll[Int])) => x._1.diff(x._2),
       "{ (x: (Coll[Int], Coll[Int])) => x._1.diff(x._2) }",
       sinceVersion = V6SoftForkVersion)
@@ -1364,7 +1364,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Option new methods") {
+  compilerProperty("Option new methods") {
     val n = ExactNumeric.LongIsExactNumeric
     val fold = newFeature({ (x: Option[Long]) => x.fold(5.toLong)( (v: Long) => n.plus(v, 1) ) },
       "{ (x: Option[Long]) => x.fold(5, { (v: Long) => v + 1 }) }",
@@ -1381,7 +1381,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   // TODO v6.0 (3h): implement allZK func https://github.com/ScorexFoundation/sigmastate-interpreter/issues/543
-  property("allZK equivalence") {
+  compilerProperty("allZK equivalence") {
     lazy val allZK = newFeature((x: Coll[SigmaProp]) => SigmaDsl.allZK(x),
       "{ (x: Coll[SigmaProp]) => allZK(x) }",
       sinceVersion = V6SoftForkVersion)
@@ -1397,7 +1397,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
   // TODO v6.0 (3h): implement anyZK func https://github.com/ScorexFoundation/sigmastate-interpreter/issues/543
-  property("anyZK equivalence") {
+  compilerProperty("anyZK equivalence") {
     lazy val anyZK = newFeature((x: Coll[SigmaProp]) => SigmaDsl.anyZK(x),
       "{ (x: Coll[SigmaProp]) => anyZK(x) }",
       sinceVersion = V6SoftForkVersion)
@@ -1412,7 +1412,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Numeric.toBytes methods equivalence") {
+  compilerProperty("Numeric.toBytes methods equivalence") {
     lazy val toBytes = newFeature(
       { (x: Byte) => x.toBigEndianBytes },
       "{ (x: Byte) => x.toBytes }",
@@ -1434,7 +1434,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     testCases(cases, toBytes)
   }
 
-  property("Fix substConstants in v6.0 for ErgoTree version > 0") {
+  compilerProperty("Fix substConstants in v6.0 for ErgoTree version > 0") {
     // tree with one segregated constant and v0
     val t1 = ErgoTree(
       header = ErgoTree.setConstantSegregation(ZeroHeader),
@@ -1527,7 +1527,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Header new methods") {
+  compilerProperty("Header new methods") {
 
     def checkPoW = {
       newFeature(
@@ -1558,7 +1558,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.powHit") {
+  compilerProperty("Global.powHit") {
     def powHit: Feature[Coll[Byte], sigma.UnsignedBigInt] = newFeature(
       { (x: Coll[Byte]) =>
         val msg = x.slice(0, 7).toArray
@@ -1600,7 +1600,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("higher order lambdas") {
+  compilerProperty("higher order lambdas") {
     val f = newFeature[Coll[Int], Coll[Int]](
       { (xs: Coll[Int]) =>
         val inc = { (x: Int) => x + 1 }
@@ -1671,7 +1671,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.deserializeTo - group element") {
+  compilerProperty("Global.deserializeTo - group element") {
     def deserializeTo: Feature[GroupElement, Boolean] = {
       newFeature(
         { (x: GroupElement) => CSigmaDslBuilder.deserializeTo[GroupElement](x.getEncoded) == x},
@@ -1707,7 +1707,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.deserializeTo - header") {
+  compilerProperty("Global.deserializeTo - header") {
     val headerBytes = "02ac2101807f0000ca01ff0119db227f202201007f62000177a080005d440896d05d3f80dcff7f5e7f59007294c180808d0158d1ff6ba10000f901c7f0ef87dcfff17fffacb6ff7f7f1180d2ff7f1e24ffffe1ff937f807f0797b9ff6ebdae007e5c8c00b8403d3701557181c8df800001b6d5009e2201c6ff807d71808c00019780f087adb3fcdbc0b3441480887f80007f4b01cf7f013ff1ffff564a0000b9a54f00770e807f41ff88c00240000080c0250000000003bedaee069ff4829500b3c07c4d5fe6b3ea3d3bf76c5c28c1d4dcdb1bed0ade0c0000000000003105"
     val header1 = new CHeader(ErgoHeader.sigmaSerializer.fromBytes(Base16.decode(headerBytes).get))
 
@@ -1753,7 +1753,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.serialize & deserialize roundtrip - BigInt") {
+  compilerProperty("Global.serialize & deserialize roundtrip - BigInt") {
     import sigma.data.OrderingOps.BigIntOrdering
 
     def deserializeTo: Feature[BigInt, Boolean] = {
@@ -1793,7 +1793,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, deserializeTo)
   }
 
-  private def contextData() = {
+  private def contextData(): (CContext, CContext, CContext, CContext) = {
     val input = CBox(
       new ErgoBox(
         80946L,
@@ -1818,7 +1818,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           ErgoBox.R4 -> ByteArrayConstant(Helpers.decodeBytes("34")),
           ErgoBox.R5 -> TrueLeaf
         ),
-        ModifierId @@ ("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
+        ModifierId("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
         1.toShort,
         5
       )
@@ -1886,7 +1886,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     (ctx, ctx2, ctx3, ctx4)
   }
 
-  property("getVarFromInput") {
+  compilerProperty("getVarFromInput") {
 
     def getVarFromInput = {
       newFeature(
@@ -1918,7 +1918,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Option.getOrElse with lazy default") {
+  compilerProperty("Option.getOrElse with lazy default") {
 
     val trace = TracedCost(
       Array(
@@ -1962,7 +1962,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll getOrElse with lazy default") {
+  compilerProperty("Coll getOrElse with lazy default") {
 
     val trace = TracedCost(
       Array(
@@ -2019,7 +2019,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
   }
 
 
-  property("Global - fromBigEndianBytes") {
+  compilerProperty("Global - fromBigEndianBytes") {
     import sigma.data.OrderingOps.BigIntOrdering
     import sigma.data.OrderingOps.UnsignedBigIntOrdering
 
@@ -2239,7 +2239,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
   }
 
-  property("Coll.reverse") {
+  compilerProperty("Coll.reverse") {
     val f = newFeature[Coll[Int], Coll[Int]](
       { (xs: Coll[Int]) => xs.reverse },
       """{(xs: Coll[Int]) => xs.reverse }""".stripMargin,
@@ -2264,7 +2264,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll.startsWith") {
+  compilerProperty("Coll.startsWith") {
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) },
       """{(xs: (Coll[Int], Coll[Int])) => xs._1.startsWith(xs._2) }""".stripMargin,
@@ -2301,7 +2301,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll.endsWith") {
+  compilerProperty("Coll.endsWith") {
     val f = newFeature[(Coll[Int], Coll[Int]), Boolean](
       { (xs: (Coll[Int], Coll[Int])) => xs._1.endsWith(xs._2) },
       """{(xs: (Coll[Int], Coll[Int])) => xs._1.endsWith(xs._2) }""".stripMargin,
@@ -2337,7 +2337,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Coll.get") {
+  compilerProperty("Coll.get") {
     val f = newFeature[(Coll[Int], Int), Option[Int]](
       { (xs: (Coll[Int], Int)) => xs._1.get(xs._2) },
       """{(xs: (Coll[Int], Int)) => xs._1.get(xs._2) }""".stripMargin,
@@ -2370,7 +2370,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.encodeNbits") {
+  compilerProperty("Global.encodeNbits") {
     import sigma.data.OrderingOps.BigIntOrdering
 
     val f = newFeature[BigInt, Long](
@@ -2399,7 +2399,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Global.decodeNbits") {
+  compilerProperty("Global.decodeNbits") {
     import sigma.data.OrderingOps.BigIntOrdering
 
     val f = newFeature[Long, BigInt](
@@ -2429,7 +2429,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("BigInt.toUnsigned") {
+  compilerProperty("BigInt.toUnsigned") {
     import sigma.data.OrderingOps.BigIntOrdering
 
     val f = newFeature[BigInt, UnsignedBigInt](
@@ -2457,7 +2457,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("BigInt.toUnsignedMod") {
+  compilerProperty("BigInt.toUnsignedMod") {
     import sigma.data.OrderingOps.BigIntOrdering
     import sigma.data.OrderingOps.UnsignedBigIntOrdering
 
@@ -2490,7 +2490,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("GroupElement.expUnsigned") {
+  compilerProperty("GroupElement.expUnsigned") {
     import sigma.data.OrderingOps.UnsignedBigIntOrdering
 
     val f = newFeature[(GroupElement, UnsignedBigInt), GroupElement](
@@ -2509,7 +2509,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("UnsignedBigInt methods") {
+  compilerProperty("UnsignedBigInt methods") {
     import sigma.data.OrderingOps.UnsignedBigIntOrdering
 
     lazy val bitOr = newFeature[(UnsignedBigInt, UnsignedBigInt), UnsignedBigInt](
@@ -2899,7 +2899,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
 
   }
 
-  property("Global.some") {
+  compilerProperty("Global.some") {
     lazy val some = newFeature(
       { (x: Byte) => CSigmaDslBuilder.some[Byte](x) },
       "{ (x: Byte) => Global.some[Byte](x) }",
@@ -2912,7 +2912,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     testCases(cases, some)
   }
 
-  property("Global.none") {
+  compilerProperty("Global.none") {
     lazy val some = newFeature(
       { (x: Byte) => CSigmaDslBuilder.none[Byte]() },
       "{ (x: Byte) => Global.none[Byte]() }",
@@ -2957,7 +2957,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     tree
   }
 
-  property("AvlTree.insert equivalence") {
+  compilerProperty("AvlTree.insert equivalence") {
     import sigmastate.eval.Extensions.AvlTreeOps
     import sigmastate.utils.Helpers._
 
@@ -3117,7 +3117,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("AvlTree.insertOrUpdate") {
+  compilerProperty("AvlTree.insertOrUpdate") {
     import sigmastate.eval.Extensions.AvlTreeOps
 
     lazy val iou = newFeature(

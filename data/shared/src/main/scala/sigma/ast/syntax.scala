@@ -8,8 +8,7 @@ import StdSigmaBuilder.mkUpcast
 import sigma.SigmaDataReflection
 import sigma.exceptions.InterpreterException
 
-import scala.annotation.nowarn
-import scala.reflect.classTag
+import scala.reflect.ClassTag
 
 /** Contains global definitions which define syntactic extensions for working with classes
   * of  sigma.ast package.
@@ -113,17 +112,12 @@ object syntax {
 
   implicit def boolToSigmaProp(b: BoolValue): SigmaPropValue = BoolToSigmaProp(b)
 
-  /** Shadow the implicit from sigma package so it doesn't interfere with the resolution
-    * of ClassTags below.
-    */
-  @nowarn private def rtypeToClassTag = ???
-
   /** RType descriptors for predefined types used in AOTC-based interpreter. */
-  implicit val ErgoBoxRType: RType[ErgoBox] = RType.fromClassTag(classTag[ErgoBox])
+  implicit val ErgoBoxRType: RType[ErgoBox] = RType.fromClassTag(ClassTag(classOf[ErgoBox]))
 
-  implicit val ErgoBoxCandidateRType: RType[ErgoBoxCandidate] = RType.fromClassTag(classTag[ErgoBoxCandidate])
+  implicit val ErgoBoxCandidateRType: RType[ErgoBoxCandidate] = RType.fromClassTag(ClassTag(classOf[ErgoBoxCandidate]))
 
-  implicit val AvlTreeDataRType: RType[AvlTreeData] = GeneralType(classTag[AvlTreeData])
+  implicit val AvlTreeDataRType: RType[AvlTreeData] = GeneralType(ClassTag(classOf[AvlTreeData]))
 
   /** Type casting methods for [[Value]] nodes.
     * Each `asX` method casts the value to the corresponding `X` type of node.

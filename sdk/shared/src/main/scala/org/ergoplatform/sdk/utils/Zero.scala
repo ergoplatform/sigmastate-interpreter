@@ -1,7 +1,7 @@
 package org.ergoplatform.sdk.utils
 
 import org.ergoplatform.ErgoBox
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAvlTree, CBigInt, CGroupElement, CSigmaProp, CUnsignedBigInt, CollType, FuncType, OptionType, PairType, RType, TrivialProp, TupleType}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAvlTree, CBigInt, CGroupElement, CSigmaProp, CUnsignedBigInt, CollType, Digest32CollRType, FuncType, OptionType, PairType, RType, TrivialProp, TupleType}
 import sigma.data.RType._
 import scorex.crypto.authds.avltree.batch.BatchAVLProver
 import scorex.crypto.hash.{Blake2b256, Digest32}
@@ -69,7 +69,7 @@ object Zero extends ZeroLowPriority {
       ),
       Colls.emptyColl,
       Map.empty,
-      ModifierId @@ ("synthetic_transaction_id"),
+      ModifierId("synthetic_transaction_id"),
       ShortIsZero.zero,
       IntIsZero.zero
     )

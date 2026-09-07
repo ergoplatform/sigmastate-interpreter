@@ -58,12 +58,13 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
   buildScala3:
-    name: Scala 3 - Test core
+    name: Scala 3 - Test ${{ matrix.platform }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [3.3.4]
+        scala: [3.3.8]
         java: [adopt@1.8]
+        platform: [jvm, js]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -88,9 +89,32 @@ jobs:
             ~/Library/Caches/Coursier/v1
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
-      # Only `core` cross-compiles to Scala 3 so far; other modules are migrated in later steps.
-      - name: Runs core tests (Scala 3)
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJVM/test
+      - name: Setup Node for Scala.js
+        if: matrix.platform == 'js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ./sigma-js/package-lock.json
+
+      - name: Install JS test dependencies
+        if: matrix.platform == 'js'
+        run: npm ci --prefix sigma-js
+
+      - name: Runs JVM tests (Scala 3)
+        if: matrix.platform == 'jvm'
+        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} sigma/compile coreJVM/test dataJVM/test interpreterJVM/test parsersJVM/test sdkJVM/test scJVM/test
+
+      - name: Runs Scala.js tests and builds the JS API (Scala 3)
+        if: matrix.platform == 'js'
+        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test dataJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test scJS/fastOptJS
+
+      - name: Runs JS API tests (Scala 3)
+        if: matrix.platform == 'js'
+        run: npm run test
+        working-directory: ./sigma-js
+        env:
+          SIGMA_JS_SCALA_TARGET: ${{ matrix.scala }}
 
   buildJs:
     name: JS - Test and publish snapshots
@@ -139,7 +163,7 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v4-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Runs tests and collect coverage
-        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
+        run: sbt -jvm-opts ci/ci.jvmopts ++${{ matrix.scala }} coreJS/test dataJS/test interpreterJS/test parsersJS/test sdkJS/test scJS/test
 
       - name: Publish a JVM snapshot ${{ github.ref }}
         if: env.HAS_SECRETS == 'true'

@@ -26,7 +26,7 @@ import sigma.util.Extensions.EcpOps
 import sigma.validation.{ChangedRule, DisabledRule, EnabledRule, ReplacedRule, RuleStatus}
 import sigma.validation.ValidationRules.FirstRuleId
 import ErgoTree.ZeroHeader
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CBox, CHeader, COR, CTHRESHOLD, Digest32Coll, ProveDHTuple, ProveDlog, RType, SigmaBoolean}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, CBox, CHeader, COR, CTHRESHOLD, Digest32Coll, Digest32CollRType, ProveDHTuple, ProveDlog, RType, SigmaBoolean}
 import sigma.eval.Extensions.{EvalIterableOps, SigmaBooleanOps}
 import sigma.eval.SigmaDsl
 import sigma.interpreter.{ContextExtension, ProverResult}
@@ -129,7 +129,7 @@ trait ObjectGenerators extends TypeGenerators
     arrayOfRange(minLength, maxLength, g).map(_.toColl)
 
   implicit def collGen[T: Arbitrary : RType]: Gen[Coll[T]] = {
-    implicit val cT = RType[T].classTag
+    implicit val cT: ClassTag[T] = RType[T].classTag
     arrayGen[T].map(Colls.fromArray[T](_))
   }
 
@@ -235,7 +235,7 @@ trait ObjectGenerators extends TypeGenerators
     (0 until cnt).map { _ =>
       for {
         id <- boxIdGen
-        amt <- Gen.oneOf(1, 500, 20000, 10000000, Long.MaxValue)
+        amt <- Gen.oneOf(1L, 500L, 20000L, 10000000L, Long.MaxValue)
       } yield (Digest32Coll @@@ id.toColl) -> amt
     }
 
@@ -245,7 +245,7 @@ trait ObjectGenerators extends TypeGenerators
     opt <- Gen.oneOf(Some(int), None)
   } yield opt
   val unsignedIntGen: Gen[Int] = Gen.chooseNum(0, Int.MaxValue)
-  val unsignedShortGen: Gen[Short] = Gen.chooseNum(0, Short.MaxValue).map(_.toShort)
+  val unsignedShortGen: Gen[Short] = Gen.chooseNum(0, Short.MaxValue.toInt).map(_.toShort)
 
   lazy val contextExtensionGen: Gen[ContextExtension] = for {
     values: scala.collection.Seq[(Byte, EvaluatedValue[SType])] <- Gen.sequence(contextExtensionValuesGen(0, 5))(Buildable.buildableSeq)
@@ -378,7 +378,7 @@ trait ObjectGenerators extends TypeGenerators
       } else {
         Gen.const(Array.empty[TokenId])
       }
-    tokenAmounts <- arrayOfN(tokens.length, Gen.oneOf(1, 500, 20000, 10000000, Long.MaxValue))
+    tokenAmounts <- arrayOfN(tokens.length, Gen.oneOf(1L, 500L, 20000L, 10000000L, Long.MaxValue))
   } yield tokens.toColl.zip(tokenAmounts.toColl)
 
   def ergoBoxCandidateGen(availableTokens: Seq[TokenId]): Gen[ErgoBoxCandidate] = for {

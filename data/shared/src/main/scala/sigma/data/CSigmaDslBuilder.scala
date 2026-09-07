@@ -1,6 +1,7 @@
 package sigma.data
 
 import debox.cfor
+import sigma.ByteType
 import org.ergoplatform.{ErgoBox, ErgoHeader}
 import org.ergoplatform.validation.ValidationRules
 import scorex.crypto.hash.{Blake2b256, Sha256}

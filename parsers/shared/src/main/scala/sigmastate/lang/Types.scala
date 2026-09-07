@@ -12,17 +12,17 @@ trait Types extends Core {
   /** Parser of typed expressions.
     * @return expression of ErgoTree IR
     */
-  def TypeExpr[_:P]: P[Value[SType]]
+  def TypeExpr[Ctx:P]: P[Value[SType]]
 
   /** Parser of `name = expr` syntax.
     * @return an instance of ValNode
     */
-  def ValVarDef[_:P]: P[Value[SType]]
+  def ValVarDef[Ctx:P]: P[Value[SType]]
 
   /** Parser of `val name = expr` syntax.
     * @return an instance of ValNode
     */
-  def Dcl[_:P]: P[Value[SType]] = {
+  def Dcl[Ctx:P]: P[Value[SType]] = {
     P( `val` ~/ ValVarDef )
   }
 
@@ -51,7 +51,7 @@ trait Types extends Core {
   /** Lookup pre-defined type by name. */
   private def typeFromName(tn: String): Option[SType] = predefTypes.get(tn)
 
-  def PostfixType[_:P]: P[SType] = P( InfixType ~ (`=>` ~/ Type ).? ).map {
+  def PostfixType[Ctx:P]: P[SType] = P( InfixType ~ (`=>` ~/ Type ).? ).map {
     case (t, None) => t
     case (d, Some(r)) => d match {
       case STuple(items) =>
@@ -60,14 +60,14 @@ trait Types extends Core {
         SFunc(Array(d), r)
     }
   }
-  def Type[_:P]: P[SType] = P( `=>`.? ~~ PostfixType ~ TypeBounds ~ `*`.? )
+  def Type[Ctx:P]: P[SType] = P( `=>`.? ~~ PostfixType ~ TypeBounds ~ `*`.? )
 
 
   // Can't cut after `Id` because it may be a `*`, in which case
   // we may need to backtrack and settle for the `*`-postfix rather than
   // an infix type
   // See http://www.scala-lang.org/files/archive/spec/2.12/03-types.html
-  def InfixType[_:P]: P[SType] = {
+  def InfixType[Ctx:P]: P[SType] = {
     val RightAssoc = 1; val LeftAssoc = -1
     /** All operators op1,…,opn must have the same associativity */
     def checkAssoc(ops: Seq[String], index: Int): Int = {
@@ -94,7 +94,7 @@ trait Types extends Core {
     }
   }
 
-  def CompoundType[_:P]: P[SType] = {
+  def CompoundType[Ctx:P]: P[SType] = {
     def NamedType = P( (Pass ~ AnnotType).rep(1, `with`./) )
     P( Index ~ NamedType ).map {
       case (_, Seq(t)) => t
@@ -102,10 +102,10 @@ trait Types extends Core {
     }
   }
 
-  private def NLAnnot[_:P] = P( NotNewline ~ Annot )
-  def AnnotType[_:P] = P(SimpleType ~~ NLAnnot.repX )
+  private def NLAnnot[Ctx:P] = P( NotNewline ~ Annot )
+  def AnnotType[Ctx:P] = P(SimpleType ~~ NLAnnot.repX )
 
-  def TypeId[_:P] = P( StableId ).map {
+  def TypeId[Ctx:P] = P( StableId ).map {
     case Ident(tn, _) =>
       typeFromName(tn) match {
         case Some(t) => t
@@ -114,9 +114,9 @@ trait Types extends Core {
     case path => error(s"Path types are not supported: $path", path.sourceContext)
   }
 
-  def TypeArgs[_:P] = P( "[" ~/ Type.rep(0, ",") ~ TrailingComma ~ "]" )
+  def TypeArgs[Ctx:P] = P( "[" ~/ Type.rep(0, ",") ~ TrailingComma ~ "]" )
 
-  def SimpleType[_:P] = {
+  def SimpleType[Ctx:P] = {
     // Can't `cut` after the opening paren, because we might be trying to parse `()`
     // or `() => T`! only cut after parsing one type
     def TupleType = P( "(" ~/ Type.rep(0, ",") ~ TrailingComma ~ ")" ).map(items => STuple(items.toArray))
@@ -133,7 +133,7 @@ trait Types extends Core {
   }
 
   /** Parses [T1,T2](a1: T, a2: S) */
-  def FunSig[_:P] = {
+  def FunSig[Ctx:P] = {
     def FunArg = P( Annot.rep ~ Id.! ~ (`:` ~/ Type).? ).map {
       case (n, Some(t)) => (n, t)
       case (n, None) => (n, NoType)
@@ -147,23 +147,23 @@ trait Types extends Core {
   // TODO refactor: extensions syntax is not fully implemented, so this probably can be removed
   // extension method subject (type that being extended)
   // see dotty extension method http://dotty.epfl.ch/blog/2019/01/21/12th-dotty-milestone-release.html
-  def DottyExtMethodSubj[_:P] = P( "(" ~/ Id.! ~  `:` ~/ Type ~ ")" )
+  def DottyExtMethodSubj[Ctx:P] = P( "(" ~/ Id.! ~  `:` ~/ Type ~ ")" )
 
-  private def TypeBounds[_:P]: P0 = P( (`>:` ~/ Type).? ~ (`<:` ~/ Type).? ).ignore
-  private def TypeArg[_:P]: P0 = {
+  private def TypeBounds[Ctx:P]: P0 = P( (`>:` ~/ Type).? ~ (`<:` ~/ Type).? ).ignore
+  private def TypeArg[Ctx:P]: P0 = {
     def CtxBounds = P((`:` ~/ Type).rep)
-    P((Id | `_`) ~ TypeArgList.? ~ TypeBounds ~ CtxBounds).ignore
+    P((Id | Underscore) ~ TypeArgList.? ~ TypeBounds ~ CtxBounds).ignore
   }
 
   /** Annotation with optional arguments, result is ignored. */
-  def Annot[_:P]: P0 = P( `@` ~/ SimpleType ~  ("(" ~/ (Exprs ~ (`:` ~/ `_*`).?).? ~ TrailingComma ~ ")").rep ).ignore
+  def Annot[Ctx:P]: P0 = P( `@` ~/ SimpleType ~  ("(" ~/ (Exprs ~ (`:` ~/ `_*`).?).? ~ TrailingComma ~ ")").rep ).ignore
 
-  private def TypeArgVariant[_:P]: P0 = P( Annot.rep ~ ("+" | "-").? ~ TypeArg )
+  private def TypeArgVariant[Ctx:P]: P0 = P( Annot.rep ~ ("+" | "-").? ~ TypeArg )
 
-  private def TypeArgList[_:P]: P0 = {
+  private def TypeArgList[Ctx:P]: P0 = {
     P( "[" ~/ TypeArgVariant.rep(1, ",") ~ TrailingComma ~ "]" )  // fix
   }
 
   /** Sequence of comma separated expressions. */
-  def Exprs[_:P]: P[Seq[Value[SType]]] = P( TypeExpr.rep(1, ",") )
+  def Exprs[Ctx:P]: P[Seq[Value[SType]]] = P( TypeExpr.rep(1, ",") )
 }

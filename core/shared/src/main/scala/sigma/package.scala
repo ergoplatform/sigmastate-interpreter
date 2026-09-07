@@ -49,8 +49,6 @@ package object sigma {
 
   /** Allows implicit resolution to find appropriate instance of ClassTag in
     * the scope where RType is implicitly available.
-    * NOTE, this implicit is shadowed internally in some places (search for `def rtypeToClassTag`),
-    * hence renaming it requires changing of the shadowing methods.
     */
   implicit def rtypeToClassTag[A](implicit t: RType[A]): ClassTag[A] = t.classTag
 

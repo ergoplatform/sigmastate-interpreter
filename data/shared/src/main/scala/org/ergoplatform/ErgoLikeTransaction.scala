@@ -5,9 +5,9 @@ import org.ergoplatform.ErgoBox.TokenId
 import scorex.crypto.authds.ADKey
 import scorex.crypto.hash.Blake2b256
 import scorex.util._
-import sigma.Colls
+import sigma.{ByteType, Colls}
 import sigma.ast.syntax.ErgoBoxCandidateRType
-import sigma.data.Digest32Coll
+import sigma.data.{Digest32Coll, Digest32CollRType}
 import sigma.eval.Extensions.EvalIterableOps
 import sigma.interpreter.ProverResult
 import sigma.util.safeNewArray
@@ -159,7 +159,7 @@ object ErgoLikeTransactionSerializer extends SigmaSerializer[ErgoLikeTransaction
     }
 
     // parse distinct ids of tokens in transaction outputs
-    val tokensCount = r.getUIntExact
+    val tokensCount = r.getUIntExact()
     // NO-FORK: in v5.x getUIntExact may throw Int overflow exception
     // in v4.x r.getUInt().toInt is used and may return negative Int instead of the overflow
     // in which case the array allocation will throw NegativeArraySizeException

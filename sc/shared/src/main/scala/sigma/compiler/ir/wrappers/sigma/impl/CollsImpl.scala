@@ -14,7 +14,7 @@ package impl {
 
 // Abs -----------------------------------
 /** Implementation part of IR represenation related to Coll type and methods. */
-trait CollsDefs extends Base with Colls {
+trait CollsDefs extends Base with Colls with FromItemsSupport with CollExtractorSupport {
   self: IRContext =>
 
   registerModule(CollsModule)
@@ -72,7 +72,7 @@ class CollCls extends EntityObject("Coll") {
 
 
     override def map[B](f: Ref[A => B]): Ref[Coll[B]] = {
-      implicit val eB = f.elem.eRange
+      implicit val eB: Elem[B] = f.elem.eRange
       asRep[Coll[B]](mkMethodCall(self,
         CollClass.getMethod("map", classOf[Sym]),
         Array[AnyRef](f),
@@ -80,7 +80,7 @@ class CollCls extends EntityObject("Coll") {
     }
 
     override def zip[B](ys: Ref[Coll[B]]): Ref[Coll[(A, B)]] = {
-      implicit val eB = ys.eA
+      implicit val eB: Elem[B] = ys.eA
       asRep[Coll[(A, B)]](mkMethodCall(self,
         CollClass.getMethod("zip", classOf[Sym]),
         Array[AnyRef](ys),
@@ -124,7 +124,7 @@ class CollCls extends EntityObject("Coll") {
     }
 
     override def flatMap[B](f: Ref[A => Coll[B]]): Ref[Coll[B]] = {
-      implicit val eB = f.elem.eRange.typeArgs("A")._1.asInstanceOf[Elem[B]]
+      implicit val eB: Elem[B] = f.elem.eRange.typeArgs("A")._1.asInstanceOf[Elem[B]]
       asRep[Coll[B]](mkMethodCall(self,
         CollClass.getMethod("flatMap", classOf[Sym]),
         Array[AnyRef](f),
@@ -247,7 +247,7 @@ class CollCls extends EntityObject("Coll") {
     }
 
     def map[B](f: Ref[A => B]): Ref[Coll[B]] = {
-      implicit val eB = f.elem.eRange
+      implicit val eB: Elem[B] = f.elem.eRange
       asRep[Coll[B]](mkMethodCall(source,
         CollClass.getMethod("map", classOf[Sym]),
         Array[AnyRef](f),
@@ -255,7 +255,7 @@ class CollCls extends EntityObject("Coll") {
     }
 
     def zip[B](ys: Ref[Coll[B]]): Ref[Coll[(A, B)]] = {
-      implicit val eB = ys.eA
+      implicit val eB: Elem[B] = ys.eA
       asRep[Coll[(A, B)]](mkMethodCall(source,
         CollClass.getMethod("zip", classOf[Sym]),
         Array[AnyRef](ys),
@@ -299,7 +299,7 @@ class CollCls extends EntityObject("Coll") {
     }
 
     def flatMap[B](f: Ref[A => Coll[B]]): Ref[Coll[B]] = {
-      implicit val eB = f.elem.eRange.typeArgs("A")._1.asInstanceOf[Elem[B]]
+      implicit val eB: Elem[B] = f.elem.eRange.typeArgs("A")._1.asInstanceOf[Elem[B]]
       asRep[Coll[B]](mkMethodCall(source,
         CollClass.getMethod("flatMap", classOf[Sym]),
         Array[AnyRef](f),
@@ -416,133 +416,125 @@ class CollCls extends EntityObject("Coll") {
 
   object CollMethods {
     object length {
-      def unapply(d: Def[_]): Nullable[Ref[Coll[A]] forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollReceiverArgs] = d match {
         case MethodCall(receiver, method, _, _) if method.getName == "length" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Coll[A]] forSome {type A}]]
+          Nullable(res).asInstanceOf[Nullable[CollReceiverArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[Ref[Coll[A]] forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollReceiverArgs] = unapply(exp.node)
     }
 
     object apply {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollApplyArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "apply" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int]) forSome {type A}]]
+          Nullable(res).asInstanceOf[Nullable[CollApplyArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[Int]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollApplyArgs] = unapply(exp.node)
     }
 
     object getOrElse {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int], Ref[A]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollGetOrElseArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int], Ref[A]) forSome {type A}]]
+          recoverCollGetOrElseArgs(receiver, args(0), args(1))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[Int], Ref[A]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollGetOrElseArgs] = unapply(exp.node)
     }
 
     object map {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => B]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[CollMapArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "map" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => B]) forSome {type A; type B}]]
+          recoverCollMapArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[A => B]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollMapArgs] = unapply(exp.node)
     }
 
     object zip {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Coll[B]]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[CollZipArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "zip" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Coll[B]]) forSome {type A; type B}]]
+          Nullable(res).asInstanceOf[Nullable[CollZipArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[Coll[B]]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollZipArgs] = unapply(exp.node)
     }
 
     object exists {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollPredicateArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "exists" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
+          recoverCollPredicateArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollPredicateArgs] = unapply(exp.node)
     }
 
     object forall {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollPredicateArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "forall" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
+          recoverCollPredicateArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollPredicateArgs] = unapply(exp.node)
     }
 
     object filter {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollPredicateArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
+          recoverCollPredicateArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollPredicateArgs] = unapply(exp.node)
     }
 
     object foldLeft {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[B], Ref[((B, A)) => B]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[CollFoldLeftArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "foldLeft" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[B], Ref[((B, A)) => B]) forSome {type A; type B}]]
+          recoverCollFoldLeftArgs(receiver, args(0), args(1))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[B], Ref[((B, A)) => B]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollFoldLeftArgs] = unapply(exp.node)
     }
 
     object indices {
-      def unapply(d: Def[_]): Nullable[Ref[Coll[A]] forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollReceiverArgs] = d match {
         case MethodCall(receiver, method, _, _) if method.getName == "indices" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Coll[A]] forSome {type A}]]
+          Nullable(res).asInstanceOf[Nullable[CollReceiverArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[Ref[Coll[A]] forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollReceiverArgs] = unapply(exp.node)
     }
 
     object flatMap {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Coll[B]]) forSome {type A; type B}] = d match {
+      def unapply(d: Def[_]): Nullable[CollFlatMapArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "flatMap" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Coll[B]]) forSome {type A; type B}]]
+          recoverCollFlatMapArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[A => Coll[B]]) forSome {type A; type B}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollFlatMapArgs] = unapply(exp.node)
     }
 
     object slice {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int], Ref[Int]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollSliceArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "slice" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int], Ref[Int]) forSome {type A}]]
+          Nullable(res).asInstanceOf[Nullable[CollSliceArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[Int], Ref[Int]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollSliceArgs] = unapply(exp.node)
     }
 
     object append {
-      def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Coll[A]]) forSome {type A}] = d match {
+      def unapply(d: Def[_]): Nullable[CollAppendArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "append" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Coll[A]]) forSome {type A}]]
+          recoverCollAppendArgs(receiver, args(0))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[Coll[A]], Ref[Coll[A]]) forSome {type A}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollAppendArgs] = unapply(exp.node)
     }
 
   }
@@ -657,13 +649,18 @@ object CollBuilder extends EntityObject("CollBuilder") {
 
   object CollBuilderMethods {
     object fromItems {
-      def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[T]], Elem[T]) forSome {type T}] = d match {
+      type Args = FromItemsArgs
+
+      // MethodCall operands are erased; capture the descriptor's type before restoring items.
+      private def recoverArgs[T](receiver: Sym, items: AnyRef, elem: Elem[T]): Args =
+        makeFromItemsArgs(asRep[CollBuilder](receiver), items.asInstanceOf[Seq[Ref[T]]], elem)
+
+      def unapply(d: Def[_]): Nullable[Args] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "fromItems" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
-          val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[T]], Elem[T]) forSome {type T}]]
+          Nullable(recoverArgs(receiver, args(0), args(1).asInstanceOf[Elem[_]]))
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[CollBuilder], Seq[Ref[T]], Elem[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[Args] = unapply(exp.node)
     }
 
     object xor {
@@ -677,13 +674,13 @@ object CollBuilder extends EntityObject("CollBuilder") {
     }
 
     object replicate {
-      def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Ref[Int], Ref[T]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[CollReplicateArgs] = d match {
         case MethodCall(receiver, method, args, _) if method.getName == "replicate" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[CollBuilder], Ref[Int], Ref[T]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[CollReplicateArgs]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[CollBuilder], Ref[Int], Ref[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[CollReplicateArgs] = unapply(exp.node)
     }
   }
 
