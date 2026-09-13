@@ -42,6 +42,7 @@ trait IRContext
   with DefRewriting
   with CollsModule
   with SigmaDslModule
+  with Lowering
   with TreeBuilding
   with GraphBuilding
   with WOptionsModule {

@@ -486,6 +486,38 @@ trait TreeBuilding extends Base { IR: IRContext =>
             error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
         }
 
+      // Operation callees always have a row (they exist only to be lowered).
+      case Def(mc @ MethodCall(objSym, OpCallee(_, _), argSyms, _)) =>
+        val obj = recurse[SType](objSym)
+        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
+        val row = rowFor(mc.callee).getOrElse(error(s"No ErgoTree lowering for ${mc.callee}"))
+        row(mc, obj, args)
+
+      // Method callees: a row if the method has a dedicated ErgoTree node, else a plain MethodCall
+      // rebuilt from the generic descriptor with the same recipes as the legacy fallbacks above.
+      case Def(mc @ MethodCall(objSym, MethodCallee(m), argSyms, _)) =>
+        val obj = recurse[SType](objSym)
+        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
+        rowFor(mc.callee) match {
+          case Some(row) => row(mc, obj, args)
+          case None if objSym.elem.isInstanceOf[CollElem[_, _]] =>
+            val generic = m.genericMethod
+            val col = obj.asCollection[SType]
+            val typeSubst = (generic, args) match {
+              case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
+                Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
+              case (SCollectionMethods.ZipMethod, Seq(coll)) =>
+                Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
+              case _ => EmptySubst
+            }
+            val specMethod = generic.withConcreteTypes(typeSubst + (SCollection.tIV -> col.tpe.elemType))
+            builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
+          case None =>
+            val typeSubst = mc.typeSubst
+            val specMethod = m.genericMethod.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
+            builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
+        }
+
       case Def(d) =>
         !!!(s"Don't know how to buildValue($mainG, $s -> $d, $env, $defId)")
     }

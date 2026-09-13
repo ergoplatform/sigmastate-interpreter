@@ -436,6 +436,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * @return reference to the graph node which represents `node` expression as part of in
     *         the IR graph data structure
     */
+  /** Builds a plain call node for an AST `MethodCall`. The descriptor is the AST node's own and
+    * the result type is the AST node's own, so no method resolution happens here.
+    */
+  protected def buildMethodCall(mc: sigma.ast.MethodCall, objV: Ref[Any], argsV: Seq[Ref[Any]]): Ref[Any] =
+    asRep[Any](mkMethodCall(objV, MethodCallee(mc.method), argsV, mc.typeSubst, stypeToElem(mc.tpe)))
+
   protected def buildNode[T <: SType](ctx: Ref[Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }

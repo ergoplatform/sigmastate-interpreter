@@ -87,6 +87,21 @@ trait MethodCalls extends Base { self: IRContext =>
     }
   }
 
+  /** Pattern for rewrite rules: matches a call node of `callee` (by callee identity) and yields
+    * its receiver and argument refs.
+    */
+  final class CallPattern(callee: IRCallee) {
+    def unapply(d: Def[_]): Option[(Sym, Seq[Sym])] = d match {
+      case MethodCall(receiver, c, args, _) if c == callee => Some((receiver, args.collect { case s: Sym => s }))
+      case _ => None
+    }
+    def unapply(s: Sym): Option[(Sym, Seq[Sym])] = unapply(s.node)
+  }
+  object CallPattern {
+    def apply(method: SMethod): CallPattern = new CallPattern(MethodCallee(method))
+    def apply(op: ValueCompanion, opCode: Option[Byte] = None): CallPattern = new CallPattern(OpCallee(op, opCode))
+  }
+
   /** Represents invocation of constructor of the class described by `eA`.
     * @param  eA          class descriptor for new instance
     * @param  args        arguments of class constructor
