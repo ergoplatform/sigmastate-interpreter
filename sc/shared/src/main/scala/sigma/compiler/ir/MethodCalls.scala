@@ -39,7 +39,7 @@ trait MethodCalls extends Base { self: IRContext =>
       }
       val receiver1 = t(receiver)
       // in the case neverInvoke is false, the method is invoked in rewriteDef
-      mkMethodCall(receiver1, method, args1, neverInvoke, isAdapterCall, resultType).asInstanceOf[Ref[Any]]
+      mkMethodCall(receiver1, method, args1, neverInvoke, isAdapterCall, resultType, typeSubst).asInstanceOf[Ref[Any]]
     }
 
     override def toString = {
