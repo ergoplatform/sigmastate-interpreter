@@ -219,7 +219,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object add {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "add" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "add" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -229,7 +229,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object subtract {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "subtract" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "subtract" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -239,7 +239,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object multiply {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -249,7 +249,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object divide {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "divide" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "divide" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -259,7 +259,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object mod {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "mod" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "mod" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -269,7 +269,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object min {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "min" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "min" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -279,7 +279,7 @@ object BigInt extends EntityObject("BigInt") {
 
     object max {
       def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "max" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "max" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
         case _ => Nullable.None
@@ -642,7 +642,7 @@ object GroupElement extends EntityObject("GroupElement") {
   object GroupElementMethods {
     object exp {
       def unapply(d: Def[_]): Nullable[(Ref[GroupElement], Ref[BigInt])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "exp" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "exp" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[GroupElement], Ref[BigInt])]]
         case _ => Nullable.None
@@ -652,7 +652,7 @@ object GroupElement extends EntityObject("GroupElement") {
 
     object multiply {
       def unapply(d: Def[_]): Nullable[(Ref[GroupElement], Ref[GroupElement])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[GroupElement], Ref[GroupElement])]]
         case _ => Nullable.None
@@ -776,7 +776,7 @@ object SigmaProp extends EntityObject("SigmaProp") {
   object SigmaPropMethods {
     object isValid {
       def unapply(d: Def[_]): Nullable[Ref[SigmaProp]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "isValid" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "isValid" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[SigmaProp]]]
         case _ => Nullable.None
@@ -786,7 +786,7 @@ object SigmaProp extends EntityObject("SigmaProp") {
 
     object propBytes {
       def unapply(d: Def[_]): Nullable[Ref[SigmaProp]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "propBytes" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "propBytes" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[SigmaProp]]]
         case _ => Nullable.None
@@ -796,7 +796,7 @@ object SigmaProp extends EntityObject("SigmaProp") {
 
     object and_sigma_&& {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "$amp$amp" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "$amp$amp" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaProp], Ref[SigmaProp])]]
         case _ => Nullable.None
@@ -806,7 +806,7 @@ object SigmaProp extends EntityObject("SigmaProp") {
 
     object or_sigma_|| {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "$bar$bar" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "$bar$bar" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaProp], Ref[SigmaProp])]]
         case _ => Nullable.None
@@ -988,7 +988,7 @@ object Box extends EntityObject("Box") {
   object BoxMethods {
     object id {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "id" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "id" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -998,7 +998,7 @@ object Box extends EntityObject("Box") {
 
     object value {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "value" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "value" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -1008,7 +1008,7 @@ object Box extends EntityObject("Box") {
 
     object propositionBytes {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "propositionBytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "propositionBytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -1018,7 +1018,7 @@ object Box extends EntityObject("Box") {
 
     object bytes {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "bytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "bytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -1028,7 +1028,7 @@ object Box extends EntityObject("Box") {
 
     object bytesWithoutRef {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "bytesWithoutRef" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "bytesWithoutRef" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -1038,7 +1038,7 @@ object Box extends EntityObject("Box") {
 
     object getReg {
       def unapply(d: Def[_]): Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "getReg" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "getReg" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}]]
         case _ => Nullable.None
@@ -1048,7 +1048,7 @@ object Box extends EntityObject("Box") {
 
     object creationInfo {
       def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "creationInfo" && receiver.elem.isInstanceOf[BoxElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "creationInfo" && receiver.elem.isInstanceOf[BoxElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
         case _ => Nullable.None
@@ -2007,7 +2007,7 @@ object Context extends EntityObject("Context") {
   object ContextMethods {
     object OUTPUTS {
       def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "OUTPUTS" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "OUTPUTS" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
         case _ => Nullable.None
@@ -2017,7 +2017,7 @@ object Context extends EntityObject("Context") {
 
     object INPUTS {
       def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "INPUTS" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "INPUTS" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
         case _ => Nullable.None
@@ -2027,7 +2027,7 @@ object Context extends EntityObject("Context") {
 
     object HEIGHT {
       def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "HEIGHT" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "HEIGHT" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
         case _ => Nullable.None
@@ -2037,7 +2037,7 @@ object Context extends EntityObject("Context") {
 
     object SELF {
       def unapply(d: Def[_]): Nullable[Ref[Context]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "SELF" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "SELF" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Context]]]
         case _ => Nullable.None
@@ -2047,7 +2047,7 @@ object Context extends EntityObject("Context") {
 
     object getVar {
       def unapply(d: Def[_]): Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "getVar" && receiver.elem.isInstanceOf[ContextElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "getVar" && receiver.elem.isInstanceOf[ContextElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[Context], Ref[Byte], Elem[T]) forSome {type T}]]
         case _ => Nullable.None
@@ -2508,7 +2508,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
   object SigmaDslBuilderMethods {
     object Colls {
       def unapply(d: Def[_]): Nullable[Ref[SigmaDslBuilder]] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "Colls" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "Colls" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[SigmaDslBuilder]]]
         case _ => Nullable.None
@@ -2518,7 +2518,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object atLeast {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[SigmaProp]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "atLeast" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "atLeast" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[SigmaProp]])]]
         case _ => Nullable.None
@@ -2528,7 +2528,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object allOf {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "allOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "allOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
         case _ => Nullable.None
@@ -2538,7 +2538,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object allZK {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "allZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "allZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])]]
         case _ => Nullable.None
@@ -2548,7 +2548,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object anyOf {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "anyOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "anyOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
         case _ => Nullable.None
@@ -2558,7 +2558,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object anyZK {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "anyZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "anyZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])]]
         case _ => Nullable.None
@@ -2568,7 +2568,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object xorOf {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "xorOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "xorOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
         case _ => Nullable.None
@@ -2578,7 +2578,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object sigmaProp {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Boolean])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "sigmaProp" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "sigmaProp" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Boolean])]]
         case _ => Nullable.None
@@ -2588,7 +2588,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object blake2b256 {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "blake2b256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "blake2b256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -2598,7 +2598,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object sha256 {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "sha256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "sha256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -2608,7 +2608,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object byteArrayToBigInt {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "byteArrayToBigInt" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "byteArrayToBigInt" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -2618,7 +2618,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object longToByteArray {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Long])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "longToByteArray" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "longToByteArray" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Long])]]
         case _ => Nullable.None
@@ -2628,7 +2628,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object byteArrayToLong {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "byteArrayToLong" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "byteArrayToLong" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -2638,7 +2638,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object proveDlog {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "proveDlog" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "proveDlog" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement])]]
         case _ => Nullable.None
@@ -2648,7 +2648,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object proveDHTuple {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "proveDHTuple" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "proveDHTuple" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2), args(3))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement])]]
         case _ => Nullable.None
@@ -2658,7 +2658,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object substConstants {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "substConstants" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "substConstants" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}]]
         case _ => Nullable.None
@@ -2668,7 +2668,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object decodePoint {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "decodePoint" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "decodePoint" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -2678,7 +2678,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object deserializeTo {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}]]
         case _ => Nullable.None
@@ -2688,7 +2688,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object serialize {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Any])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "serialize" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "serialize" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Any])]]
         case _ => Nullable.None
@@ -2699,7 +2699,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */
     object avlTree {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "avlTree" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "avlTree" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2), args(3))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])]]
         case _ => Nullable.None
@@ -2709,7 +2709,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     object xor {
       def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "xor" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "xor" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])]]
         case _ => Nullable.None

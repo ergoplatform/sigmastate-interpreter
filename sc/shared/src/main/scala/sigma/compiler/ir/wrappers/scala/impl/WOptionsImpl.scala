@@ -171,7 +171,7 @@ class WOptionCls extends EntityObject("WOption") {
   object WOptionMethods {
     object isDefined {
       def unapply(d: Def[_]): Nullable[Ref[WOption[A]] forSome {type A}] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "isDefined" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "isDefined" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[WOption[A]] forSome {type A}]]
         case _ => Nullable.None
@@ -181,7 +181,7 @@ class WOptionCls extends EntityObject("WOption") {
 
     object filter {
       def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[A => Boolean]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[A => Boolean]) forSome {type A}]]
         case _ => Nullable.None
@@ -191,7 +191,7 @@ class WOptionCls extends EntityObject("WOption") {
 
     object map {
       def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[A => B]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "map" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "map" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[A => B]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -201,7 +201,7 @@ class WOptionCls extends EntityObject("WOption") {
 
     object getOrElse {
       def unapply(d: Def[_]): Nullable[(Ref[WOption[A]], Ref[Thunk[B]]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[WOption[A]], Ref[Thunk[B]]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -211,7 +211,7 @@ class WOptionCls extends EntityObject("WOption") {
 
     object get {
       def unapply(d: Def[_]): Nullable[Ref[WOption[A]] forSome {type A}] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "get" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "get" && receiver.elem.isInstanceOf[WOptionElem[_, _]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[WOption[A]] forSome {type A}]]
         case _ => Nullable.None

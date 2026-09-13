@@ -1,7 +1,6 @@
 package scalan
 
 import sigma.compiler.ir.{GraphIRReflection, IRContext}
-import sigma.reflection.RMethod
 import sigma.{BaseNestedTests, BaseShouldTests, BaseTests, TestUtils}
 
 trait TestContexts extends TestUtils {
@@ -12,9 +11,6 @@ trait TestContexts extends TestUtils {
   private val forceGraphIRReflection = GraphIRReflection
 
   trait TestContextApi { ctx: IRContext =>
-    def invokeAll: Boolean
-    def isInvokeEnabled(d: Def[_], m: RMethod): Boolean
-    def shouldUnpack(e: Elem[_]): Boolean
     def testName: String
     def emitF(name: String, sfs: (() => Sym)*): Unit
     def emit(name: String, ss: Sym*): Unit = {
@@ -27,10 +23,6 @@ trait TestContexts extends TestUtils {
   }
   abstract class TestContext(val testName: String) extends IRContext with TestContextApi {
     def this() = this(currentTestNameAsFileName)
-
-    override val invokeAll = true
-    override def isInvokeEnabled(d: Def[_], m: RMethod) = invokeAll
-    override def shouldUnpack(e: Elem[_]) = true
 
     // workaround for non-existence of by-name repeated parameters
     def emitF(name: String, sfs: (() => Sym)*): Unit =

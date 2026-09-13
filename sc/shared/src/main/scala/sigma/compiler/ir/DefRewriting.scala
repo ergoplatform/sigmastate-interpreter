@@ -1,6 +1,5 @@
 package sigma.compiler.ir
 
-import sigma.compiler.DelayInvokeException
 import sigma.data.ExactNumeric
 
 /** Defines methods to implement graph rewriting optimization rules.
@@ -21,20 +20,6 @@ trait DefRewriting { scalan: IRContext =>
 
     case Apply(f @ Def(l: Lambda[a,b]), x, mayInline) if mayInline && l.mayInline =>
       mkApply(f, x)
-
-    case call @ MethodCall(receiver, m, args, _) =>
-      call.tryInvoke match {
-        // Rule: receiver.m(args) ==> body(m).subst{xs -> args}
-        case InvokeSuccess(res) => res
-        case InvokeFailure(e) if !e.isInstanceOf[DelayInvokeException] =>
-          throwInvocationException("Method invocation in rewriteDef", e, receiver, m, args)
-        case InvokeFailure(ex) => throw ex
-        case InvokeImpossible =>
-          val res = rewriteNonInvokableMethodCall(call)
-          if (res != null) res
-          else
-            null
-      }
 
     case ThunkForce(th) =>
       th.node match {

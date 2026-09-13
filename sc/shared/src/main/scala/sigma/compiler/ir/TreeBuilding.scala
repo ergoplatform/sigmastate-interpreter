@@ -346,7 +346,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val Seq(col, p) = Seq(colSym, pSym).map(recurse)
         mkFilter(col.asCollection[SType], p.asFunc)
 
-      case Def(MethodCall(receiver, m, argsSyms, _)) if receiver.elem.isInstanceOf[CollElem[_, _]] =>
+      case Def(MethodCall(receiver, LegacyCallee(m), argsSyms, _)) if receiver.elem.isInstanceOf[CollElem[_, _]] =>
         val colSym = receiver.asInstanceOf[Ref[Coll[Any]]]
         val args = argsSyms.map(_.asInstanceOf[Sym]).map(recurse)
         val col = recurse(colSym).asCollection[SType]
@@ -474,7 +474,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
         mkMultiplyGroup(obj.asGroupElement, arg.asGroupElement)
 
       // Fallback MethodCall rule: should be the last in this list of cases
-      case Def(mc @ MethodCall(objSym, m, argSyms, _)) =>
+      case Def(mc @ MethodCall(objSym, LegacyCallee(m), argSyms, _)) =>
         val obj = recurse[SType](objSym)
         val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
         MethodsContainer.getMethod(obj.tpe, m.getName) match {

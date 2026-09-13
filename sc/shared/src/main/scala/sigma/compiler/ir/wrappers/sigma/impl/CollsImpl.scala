@@ -408,7 +408,7 @@ class CollCls extends EntityObject("Coll") {
   object CollMethods {
     object length {
       def unapply(d: Def[_]): Nullable[Ref[Coll[A]] forSome {type A}] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "length" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "length" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Coll[A]] forSome {type A}]]
         case _ => Nullable.None
@@ -418,7 +418,7 @@ class CollCls extends EntityObject("Coll") {
 
     object apply {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "apply" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "apply" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int]) forSome {type A}]]
         case _ => Nullable.None
@@ -428,7 +428,7 @@ class CollCls extends EntityObject("Coll") {
 
     object getOrElse {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int], Ref[A]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "getOrElse" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int], Ref[A]) forSome {type A}]]
         case _ => Nullable.None
@@ -438,7 +438,7 @@ class CollCls extends EntityObject("Coll") {
 
     object map {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => B]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "map" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "map" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => B]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -448,7 +448,7 @@ class CollCls extends EntityObject("Coll") {
 
     object zip {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Coll[B]]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "zip" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "zip" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Coll[B]]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -458,7 +458,7 @@ class CollCls extends EntityObject("Coll") {
 
     object exists {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "exists" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "exists" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
         case _ => Nullable.None
@@ -468,7 +468,7 @@ class CollCls extends EntityObject("Coll") {
 
     object forall {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "forall" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "forall" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
         case _ => Nullable.None
@@ -478,7 +478,7 @@ class CollCls extends EntityObject("Coll") {
 
     object filter {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "filter" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Boolean]) forSome {type A}]]
         case _ => Nullable.None
@@ -488,7 +488,7 @@ class CollCls extends EntityObject("Coll") {
 
     object foldLeft {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[B], Ref[((B, A)) => B]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "foldLeft" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "foldLeft" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[B], Ref[((B, A)) => B]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -498,7 +498,7 @@ class CollCls extends EntityObject("Coll") {
 
     object indices {
       def unapply(d: Def[_]): Nullable[Ref[Coll[A]] forSome {type A}] = d match {
-        case MethodCall(receiver, method, _, _) if method.getName == "indices" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "indices" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = receiver
           Nullable(res).asInstanceOf[Nullable[Ref[Coll[A]] forSome {type A}]]
         case _ => Nullable.None
@@ -508,7 +508,7 @@ class CollCls extends EntityObject("Coll") {
 
     object flatMap {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[A => Coll[B]]) forSome {type A; type B}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "flatMap" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "flatMap" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[A => Coll[B]]) forSome {type A; type B}]]
         case _ => Nullable.None
@@ -518,7 +518,7 @@ class CollCls extends EntityObject("Coll") {
 
     object slice {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Int], Ref[Int]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "slice" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "slice" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Int], Ref[Int]) forSome {type A}]]
         case _ => Nullable.None
@@ -528,7 +528,7 @@ class CollCls extends EntityObject("Coll") {
 
     object append {
       def unapply(d: Def[_]): Nullable[(Ref[Coll[A]], Ref[Coll[A]]) forSome {type A}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "append" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "append" && receiver.elem.isInstanceOf[CollElem[_, _]] =>
           val res = (receiver, args(0))
           Nullable(res).asInstanceOf[Nullable[(Ref[Coll[A]], Ref[Coll[A]]) forSome {type A}]]
         case _ => Nullable.None
@@ -643,7 +643,7 @@ object CollBuilder extends EntityObject("CollBuilder") {
   object CollBuilderMethods {
     object fromItems {
       def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[T]], Elem[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "fromItems" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "fromItems" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[T]], Elem[T]) forSome {type T}]]
         case _ => Nullable.None
@@ -653,7 +653,7 @@ object CollBuilder extends EntityObject("CollBuilder") {
 
     object xor {
       def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "xor" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "xor" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[CollBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])]]
         case _ => Nullable.None
@@ -663,7 +663,7 @@ object CollBuilder extends EntityObject("CollBuilder") {
 
     object replicate {
       def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Ref[Int], Ref[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, method, args, _) if method.getName == "replicate" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
+        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "replicate" && receiver.elem.isInstanceOf[CollBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
           Nullable(res).asInstanceOf[Nullable[(Ref[CollBuilder], Ref[Int], Ref[T]) forSome {type T}]]
         case _ => Nullable.None
