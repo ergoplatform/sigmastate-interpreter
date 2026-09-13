@@ -1217,28 +1217,22 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val h = asRep[Coll[Byte]](argsV(3))
               val N = asRep[Int](argsV(4))
               g.powHit(k, msg, nonce, h, N)
-            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[BigInt](argsV(0))
-              g.encodeNbits(c1)
-            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Long](argsV(0))
-              g.decodeNbits(c1)
             case SGlobalMethods.deserializeToMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Coll[Byte]](argsV(0))
               val c2 = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.deserializeTo(c1)(c2)
-            case SGlobalMethods.serializeMethod.name =>
+            case SGlobalMethods.serializeMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val value = asRep[Any](argsV(0))
               g.serialize(value)
-            case SGlobalMethods.FromBigEndianBytesMethod.name =>
+            case SGlobalMethods.FromBigEndianBytesMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val bytes = asRep[Coll[Byte]](argsV(0))
               val cT = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.fromBigEndianBytes(bytes)(cT)
-            case SGlobalMethods.someMethod.name =>
+            case SGlobalMethods.someMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val value = asRep[tT.WrappedType](argsV(0))
               val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
               g.some(value)(cT)
-            case SGlobalMethods.noneMethod.name =>
+            case SGlobalMethods.noneMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
               g.none()(cT)
             case _ => throwError()
