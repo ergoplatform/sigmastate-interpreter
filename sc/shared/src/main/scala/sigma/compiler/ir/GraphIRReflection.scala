@@ -7,7 +7,6 @@ import sigma.compiler.ir.primitives.Thunks
 import sigma.data.RType
 import sigma.reflection.ReflectionData.registerClassEntry
 import sigma.reflection.{ReflectionData, mkConstructor, mkMethod}
-import sigma.compiler.ir.wrappers.OptionWrapSpec
 import sigma.compiler.ir.wrappers.sigma.SigmaDsl
 
 /** Registrations of reflection metadata for graph-ir module (see README.md).
@@ -637,33 +636,6 @@ object GraphIRReflection {
         mkConstructor(Array(classOf[ctx.CollCls], classOf[TypeDescs#Elem[_]])) { args =>
           val entityObj = args(0).asInstanceOf[ctx.CollCls]
           new entityObj.CollElem()(args(1).asInstanceOf[ctx.Elem[_]])
-        }
-      )
-    )
-  }
-
-  {
-    val clazz = classOf[OptionWrapSpec]
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "getOrElse", Array[Class[_]](classOf[Option[_]], classOf[Function0[_]])) { (obj, args) =>
-          val opt = args(0).asInstanceOf[Option[Any]]
-          val defaultFunc = args(1).asInstanceOf[Function0[Any]]
-          obj.asInstanceOf[OptionWrapSpec].getOrElse(opt, defaultFunc())
-        },
-        mkMethod(clazz, "isDefined", Array[Class[_]](classOf[Option[_]])) { (obj, args) =>
-          obj.asInstanceOf[OptionWrapSpec].isDefined(args(0).asInstanceOf[Option[_]])
-        },
-        mkMethod(clazz, "filter", Array[Class[_]](classOf[Option[_]], classOf[Function1[_, _]])) { (obj, args) =>
-          obj.asInstanceOf[OptionWrapSpec].filter(
-            args(0).asInstanceOf[Option[Any]], args(1).asInstanceOf[Any => Boolean])
-        },
-        mkMethod(clazz, "map", Array[Class[_]](classOf[Option[_]], classOf[Function1[_, _]])) { (obj, args) =>
-          obj.asInstanceOf[OptionWrapSpec].map(
-            args(0).asInstanceOf[Option[Any]], args(1).asInstanceOf[Any => Any])
-        },
-        mkMethod(clazz, "get", Array[Class[_]](classOf[Option[_]])) { (obj, args) =>
-          obj.asInstanceOf[OptionWrapSpec].get(args(0).asInstanceOf[Option[_]])
         }
       )
     )

@@ -13,7 +13,7 @@ package impl {
   import sigma.compiler.ir.wrappers.sigma.SigmaDsl
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
-  import sigma.reflection.{RClass, RMethod}
+  import sigma.reflection.RClass
 
 /** Implementation part of IR represenation related to Sigma types and methods. */
   // Abs -----------------------------------
@@ -210,12 +210,6 @@ object BigInt extends EntityObject("BigInt") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SBigInt, To](LiftableBigInt)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[BigInt]), RClass(classOf[SBigInt]), Set(
-        "add", "subtract", "multiply", "divide", "mod", "min", "max", "toUnsigned", "toUnsignedMod"
-        ))
-    }
   }
 
   implicit lazy val bigIntElement: Elem[BigInt] =
@@ -515,13 +509,6 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SUnsignedBigInt, To](LiftableUnsignedBigInt)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[UnsignedBigInt]), RClass(classOf[UnsignedBigInt]), Set(
-          "add", "subtract", "multiply", "divide", "mod", "modInverse",
-          "min", "max", "plusMod", "subtractMod", "multiplyMod", "toSigned"
-        ))
-    }
   }
 
   implicit lazy val unsignedBigIntElement: Elem[UnsignedBigInt] = new UnsignedBigIntElem[UnsignedBigInt]
@@ -647,12 +634,6 @@ object GroupElement extends EntityObject("GroupElement") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SGroupElement, To](LiftableGroupElement)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[GroupElement]), RClass(classOf[SGroupElement]), Set(
-        "exp", "multiply", "negate", "getEncoded"
-        ))
-    }
   }
 
   implicit lazy val groupElementElement: Elem[GroupElement] =
@@ -787,12 +768,6 @@ object SigmaProp extends EntityObject("SigmaProp") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SSigmaProp, To](LiftableSigmaProp)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[SigmaProp]), RClass(classOf[SSigmaProp]), Set(
-        "isValid", "propBytes", "$amp$amp", "$bar$bar"
-        ))
-    }
   }
 
   implicit lazy val sigmaPropElement: Elem[SigmaProp] =
@@ -1005,12 +980,6 @@ object Box extends EntityObject("Box") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SBox, To](LiftableBox)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[Box]), RClass(classOf[SBox]), Set(
-        "id", "value", "propositionBytes", "bytes", "bytesWithoutRef", "registers", "getReg", "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "tokens", "creationInfo"
-        ))
-    }
   }
 
   implicit lazy val boxElement: Elem[Box] =
@@ -1363,12 +1332,6 @@ object AvlTree extends EntityObject("AvlTree") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SAvlTree, To](LiftableAvlTree)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[AvlTree]), RClass(classOf[SAvlTree]), Set(
-        "digest", "enabledOperations", "keyLength", "valueLengthOpt", "isInsertAllowed", "isUpdateAllowed", "isRemoveAllowed", "updateDigest", "updateOperations", "contains", "get", "getMany", "insert", "update", "insertOrUpdate", "remove"
-        ))
-    }
   }
 
   implicit lazy val avlTreeElement: Elem[AvlTree] =
@@ -1524,12 +1487,6 @@ object PreHeader extends EntityObject("PreHeader") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SPreHeader, To](LiftablePreHeader)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[PreHeader]), RClass(classOf[SPreHeader]), Set(
-        "version", "parentId", "timestamp", "nBits", "height", "minerPk", "votes"
-        ))
-    }
   }
 
   implicit lazy val preHeaderElement: Elem[PreHeader] =
@@ -1812,12 +1769,6 @@ object Header extends EntityObject("Header") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SHeader, To](LiftableHeader)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[Header]), RClass(classOf[SHeader]), Set(
-        "id", "version", "parentId", "ADProofsRoot", "stateRoot", "transactionsRoot", "timestamp", "nBits", "height", "extensionRoot", "minerPk", "powOnetimePk", "powNonce", "powDistance", "votes", "checkPow"
-        ))
-    }
   }
 
   implicit lazy val headerElement: Elem[Header] =
@@ -2048,12 +1999,6 @@ object Context extends EntityObject("Context") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SContext, To](LiftableContext)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[Context]), RClass(classOf[SContext]), Set(
-        "OUTPUTS", "INPUTS", "dataInputs", "HEIGHT", "SELF", "selfBoxIndex", "LastBlockUtxoRootHash", "headers", "preHeader", "minerPubKey", "getVar", "getVarFromInput", "vars"
-        ))
-    }
   }
 
   implicit lazy val contextElement: Elem[Context] =
@@ -2555,14 +2500,6 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SSigmaDslBuilder, To](LiftableSigmaDslBuilder)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[SigmaDslBuilder]), RClass(classOf[SSigmaDslBuilder]), Set(
-        "Colls", "verifyZK", "atLeast", "allOf", "allZK", "anyOf", "anyZK", "xorOf", "sigmaProp", "blake2b256",
-          "sha256", "byteArrayToBigInt", "longToByteArray", "byteArrayToLong", "proveDlog", "proveDHTuple", "groupGenerator",
-          "substConstants", "decodePoint", "avlTree", "xor", "encodeNBits", "decodeNBits", "serialize", "fromBigEndianBytes", "powHit", "deserializeTo"
-        ))
-    }
   }
 
   implicit lazy val sigmaDslBuilderElement: Elem[SigmaDslBuilder] =

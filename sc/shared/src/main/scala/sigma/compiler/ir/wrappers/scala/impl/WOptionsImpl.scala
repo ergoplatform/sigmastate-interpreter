@@ -2,14 +2,13 @@ package sigma.compiler.ir.wrappers.scala
 
 import scala.language.{existentials, implicitConversions}
 import sigma.compiler.ir.IRContext
-import sigma.compiler.ir.wrappers.OptionWrapSpec
 
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
-  import sigma.reflection.{RClass, RMethod}
+  import sigma.reflection.RClass
 
   // Abs -----------------------------------
 /** IR representation of Option type and methods. */
@@ -84,8 +83,6 @@ class WOptionCls extends EntityObject("WOption") {
   }
   implicit final def liftableOption[SA, A](implicit lA: Liftable[SA,A]): Liftable[Option[SA], WOption[A]] =
     LiftableOption(lA)
-
-  private val _OptionWrapSpec = new OptionWrapSpec
 
   private val WOptionClass = RClass(classOf[WOption[_]])
 
@@ -164,12 +161,6 @@ class WOptionCls extends EntityObject("WOption") {
 
     override val liftable: Liftables.Liftable[_, To] = asLiftable[Option[_], To](liftableOption(_eA.liftable))
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredWrapperMethods(_OptionWrapSpec, RClass(classOf[WOption[A]]), Set(
-        "isDefined", "filter", "map", "getOrElse", "get"
-        ))
-    }
 
     override def buildTypeArgs = super.buildTypeArgs ++ TypeArgs("A" -> (eA -> scalan.core.Invariant))
   }

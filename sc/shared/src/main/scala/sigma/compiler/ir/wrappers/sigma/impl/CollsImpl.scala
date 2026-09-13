@@ -9,7 +9,7 @@ import scala.collection.compat.immutable.ArraySeq
 package impl {
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
-  import sigma.reflection.{RClass, RMethod}
+  import sigma.reflection.RClass
 
 // Abs -----------------------------------
 /** Implementation part of IR represenation related to Coll type and methods. */
@@ -398,12 +398,6 @@ class CollCls extends EntityObject("Coll") {
 
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SColl[_], To](liftableColl(_eA.liftable))
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[Coll[A]]), RClass(classOf[SColl[_]]), Set(
-        "length", "apply", "getOrElse", "map", "zip", "exists", "forall", "filter", "foldLeft", "indices", "flatMap", "indexOf", "patch", "updated", "updateMany", "slice", "append"
-        ))
-    }
 
     override def buildTypeArgs = super.buildTypeArgs ++ TypeArgs("A" -> (eA -> scalan.core.Invariant))
   }
@@ -641,12 +635,6 @@ object CollBuilder extends EntityObject("CollBuilder") {
     extends EntityElem[To] {
     override val liftable: Liftables.Liftable[_, To] = asLiftable[SCollBuilder, To](LiftableCollBuilder)
 
-    override protected def collectMethods: Map[RMethod, MethodDesc] = {
-      super.collectMethods ++
-        Elem.declaredMethods(RClass(classOf[CollBuilder]), RClass(classOf[SCollBuilder]), Set(
-        "fromItems", "xor", "replicate"
-        ))
-    }
   }
 
   implicit lazy val collBuilderElement: Elem[CollBuilder] =

@@ -1,11 +1,8 @@
 package sigma.compiler.ir
 
-import debox.cfor
 import scalan.core.{Contravariant, Covariant, Variance}
 import sigma.data.{AVHashMap, Lazy, Nullable, RType}
-import sigma.reflection.{RClass, RConstructor, RMethod}
-import sigma.util.CollectionUtil
-import sigma.compiler.ir.wrappers.WrapSpec
+import sigma.reflection.{RClass, RConstructor}
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.ListMap
@@ -13,7 +10,6 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 
 /** Defines [[Elem]] descriptor of types in IRContext together with related utilities.
-  * @see MethodDesc
   * @see TypeDesc
   */
 abstract class TypeDescs extends Base { self: IRContext =>
@@ -51,48 +47,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
       val resEnv = env + ((xSym, x.asInstanceOf[AnyRef]))
       (resEnv, xSym)
     }
-  }
-
-  /** Abstract class for a method descriptors to assist invocation of MethodCall nodes. */
-  sealed abstract class MethodDesc {
-    /** The described method */
-    def method: RMethod
-  }
-
-  /** Decriptor for a method of a class.
-    * @param method The RMethod object representing the method.
-    */
-  case class RMethodDesc(method: RMethod) extends MethodDesc
-
-  /** Descriptor for a method of a wrapper class.
-    *
-    * @param wrapSpec The wrapping specification of the method.
-    * @param method   The RMethod object representing the method.
-    */
-  case class WMethodDesc(wrapSpec: WrapSpec, method: RMethod) extends MethodDesc
-
-  // TODO optimize performance hot spot (45% of invokeUnlifted time), reduce allocation of Some
-  final def getSourceValues(dataEnv: DataEnv, forWrapper: Boolean, stagedValues: AnyRef*): Seq[AnyRef] = {
-    import sigma.data.OverloadHack._
-    val limit = stagedValues.length
-    val res = mutable.ArrayBuilder.make[AnyRef]
-    res.sizeHint(limit)
-    cfor(0)(_ < limit, _ + 1) { i =>
-      val v = stagedValues.apply(i)
-      v match {
-        case s: Sym =>
-          res += dataEnv(s)
-        case vec: Seq[AnyRef]@unchecked =>
-          res += getSourceValues(dataEnv, forWrapper, vec:_*)
-        case e: Elem[_] =>
-          val arg =
-            if (forWrapper) e.sourceType.classTag  // WrapSpec classes use ClassTag implicit arguments
-            else e.sourceType
-          res += arg
-        case _: Overloaded => // filter out special arguments
-      }
-    }
-    res.result()
   }
 
   abstract class TypeDesc extends Serializable {
@@ -141,76 +95,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
       !!!(s"Cannot get Liftable instance for $this")
 
     final lazy val sourceType: RType[_] = liftable.sourceType
-    protected def collectMethods: Map[RMethod, MethodDesc] = Map() // TODO optimize: all implementations
-    protected lazy val methods: Map[RMethod, MethodDesc] = collectMethods
-
-    // TODO optimize: benchamrk against the version below it
-    //    def invokeUnlifted(mc: MethodCall, dataEnv: DataEnv): AnyRef = {
-    //      val srcArgs = DBuffer.ofSize[AnyRef](mc.args.length + 10)  // with some spare space to have only single allocation
-    //      val res = methods.get(mc.method) match {
-    //        case Some(WMethodDesc(wrapSpec, method)) =>
-    //          getSourceValues(dataEnv, true, mc.receiver, srcArgs)
-    //          getSourceValues(dataEnv, true, mc.args, srcArgs)
-    //          def msg = s"Cannot invoke method $method on object $wrapSpec with arguments $srcArgs"
-    //          val res =
-    //            try method.invoke(wrapSpec, srcArgs.toArray:_*)
-    //            catch {
-    //              case t: Throwable => !!!(msg, t)
-    //            }
-    //          res
-    //        case Some(RMethodDesc(method)) =>
-    //          getSourceValues(dataEnv, false, mc.receiver, srcArgs)
-    //          val srcObj = srcArgs(0)
-    //          srcArgs.pop()
-    //          getSourceValues(dataEnv, false, mc.args, srcArgs)
-    //          def msg = s"Cannot invoke method $method on object $srcObj with arguments ${srcArgs.toArray.toSeq}"
-    //          val res =
-    //            try method.invoke(srcObj, srcArgs.toArray:_*)
-    //            catch {
-    //              case t: Throwable => !!!(msg, t)
-    //            }
-    //          res
-    //        case None =>
-    //          !!!(s"Cannot perform unliftedInvoke of $mc")
-    //      }
-    //      // this if is required because res == null in case of Unit return type
-    //      if (mc.selfType == UnitElement) ().asInstanceOf[AnyRef] else res
-    //    }
-
-    /** Invoke source type method corresponding to the given MethodCall node.
-      * The instance of receiver is obtained from `dataEnv` using mc.receiver symbol.
-      * The Method descriptor of the source class is taken from `this.methods` mapping.
-      * @param mc   IR node representing method invocation
-      * @param dataEnv  environment where each symbol of 'mc' has associated data value
-      * @return  data value returned from invoked method
-      */
-    def invokeUnlifted(mc: MethodCall, dataEnv: DataEnv): Any = {
-      val res = methods.get(mc.method) match {
-        case Some(WMethodDesc(wrapSpec, method)) =>
-          val srcArgs = getSourceValues(dataEnv, true, mc.receiver +: mc.args:_*)
-          def msg = s"Cannot invoke method $method on object $wrapSpec with arguments $srcArgs"
-          val res =
-            try method.invoke(wrapSpec, srcArgs:_*)
-            catch {
-              case t: Throwable => !!!(msg, t)
-            }
-          res
-        case Some(RMethodDesc(method)) =>
-          val srcObj = getSourceValues(dataEnv, false, mc.receiver).head
-          val srcArgs = getSourceValues(dataEnv, false, mc.args:_*)
-          def msg = s"Cannot invoke method $method on object $srcObj with arguments $srcArgs"
-          val res =
-            try method.invoke(srcObj, srcArgs:_*)
-            catch {
-              case t: Throwable => !!!(msg, t)
-            }
-          res
-        case None =>
-          !!!(s"Cannot perform unliftedInvoke of $mc")
-      }
-      // this if is required because res == null in case of Unit return type
-      if (mc.resultType == UnitElement) ().asInstanceOf[AnyRef] else res
-    }
 
     def <:<(e: Elem[_]) = e.getClass.isAssignableFrom(this.getClass)
   }
@@ -220,55 +104,7 @@ abstract class TypeDescs extends Base { self: IRContext =>
     implicit def rtypeToElem[SA, A](tSA: RType[SA])(implicit lA: Liftables.Liftable[SA,A]): Elem[A] = lA.eW
 
     final def unapply[T, E <: Elem[T]](s: Ref[T]): Nullable[E] = Nullable(s.elem.asInstanceOf[E])
-
-    /** Build a mapping between methods of staged class and the corresponding methods of source class.
-      * The methods are related using names.
-      * The computed mapping can be used to project MethodCalls IR nodes back to the corresponding
-      * methods of source classes and then making their invocation using Java Reflection (Method.invoke).
-      * @param cls         staged class where `methodNames` should be looked up
-      * @param srcCls      source class where `methodNames` should be looked up
-      * @param methodNames list of method names to lookup in both classes
-      * @return  a sequence of pairs relating for each staged method the corresponding method from
-      *          source classes.
-      */
-    def declaredMethods(cls: RClass[_], srcCls: RClass[_], methodNames: Set[String]): Seq[(RMethod, MethodDesc)] = {
-      val rmethods = cls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val smethods = srcCls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val mapping = CollectionUtil.joinSeqs(rmethods, smethods)(_.getName, _.getName)
-      mapping.map { case (rm, sm) =>
-        (rm, RMethodDesc(sm))
-      }.toSeq
-    }
-
-    /** Build a mapping between methods of staged wrapper and the corresponding methods of wrapper spec class.
-      * The methods are related using names.
-      * @param wrapSpec    wrapper specification class where `methodNames` should be looked up
-      * @param wcls        wrapper class where `methodNames` should be looked up
-      * @param methodNames list of method names to lookup in both classes
-      * @return  a sequence of pairs relating for each wrapper method the corresponding method from
-      *          source classes.
-      */
-    def declaredWrapperMethods(wrapSpec: WrapSpec, wcls: RClass[_], methodNames: Set[String]): Seq[(RMethod, MethodDesc)] = {
-      val specCls = RClass(wrapSpec.getClass)
-      val wMethods = wcls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val specMethods = specCls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val mapping = CollectionUtil.joinSeqs(wMethods, specMethods)(_.getName, _.getName)
-      mapping.map { case (wm, sm) =>
-        (wm, WMethodDesc(wrapSpec, sm))
-      }.toSeq
-    }
-
   }
-
-  /** Invoke source type method corresponding to the given MethodCall node.
-    * This method delegated the work to the given element instance.
-    * @param e    type descriptor of receiver node
-    * @param mc   IR node representing method invocation
-    * @param dataEnv  environment where each symbol of 'mc' has associated data value
-    * @return  data value returned from invoked method
-    */
-  def invokeUnlifted(e: Elem[_], mc: MethodCall, dataEnv: DataEnv): Any =
-    e.invokeUnlifted(mc, dataEnv)
 
   /** Get first (and the only) constructor of the `clazz`. */
   private[compiler] final def getConstructor(clazz: RClass[_]): RConstructor[_] = {

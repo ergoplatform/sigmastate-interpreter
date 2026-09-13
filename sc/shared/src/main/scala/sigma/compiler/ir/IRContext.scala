@@ -128,19 +128,6 @@ trait IRContext
 
     case _ => super.rewriteDef(d)
   }
-
-  override def invokeUnlifted(e: Elem[_], mc: MethodCall, dataEnv: DataEnv): Any = e match {
-    case _: CollElem[_,_] => mc match {
-      case CollMethods.map(_, f) =>
-        val newMC = mc.copy(args = mc.args :+ f.elem.eRange)(mc.resultType, mc.isAdapterCall, mc.typeSubst)
-        super.invokeUnlifted(e, newMC, dataEnv)
-      case _ =>
-        super.invokeUnlifted(e, mc, dataEnv)
-    }
-    case _ =>
-      super.invokeUnlifted(e, mc, dataEnv)
-  }
-
 }
 
 /** IR context to be used by script development tools to compile ErgoScript into ErgoTree bytecode. */
