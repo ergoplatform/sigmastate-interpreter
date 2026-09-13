@@ -8,7 +8,6 @@ import sigma.compiler.ir.wrappers.sigma.impl.SigmaDslDefs
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
-  import sigma.Evaluation
   import sigma.ast.SType.tT
   import sigma.compiler.ir.wrappers.sigma.SigmaDsl
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
@@ -870,7 +869,7 @@ object Box extends EntityObject("Box") {
     }
 
     override def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(self,
         BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](i, cT),
@@ -946,7 +945,7 @@ object Box extends EntityObject("Box") {
     }
 
     def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(source,
         BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](i, cT),
@@ -1340,442 +1339,6 @@ object AvlTree extends EntityObject("AvlTree") {
 } // of object AvlTree
   registerEntityObject("AvlTree", AvlTree)
 
-object PreHeader extends EntityObject("PreHeader") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SPreHeader = sigma.PreHeader
-  case class PreHeaderConst(
-        constValue: SPreHeader
-      ) extends LiftedConst[SPreHeader, PreHeader] with PreHeader
-        with Def[PreHeader] with PreHeaderConstMethods {
-    val liftable: Liftable[SPreHeader, PreHeader] = LiftablePreHeader
-    val resultType: Elem[PreHeader] = liftable.eW
-  }
-
-  trait PreHeaderConstMethods extends PreHeader  { thisConst: Def[_] =>
-
-    private val PreHeaderClass = RClass(classOf[PreHeader])
-
-    override def version: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(self,
-        PreHeaderClass.getMethod("version"),
-        ArraySeq.empty,
-        true, false, element[Byte]))
-    }
-
-    override def parentId: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        PreHeaderClass.getMethod("parentId"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def timestamp: Ref[Long] = {
-      asRep[Long](mkMethodCall(self,
-        PreHeaderClass.getMethod("timestamp"),
-        ArraySeq.empty,
-        true, false, element[Long]))
-    }
-
-    override def nBits: Ref[Long] = {
-      asRep[Long](mkMethodCall(self,
-        PreHeaderClass.getMethod("nBits"),
-        ArraySeq.empty,
-        true, false, element[Long]))
-    }
-
-    override def height: Ref[Int] = {
-      asRep[Int](mkMethodCall(self,
-        PreHeaderClass.getMethod("height"),
-        ArraySeq.empty,
-        true, false, element[Int]))
-    }
-
-    override def minerPk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        PreHeaderClass.getMethod("minerPk"),
-        ArraySeq.empty,
-        true, false, element[GroupElement]))
-    }
-
-    override def votes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        PreHeaderClass.getMethod("votes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-  }
-
-  implicit object LiftablePreHeader
-    extends Liftable[SPreHeader, PreHeader] {
-    lazy val eW: Elem[PreHeader] = preHeaderElement
-    lazy val sourceType: RType[SPreHeader] = {
-      RType[SPreHeader]
-    }
-    def lift(x: SPreHeader): Ref[PreHeader] = PreHeaderConst(x)
-  }
-
-  private val PreHeaderClass = RClass(classOf[PreHeader])
-
-  // entityAdapter for PreHeader trait
-  case class PreHeaderAdapter(source: Ref[PreHeader])
-      extends Node with PreHeader
-      with Def[PreHeader] {
-    val resultType: Elem[PreHeader] = element[PreHeader]
-    override def transform(t: Transformer) = PreHeaderAdapter(t(source))
-
-    def version: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(source,
-        PreHeaderClass.getMethod("version"),
-        ArraySeq.empty,
-        true, true, element[Byte]))
-    }
-
-    def parentId: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        PreHeaderClass.getMethod("parentId"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def timestamp: Ref[Long] = {
-      asRep[Long](mkMethodCall(source,
-        PreHeaderClass.getMethod("timestamp"),
-        ArraySeq.empty,
-        true, true, element[Long]))
-    }
-
-    def nBits: Ref[Long] = {
-      asRep[Long](mkMethodCall(source,
-        PreHeaderClass.getMethod("nBits"),
-        ArraySeq.empty,
-        true, true, element[Long]))
-    }
-
-    def height: Ref[Int] = {
-      asRep[Int](mkMethodCall(source,
-        PreHeaderClass.getMethod("height"),
-        ArraySeq.empty,
-        true, true, element[Int]))
-    }
-
-    def minerPk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        PreHeaderClass.getMethod("minerPk"),
-        ArraySeq.empty,
-        true, true, element[GroupElement]))
-    }
-
-    def votes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        PreHeaderClass.getMethod("votes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefPreHeader(p: Ref[PreHeader]): PreHeader = {
-    if (p.node.isInstanceOf[PreHeader]) p.node.asInstanceOf[PreHeader]
-    else
-      PreHeaderAdapter(p)
-  }
-
-  // familyElem
-  class PreHeaderElem[To <: PreHeader]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SPreHeader, To](LiftablePreHeader)
-
-  }
-
-  implicit lazy val preHeaderElement: Elem[PreHeader] =
-    new PreHeaderElem[PreHeader]
-
-} // of object PreHeader
-  registerEntityObject("PreHeader", PreHeader)
-
-object Header extends EntityObject("Header") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SHeader = sigma.Header
-  case class HeaderConst(
-        constValue: SHeader
-      ) extends LiftedConst[SHeader, Header] with Header
-        with Def[Header] with HeaderConstMethods {
-    val liftable: Liftable[SHeader, Header] = LiftableHeader
-    val resultType: Elem[Header] = liftable.eW
-  }
-
-  trait HeaderConstMethods extends Header  { thisConst: Def[_] =>
-
-    private val HeaderClass = RClass(classOf[Header])
-
-    override def id: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("id"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def version: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(self,
-        HeaderClass.getMethod("version"),
-        ArraySeq.empty,
-        true, false, element[Byte]))
-    }
-
-    override def parentId: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("parentId"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def ADProofsRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("ADProofsRoot"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def stateRoot: Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(self,
-        HeaderClass.getMethod("stateRoot"),
-        ArraySeq.empty,
-        true, false, element[AvlTree]))
-    }
-
-    override def transactionsRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("transactionsRoot"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def timestamp: Ref[Long] = {
-      asRep[Long](mkMethodCall(self,
-        HeaderClass.getMethod("timestamp"),
-        ArraySeq.empty,
-        true, false, element[Long]))
-    }
-
-    override def nBits: Ref[Long] = {
-      asRep[Long](mkMethodCall(self,
-        HeaderClass.getMethod("nBits"),
-        ArraySeq.empty,
-        true, false, element[Long]))
-    }
-
-    override def height: Ref[Int] = {
-      asRep[Int](mkMethodCall(self,
-        HeaderClass.getMethod("height"),
-        ArraySeq.empty,
-        true, false, element[Int]))
-    }
-
-    override def extensionRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("extensionRoot"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def minerPk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        HeaderClass.getMethod("minerPk"),
-        ArraySeq.empty,
-        true, false, element[GroupElement]))
-    }
-
-    override def powOnetimePk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        HeaderClass.getMethod("powOnetimePk"),
-        ArraySeq.empty,
-        true, false, element[GroupElement]))
-    }
-
-    override def powNonce: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("powNonce"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def powDistance: Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        HeaderClass.getMethod("powDistance"),
-        ArraySeq.empty,
-        true, false, element[BigInt]))
-    }
-
-    override def votes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        HeaderClass.getMethod("votes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def checkPow: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        HeaderClass.getMethod("checkPow"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-  }
-
-  implicit object LiftableHeader
-    extends Liftable[SHeader, Header] {
-    lazy val eW: Elem[Header] = headerElement
-    lazy val sourceType: RType[SHeader] = {
-      RType[SHeader]
-    }
-    def lift(x: SHeader): Ref[Header] = HeaderConst(x)
-  }
-
-  private val HeaderClass = RClass(classOf[Header])
-
-  // entityAdapter for Header trait
-  case class HeaderAdapter(source: Ref[Header])
-      extends Node with Header
-      with Def[Header] {
-    val resultType: Elem[Header] = element[Header]
-    override def transform(t: Transformer) = HeaderAdapter(t(source))
-
-    def id: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("id"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def version: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(source,
-        HeaderClass.getMethod("version"),
-        ArraySeq.empty,
-        true, true, element[Byte]))
-    }
-
-    def parentId: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("parentId"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def ADProofsRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("ADProofsRoot"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def stateRoot: Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(source,
-        HeaderClass.getMethod("stateRoot"),
-        ArraySeq.empty,
-        true, true, element[AvlTree]))
-    }
-
-    def transactionsRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("transactionsRoot"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def timestamp: Ref[Long] = {
-      asRep[Long](mkMethodCall(source,
-        HeaderClass.getMethod("timestamp"),
-        ArraySeq.empty,
-        true, true, element[Long]))
-    }
-
-    def nBits: Ref[Long] = {
-      asRep[Long](mkMethodCall(source,
-        HeaderClass.getMethod("nBits"),
-        ArraySeq.empty,
-        true, true, element[Long]))
-    }
-
-    def height: Ref[Int] = {
-      asRep[Int](mkMethodCall(source,
-        HeaderClass.getMethod("height"),
-        ArraySeq.empty,
-        true, true, element[Int]))
-    }
-
-    def extensionRoot: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("extensionRoot"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def minerPk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        HeaderClass.getMethod("minerPk"),
-        ArraySeq.empty,
-        true, true, element[GroupElement]))
-    }
-
-    def powOnetimePk: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        HeaderClass.getMethod("powOnetimePk"),
-        ArraySeq.empty,
-        true, true, element[GroupElement]))
-    }
-
-    def powNonce: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("powNonce"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def powDistance: Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        HeaderClass.getMethod("powDistance"),
-        ArraySeq.empty,
-        true, true, element[BigInt]))
-    }
-
-    def votes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        HeaderClass.getMethod("votes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def checkPow: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        HeaderClass.getMethod("checkPow"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefHeader(p: Ref[Header]): Header = {
-    if (p.node.isInstanceOf[Header]) p.node.asInstanceOf[Header]
-    else
-      HeaderAdapter(p)
-  }
-
-  // familyElem
-  class HeaderElem[To <: Header]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SHeader, To](LiftableHeader)
-
-  }
-
-  implicit lazy val headerElement: Elem[Header] =
-    new HeaderElem[Header]
-
-} // of object Header
-  registerEntityObject("Header", Header)
 
 object Context extends EntityObject("Context") {
   // entityConst: single const for each entity
@@ -1843,18 +1406,18 @@ object Context extends EntityObject("Context") {
         true, false, element[AvlTree]))
     }
 
-    override def headers: Ref[Coll[Header]] = {
-      asRep[Coll[Header]](mkMethodCall(self,
+    override def headers: Ref[Coll[sigma.Header]] = {
+      asRep[Coll[sigma.Header]](mkMethodCall(self,
         ContextClass.getMethod("headers"),
         ArraySeq.empty,
-        true, false, element[Coll[Header]]))
+        true, false, element[Coll[sigma.Header]]))
     }
 
-    override def preHeader: Ref[PreHeader] = {
-      asRep[PreHeader](mkMethodCall(self,
+    override def preHeader: Ref[sigma.PreHeader] = {
+      asRep[sigma.PreHeader](mkMethodCall(self,
         ContextClass.getMethod("preHeader"),
         ArraySeq.empty,
-        true, false, element[PreHeader]))
+        true, false, element[sigma.PreHeader]))
     }
 
     override def minerPubKey: Ref[Coll[Byte]] = {
@@ -1865,7 +1428,7 @@ object Context extends EntityObject("Context") {
     }
 
     override def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(self,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
@@ -1873,7 +1436,7 @@ object Context extends EntityObject("Context") {
     }
 
     override def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(self,
         ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](inputId, varId, cT),
@@ -1949,18 +1512,18 @@ object Context extends EntityObject("Context") {
         true, true, element[AvlTree]))
     }
 
-    def headers: Ref[Coll[Header]] = {
-      asRep[Coll[Header]](mkMethodCall(source,
+    def headers: Ref[Coll[sigma.Header]] = {
+      asRep[Coll[sigma.Header]](mkMethodCall(source,
         ContextClass.getMethod("headers"),
         ArraySeq.empty,
-        true, true, element[Coll[Header]]))
+        true, true, element[Coll[sigma.Header]]))
     }
 
-    def preHeader: Ref[PreHeader] = {
-      asRep[PreHeader](mkMethodCall(source,
+    def preHeader: Ref[sigma.PreHeader] = {
+      asRep[sigma.PreHeader](mkMethodCall(source,
         ContextClass.getMethod("preHeader"),
         ArraySeq.empty,
-        true, true, element[PreHeader]))
+        true, true, element[sigma.PreHeader]))
     }
 
     def minerPubKey: Ref[Coll[Byte]] = {
@@ -1971,7 +1534,7 @@ object Context extends EntityObject("Context") {
     }
 
     def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(source,
         ContextClass.getMethod("getVar", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](id, cT),
@@ -1979,7 +1542,7 @@ object Context extends EntityObject("Context") {
     }
 
     def getVarFromInput[T](inputId: Ref[Short], varId: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = Evaluation.rtypeToSType(cT.sourceType)
+      val st = elemToSType(cT)
       asRep[WOption[T]](mkMethodCall(source,
         ContextClass.getMethod("getVarFromInput", classOf[Sym], classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](inputId, varId, cT),
@@ -2226,27 +1789,27 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](l, cT),
-        true, false, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, false, element[T](cT), Map(tT -> elemToSType(cT))))
     }
     override def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](bytes, cT),
-        true, false, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, false, cT, Map(tT -> elemToSType(cT))))
     }
 
     override def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
       asRep[WOption[T]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](value, cT),
-        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, false, element[WOption[T]], Map(tT -> elemToSType(cT))))
     }
 
     override def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
       asRep[WOption[T]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
         Array[AnyRef](cT),
-        true, false, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, false, element[WOption[T]], Map(tT -> elemToSType(cT))))
     }
 
 
@@ -2448,28 +2011,28 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
       asRep[T](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](bytes, cT),
-        true, true, element[T](cT), Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, true, element[T](cT), Map(tT -> elemToSType(cT))))
     }
 
     def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](bytes, cT),
-        true, true, cT, Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, true, cT, Map(tT -> elemToSType(cT))))
     }
 
     def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
       asRep[WOption[T]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](value, cT),
-        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, true, element[WOption[T]], Map(tT -> elemToSType(cT))))
     }
 
     def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
       asRep[WOption[T]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
         Array[AnyRef](cT),
-        true, true, element[WOption[T]], Map(tT -> Evaluation.rtypeToSType(cT.sourceType))))
+        true, true, element[WOption[T]], Map(tT -> elemToSType(cT))))
     }
 
 

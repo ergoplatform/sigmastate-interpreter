@@ -39,6 +39,7 @@ trait IRContext
   with Transforming
   with Thunks
   with Entities
+  with Elems
   with DefRewriting
   with CollsModule
   with SigmaDslModule

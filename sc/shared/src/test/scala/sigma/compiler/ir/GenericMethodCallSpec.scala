@@ -2,7 +2,7 @@ package sigma.compiler.ir
 
 import sigma.VersionContext
 import sigma.VersionContext.V6SoftForkVersion
-import sigma.ast.{ErgoTree, MethodCall, Value}
+import sigma.ast.{ErgoTree, MethodCall, SAvlTreeMethods, SGlobalMethods, SHeaderMethods, SUnsignedBigIntMethods, Value}
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigmastate.helpers.CompilerTestingCommons
@@ -30,6 +30,13 @@ class GenericMethodCallSpec extends CompilerTestingCommons {
       case _ => Seq.empty
     }
     walk(v)
+  }
+
+  property("methods without a dedicated node have no lowering row") {
+    Seq(SHeaderMethods.checkPowMethod, SAvlTreeMethods.digestMethod,
+        SUnsignedBigIntMethods.ModInverseMethod, SGlobalMethods.someMethod).foreach { m =>
+      withClue(m.opName) { IR.rowFor(IR.MethodCallee(m)) shouldBe None }
+    }
   }
 
   property("methods without a dedicated node compile to MethodCall and round-trip through bytes") {

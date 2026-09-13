@@ -159,7 +159,7 @@ class WOptionCls extends EntityObject("WOption") {
     extends EntityElem1[A, To, WOption](_eA, container[WOption]) {
     def eA = _eA
 
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[Option[_], To](liftableOption(_eA.liftable))
+    override lazy val liftable: Liftables.Liftable[_, To] = asLiftable[Option[_], To](liftableOption(_eA.liftable))
 
 
     override def buildTypeArgs = super.buildTypeArgs ++ TypeArgs("A" -> (eA -> scalan.core.Invariant))

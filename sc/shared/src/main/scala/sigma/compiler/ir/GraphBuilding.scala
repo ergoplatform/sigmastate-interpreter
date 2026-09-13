@@ -298,8 +298,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: BoxElem[_] => SBox
     case _: ContextElem[_] => SContext
     case _: SigmaDslBuilderElem[_] => SGlobal
-    case _: HeaderElem[_] => SHeader
-    case _: PreHeaderElem[_] => SPreHeader
+    case _: HeaderElem => SHeader
+    case _: PreHeaderElem => SPreHeader
     case _: SigmaPropElem[_] => SSigmaProp
     case ce: CollElem[_, _] => SCollection(elemToSType(ce.eItem))
     case fe: FuncElem[_, _] => SFunc(elemToSType(fe.eDom), elemToSType(fe.eRange))
@@ -963,7 +963,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         sigmaDslBuilder.decodePoint(bytes)
 
       // fallback rule for MethodCall, should be the last case in the list
-      case sigma.ast.MethodCall(obj, method, args, typeSubst) =>
+      case mc @ sigma.ast.MethodCall(obj, method, args, typeSubst) =>
         val objV = eval(obj)
         val argsV = args.map(eval)
         (objV, method.objType) match {
@@ -1151,58 +1151,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               tree.insertOrUpdate(operations, proof)
             case _ => throwError()
           }
-          case (ph: Ref[PreHeader]@unchecked, SPreHeaderMethods) => method.name match {
-            case SPreHeaderMethods.versionMethod.name =>
-              ph.version
-            case SPreHeaderMethods.parentIdMethod.name =>
-              ph.parentId
-            case SPreHeaderMethods.timestampMethod.name =>
-              ph.timestamp
-            case SPreHeaderMethods.nBitsMethod.name =>
-              ph.nBits
-            case SPreHeaderMethods.heightMethod.name =>
-              ph.height
-            case SPreHeaderMethods.minerPkMethod.name =>
-              ph.minerPk
-            case SPreHeaderMethods.votesMethod.name =>
-              ph.votes
-            case _ => throwError()
-          }
-          case (h: Ref[Header]@unchecked, SHeaderMethods) => method.name match {
-            case SHeaderMethods.idMethod.name =>
-              h.id
-            case SHeaderMethods.versionMethod.name =>
-              h.version
-            case SHeaderMethods.parentIdMethod.name =>
-              h.parentId
-            case SHeaderMethods.ADProofsRootMethod.name =>
-              h.ADProofsRoot
-            case SHeaderMethods.stateRootMethod.name =>
-              h.stateRoot
-            case SHeaderMethods.transactionsRootMethod.name =>
-              h.transactionsRoot
-            case SHeaderMethods.timestampMethod.name =>
-              h.timestamp
-            case SHeaderMethods.nBitsMethod.name =>
-              h.nBits
-            case SHeaderMethods.heightMethod.name =>
-              h.height
-            case SHeaderMethods.extensionRootMethod.name =>
-              h.extensionRoot
-            case SHeaderMethods.minerPkMethod.name =>
-              h.minerPk
-            case SHeaderMethods.powOnetimePkMethod.name =>
-              h.powOnetimePk
-            case SHeaderMethods.powNonceMethod.name =>
-              h.powNonce
-            case SHeaderMethods.powDistanceMethod.name =>
-              h.powDistance
-            case SHeaderMethods.votesMethod.name =>
-              h.votes
-            case SHeaderMethods.checkPowMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              h.checkPow
-            case _ => throwError()
-          }
+          // No staged wrapper: every method of these types is a plain call carrying its descriptor.
+          case (_, SPreHeaderMethods | SHeaderMethods) =>
+            buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
             case SGlobalMethods.groupGeneratorMethod.name =>
               g.groupGenerator

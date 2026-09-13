@@ -71,33 +71,6 @@ import scalan._
       def insertOrUpdate(operations: Ref[Coll[scala.Tuple2[Coll[Byte], Coll[Byte]]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]];
       def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]]
     };
-    trait PreHeader extends Def[PreHeader] {
-      def version: Ref[Byte];
-      def parentId: Ref[Coll[Byte]];
-      def timestamp: Ref[Long];
-      def nBits: Ref[Long];
-      def height: Ref[Int];
-      def minerPk: Ref[GroupElement];
-      def votes: Ref[Coll[Byte]]
-    };
-    trait Header extends Def[Header] {
-      def id: Ref[Coll[Byte]];
-      def version: Ref[Byte];
-      def parentId: Ref[Coll[Byte]];
-      def ADProofsRoot: Ref[Coll[Byte]];
-      def stateRoot: Ref[AvlTree];
-      def transactionsRoot: Ref[Coll[Byte]];
-      def timestamp: Ref[Long];
-      def nBits: Ref[Long];
-      def height: Ref[Int];
-      def extensionRoot: Ref[Coll[Byte]];
-      def minerPk: Ref[GroupElement];
-      def powOnetimePk: Ref[GroupElement];
-      def powNonce: Ref[Coll[Byte]];
-      def powDistance: Ref[BigInt];
-      def votes: Ref[Coll[Byte]]
-      def checkPow: Ref[Boolean]
-    };
     trait Context extends Def[Context] {
       def OUTPUTS: Ref[Coll[Box]];
       def INPUTS: Ref[Coll[Box]];
@@ -106,8 +79,8 @@ import scalan._
       def SELF: Ref[Box];
       def selfBoxIndex: Ref[Int];
       def LastBlockUtxoRootHash: Ref[AvlTree];
-      def headers: Ref[Coll[Header]];
-      def preHeader: Ref[PreHeader];
+      def headers: Ref[Coll[sigma.Header]];
+      def preHeader: Ref[sigma.PreHeader];
       def minerPubKey: Ref[Coll[Byte]];
       def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
       def getVarFromInput[T](inputId: Ref[Short], id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
@@ -149,8 +122,6 @@ import scalan._
     trait SigmaPropCompanion;
     trait BoxCompanion;
     trait AvlTreeCompanion;
-    trait PreHeaderCompanion;
-    trait HeaderCompanion;
     trait ContextCompanion;
     trait SigmaContractCompanion;
     trait SigmaDslBuilderCompanion

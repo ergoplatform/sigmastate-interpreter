@@ -396,7 +396,7 @@ class CollCls extends EntityObject("Coll") {
     extends EntityElem1[A, To, Coll](_eA, container[Coll]) {
     def eA = _eA
 
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SColl[_], To](liftableColl(_eA.liftable))
+    override lazy val liftable: Liftables.Liftable[_, To] = asLiftable[SColl[_], To](liftableColl(_eA.liftable))
 
 
     override def buildTypeArgs = super.buildTypeArgs ++ TypeArgs("A" -> (eA -> scalan.core.Invariant))
