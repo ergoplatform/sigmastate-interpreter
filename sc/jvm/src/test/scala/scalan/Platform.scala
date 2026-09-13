@@ -36,4 +36,25 @@ object Platform {
   /** On JVM it calls Thread.sleep. */
   def threadSleepOrNoOp(millis: Long): Unit =
     Thread.sleep(millis)
+
+  /** Records compiler output for cross-commit diffing. When the `SIGMA_TREE_SNAPSHOT_DIR`
+    * environment variable is set, appends one line
+    * `sha256(code) activatedVersion ergoTreeVersion hex(bytes)` to `<dir>/<suite>.txt`;
+    * does nothing otherwise. Use a fresh directory per run, then `diff -r` two runs.
+    */
+  def recordTreeSnapshot(suite: String, code: String, bytes: Array[Byte]): Unit = {
+    sys.env.get("SIGMA_TREE_SNAPSHOT_DIR").foreach { dir =>
+      val digest = java.security.MessageDigest.getInstance("SHA-256")
+      val key = digest.digest(code.getBytes("UTF-8")).map("%02x".format(_)).mkString
+      val vc = sigma.VersionContext.current
+      val hex = bytes.map("%02x".format(_)).mkString
+      val line = s"$key ${vc.activatedVersion} ${vc.ergoTreeVersion} $hex\n"
+      Platform.synchronized {
+        val d = new java.io.File(dir)
+        d.mkdirs()
+        val w = new java.io.FileWriter(new java.io.File(d, s"$suite.txt"), true)
+        try w.write(line) finally w.close()
+      }
+    }
+  }
 }

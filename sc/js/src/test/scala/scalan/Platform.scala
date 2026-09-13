@@ -16,4 +16,8 @@ object Platform {
   /** On JS it is no-operation. */
   def threadSleepOrNoOp(@unused millis: Long): Unit = {
   }
+
+  /** On JS it is no-operation. The JVM version appends compiler output to a snapshot file. */
+  def recordTreeSnapshot(@unused suite: String, @unused code: String, @unused bytes: Array[Byte]): Unit = {
+  }
 }
