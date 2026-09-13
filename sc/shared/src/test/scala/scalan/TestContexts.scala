@@ -6,6 +6,11 @@ import sigma.{BaseNestedTests, BaseShouldTests, BaseTests, TestUtils}
 
 trait TestContexts extends TestUtils {
 
+  /** On JS the staged wrapper classes resolve through `GraphIRReflection`, which must be
+    * initialised before any `IRContext` is constructed. `SigmaCompiler` forces it too, but a
+    * suite may build its context first, so force it here for every suite that mixes this in. */
+  private val forceGraphIRReflection = GraphIRReflection
+
   trait TestContextApi { ctx: IRContext =>
     def invokeAll: Boolean
     def isInvokeEnabled(d: Def[_], m: RMethod): Boolean
