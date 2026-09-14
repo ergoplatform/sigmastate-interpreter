@@ -38,7 +38,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
-  private val ContextM = ContextMethods
   private val SigmaM = SigmaPropMethods
   private val CollM = CollMethods
   private val CBM = CollBuilderMethods
@@ -136,12 +135,17 @@ trait TreeBuilding extends Base { IR: IRContext =>
   /** Recognizes context property in the graph IR and returns the corresponding
     * ErgoTree node.
     */
+  private val HeightCall  = CallPattern(SContextMethods.heightMethod)
+  private val InputsCall  = CallPattern(SContextMethods.inputsMethod)
+  private val OutputsCall = CallPattern(SContextMethods.outputsMethod)
+  private val SelfCall    = CallPattern(SContextMethods.selfMethod)
+
   object IsContextProperty {
     def unapply(d: Def[_]): Option[SValue] = d match {
-      case ContextM.HEIGHT(_) => Some(Height)
-      case ContextM.INPUTS(_) => Some(Inputs)
-      case ContextM.OUTPUTS(_) => Some(Outputs)
-      case ContextM.SELF(_) => Some(Self)
+      case HeightCall(_, _) => Some(Height)
+      case InputsCall(_, _) => Some(Inputs)
+      case OutputsCall(_, _) => Some(Outputs)
+      case SelfCall(_, _) => Some(Self)
       case _ => None
     }
   }
@@ -195,7 +199,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
     * It is mutually recursive with processAstGraph, so it's part of the recursive
     * algorithms required by buildTree method.
     */
-  private def buildValue(ctx: Ref[Context],
+  private def buildValue(ctx: Ref[sigma.Context],
                  mainG: PGraph,
                  env: DefEnv,
                  s: Sym,
@@ -306,10 +310,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         mkXor(recurse(colSym1), recurse(colSym2))
       case SDBM.xor(_, colSym1, colSym2) =>
         mkXor(recurse(colSym1), recurse(colSym2))
-
-      case ContextM.getVar(_, Def(Const(id)), eVar) =>
-        val tpe = elemToSType(eVar)
-        mkGetVar(id, tpe)
 
       case SDBM.deserializeTo(g, bytes, eVar) =>
         val tpe = elemToSType(eVar)
@@ -522,7 +522,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
     * It is mutually recursive with buildValue, so it's part of the recursive
     * algorithms required by buildTree method.
     */
-  private def processAstGraph(ctx: Ref[Context],
+  private def processAstGraph(ctx: Ref[sigma.Context],
                               mainG: PGraph,
                               env: DefEnv,
                               subG: AstGraph,
@@ -570,11 +570,11 @@ trait TreeBuilding extends Base { IR: IRContext =>
     *                            segregated and a placeholder is inserted in the resulting expression.
     * @return expression of ErgoTree which corresponds to the function `f`
     */
-  def buildTree[T <: SType](f: Ref[Context => Any],
+  def buildTree[T <: SType](f: Ref[sigma.Context => Any],
                             constantsProcessing: Option[ConstantStore] = None): Value[T] = {
     val Def(Lambda(lam,_,_,_)) = f
     val mainG = new PGraph(lam.y)
-    val block = processAstGraph(asRep[Context](lam.x), mainG, Map.empty, mainG, 0, constantsProcessing)
+    val block = processAstGraph(asRep[sigma.Context](lam.x), mainG, Map.empty, mainG, 0, constantsProcessing)
     block.asValue[T]
   }
 }

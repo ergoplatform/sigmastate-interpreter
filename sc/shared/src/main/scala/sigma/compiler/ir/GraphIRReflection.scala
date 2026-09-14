@@ -274,51 +274,6 @@ object GraphIRReflection {
       )
     )
   }
-  {
-    val clazz = classOf[SigmaDsl#Context]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "LastBlockUtxoRootHash", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].LastBlockUtxoRootHash
-        },
-        mkMethod(clazz, "dataInputs", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].dataInputs
-        },
-        mkMethod(clazz, "selfBoxIndex", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].selfBoxIndex
-        },
-        mkMethod(clazz, "INPUTS", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].INPUTS
-        },
-        mkMethod(clazz, "minerPubKey", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].minerPubKey
-        },
-        mkMethod(clazz, "HEIGHT", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].HEIGHT
-        },
-        mkMethod(clazz, "OUTPUTS", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].OUTPUTS
-        },
-        mkMethod(clazz, "SELF", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].SELF
-        },
-        mkMethod(clazz, "preHeader", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].preHeader
-        },
-        mkMethod(clazz, "getVar", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].getVar(args(0).asInstanceOf[ctx.Ref[Byte]])(args(1).asInstanceOf[ctx.Elem[_]])
-        },
-        mkMethod(clazz, "getVarFromInput", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].getVarFromInput(args(0).asInstanceOf[ctx.Ref[Short]], args(1).asInstanceOf[ctx.Ref[Byte]])(args(2).asInstanceOf[ctx.Elem[_]])
-        },
-        mkMethod(clazz, "headers", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Context].headers
-        }
-      )
-    )
-  }
-  
   { val clazz = classOf[SigmaDsl#GroupElement]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
     registerClassEntry(clazz,

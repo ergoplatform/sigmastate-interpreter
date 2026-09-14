@@ -43,20 +43,6 @@ import scalan._
       def &&(other: Ref[SigmaProp]): Ref[SigmaProp];
       def ||(other: Ref[SigmaProp]): Ref[SigmaProp];
     };
-    trait Context extends Def[Context] {
-      def OUTPUTS: Ref[Coll[sigma.Box]];
-      def INPUTS: Ref[Coll[sigma.Box]];
-      def dataInputs: Ref[Coll[sigma.Box]];
-      def HEIGHT: Ref[Int];
-      def SELF: Ref[sigma.Box];
-      def selfBoxIndex: Ref[Int];
-      def LastBlockUtxoRootHash: Ref[sigma.AvlTree];
-      def headers: Ref[Coll[sigma.Header]];
-      def preHeader: Ref[sigma.PreHeader];
-      def minerPubKey: Ref[Coll[Byte]];
-      def getVar[T](id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
-      def getVarFromInput[T](inputId: Ref[Short], id: Ref[Byte])(implicit cT: Elem[T]): Ref[WOption[T]];
-    };
     trait SigmaDslBuilder extends Def[SigmaDslBuilder] {
       def Colls: Ref[CollBuilder];
       def atLeast(bound: Ref[Int], props: Ref[Coll[SigmaProp]]): Ref[SigmaProp];
@@ -92,7 +78,6 @@ import scalan._
     trait BigIntCompanion;
     trait GroupElementCompanion;
     trait SigmaPropCompanion;
-    trait ContextCompanion;
     trait SigmaContractCompanion;
     trait SigmaDslBuilderCompanion
   }

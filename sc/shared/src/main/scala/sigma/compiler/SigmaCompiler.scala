@@ -44,7 +44,7 @@ case class CompilerSettings(
 case class CompilerResult[Ctx <: IRContext](
   env: ScriptEnv,
   code: String,
-  compiledGraph: Ctx#Ref[Ctx#Context => Any],
+  compiledGraph: Ctx#Ref[sigma.Context => Any],
   /** Tree obtained from graph created by GraphBuilding */
   buildTree: SValue
 )
@@ -92,7 +92,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
   /** Compiles the given ErgoScript source code. */
   def compile(env: ScriptEnv, code: String)(implicit IR: IRContext): CompilerResult[IR.type] = {
     val typed = typecheck(env, code)
-    val res = compileTyped(env, typed).copy(code = code)
+    val res = compileTyped(env, typed).copy[IR.type](code = code)
     res
   }
 

@@ -7,6 +7,11 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object Context {
+    class ContextElem extends EntityElem[sigma.Context]
+    implicit lazy val contextElement: Elem[sigma.Context] = new ContextElem
+  }
+
   object Box {
     class BoxElem extends EntityElem[sigma.Box]
     implicit lazy val boxElement: Elem[sigma.Box] = new BoxElem

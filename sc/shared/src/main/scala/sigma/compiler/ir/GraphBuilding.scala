@@ -296,7 +296,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: AvlTreeElem => SAvlTree
     case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
     case _: BoxElem => SBox
-    case _: ContextElem[_] => SContext
+    case _: ContextElem => SContext
     case _: SigmaDslBuilderElem[_] => SGlobal
     case _: HeaderElem => SHeader
     case _: PreHeaderElem => SPreHeader
@@ -385,9 +385,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * Context to some type T.
     * @param env contains values for each named constant used
     */
-  def buildGraph[T](env: ScriptEnv, typed: SValue): Ref[Context => T] = {
+  def buildGraph[T](env: ScriptEnv, typed: SValue): Ref[sigma.Context => T] = {
     val envVals = env.map { case (name, v) => (name: Any, builder.liftAny(v).get) }
-    fun(removeIsProven({ ctxC: Ref[Context] =>
+    fun(removeIsProven({ ctxC: Ref[sigma.Context] =>
       val env = envVals.map { case (k, v) => k -> buildNode(ctxC, Map.empty, v) }.toMap
       val res = asRep[T](buildNode(ctxC, env, typed))
       res
@@ -421,7 +421,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
                           typeSubst: Map[STypeVar, SType] = Map.empty): Ref[Any] =
     asRep[Any](mkMethodCall(objV, MethodCallee(method), argsV, typeSubst, stypeToElem(node.tpe)))
 
-  protected def buildNode[T <: SType](ctx: Ref[Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
+  protected def buildNode[T <: SType](ctx: Ref[sigma.Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
     class InColl[T: Elem] {
@@ -478,12 +478,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         constantPlaceholder(id, stypeToElem(tpe))
       case sigma.ast.Context => ctx
       case Global => sigmaDslBuilder
-      case Height => ctx.HEIGHT
-      case Inputs => ctx.INPUTS
-      case Outputs => ctx.OUTPUTS
-      case Self => ctx.SELF
-      case LastBlockUtxoRootHash => ctx.LastBlockUtxoRootHash
-      case MinerPubkey => ctx.minerPubKey
+      case Height => buildCall(node, SContextMethods.heightMethod, asRep[Any](ctx), Seq())
+      case Inputs => buildCall(node, SContextMethods.inputsMethod, asRep[Any](ctx), Seq())
+      case Outputs => buildCall(node, SContextMethods.outputsMethod, asRep[Any](ctx), Seq())
+      case Self => buildCall(node, SContextMethods.selfMethod, asRep[Any](ctx), Seq())
+      case LastBlockUtxoRootHash => buildCall(node, SContextMethods.lastBlockUtxoRootHashMethod, asRep[Any](ctx), Seq())
+      case MinerPubkey => buildCall(node, SContextMethods.minerPubKeyMethod, asRep[Any](ctx), Seq())
 
       case Ident(n, _) =>
         env.getOrElse(n, !!!(s"Variable $n not found in environment $env"))
@@ -544,8 +544,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         eval(mkByIndex(col.asCollection[SType], index.asValue[SInt.type], None))
 
       case GetVar(id, optTpe) =>
-        val e = stypeToElem(optTpe.elemType)
-        ctx.getVar(id)(e)
+        val idV: Ref[Byte] = id
+        buildCall(node, SContextMethods.getVarV5Method, asRep[Any](ctx), Seq(asRep[Any](idV)), Map(tT -> optTpe.elemType))
 
       case d: DeserializeContext[T] =>
         val e = stypeToElem(d.tpe)
@@ -1032,34 +1032,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ge.expUnsigned(k)
             case _ => throwError()
           }
-          case (ctx: Ref[Context]@unchecked, SContextMethods) => method.name match {
-            case SContextMethods.dataInputsMethod.name =>
-              ctx.dataInputs
-            case SContextMethods.headersMethod.name =>
-              ctx.headers
-            case SContextMethods.preHeaderMethod.name =>
-              ctx.preHeader
-            case SContextMethods.inputsMethod.name =>
-              ctx.INPUTS
-            case SContextMethods.outputsMethod.name =>
-              ctx.OUTPUTS
-            case SContextMethods.heightMethod.name =>
-              ctx.HEIGHT
-            case SContextMethods.selfMethod.name =>
-              ctx.SELF
-            case SContextMethods.selfBoxIndexMethod.name =>
-              ctx.selfBoxIndex
-            case SContextMethods.lastBlockUtxoRootHashMethod.name =>
-              ctx.LastBlockUtxoRootHash
-            case SContextMethods.minerPubKeyMethod.name =>
-              ctx.minerPubKey
-            case SContextMethods.getVarFromInputMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Short](argsV(0))
-              val c2 = asRep[Byte](argsV(1))
-              val c3 = stypeToElem(typeSubst.apply(tT))
-              ctx.getVarFromInput(c1, c2)(c3)
-            case _ => throwError()
-          }
+          // getVar always arrives lowered to GetVar; a getVar MethodCall never reached the IR, keep it so
+          case (_, SContextMethods) if method.methodId != SContextMethods.getVarV5Method.methodId =>
+            buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (_, SBoxMethods | SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
