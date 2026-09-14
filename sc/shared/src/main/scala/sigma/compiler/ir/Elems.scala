@@ -7,6 +7,22 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object WOption {
+    /** Descriptor of `Option[A]`; the class name keeps `Elem.name` as `WOption[A]`. */
+    class WOptionElem[A](val eItem: Elem[A]) extends EntityElem[Option[A]] {
+      override def getName(f: TypeDesc => String) = s"$entityName[${f(eItem)}]"
+      override def buildTypeArgs = TypeArgs("A" -> (eItem -> scalan.core.Invariant))
+      override def canEqual(other: Any) = other.isInstanceOf[WOptionElem[_]]
+      override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
+        case other: WOptionElem[_] => other.eItem == eItem
+        case _ => false
+      })
+      override def hashCode = eItem.hashCode * 41 + 7
+    }
+    implicit final def wOptionElement[A](implicit eA: Elem[A]): Elem[Option[A]] =
+      cachedElem(classOf[WOptionElem[_]], eA)(new WOptionElem[A](eA))
+  }
+
   object Context {
     class ContextElem extends EntityElem[sigma.Context]
     implicit lazy val contextElement: Elem[sigma.Context] = new ContextElem

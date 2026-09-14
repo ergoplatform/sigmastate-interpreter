@@ -17,6 +17,10 @@ trait Lowering { IR: IRContext =>
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // Option
+    MethodCallee(SOptionMethods.GetMethod)       -> ((_, opt, _) => builder.mkOptionGet(opt.asValue[SOption[SType]])),
+    MethodCallee(SOptionMethods.IsDefinedMethod) -> ((_, opt, _) => builder.mkOptionIsDefined(opt.asValue[SOption[SType]])),
+    MethodCallee(SOptionMethods.GetOrElseMethod) -> ((_, opt, args) => builder.mkOptionGetOrElse(opt.asValue[SOption[SType]], args(0))),
     // Context
     MethodCallee(SContextMethods.getVarV5Method) -> { (mc, ctx, args) =>
       val id = mc.args(0).asInstanceOf[Ref[Byte]]

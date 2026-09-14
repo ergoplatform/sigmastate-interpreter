@@ -77,7 +77,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   }
 
   type RColl[T] = Ref[Coll[T]]
-  type ROption[T] = Ref[WOption[T]]
+  type ROption[T] = Ref[Option[T]]
 
   private val CBM      = CollBuilderMethods
   private val SigmaM   = SigmaPropMethods
@@ -294,7 +294,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: UnsignedBigIntElem[_] => SUnsignedBigInt
     case _: GroupElementElem[_] => SGroupElement
     case _: AvlTreeElem => SAvlTree
-    case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
+    case oe: WOptionElem[_] => SOption(elemToSType(oe.eItem))
     case _: BoxElem => SBox
     case _: ContextElem => SContext
     case _: SigmaDslBuilderElem[_] => SGlobal
@@ -612,17 +612,14 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val xV = asRep[Long](x)
         sigmaDslBuilder.longToByteArray(xV)
 
-      // opt.get
-      case OptionGet(In(opt: ROption[_]@unchecked)) =>
-        opt.get
+      case OptionGet(In(opt)) =>
+        buildCall(node, SOptionMethods.GetMethod, opt, Seq())
 
-      // opt.isDefined
-      case OptionIsDefined(In(opt: ROption[_]@unchecked)) =>
-        opt.isDefined
+      case OptionIsDefined(In(opt)) =>
+        buildCall(node, SOptionMethods.IsDefinedMethod, opt, Seq())
 
-      // opt.getOrElse(default)
-      case OptionGetOrElse(In(opt: ROption[a]@unchecked), In(default)) =>
-        opt.getOrElse(asRep[a](default))
+      case OptionGetOrElse(In(opt), In(default)) =>
+        buildCall(node, SOptionMethods.GetOrElseMethod, opt, Seq(asRep[Any](Thunk(default))))
 
       // tup._1 or tup._2
       case SelectField(In(tup), fieldIndex) =>
@@ -1002,20 +999,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               xs.get(idx)
             case _ => throwError()
           }
-          case (opt: ROption[t]@unchecked, SOptionMethods) => method.name match {
-            case SOptionMethods.GetMethod.name =>
-              opt.get
-            case SOptionMethods.GetOrElseMethod.name =>
-              val defaultTh = asRep[t](argsV(0))
-              opt.getOrElse(Thunk(defaultTh))
-            case SOptionMethods.IsDefinedMethod.name =>
-              opt.isDefined
-            case SOptionMethods.MapMethod.name =>
-              opt.map(asRep[t => Any](argsV(0)))
-            case SOptionMethods.FilterMethod.name =>
-              opt.filter(asRep[t => Boolean](argsV(0)))
-            case _ => throwError()
-          }
+          case (_, SOptionMethods) =>
+            // getOrElse takes its default lazily: the argument is wrapped into a thunk
+            val args1 =
+              if (method.methodId == SOptionMethods.GetOrElseMethod.methodId) Seq(asRep[Any](Thunk(argsV(0))))
+              else argsV.map(asRep[Any](_))
+            buildMethodCall(mc, asRep[Any](objV), args1)
           case (ge: Ref[GroupElement]@unchecked, SGroupElementMethods) => method.name match {
             case SGroupElementMethods.GetEncodedMethod.name =>
               ge.getEncoded

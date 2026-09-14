@@ -3,7 +3,6 @@ package sigma.compiler.ir
 import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
 import sigma.data.Nullable
-import sigma.compiler.ir.wrappers.scala.WOptionsModule
 import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule}
 
 /** Aggregate cake with all inter-dependent modules assembled together.
@@ -45,8 +44,7 @@ trait IRContext
   with SigmaDslModule
   with Lowering
   with TreeBuilding
-  with GraphBuilding
-  with WOptionsModule {
+  with GraphBuilding {
 
   import Coll._
   import CollBuilder._
@@ -63,7 +61,6 @@ trait IRContext
 
   val CM = CollMethods
   private val CBM = CollBuilderMethods
-  private val WOptionM = WOptionMethods
 
   def colBuilder: Ref[CollBuilder]
 
@@ -123,11 +120,6 @@ trait IRContext
 
         case _ => super.rewriteDef(d)
       }
-    }
-
-    case WOptionM.getOrElse(opt, _) => opt.node match {
-      case WOptionConst(Some(x), lA) => lA.lift(x)
-      case _ => super.rewriteDef(d)
     }
 
     case _ => super.rewriteDef(d)

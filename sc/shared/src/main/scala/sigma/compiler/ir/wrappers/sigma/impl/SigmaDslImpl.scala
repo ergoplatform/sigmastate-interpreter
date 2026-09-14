@@ -963,7 +963,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[GroupElement]))
     }
 
-    override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree] = {
+    override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
       asRep[sigma.AvlTree](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
@@ -997,18 +997,18 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, cT, Map(tT -> elemToSType(cT))))
     }
 
-    override def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      asRep[WOption[T]](mkMethodCall(self,
+    override def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[Option[T]] = {
+      asRep[Option[T]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](value, cT),
-        true, false, element[WOption[T]], Map(tT -> elemToSType(cT))))
+        true, false, element[Option[T]], Map(tT -> elemToSType(cT))))
     }
 
-    override def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      asRep[WOption[T]](mkMethodCall(self,
+    override def none[T]()(implicit cT: Elem[T]): Ref[Option[T]] = {
+      asRep[Option[T]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
         Array[AnyRef](cT),
-        true, false, element[WOption[T]], Map(tT -> elemToSType(cT))))
+        true, false, element[Option[T]], Map(tT -> elemToSType(cT))))
     }
 
 
@@ -1178,7 +1178,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[GroupElement]))
     }
 
-    def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree] = {
+    def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
       asRep[sigma.AvlTree](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
@@ -1220,18 +1220,18 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, cT, Map(tT -> elemToSType(cT))))
     }
 
-    def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      asRep[WOption[T]](mkMethodCall(source,
+    def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[Option[T]] = {
+      asRep[Option[T]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("some", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](value, cT),
-        true, true, element[WOption[T]], Map(tT -> elemToSType(cT))))
+        true, true, element[Option[T]], Map(tT -> elemToSType(cT))))
     }
 
-    def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      asRep[WOption[T]](mkMethodCall(source,
+    def none[T]()(implicit cT: Elem[T]): Ref[Option[T]] = {
+      asRep[Option[T]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("none", classOf[Elem[T]]),
         Array[AnyRef](cT),
-        true, true, element[WOption[T]], Map(tT -> elemToSType(cT))))
+        true, true, element[Option[T]], Map(tT -> elemToSType(cT))))
     }
 
 
@@ -1460,13 +1460,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */
     object avlTree {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "avlTree" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2), args(3))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[WOption[Int]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])] = unapply(exp.node)
     }
 
     object xor {

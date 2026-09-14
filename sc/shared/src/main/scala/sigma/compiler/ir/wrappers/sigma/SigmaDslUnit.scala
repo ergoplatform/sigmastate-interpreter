@@ -63,7 +63,7 @@ import scalan._
       def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]];
       def decodePoint(encoded: Ref[Coll[Byte]]): Ref[GroupElement];
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
-      def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree];
+      def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
       def encodeNbits(bi: Ref[BigInt]): Ref[Long]
       def decodeNbits(l: Ref[Long]): Ref[BigInt]
@@ -71,8 +71,8 @@ import scalan._
       def serialize[T](value: Ref[T]): Ref[Coll[Byte]]
       def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
       def deserializeTo[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T]
-      def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[WOption[T]]
-      def none[T]()(implicit cT: Elem[T]): Ref[WOption[T]]
+      def some[T](value: Ref[T])(implicit cT: Elem[T]): Ref[Option[T]]
+      def none[T]()(implicit cT: Elem[T]): Ref[Option[T]]
     };
     trait CostModelCompanion;
     trait BigIntCompanion;

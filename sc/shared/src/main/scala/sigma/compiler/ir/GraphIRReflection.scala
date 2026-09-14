@@ -22,29 +22,6 @@ object GraphIRReflection {
   /** Forces initialization of reflection data. */
   val reflection = ReflectionData
 
-  { val clazz = classOf[sigma.compiler.ir.wrappers.scala.WOptions#WOption[_]]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "filter", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.WOption[Any]].filter(args(0).asInstanceOf[ctx.Ref[Any => Boolean]])
-        },
-        mkMethod(clazz, "get", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.WOption[_]].get
-        },
-        mkMethod(clazz, "isDefined", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.WOption[_]].isDefined
-        },
-        mkMethod(clazz, "getOrElse", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.WOption[Any]].getOrElse(args(0).asInstanceOf[ctx.Ref[ctx.Thunk[Any]]])
-        },
-        mkMethod(clazz, "map", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.WOption[Any]].map(args(0).asInstanceOf[ctx.Ref[Any => Any]])
-        }
-      )
-    )
-  }
-
   registerClassEntry(classOf[TypeDescs#FuncElem[_,_]],
     constructors = Array(
       mkConstructor(Array(classOf[IRContext], classOf[TypeDescs#Elem[_]], classOf[TypeDescs#Elem[_]])) { args =>
@@ -392,17 +369,6 @@ object GraphIRReflection {
     )
   }
 
-  { val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    val clazz = classOf[ctx.WOption.WOptionElem[_, _]]
-    registerClassEntry(clazz,
-      constructors = Array(
-        mkConstructor(Array(classOf[ctx.WOptionCls], classOf[TypeDescs#Elem[_]])) { args =>
-          val entityObj = args(0).asInstanceOf[ctx.WOptionCls]
-          new entityObj.WOptionElem()(args(1).asInstanceOf[ctx.Elem[_]])
-        }
-      )
-    )
-  }
 
   { val ctx = null.asInstanceOf[IRContext] // ok! type level only
     val clazz = classOf[ctx.Coll.CollElem[_, _]]

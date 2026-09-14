@@ -106,6 +106,22 @@ abstract class TypeDescs extends Base { self: IRContext =>
     final def unapply[T, E <: Elem[T]](s: Ref[T]): Nullable[E] = Nullable(s.elem.asInstanceOf[E])
   }
 
+  /** Instances of parametrised Elem classes, one per (class, args), so equal descriptors are
+    * also the same object. Non-reflective replacement for `cachedElemByClass`.
+    */
+  private val elemInstances = AVHashMap[(Class[_], Seq[AnyRef]), Elem[_]](100)
+
+  final def cachedElem[E <: Elem[_]](clazz: Class[_], args: AnyRef*)(construct: => E): E = {
+    val key = (clazz, args)
+    elemInstances.get(key) match {
+      case Nullable(e) => e.asInstanceOf[E]
+      case _ =>
+        val e = construct
+        elemInstances.put(key, e)
+        e
+    }
+  }
+
   /** Get first (and the only) constructor of the `clazz`. */
   private[compiler] final def getConstructor(clazz: RClass[_]): RConstructor[_] = {
     val constructors = clazz.getConstructors()

@@ -42,7 +42,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   private val CollM = CollMethods
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
-  private val OM = WOptionMethods
   private val BIM = BigIntMethods
   private val GM = GroupElementMethods
 
@@ -390,12 +389,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val specMethod = method.withConcreteTypes(typeSubst + (SCollection.tIV -> colTpe.elemType))
         builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
 
-      case OM.get(In(optionSym)) =>
-        mkOptionGet(optionSym.asValue[SOption[SType]])
-      case OM.getOrElse(In(optionSym), In(defVal)) =>
-        mkOptionGetOrElse(optionSym.asValue[SOption[SType]], defVal)
-      case OM.isDefined(In(optionSym)) =>
-        mkOptionIsDefined(optionSym.asValue[SOption[SType]])
 
       case SigmaM.and_sigma_&&(In(p1), In(p2)) =>
         SigmaAnd(Seq(p1.asSigmaProp, p2.asSigmaProp))

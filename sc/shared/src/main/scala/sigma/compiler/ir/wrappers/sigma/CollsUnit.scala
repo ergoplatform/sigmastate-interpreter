@@ -14,7 +14,7 @@ import sigma.compiler.ir.{Base, IRContext}
       implicit def eA: Elem[A];
       def length: Ref[Int];
       def apply(i: Ref[Int]): Ref[A];
-      def get(index: Ref[Int]): Ref[WOption[A]];
+      def get(index: Ref[Int]): Ref[Option[A]];
       def getOrElse(index: Ref[Int], default: Ref[A]): Ref[A];
       def map[B](f: Ref[scala.Function1[A, B]]): Ref[Coll[B]];
       def zip[B](ys: Ref[Coll[B]]): Ref[Coll[scala.Tuple2[A, B]]];

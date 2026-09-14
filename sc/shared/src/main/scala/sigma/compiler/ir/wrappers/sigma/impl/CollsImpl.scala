@@ -60,11 +60,11 @@ class CollCls extends EntityObject("Coll") {
         true, false, element[A]))
     }
 
-    override def get(index: Ref[Int]): Ref[WOption[A]] = {
-      asRep[WOption[A]](mkMethodCall(self,
+    override def get(index: Ref[Int]): Ref[Option[A]] = {
+      asRep[Option[A]](mkMethodCall(self,
         CollClass.getMethod("get", classOf[Sym]),
         Array[AnyRef](index),
-        true, false, element[WOption[A]]))
+        true, false, element[Option[A]]))
     }
 
 
@@ -236,11 +236,11 @@ class CollCls extends EntityObject("Coll") {
         true, true, element[A]))
     }
 
-    def get(index: Ref[Int]): Ref[WOption[A]] = {
-      asRep[WOption[A]](mkMethodCall(source,
+    def get(index: Ref[Int]): Ref[Option[A]] = {
+      asRep[Option[A]](mkMethodCall(source,
         CollClass.getMethod("get", classOf[Sym]),
         Array[AnyRef](index),
-        true, true, element[WOption[A]]))
+        true, true, element[Option[A]]))
     }
 
     def map[B](f: Ref[A => B]): Ref[Coll[B]] = {
