@@ -7,6 +7,11 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object AvlTree {
+    class AvlTreeElem extends EntityElem[sigma.AvlTree]
+    implicit lazy val avlTreeElement: Elem[sigma.AvlTree] = new AvlTreeElem
+  }
+
   object Header {
     class HeaderElem extends EntityElem[sigma.Header]
     implicit lazy val headerElement: Elem[sigma.Header] = new HeaderElem

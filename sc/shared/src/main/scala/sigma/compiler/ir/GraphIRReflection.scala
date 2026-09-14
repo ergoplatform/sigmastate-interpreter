@@ -274,69 +274,6 @@ object GraphIRReflection {
       )
     )
   }
-  {
-    val clazz = classOf[SigmaDsl#AvlTree]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "updateOperations", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].updateOperations(args(0).asInstanceOf[ctx.Ref[Byte]])
-        },
-        mkMethod(clazz, "getMany", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].getMany(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.Coll[Byte]]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "keyLength", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].keyLength
-        },
-        mkMethod(clazz, "enabledOperations", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].enabledOperations
-        },
-        mkMethod(clazz, "updateDigest", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].updateDigest(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "digest", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].digest
-        },
-        mkMethod(clazz, "insert", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].insert(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "update", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].update(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "insertOrUpdate", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].insertOrUpdate(args(0).asInstanceOf[ctx.Ref[ctx.Coll[(ctx.Coll[Byte], ctx.Coll[Byte])]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "isRemoveAllowed", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].isRemoveAllowed
-        },
-        mkMethod(clazz, "valueLengthOpt", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].valueLengthOpt
-        },
-        mkMethod(clazz, "get", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].get(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "remove", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].remove(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.Coll[Byte]]]], args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "contains", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.AvlTree].contains(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
-        },
-        mkMethod(clazz, "isUpdateAllowed", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].isUpdateAllowed
-        },
-        mkMethod(clazz, "isInsertAllowed", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.AvlTree].isInsertAllowed
-        }
-      )
-    )
-  }
-
   { val clazz = classOf[SigmaDsl#Box]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
     registerClassEntry(clazz,

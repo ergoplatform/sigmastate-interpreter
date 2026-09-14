@@ -293,7 +293,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: BigIntElem[_] => SBigInt
     case _: UnsignedBigIntElem[_] => SUnsignedBigInt
     case _: GroupElementElem[_] => SGroupElement
-    case _: AvlTreeElem[_] => SAvlTree
+    case _: AvlTreeElem => SAvlTree
     case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
     case _: BoxElem[_] => SBox
     case _: ContextElem[_] => SContext
@@ -458,7 +458,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         case box: SBox =>
           DslConst[SBox, Box](box)
         case tree: sigma.AvlTree =>
-          DslConst[sigma.AvlTree, AvlTree](tree)
+          DslConst[sigma.AvlTree, sigma.AvlTree](tree)
         case s: String =>
           val resV = toRep(s)(stypeToElem(tpe).asInstanceOf[Elem[String]])
           resV
@@ -1064,59 +1064,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ctx.getVarFromInput(c1, c2)(c3)
             case _ => throwError()
           }
-          case (tree: Ref[AvlTree]@unchecked, SAvlTreeMethods) => method.name match {
-            case SAvlTreeMethods.digestMethod.name =>
-              tree.digest
-            case SAvlTreeMethods.keyLengthMethod.name =>
-              tree.keyLength
-            case SAvlTreeMethods.valueLengthOptMethod.name =>
-              tree.valueLengthOpt
-            case SAvlTreeMethods.enabledOperationsMethod.name =>
-              tree.enabledOperations
-            case SAvlTreeMethods.isInsertAllowedMethod.name =>
-              tree.isInsertAllowed
-            case SAvlTreeMethods.isRemoveAllowedMethod.name =>
-              tree.isRemoveAllowed
-            case SAvlTreeMethods.isUpdateAllowedMethod.name =>
-              tree.isUpdateAllowed
-            case SAvlTreeMethods.updateDigestMethod.name =>
-              val digest = asRep[Coll[Byte]](argsV(0))
-              tree.updateDigest(digest)
-            case SAvlTreeMethods.updateOperationsMethod.name =>
-              val operations = asRep[Byte](argsV(0))
-              tree.updateOperations(operations)
-            case SAvlTreeMethods.getMethod.name =>
-              val key = asRep[Coll[Byte]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.get(key, proof)
-            case SAvlTreeMethods.getManyMethod.name =>
-              val keys = asRep[Coll[Coll[Byte]]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.getMany(keys, proof)
-            case SAvlTreeMethods.containsMethod.name =>
-              val key = asRep[Coll[Byte]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.contains(key, proof)
-            case SAvlTreeMethods.insertMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.insert(operations, proof)
-            case SAvlTreeMethods.removeMethod.name =>
-              val operations = asRep[Coll[Coll[Byte]]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.remove(operations, proof)
-            case SAvlTreeMethods.updateMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.update(operations, proof)
-            case SAvlTreeMethods.insertOrUpdateMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.insertOrUpdate(operations, proof)
-            case _ => throwError()
-          }
-          // No staged wrapper: every method of these types is a plain call carrying its descriptor.
-          case (_, SPreHeaderMethods | SHeaderMethods) =>
+          case (_, SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
             case SGlobalMethods.groupGeneratorMethod.name =>

@@ -53,24 +53,6 @@ import scalan._
       def tokens: Ref[Coll[scala.Tuple2[Coll[Byte], Long]]];
       def creationInfo: Ref[scala.Tuple2[Int, Coll[Byte]]];
     };
-    trait AvlTree extends Def[AvlTree] {
-      def digest: Ref[Coll[Byte]];
-      def enabledOperations: Ref[Byte];
-      def keyLength: Ref[Int];
-      def valueLengthOpt: Ref[WOption[Int]];
-      def isInsertAllowed: Ref[Boolean];
-      def isUpdateAllowed: Ref[Boolean];
-      def isRemoveAllowed: Ref[Boolean];
-      def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[AvlTree];
-      def updateOperations(newOperations: Ref[Byte]): Ref[AvlTree];
-      def contains(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean];
-      def get(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[WOption[Coll[Byte]]];
-      def getMany(keys: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Coll[WOption[Coll[Byte]]]];
-      def insert(operations: Ref[Coll[scala.Tuple2[Coll[Byte], Coll[Byte]]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]];
-      def update(operations: Ref[Coll[scala.Tuple2[Coll[Byte], Coll[Byte]]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]];
-      def insertOrUpdate(operations: Ref[Coll[scala.Tuple2[Coll[Byte], Coll[Byte]]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]];
-      def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]]
-    };
     trait Context extends Def[Context] {
       def OUTPUTS: Ref[Coll[Box]];
       def INPUTS: Ref[Coll[Box]];
@@ -78,7 +60,7 @@ import scalan._
       def HEIGHT: Ref[Int];
       def SELF: Ref[Box];
       def selfBoxIndex: Ref[Int];
-      def LastBlockUtxoRootHash: Ref[AvlTree];
+      def LastBlockUtxoRootHash: Ref[sigma.AvlTree];
       def headers: Ref[Coll[sigma.Header]];
       def preHeader: Ref[sigma.PreHeader];
       def minerPubKey: Ref[Coll[Byte]];
@@ -105,7 +87,7 @@ import scalan._
       def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]];
       def decodePoint(encoded: Ref[Coll[Byte]]): Ref[GroupElement];
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
-      def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree];
+      def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
       def encodeNbits(bi: Ref[BigInt]): Ref[Long]
       def decodeNbits(l: Ref[Long]): Ref[BigInt]
@@ -121,7 +103,6 @@ import scalan._
     trait GroupElementCompanion;
     trait SigmaPropCompanion;
     trait BoxCompanion;
-    trait AvlTreeCompanion;
     trait ContextCompanion;
     trait SigmaContractCompanion;
     trait SigmaDslBuilderCompanion

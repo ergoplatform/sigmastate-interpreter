@@ -1058,286 +1058,6 @@ object Box extends EntityObject("Box") {
 } // of object Box
   registerEntityObject("Box", Box)
 
-object AvlTree extends EntityObject("AvlTree") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SAvlTree = sigma.AvlTree
-  case class AvlTreeConst(
-        constValue: SAvlTree
-      ) extends LiftedConst[SAvlTree, AvlTree] with AvlTree
-        with Def[AvlTree] with AvlTreeConstMethods {
-    val liftable: Liftable[SAvlTree, AvlTree] = LiftableAvlTree
-    val resultType: Elem[AvlTree] = liftable.eW
-  }
-
-  trait AvlTreeConstMethods extends AvlTree  { thisConst: Def[_] =>
-
-    private val AvlTreeClass = RClass(classOf[AvlTree])
-
-    override def digest: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        AvlTreeClass.getMethod("digest"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def enabledOperations: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(self,
-        AvlTreeClass.getMethod("enabledOperations"),
-        ArraySeq.empty,
-        true, false, element[Byte]))
-    }
-
-    override def keyLength: Ref[Int] = {
-      asRep[Int](mkMethodCall(self,
-        AvlTreeClass.getMethod("keyLength"),
-        ArraySeq.empty,
-        true, false, element[Int]))
-    }
-
-    override def valueLengthOpt: Ref[WOption[Int]] = {
-      asRep[WOption[Int]](mkMethodCall(self,
-        AvlTreeClass.getMethod("valueLengthOpt"),
-        ArraySeq.empty,
-        true, false, element[WOption[Int]]))
-    }
-
-    override def isInsertAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        AvlTreeClass.getMethod("isInsertAllowed"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-    override def isUpdateAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        AvlTreeClass.getMethod("isUpdateAllowed"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-    override def isRemoveAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        AvlTreeClass.getMethod("isRemoveAllowed"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-    override def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(self,
-        AvlTreeClass.getMethod("updateDigest", classOf[Sym]),
-        Array[AnyRef](newDigest),
-        true, false, element[AvlTree]))
-    }
-
-    override def updateOperations(newOperations: Ref[Byte]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(self,
-        AvlTreeClass.getMethod("updateOperations", classOf[Sym]),
-        Array[AnyRef](newOperations),
-        true, false, element[AvlTree]))
-    }
-
-    override def contains(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        AvlTreeClass.getMethod("contains", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](key, proof),
-        true, false, element[Boolean]))
-    }
-
-    override def get(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[WOption[Coll[Byte]]] = {
-      asRep[WOption[Coll[Byte]]](mkMethodCall(self,
-        AvlTreeClass.getMethod("get", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](key, proof),
-        true, false, element[WOption[Coll[Byte]]]))
-    }
-
-    override def getMany(keys: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Coll[WOption[Coll[Byte]]]] = {
-      asRep[Coll[WOption[Coll[Byte]]]](mkMethodCall(self,
-        AvlTreeClass.getMethod("getMany", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](keys, proof),
-        true, false, element[Coll[WOption[Coll[Byte]]]]))
-    }
-
-    override def insert(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(self,
-        AvlTreeClass.getMethod("insert", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, false, element[WOption[AvlTree]]))
-    }
-
-    override def update(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(self,
-        AvlTreeClass.getMethod("update", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, false, element[WOption[AvlTree]]))
-    }
-
-    override def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(self,
-        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, false, element[WOption[AvlTree]]))
-    }
-
-    override def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(self,
-        AvlTreeClass.getMethod("remove", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, false, element[WOption[AvlTree]]))
-    }
-  }
-
-  implicit object LiftableAvlTree
-    extends Liftable[SAvlTree, AvlTree] {
-    lazy val eW: Elem[AvlTree] = avlTreeElement
-    lazy val sourceType: RType[SAvlTree] = {
-      RType[SAvlTree]
-    }
-    def lift(x: SAvlTree): Ref[AvlTree] = AvlTreeConst(x)
-  }
-
-  private val AvlTreeClass = RClass(classOf[AvlTree])
-
-  // entityAdapter for AvlTree trait
-  case class AvlTreeAdapter(source: Ref[AvlTree])
-      extends Node with AvlTree
-      with Def[AvlTree] {
-    val resultType: Elem[AvlTree] = element[AvlTree]
-    override def transform(t: Transformer) = AvlTreeAdapter(t(source))
-
-    def digest: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        AvlTreeClass.getMethod("digest"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def enabledOperations: Ref[Byte] = {
-      asRep[Byte](mkMethodCall(source,
-        AvlTreeClass.getMethod("enabledOperations"),
-        ArraySeq.empty,
-        true, true, element[Byte]))
-    }
-
-    def keyLength: Ref[Int] = {
-      asRep[Int](mkMethodCall(source,
-        AvlTreeClass.getMethod("keyLength"),
-        ArraySeq.empty,
-        true, true, element[Int]))
-    }
-
-    def valueLengthOpt: Ref[WOption[Int]] = {
-      asRep[WOption[Int]](mkMethodCall(source,
-        AvlTreeClass.getMethod("valueLengthOpt"),
-        ArraySeq.empty,
-        true, true, element[WOption[Int]]))
-    }
-
-    def isInsertAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        AvlTreeClass.getMethod("isInsertAllowed"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-
-    def isUpdateAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        AvlTreeClass.getMethod("isUpdateAllowed"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-
-    def isRemoveAllowed: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        AvlTreeClass.getMethod("isRemoveAllowed"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-
-    def updateDigest(newDigest: Ref[Coll[Byte]]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(source,
-        AvlTreeClass.getMethod("updateDigest", classOf[Sym]),
-        Array[AnyRef](newDigest),
-        true, true, element[AvlTree]))
-    }
-
-    def updateOperations(newOperations: Ref[Byte]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(source,
-        AvlTreeClass.getMethod("updateOperations", classOf[Sym]),
-        Array[AnyRef](newOperations),
-        true, true, element[AvlTree]))
-    }
-
-    def contains(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        AvlTreeClass.getMethod("contains", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](key, proof),
-        true, true, element[Boolean]))
-    }
-
-    def get(key: Ref[Coll[Byte]], proof: Ref[Coll[Byte]]): Ref[WOption[Coll[Byte]]] = {
-      asRep[WOption[Coll[Byte]]](mkMethodCall(source,
-        AvlTreeClass.getMethod("get", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](key, proof),
-        true, true, element[WOption[Coll[Byte]]]))
-    }
-
-    def getMany(keys: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[Coll[WOption[Coll[Byte]]]] = {
-      asRep[Coll[WOption[Coll[Byte]]]](mkMethodCall(source,
-        AvlTreeClass.getMethod("getMany", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](keys, proof),
-        true, true, element[Coll[WOption[Coll[Byte]]]]))
-    }
-
-    def insert(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(source,
-        AvlTreeClass.getMethod("insert", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, true, element[WOption[AvlTree]]))
-    }
-
-    def update(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(source,
-        AvlTreeClass.getMethod("update", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, true, element[WOption[AvlTree]]))
-    }
-
-    def insertOrUpdate(operations: Ref[Coll[(Coll[Byte], Coll[Byte])]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(source,
-        AvlTreeClass.getMethod("insertOrUpdate", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, true, element[WOption[AvlTree]]))
-    }
-
-    def remove(operations: Ref[Coll[Coll[Byte]]], proof: Ref[Coll[Byte]]): Ref[WOption[AvlTree]] = {
-      asRep[WOption[AvlTree]](mkMethodCall(source,
-        AvlTreeClass.getMethod("remove", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](operations, proof),
-        true, true, element[WOption[AvlTree]]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefAvlTree(p: Ref[AvlTree]): AvlTree = {
-    if (p.node.isInstanceOf[AvlTree]) p.node.asInstanceOf[AvlTree]
-    else
-      AvlTreeAdapter(p)
-  }
-
-  // familyElem
-  class AvlTreeElem[To <: AvlTree]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SAvlTree, To](LiftableAvlTree)
-
-  }
-
-  implicit lazy val avlTreeElement: Elem[AvlTree] =
-    new AvlTreeElem[AvlTree]
-
-} // of object AvlTree
-  registerEntityObject("AvlTree", AvlTree)
 
 
 object Context extends EntityObject("Context") {
@@ -1399,11 +1119,11 @@ object Context extends EntityObject("Context") {
         true, false, element[Int]))
     }
 
-    override def LastBlockUtxoRootHash: Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(self,
+    override def LastBlockUtxoRootHash: Ref[sigma.AvlTree] = {
+      asRep[sigma.AvlTree](mkMethodCall(self,
         ContextClass.getMethod("LastBlockUtxoRootHash"),
         ArraySeq.empty,
-        true, false, element[AvlTree]))
+        true, false, element[sigma.AvlTree]))
     }
 
     override def headers: Ref[Coll[sigma.Header]] = {
@@ -1505,11 +1225,11 @@ object Context extends EntityObject("Context") {
         true, true, element[Int]))
     }
 
-    def LastBlockUtxoRootHash: Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(source,
+    def LastBlockUtxoRootHash: Ref[sigma.AvlTree] = {
+      asRep[sigma.AvlTree](mkMethodCall(source,
         ContextClass.getMethod("LastBlockUtxoRootHash"),
         ArraySeq.empty,
-        true, true, element[AvlTree]))
+        true, true, element[sigma.AvlTree]))
     }
 
     def headers: Ref[Coll[sigma.Header]] = {
@@ -1764,11 +1484,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[GroupElement]))
     }
 
-    override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(self,
+    override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree] = {
+      asRep[sigma.AvlTree](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
-        true, false, element[AvlTree]))
+        true, false, element[sigma.AvlTree]))
     }
 
     override def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
@@ -1979,11 +1699,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[GroupElement]))
     }
 
-    def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[AvlTree] = {
-      asRep[AvlTree](mkMethodCall(source,
+    def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[WOption[Int]]): Ref[sigma.AvlTree] = {
+      asRep[sigma.AvlTree](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
-        true, true, element[AvlTree]))
+        true, true, element[sigma.AvlTree]))
     }
 
     def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
