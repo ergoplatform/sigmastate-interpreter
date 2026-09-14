@@ -41,7 +41,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   private val ContextM = ContextMethods
   private val SigmaM = SigmaPropMethods
   private val CollM = CollMethods
-  private val BoxM = BoxMethods
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
   private val OM = WOptionMethods
@@ -162,6 +161,33 @@ trait TreeBuilding extends Base { IR: IRContext =>
     def unapply(d: Def[_]): Option[Def[_]] = d match {
       case _: Const[_] => Some(d)
       case _ => None
+    }
+  }
+
+  /** Emits a plain `MethodCall` ErgoTree node for a call node without a lowering row, rebuilding
+    * the specialised descriptor from the generic one with the same recipes as before: a Coll
+    * receiver gets only `withConcreteTypes` (its own recipe), everything else
+    * `specializeFor(...).withConcreteTypes(typeSubst)`.
+    */
+  def plainMethodCall(mc: MethodCall, obj: SValue, args: Seq[SValue]): SValue = {
+    val m = mc.callee.asInstanceOf[MethodCallee].method
+    val generic = m.objType.getMethodById(m.methodId)
+      .getOrElse(error(s"Cannot find method '${m.name}' on receiver of type ${obj.tpe}"))
+    if (mc.receiver.elem.isInstanceOf[CollElem[_, _]]) {
+      val col = obj.asCollection[SType]
+      val typeSubst = (generic, args) match {
+        case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
+          Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
+        case (SCollectionMethods.ZipMethod, Seq(coll)) =>
+          Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
+        case _ => EmptySubst
+      }
+      val specMethod = generic.withConcreteTypes(typeSubst + (SCollection.tIV -> col.tpe.elemType))
+      builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
+    } else {
+      val typeSubst = mc.typeSubst
+      val specMethod = generic.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
+      builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
     }
   }
 
@@ -364,22 +390,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val specMethod = method.withConcreteTypes(typeSubst + (SCollection.tIV -> colTpe.elemType))
         builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
 
-      case BoxM.value(In(box)) =>
-        mkExtractAmount(box.asBox)
-      case BoxM.propositionBytes(In(box)) =>
-        mkExtractScriptBytes(box.asBox)
-      case BoxM.getReg(In(box), regId, _) if regId.isConst =>
-        val tpe = elemToSType(s.elem).asOption
-        mkExtractRegisterAs(box.asBox, ErgoBox.allRegisters(valueFromRep(regId)), tpe)
-     case BoxM.creationInfo(In(box)) =>
-        mkExtractCreationInfo(box.asBox)
-      case BoxM.id(In(box)) =>
-        mkExtractId(box.asBox)
-      case BoxM.bytes(In(box)) =>
-        mkExtractBytes(box.asBox)
-      case BoxM.bytesWithoutRef(In(box)) =>
-        mkExtractBytesWithNoRef(box.asBox)
-
       case OM.get(In(optionSym)) =>
         mkOptionGet(optionSym.asValue[SOption[SType]])
       case OM.getOrElse(In(optionSym), In(defVal)) =>
@@ -500,22 +510,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
         rowFor(mc.callee) match {
           case Some(row) => row(mc, obj, args)
-          case None if objSym.elem.isInstanceOf[CollElem[_, _]] =>
-            val generic = m.genericMethod
-            val col = obj.asCollection[SType]
-            val typeSubst = (generic, args) match {
-              case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
-                Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
-              case (SCollectionMethods.ZipMethod, Seq(coll)) =>
-                Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
-              case _ => EmptySubst
-            }
-            val specMethod = generic.withConcreteTypes(typeSubst + (SCollection.tIV -> col.tpe.elemType))
-            builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
-          case None =>
-            val typeSubst = mc.typeSubst
-            val specMethod = m.genericMethod.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
-            builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
+          case None => plainMethodCall(mc, obj, args)
         }
 
       case Def(d) =>

@@ -274,38 +274,6 @@ object GraphIRReflection {
       )
     )
   }
-  { val clazz = classOf[SigmaDsl#Box]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "value", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Box].value
-        },
-        mkMethod(clazz, "id", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Box].id
-        },
-        mkMethod(clazz, "creationInfo", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Box].creationInfo
-        },
-        mkMethod(clazz, "bytes", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Box].bytes
-        },
-        mkMethod(clazz, "getReg", Array[Class[_]](classOf[Base#Ref[_]], classOf[TypeDescs#Elem[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.Box].getReg(args(0).asInstanceOf[ctx.Ref[Int]])(args(1).asInstanceOf[ctx.Elem[_]])
-        },
-        mkMethod(clazz, "tokens", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.Box].tokens
-        },
-        mkMethod(clazz, "bytesWithoutRef", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Box].bytesWithoutRef
-        },
-        mkMethod(clazz, "propositionBytes", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.Box].propositionBytes
-        }
-      )
-    )
-  }
-
   {
     val clazz = classOf[SigmaDsl#Context]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only

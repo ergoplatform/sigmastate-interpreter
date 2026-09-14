@@ -295,7 +295,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: GroupElementElem[_] => SGroupElement
     case _: AvlTreeElem => SAvlTree
     case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
-    case _: BoxElem[_] => SBox
+    case _: BoxElem => SBox
     case _: ContextElem[_] => SContext
     case _: SigmaDslBuilderElem[_] => SGlobal
     case _: HeaderElem => SHeader
@@ -414,6 +414,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   protected def buildMethodCall(mc: sigma.ast.MethodCall, objV: Ref[Any], argsV: Seq[Ref[Any]]): Ref[Any] =
     asRep[Any](mkMethodCall(objV, MethodCallee(mc.method), argsV, mc.typeSubst, stypeToElem(mc.tpe)))
 
+  /** Builds a call node for `method` on `objV` that lowers the AST `node`: the result type is
+    * the node's own type.
+    */
+  protected def buildCall(node: SValue, method: SMethod, objV: Ref[Any], argsV: Seq[Ref[Any]],
+                          typeSubst: Map[STypeVar, SType] = Map.empty): Ref[Any] =
+    asRep[Any](mkMethodCall(objV, MethodCallee(method), argsV, typeSubst, stypeToElem(node.tpe)))
+
   protected def buildNode[T <: SType](ctx: Ref[Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
@@ -455,8 +462,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
             case eWA: Elem[wa] =>
               DslConst[SColl[a], Coll[wa]](coll)(collElement(eWA))
           }
-        case box: SBox =>
-          DslConst[SBox, Box](box)
+        case box: sigma.Box =>
+          DslConst[sigma.Box, sigma.Box](box)
         case tree: sigma.AvlTree =>
           DslConst[sigma.AvlTree, sigma.AvlTree](tree)
         case s: String =>
@@ -740,29 +747,27 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val pV = asRep[SigmaProp](eval(p))
         pV.propBytes
 
-      case ExtractId(In(box: Ref[Box]@unchecked)) =>
-        box.id
+      case ExtractId(In(box)) =>
+        buildCall(node, SBoxMethods.IdMethod, box, Seq())
 
-      case ExtractBytesWithNoRef(In(box: Ref[Box]@unchecked)) =>
-        box.bytesWithoutRef
+      case ExtractBytesWithNoRef(In(box)) =>
+        buildCall(node, SBoxMethods.BytesWithoutRefMethod, box, Seq())
 
       case ExtractAmount(In(box)) =>
-        val boxV = asRep[Box](box)
-        boxV.value
+        buildCall(node, SBoxMethods.ValueMethod, box, Seq())
 
-      case ExtractScriptBytes(In(box: Ref[Box]@unchecked)) =>
-        box.propositionBytes
+      case ExtractScriptBytes(In(box)) =>
+        buildCall(node, SBoxMethods.PropositionBytesMethod, box, Seq())
 
-      case ExtractBytes(In(box: Ref[Box]@unchecked)) =>
-        box.bytes
+      case ExtractBytes(In(box)) =>
+        buildCall(node, SBoxMethods.BytesMethod, box, Seq())
 
-      case ExtractCreationInfo(In(box: Ref[Box]@unchecked)) =>
-        box.creationInfo
+      case ExtractCreationInfo(In(box)) =>
+        buildCall(node, SBoxMethods.creationInfoMethod, box, Seq())
 
-      case ExtractRegisterAs(In(box: Ref[Box]@unchecked), regId, optTpe) =>
-        val elem = stypeToElem(optTpe.elemType).asInstanceOf[Elem[Any]]
+      case ExtractRegisterAs(In(box), regId, optTpe) =>
         val i: Ref[Int] = regId.number.toInt
-        box.getReg(i)(elem)
+        buildCall(node, SBoxMethods.getRegMethodV6, box, Seq(asRep[Any](i)), Map(tT -> optTpe.elemType))
 
       case BoolToSigmaProp(bool) =>
         sigmaDslBuilder.sigmaProp(eval(bool))
@@ -1027,15 +1032,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ge.expUnsigned(k)
             case _ => throwError()
           }
-          case (box: Ref[Box]@unchecked, SBoxMethods) => method.name match {
-            case SBoxMethods.tokensMethod.name =>
-              box.tokens
-            case SBoxMethods.getRegMethodV6.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Int](argsV(0))
-              val c2 = stypeToElem(typeSubst.apply(tT))
-              box.getReg(c1)(c2)
-            case _ => throwError()
-          }
           case (ctx: Ref[Context]@unchecked, SContextMethods) => method.name match {
             case SContextMethods.dataInputsMethod.name =>
               ctx.dataInputs
@@ -1064,7 +1060,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               ctx.getVarFromInput(c1, c2)(c3)
             case _ => throwError()
           }
-          case (_, SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
+          case (_, SBoxMethods | SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
             case SGlobalMethods.groupGeneratorMethod.name =>

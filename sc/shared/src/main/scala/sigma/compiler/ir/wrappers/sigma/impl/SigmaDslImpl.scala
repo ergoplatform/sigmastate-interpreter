@@ -816,247 +816,6 @@ object SigmaProp extends EntityObject("SigmaProp") {
 } // of object SigmaProp
   registerEntityObject("SigmaProp", SigmaProp)
 
-object Box extends EntityObject("Box") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SBox = sigma.Box
-  case class BoxConst(
-        constValue: SBox
-      ) extends LiftedConst[SBox, Box] with Box
-        with Def[Box] with BoxConstMethods {
-    val liftable: Liftable[SBox, Box] = LiftableBox
-    val resultType: Elem[Box] = liftable.eW
-  }
-
-  trait BoxConstMethods extends Box  { thisConst: Def[_] =>
-
-    private val BoxClass = RClass(classOf[Box])
-
-    override def id: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        BoxClass.getMethod("id"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def value: Ref[Long] = {
-      asRep[Long](mkMethodCall(self,
-        BoxClass.getMethod("value"),
-        ArraySeq.empty,
-        true, false, element[Long]))
-    }
-
-    override def propositionBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        BoxClass.getMethod("propositionBytes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def bytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        BoxClass.getMethod("bytes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def bytesWithoutRef: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        BoxClass.getMethod("bytesWithoutRef"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = elemToSType(cT)
-      asRep[WOption[T]](mkMethodCall(self,
-        BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
-        Array[AnyRef](i, cT),
-        true, false, element[WOption[T]], Map(tT -> st) ))
-    }
-
-    override def tokens: Ref[Coll[(Coll[Byte], Long)]] = {
-      asRep[Coll[(Coll[Byte], Long)]](mkMethodCall(self,
-        BoxClass.getMethod("tokens"),
-        ArraySeq.empty,
-        true, false, element[Coll[(Coll[Byte], Long)]]))
-    }
-
-    override def creationInfo: Ref[(Int, Coll[Byte])] = {
-      asRep[(Int, Coll[Byte])](mkMethodCall(self,
-        BoxClass.getMethod("creationInfo"),
-        ArraySeq.empty,
-        true, false, element[(Int, Coll[Byte])]))
-    }
-  }
-
-  implicit object LiftableBox
-    extends Liftable[SBox, Box] {
-    lazy val eW: Elem[Box] = boxElement
-    lazy val sourceType: RType[SBox] = {
-      RType[SBox]
-    }
-    def lift(x: SBox): Ref[Box] = BoxConst(x)
-  }
-
-  private val BoxClass = RClass(classOf[Box])
-
-  // entityAdapter for Box trait
-  case class BoxAdapter(source: Ref[Box])
-      extends Node with Box
-      with Def[Box] {
-    val resultType: Elem[Box] = element[Box]
-    override def transform(t: Transformer) = BoxAdapter(t(source))
-
-    def id: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        BoxClass.getMethod("id"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def value: Ref[Long] = {
-      asRep[Long](mkMethodCall(source,
-        BoxClass.getMethod("value"),
-        ArraySeq.empty,
-        true, true, element[Long]))
-    }
-
-    def propositionBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        BoxClass.getMethod("propositionBytes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def bytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        BoxClass.getMethod("bytes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def bytesWithoutRef: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        BoxClass.getMethod("bytesWithoutRef"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]] = {
-      val st = elemToSType(cT)
-      asRep[WOption[T]](mkMethodCall(source,
-        BoxClass.getMethod("getReg", classOf[Sym], classOf[Elem[_]]),
-        Array[AnyRef](i, cT),
-        true, true, element[WOption[T]], Map(tT -> st)))
-    }
-
-    def tokens: Ref[Coll[(Coll[Byte], Long)]] = {
-      asRep[Coll[(Coll[Byte], Long)]](mkMethodCall(source,
-        BoxClass.getMethod("tokens"),
-        ArraySeq.empty,
-        true, true, element[Coll[(Coll[Byte], Long)]]))
-    }
-
-    def creationInfo: Ref[(Int, Coll[Byte])] = {
-      asRep[(Int, Coll[Byte])](mkMethodCall(source,
-        BoxClass.getMethod("creationInfo"),
-        ArraySeq.empty,
-        true, true, element[(Int, Coll[Byte])]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefBox(p: Ref[Box]): Box = {
-    if (p.node.isInstanceOf[Box]) p.node.asInstanceOf[Box]
-    else
-      BoxAdapter(p)
-  }
-
-  // familyElem
-  class BoxElem[To <: Box]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SBox, To](LiftableBox)
-
-  }
-
-  implicit lazy val boxElement: Elem[Box] =
-    new BoxElem[Box]
-
-  object BoxMethods {
-    object id {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "id" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-
-    object value {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "value" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-
-    object propositionBytes {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "propositionBytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-
-    object bytes {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "bytes" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-
-    object bytesWithoutRef {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "bytesWithoutRef" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-
-    object getReg {
-      def unapply(d: Def[_]): Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "getReg" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[Box], Ref[Int], Elem[T]) forSome {type T}] = unapply(exp.node)
-    }
-
-    object creationInfo {
-      def unapply(d: Def[_]): Nullable[Ref[Box]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "creationInfo" && receiver.elem.isInstanceOf[BoxElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[Box]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[Box]] = unapply(exp.node)
-    }
-  }
-} // of object Box
-  registerEntityObject("Box", Box)
 
 
 
@@ -1077,25 +836,25 @@ object Context extends EntityObject("Context") {
 
     private val ContextClass = RClass(classOf[Context])
 
-    override def OUTPUTS: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(self,
+    override def OUTPUTS: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(self,
         ContextClass.getMethod("OUTPUTS"),
         ArraySeq.empty,
-        true, false, element[Coll[Box]]))
+        true, false, element[Coll[sigma.Box]]))
     }
 
-    override def INPUTS: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(self,
+    override def INPUTS: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(self,
         ContextClass.getMethod("INPUTS"),
         ArraySeq.empty,
-        true, false, element[Coll[Box]]))
+        true, false, element[Coll[sigma.Box]]))
     }
 
-    override def dataInputs: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(self,
+    override def dataInputs: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(self,
         ContextClass.getMethod("dataInputs"),
         ArraySeq.empty,
-        true, false, element[Coll[Box]]))
+        true, false, element[Coll[sigma.Box]]))
     }
 
     override def HEIGHT: Ref[Int] = {
@@ -1105,11 +864,11 @@ object Context extends EntityObject("Context") {
         true, false, element[Int]))
     }
 
-    override def SELF: Ref[Box] = {
-      asRep[Box](mkMethodCall(self,
+    override def SELF: Ref[sigma.Box] = {
+      asRep[sigma.Box](mkMethodCall(self,
         ContextClass.getMethod("SELF"),
         ArraySeq.empty,
-        true, false, element[Box]))
+        true, false, element[sigma.Box]))
     }
 
     override def selfBoxIndex: Ref[Int] = {
@@ -1183,25 +942,25 @@ object Context extends EntityObject("Context") {
     val resultType: Elem[Context] = element[Context]
     override def transform(t: Transformer) = ContextAdapter(t(source))
 
-    def OUTPUTS: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(source,
+    def OUTPUTS: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(source,
         ContextClass.getMethod("OUTPUTS"),
         ArraySeq.empty,
-        true, true, element[Coll[Box]]))
+        true, true, element[Coll[sigma.Box]]))
     }
 
-    def INPUTS: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(source,
+    def INPUTS: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(source,
         ContextClass.getMethod("INPUTS"),
         ArraySeq.empty,
-        true, true, element[Coll[Box]]))
+        true, true, element[Coll[sigma.Box]]))
     }
 
-    def dataInputs: Ref[Coll[Box]] = {
-      asRep[Coll[Box]](mkMethodCall(source,
+    def dataInputs: Ref[Coll[sigma.Box]] = {
+      asRep[Coll[sigma.Box]](mkMethodCall(source,
         ContextClass.getMethod("dataInputs"),
         ArraySeq.empty,
-        true, true, element[Coll[Box]]))
+        true, true, element[Coll[sigma.Box]]))
     }
 
     def HEIGHT: Ref[Int] = {
@@ -1211,11 +970,11 @@ object Context extends EntityObject("Context") {
         true, true, element[Int]))
     }
 
-    def SELF: Ref[Box] = {
-      asRep[Box](mkMethodCall(source,
+    def SELF: Ref[sigma.Box] = {
+      asRep[sigma.Box](mkMethodCall(source,
         ContextClass.getMethod("SELF"),
         ArraySeq.empty,
-        true, true, element[Box]))
+        true, true, element[sigma.Box]))
     }
 
     def selfBoxIndex: Ref[Int] = {

@@ -43,22 +43,12 @@ import scalan._
       def &&(other: Ref[SigmaProp]): Ref[SigmaProp];
       def ||(other: Ref[SigmaProp]): Ref[SigmaProp];
     };
-    trait Box extends Def[Box] {
-      def id: Ref[Coll[Byte]];
-      def value: Ref[Long];
-      def propositionBytes: Ref[Coll[Byte]];
-      def bytes: Ref[Coll[Byte]];
-      def bytesWithoutRef: Ref[Coll[Byte]];
-      def getReg[T](i: Ref[Int])(implicit cT: Elem[T]): Ref[WOption[T]];
-      def tokens: Ref[Coll[scala.Tuple2[Coll[Byte], Long]]];
-      def creationInfo: Ref[scala.Tuple2[Int, Coll[Byte]]];
-    };
     trait Context extends Def[Context] {
-      def OUTPUTS: Ref[Coll[Box]];
-      def INPUTS: Ref[Coll[Box]];
-      def dataInputs: Ref[Coll[Box]];
+      def OUTPUTS: Ref[Coll[sigma.Box]];
+      def INPUTS: Ref[Coll[sigma.Box]];
+      def dataInputs: Ref[Coll[sigma.Box]];
       def HEIGHT: Ref[Int];
-      def SELF: Ref[Box];
+      def SELF: Ref[sigma.Box];
       def selfBoxIndex: Ref[Int];
       def LastBlockUtxoRootHash: Ref[sigma.AvlTree];
       def headers: Ref[Coll[sigma.Header]];
@@ -102,7 +92,6 @@ import scalan._
     trait BigIntCompanion;
     trait GroupElementCompanion;
     trait SigmaPropCompanion;
-    trait BoxCompanion;
     trait ContextCompanion;
     trait SigmaContractCompanion;
     trait SigmaDslBuilderCompanion

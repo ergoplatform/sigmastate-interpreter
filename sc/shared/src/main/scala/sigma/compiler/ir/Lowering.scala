@@ -1,6 +1,8 @@
 package sigma.compiler.ir
 
-import sigma.ast.syntax.SValue
+import org.ergoplatform.ErgoBox
+import sigma.ast._
+import sigma.ast.syntax.{SValue, ValueOps}
 
 /** The reverse lowering table of the compiler: for a call node whose callee has a dedicated
   * ErgoTree node, the row rebuilds that node from the already built receiver and arguments.
@@ -14,7 +16,22 @@ trait Lowering { IR: IRContext =>
   type Row = (MethodCall, SValue, Seq[SValue]) => SValue
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
-  protected lazy val rows: Map[IRCallee, Row] = Map.empty
+  protected lazy val rows: Map[IRCallee, Row] = Map(
+    // Box
+    MethodCallee(SBoxMethods.ValueMethod)            -> ((_, box, _) => builder.mkExtractAmount(box.asBox)),
+    MethodCallee(SBoxMethods.PropositionBytesMethod) -> ((_, box, _) => builder.mkExtractScriptBytes(box.asBox)),
+    MethodCallee(SBoxMethods.BytesMethod)            -> ((_, box, _) => builder.mkExtractBytes(box.asBox)),
+    MethodCallee(SBoxMethods.BytesWithoutRefMethod)  -> ((_, box, _) => builder.mkExtractBytesWithNoRef(box.asBox)),
+    MethodCallee(SBoxMethods.IdMethod)               -> ((_, box, _) => builder.mkExtractId(box.asBox)),
+    MethodCallee(SBoxMethods.creationInfoMethod)     -> ((_, box, _) => builder.mkExtractCreationInfo(box.asBox)),
+    MethodCallee(SBoxMethods.getRegMethodV6)         -> { (mc, box, args) =>
+      val regId = mc.args(0).asInstanceOf[Ref[Int]]
+      if (regId.isConst)
+        builder.mkExtractRegisterAs(box.asBox, ErgoBox.allRegisters(valueFromRep(regId)), elemToSType(mc.resultType).asOption)
+      else
+        plainMethodCall(mc, box, args)
+    }
+  )
 
   /** The row for `callee`, if it has a dedicated ErgoTree node. */
   final def rowFor(callee: IRCallee): Option[Row] = rows.get(callee)
