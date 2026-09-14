@@ -420,6 +420,24 @@ abstract class Base { thisIR: IRContext =>
     })
   }
 
+  /** Node embedding a literal value of a DSL type (Box, Coll, BigInt, ...) into the graph.
+    * Unlike [[Const]] it is never given to the constant store and it is extracted to a ValDef
+    * when shared (see `TreeBuilding`), which is how the per-entity constant nodes behaved.
+    * @param constValue the literal value
+    * @param eT         type descriptor of the IR type `T`; `ST` is the runtime type of the value
+    *                   (they differ only while staged wrapper types still exist)
+    */
+  case class DslConst[ST, T](constValue: ST)(implicit val eT: Elem[T])
+      extends BaseDef[T] with Liftables.LiftedConst[ST, T] {
+    override def liftable: Liftables.Liftable[ST, T] = !!!(s"DslConst($constValue) has no Liftable")
+
+    override def hashCode() = constValue.hashCode() * 31 + eT.hashCode()
+    override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
+      case c: DslConst[_, _] => constValue == c.constValue && eT == c.eT
+      case _ => false
+    })
+  }
+
   /** Node class for typed variables. In particular for lambda-bound variables.
     * @param varId   is independent from nodeId, shouldn't be used as node id.
     * @param eT      type descriptor of the variable type */

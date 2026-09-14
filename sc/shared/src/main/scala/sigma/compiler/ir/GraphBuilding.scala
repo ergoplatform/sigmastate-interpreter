@@ -306,34 +306,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case pe: PairElem[_, _] => STuple(elemToSType(pe.eFst), elemToSType(pe.eSnd))
     case _ => error(s"Don't know how to convert Elem $e to SType")
   }
-
-  /** Translates Elem to the corresponding Liftable instance.
-    * @param eWT type descriptor
-    */
-  def liftableFromElem[WT](eWT: Elem[WT]): Liftable[_,WT] = (eWT match {
-    case BooleanElement => BooleanIsLiftable
-    case ByteElement => ByteIsLiftable
-    case ShortElement => ShortIsLiftable
-    case IntElement => IntIsLiftable
-    case LongElement => LongIsLiftable
-    case StringElement => StringIsLiftable
-    case UnitElement => UnitIsLiftable
-    case _: BigIntElem[_] => LiftableBigInt
-    case _: UnsignedBigIntElem[_] => LiftableUnsignedBigInt
-    case _: GroupElementElem[_] => LiftableGroupElement
-    case ce: CollElem[t,_] =>
-      implicit val lt = liftableFromElem[t](ce.eItem)
-      liftableColl(lt)
-    case pe: PairElem[a,b] =>
-      implicit val la = liftableFromElem[a](pe.eFst)
-      implicit val lb = liftableFromElem[b](pe.eSnd)
-      PairIsLiftable(la, lb)
-    case pe: FuncElem[a,b] =>
-      implicit val la = liftableFromElem[a](pe.eDom)
-      implicit val lb = liftableFromElem[b](pe.eRange)
-      FuncIsLiftable(la, lb)
-  }).asInstanceOf[Liftable[_,WT]]
-
   import sigma.data.NumericOps._
   private lazy val elemToExactNumericMap = Map[Elem[_], ExactNumeric[_]](
     (ByteElement, ByteIsExactIntegral),
@@ -467,34 +439,26 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case Constant(v, tpe) => v match {
         case p: SSigmaProp =>
           assert(tpe == SSigmaProp)
-          val resV = liftConst(p)
-          resV
+          DslConst[SSigmaProp, SigmaProp](p)
         case bi: SBigInt =>
           assert(tpe == SBigInt)
-          val resV = liftConst(bi)
-          resV
+          DslConst[SBigInt, BigInt](bi)
         case ubi: SUnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
-          val resV = liftConst(ubi)
-          resV
+          DslConst[SUnsignedBigInt, UnsignedBigInt](ubi)
         case p: SGroupElement =>
           assert(tpe == SGroupElement)
-          val resV = liftConst(p)
-          resV
+          DslConst[SGroupElement, GroupElement](p)
         case coll: SColl[a] =>
           val tpeA = tpe.asCollection[SType].elemType
           stypeToElem(tpeA) match {
             case eWA: Elem[wa] =>
-              implicit val l = liftableFromElem[wa](eWA).asInstanceOf[Liftable[a, wa]]
-              val resVals = liftConst[SColl[a], Coll[wa]](coll)
-              resVals
+              DslConst[SColl[a], Coll[wa]](coll)(collElement(eWA))
           }
         case box: SBox =>
-          val boxV = liftConst(box)
-          boxV
+          DslConst[SBox, Box](box)
         case tree: sigma.AvlTree =>
-          val treeV = liftConst(tree)
-          treeV
+          DslConst[sigma.AvlTree, AvlTree](tree)
         case s: String =>
           val resV = toRep(s)(stypeToElem(tpe).asInstanceOf[Elem[String]])
           resV

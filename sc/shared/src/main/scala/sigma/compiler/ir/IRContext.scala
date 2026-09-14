@@ -94,6 +94,8 @@ trait IRContext
       // Rule: Const[Coll[T]](coll).length =>
       case CollConst(coll, _) =>
         coll.length
+      case DslConst(coll: sigma.Coll[_]) =>
+        coll.length
       // Rule: Coll(items @ Seq(x1, x2, x3)).length => items.length
       case CBM.fromItems(_, items, _) =>
         items.length
