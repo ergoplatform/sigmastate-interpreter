@@ -43,7 +43,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
   private val BIM = BigIntMethods
-  private val GM = GroupElementMethods
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -469,12 +468,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         mkDowncast(recurse(inputSym).asNumValue, elemToSType(toSym).asNumType)
       case Def(Upcast(inputSym, toSym)) =>
         mkUpcast(recurse(inputSym).asNumValue, elemToSType(toSym).asNumType)
-
-      case GM.exp(In(obj), In(arg)) =>
-        mkExponentiate(obj.asGroupElement, arg.asBigInt)
-
-      case GM.multiply(In(obj), In(arg)) =>
-        mkMultiplyGroup(obj.asGroupElement, arg.asGroupElement)
 
       // Fallback MethodCall rule: should be the last in this list of cases
       case Def(mc @ MethodCall(objSym, LegacyCallee(m), argSyms, _)) =>

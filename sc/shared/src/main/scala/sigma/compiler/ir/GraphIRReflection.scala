@@ -251,29 +251,6 @@ object GraphIRReflection {
       )
     )
   }
-  { val clazz = classOf[SigmaDsl#GroupElement]
-    val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "exp", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.GroupElement].exp(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "expUnsigned", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.GroupElement].expUnsigned(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.GroupElement].multiply(args(0).asInstanceOf[ctx.Ref[ctx.GroupElement]])
-        },
-        mkMethod(clazz, "getEncoded", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.GroupElement].getEncoded
-        },
-        mkMethod(clazz, "negate", Array[Class[_]]()) { (obj, args) =>
-          obj.asInstanceOf[ctx.GroupElement].negate
-        }
-      )
-    )
-  }
-  
   { val clazz = classOf[SigmaDsl#SigmaDslBuilder]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
     registerClassEntry(clazz,
@@ -301,7 +278,7 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.SigmaDslBuilder].groupGenerator
         },
         mkMethod(clazz, "proveDlog", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaDslBuilder].proveDlog(args(0).asInstanceOf[ctx.Ref[ctx.GroupElement]])
+          obj.asInstanceOf[ctx.SigmaDslBuilder].proveDlog(args(0).asInstanceOf[ctx.Ref[sigma.GroupElement]])
         },
         mkMethod(clazz, "blake2b256", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].blake2b256(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
@@ -324,10 +301,10 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.SigmaDslBuilder].allOf(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Boolean]]])
         },
         mkMethod(clazz, "proveDHTuple", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaDslBuilder].proveDHTuple(args(0).asInstanceOf[ctx.Ref[ctx.GroupElement]],
-            args(1).asInstanceOf[ctx.Ref[ctx.GroupElement]],
-            args(2).asInstanceOf[ctx.Ref[ctx.GroupElement]],
-            args(3).asInstanceOf[ctx.Ref[ctx.GroupElement]])
+          obj.asInstanceOf[ctx.SigmaDslBuilder].proveDHTuple(args(0).asInstanceOf[ctx.Ref[sigma.GroupElement]],
+            args(1).asInstanceOf[ctx.Ref[sigma.GroupElement]],
+            args(2).asInstanceOf[ctx.Ref[sigma.GroupElement]],
+            args(3).asInstanceOf[ctx.Ref[sigma.GroupElement]])
         },
         mkMethod(clazz, "anyZK", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].anyZK(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.SigmaProp]]])

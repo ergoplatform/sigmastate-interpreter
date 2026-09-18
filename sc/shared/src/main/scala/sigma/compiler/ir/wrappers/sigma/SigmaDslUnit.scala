@@ -30,13 +30,6 @@ import scalan._
       def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt]
       def toSigned(): Ref[BigInt]
     };
-    trait GroupElement extends Def[GroupElement] {
-      def exp(k: Ref[BigInt]): Ref[GroupElement];
-      def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement];
-      def multiply(that: Ref[GroupElement]): Ref[GroupElement];
-      def negate: Ref[GroupElement];
-      def getEncoded: Ref[Coll[Byte]]
-    };
     trait SigmaProp extends Def[SigmaProp] {
       def isValid: Ref[Boolean];
       def propBytes: Ref[Coll[Byte]];
@@ -57,11 +50,11 @@ import scalan._
       def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[BigInt];
       def longToByteArray(l: Ref[Long]): Ref[Coll[Byte]];
       def byteArrayToLong(bytes: Ref[Coll[Byte]]): Ref[Long];
-      def proveDlog(g: Ref[GroupElement]): Ref[SigmaProp];
-      def proveDHTuple(g: Ref[GroupElement], h: Ref[GroupElement], u: Ref[GroupElement], v: Ref[GroupElement]): Ref[SigmaProp];
-      def groupGenerator: Ref[GroupElement];
+      def proveDlog(g: Ref[sigma.GroupElement]): Ref[SigmaProp];
+      def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[SigmaProp];
+      def groupGenerator: Ref[sigma.GroupElement];
       def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]];
-      def decodePoint(encoded: Ref[Coll[Byte]]): Ref[GroupElement];
+      def decodePoint(encoded: Ref[Coll[Byte]]): Ref[sigma.GroupElement];
       /** This method will be used in v6.0 to handle CreateAvlTree operation in GraphBuilding */
       def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree];
       def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]]
@@ -76,7 +69,6 @@ import scalan._
     };
     trait CostModelCompanion;
     trait BigIntCompanion;
-    trait GroupElementCompanion;
     trait SigmaPropCompanion;
     trait SigmaContractCompanion;
     trait SigmaDslBuilderCompanion

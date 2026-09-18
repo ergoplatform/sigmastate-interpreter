@@ -7,6 +7,11 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object GroupElement {
+    class GroupElementElem extends EntityElem[sigma.GroupElement]
+    implicit lazy val groupElementElement: Elem[sigma.GroupElement] = new GroupElementElem
+  }
+
   object WOption {
     /** Descriptor of `Option[A]`; the class name keeps `Elem.name` as `WOption[A]`. */
     class WOptionElem[A](val eItem: Elem[A]) extends EntityElem[Option[A]] {

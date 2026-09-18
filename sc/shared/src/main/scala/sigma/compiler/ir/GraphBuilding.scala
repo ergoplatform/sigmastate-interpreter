@@ -292,7 +292,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case UnitElement => SUnit
     case _: BigIntElem[_] => SBigInt
     case _: UnsignedBigIntElem[_] => SUnsignedBigInt
-    case _: GroupElementElem[_] => SGroupElement
+    case _: GroupElementElem => SGroupElement
     case _: AvlTreeElem => SAvlTree
     case oe: WOptionElem[_] => SOption(elemToSType(oe.eItem))
     case _: BoxElem => SBox
@@ -453,9 +453,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         case ubi: SUnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
           DslConst[SUnsignedBigInt, UnsignedBigInt](ubi)
-        case p: SGroupElement =>
+        case p: sigma.GroupElement =>
           assert(tpe == SGroupElement)
-          DslConst[SGroupElement, GroupElement](p)
+          DslConst[sigma.GroupElement, sigma.GroupElement](p)
         case coll: SColl[a] =>
           val tpeA = tpe.asCollection[SType].elemType
           stypeToElem(tpeA) match {
@@ -581,25 +581,21 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         resV
 
       case CreateProveDlog(In(_v)) =>
-        val v = asRep[GroupElement](_v)
+        val v = asRep[sigma.GroupElement](_v)
         sigmaDslBuilder.proveDlog(v)
 
       case CreateProveDHTuple(In(_gv), In(_hv), In(_uv), In(_vv)) =>
-        val gv = asRep[GroupElement](_gv)
-        val hv = asRep[GroupElement](_hv)
-        val uv = asRep[GroupElement](_uv)
-        val vv = asRep[GroupElement](_vv)
+        val gv = asRep[sigma.GroupElement](_gv)
+        val hv = asRep[sigma.GroupElement](_hv)
+        val uv = asRep[sigma.GroupElement](_uv)
+        val vv = asRep[sigma.GroupElement](_vv)
         sigmaDslBuilder.proveDHTuple(gv, hv, uv, vv)
 
       case Exponentiate(In(l), In(r)) =>
-        val lV = asRep[GroupElement](l)
-        val rV = asRep[BigInt](r)
-        lV.exp(rV)
+        buildCall(node, SGroupElementMethods.ExponentiateMethod, l, Seq(r))
 
-      case MultiplyGroup(In(_l), In(_r)) =>
-        val l = asRep[GroupElement](_l)
-        val r = asRep[GroupElement](_r)
-        l.multiply(r)
+      case MultiplyGroup(In(l), In(r)) =>
+        buildCall(node, SGroupElementMethods.MultiplyMethod, l, Seq(r))
 
       case GroupGenerator =>
         sigmaDslBuilder.groupGenerator
@@ -1005,26 +1001,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               if (method.methodId == SOptionMethods.GetOrElseMethod.methodId) Seq(asRep[Any](Thunk(argsV(0))))
               else argsV.map(asRep[Any](_))
             buildMethodCall(mc, asRep[Any](objV), args1)
-          case (ge: Ref[GroupElement]@unchecked, SGroupElementMethods) => method.name match {
-            case SGroupElementMethods.GetEncodedMethod.name =>
-              ge.getEncoded
-            case SGroupElementMethods.NegateMethod.name =>
-              ge.negate
-            case SGroupElementMethods.MultiplyMethod.name =>
-              val g2 = asRep[GroupElement](argsV(0))
-              ge.multiply(g2)
-            case SGroupElementMethods.ExponentiateMethod.name =>
-              val k = asRep[BigInt](argsV(0))
-              ge.exp(k)
-            case SGroupElementMethods.ExponentiateUnsignedMethod.name =>
-              val k = asRep[UnsignedBigInt](argsV(0))
-              ge.expUnsigned(k)
-            case _ => throwError()
-          }
           // getVar always arrives lowered to GetVar; a getVar MethodCall never reached the IR, keep it so
           case (_, SContextMethods) if method.methodId != SContextMethods.getVarV5Method.methodId =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
-          case (_, SBoxMethods | SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
+          case (_, SGroupElementMethods | SBoxMethods | SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
             case SGlobalMethods.groupGeneratorMethod.name =>

@@ -514,153 +514,6 @@ object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
 }   // of object BigInt
     registerEntityObject("UnsignedBigInt", UnsignedBigInt)
 
-object GroupElement extends EntityObject("GroupElement") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SGroupElement = sigma.GroupElement
-  case class GroupElementConst(
-        constValue: SGroupElement
-      ) extends LiftedConst[SGroupElement, GroupElement] with GroupElement
-        with Def[GroupElement] with GroupElementConstMethods {
-    val liftable: Liftable[SGroupElement, GroupElement] = LiftableGroupElement
-    val resultType: Elem[GroupElement] = liftable.eW
-  }
-
-  trait GroupElementConstMethods extends GroupElement  { thisConst: Def[_] =>
-
-    private val GroupElementClass = RClass(classOf[GroupElement])
-
-    override def exp(k: Ref[BigInt]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        GroupElementClass.getMethod("exp", classOf[Sym]),
-        Array[AnyRef](k),
-        true, false, element[GroupElement]))
-    }
-
-    override def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        GroupElementClass.getMethod("expUnsigned", classOf[Sym]),
-        Array[AnyRef](k),
-        true, false, element[GroupElement]))
-    }
-
-    override def multiply(that: Ref[GroupElement]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        GroupElementClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[GroupElement]))
-    }
-
-    override def negate: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
-        GroupElementClass.getMethod("negate"),
-        ArraySeq.empty,
-        true, false, element[GroupElement]))
-    }
-
-    override def getEncoded: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        GroupElementClass.getMethod("getEncoded"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-  }
-
-  implicit object LiftableGroupElement
-    extends Liftable[SGroupElement, GroupElement] {
-    lazy val eW: Elem[GroupElement] = groupElementElement
-    lazy val sourceType: RType[SGroupElement] = {
-      RType[SGroupElement]
-    }
-    def lift(x: SGroupElement): Ref[GroupElement] = GroupElementConst(x)
-  }
-
-  private val GroupElementClass = RClass(classOf[GroupElement])
-
-  // entityAdapter for GroupElement trait
-  case class GroupElementAdapter(source: Ref[GroupElement])
-      extends Node with GroupElement
-      with Def[GroupElement] {
-    val resultType: Elem[GroupElement] = element[GroupElement]
-    override def transform(t: Transformer) = GroupElementAdapter(t(source))
-
-    def exp(k: Ref[BigInt]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        GroupElementClass.getMethod("exp", classOf[Sym]),
-        Array[AnyRef](k),
-        true, true, element[GroupElement]))
-    }
-
-    def expUnsigned(k: Ref[UnsignedBigInt]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        GroupElementClass.getMethod("expUnsigned", classOf[Sym]),
-        Array[AnyRef](k),
-        true, true, element[GroupElement]))
-    }
-
-    def multiply(that: Ref[GroupElement]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        GroupElementClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[GroupElement]))
-    }
-
-    def negate: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
-        GroupElementClass.getMethod("negate"),
-        ArraySeq.empty,
-        true, true, element[GroupElement]))
-    }
-
-    def getEncoded: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        GroupElementClass.getMethod("getEncoded"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefGroupElement(p: Ref[GroupElement]): GroupElement = {
-    if (p.node.isInstanceOf[GroupElement]) p.node.asInstanceOf[GroupElement]
-    else
-      GroupElementAdapter(p)
-  }
-
-  // familyElem
-  class GroupElementElem[To <: GroupElement]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SGroupElement, To](LiftableGroupElement)
-
-  }
-
-  implicit lazy val groupElementElement: Elem[GroupElement] =
-    new GroupElementElem[GroupElement]
-
-  object GroupElementMethods {
-    object exp {
-      def unapply(d: Def[_]): Nullable[(Ref[GroupElement], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "exp" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[GroupElement], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[GroupElement], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object multiply {
-      def unapply(d: Def[_]): Nullable[(Ref[GroupElement], Ref[GroupElement])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[GroupElementElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[GroupElement], Ref[GroupElement])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[GroupElement], Ref[GroupElement])] = unapply(exp.node)
-    }
-  }
-} // of object GroupElement
-  registerEntityObject("GroupElement", GroupElement)
 
 object SigmaProp extends EntityObject("SigmaProp") {
   // entityConst: single const for each entity
@@ -928,25 +781,25 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Long]))
     }
 
-    override def proveDlog(g: Ref[GroupElement]): Ref[SigmaProp] = {
+    override def proveDlog(g: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
       asRep[SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("proveDlog", classOf[Sym]),
         Array[AnyRef](g),
         true, false, element[SigmaProp]))
     }
 
-    override def proveDHTuple(g: Ref[GroupElement], h: Ref[GroupElement], u: Ref[GroupElement], v: Ref[GroupElement]): Ref[SigmaProp] = {
+    override def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
       asRep[SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("proveDHTuple", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](g, h, u, v),
         true, false, element[SigmaProp]))
     }
 
-    override def groupGenerator: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
+    override def groupGenerator: Ref[sigma.GroupElement] = {
+      asRep[sigma.GroupElement](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("groupGenerator"),
         ArraySeq.empty,
-        true, false, element[GroupElement]))
+        true, false, element[sigma.GroupElement]))
     }
 
     override def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]] = {
@@ -956,11 +809,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Coll[Byte]]))
     }
 
-    override def decodePoint(encoded: Ref[Coll[Byte]]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(self,
+    override def decodePoint(encoded: Ref[Coll[Byte]]): Ref[sigma.GroupElement] = {
+      asRep[sigma.GroupElement](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("decodePoint", classOf[Sym]),
         Array[AnyRef](encoded),
-        true, false, element[GroupElement]))
+        true, false, element[sigma.GroupElement]))
     }
 
     override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
@@ -1143,25 +996,25 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Long]))
     }
 
-    def proveDlog(g: Ref[GroupElement]): Ref[SigmaProp] = {
+    def proveDlog(g: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
       asRep[SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("proveDlog", classOf[Sym]),
         Array[AnyRef](g),
         true, true, element[SigmaProp]))
     }
 
-    def proveDHTuple(g: Ref[GroupElement], h: Ref[GroupElement], u: Ref[GroupElement], v: Ref[GroupElement]): Ref[SigmaProp] = {
+    def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
       asRep[SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("proveDHTuple", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](g, h, u, v),
         true, true, element[SigmaProp]))
     }
 
-    def groupGenerator: Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
+    def groupGenerator: Ref[sigma.GroupElement] = {
+      asRep[sigma.GroupElement](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("groupGenerator"),
         ArraySeq.empty,
-        true, true, element[GroupElement]))
+        true, true, element[sigma.GroupElement]))
     }
 
     def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]] = {
@@ -1171,11 +1024,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
-    def decodePoint(encoded: Ref[Coll[Byte]]): Ref[GroupElement] = {
-      asRep[GroupElement](mkMethodCall(source,
+    def decodePoint(encoded: Ref[Coll[Byte]]): Ref[sigma.GroupElement] = {
+      asRep[sigma.GroupElement](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("decodePoint", classOf[Sym]),
         Array[AnyRef](encoded),
-        true, true, element[GroupElement]))
+        true, true, element[sigma.GroupElement]))
     }
 
     def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
@@ -1399,23 +1252,23 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object proveDlog {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "proveDlog" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement])] = unapply(exp.node)
     }
 
     object proveDHTuple {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "proveDHTuple" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2), args(3))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement], Ref[GroupElement])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement], Ref[sigma.GroupElement])] = unapply(exp.node)
     }
 
     object substConstants {
