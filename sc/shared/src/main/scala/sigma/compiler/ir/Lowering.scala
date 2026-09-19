@@ -18,6 +18,12 @@ trait Lowering { IR: IRContext =>
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // CollBuilder: the callee is the operation's companion
+    OpCallee(ConcreteCollection) -> { (mc, _, args) =>
+      val elemTpe = elemToSType(mc.resultType).asCollection[SType].elemType
+      builder.mkConcreteCollection[elemTpe.type](args.map(_.asValue[elemTpe.type]).toArray[Value[elemTpe.type]], elemTpe)
+    },
+    OpCallee(Xor) -> ((_, _, args) => builder.mkXor(args(0).asByteArray, args(1).asByteArray)),
     // Coll
     MethodCallee(SCollectionMethods.ApplyMethod)     -> ((_, col, args) => builder.mkByIndex(col.asCollection[SType], args(0).asIntValue, None)),
     MethodCallee(SCollectionMethods.SizeMethod)      -> ((_, col, _)    => SizeOf(col.asCollection[SType])),

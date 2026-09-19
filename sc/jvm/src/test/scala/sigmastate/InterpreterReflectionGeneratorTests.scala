@@ -38,13 +38,13 @@ class InterpreterReflectionGeneratorTests extends AnyPropSpec with Matchers {
 
   property("inner class") {
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
-    val clazz = classOf[ctx.Coll.CollElem[_, _]]
+    val clazz = classOf[ctx.Coll.CollElem[_]]
     registerClassEntry(clazz,
       constructors = Array(
         new SRConstructor[Any](Array(clazz.getDeclaringClass, classOf[TypeDescs#Elem[_]])) {
           override def newInstance(args: AnyRef*): Any = {
             val cake = args(0).asInstanceOf[ctx.Coll.type]
-            new cake.CollElem()(args(1).asInstanceOf[ctx.Elem[_]])
+            new cake.CollElem[Any](args(1).asInstanceOf[ctx.Elem[Any]])
           }
         }
       )

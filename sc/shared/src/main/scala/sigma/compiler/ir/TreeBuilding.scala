@@ -38,7 +38,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
-  private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
 
   /** Describes assignment of valIds for symbols which become ValDefs.
@@ -150,7 +149,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
     */
   object IsInternalDef {
     def unapply(d: Def[_]): Option[Def[_]] = d match {
-      case _: SigmaDslBuilder | _: CollBuilder => Some(d)
+      case _: SigmaDslBuilder => Some(d)
       case _ => None
     }
   }
@@ -172,7 +171,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
     val m = mc.callee.asInstanceOf[MethodCallee].method
     val generic = m.objType.getMethodById(m.methodId)
       .getOrElse(error(s"Cannot find method '${m.name}' on receiver of type ${obj.tpe}"))
-    if (mc.receiver.elem.isInstanceOf[CollElem[_, _]]) {
+    if (mc.receiver.elem.isInstanceOf[CollElem[_]]) {
       val col = obj.asCollection[SType]
       val typeSubst = (generic, args) match {
         case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
@@ -228,11 +227,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
               .asInstanceOf[ConstantNode[SType]]
             s.put(constant)(builder)
           case None =>
-            if(x.isInstanceOf[CollConst[_, _]]) { // hack used to process NumericToBigEndianBytes only
-              mkConstant[tpe.type](x.asInstanceOf[CollConst[_, _]].constValue.asInstanceOf[tpe.WrappedType], tpe)
-            } else {
-              mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
-            }
+            mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
         }
       case Def(IR.ConstantPlaceholder(id, elem)) =>
         val tpe = elemToSType(elem)
@@ -297,12 +292,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(ApplyUnOp(IsLogicalUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
 
-      case CBM.fromItems(_, colSyms, elemT) =>
-        val elemTpe = elemToSType(elemT)
-        val col = colSyms.map(recurse(_).asValue[elemTpe.type])
-        mkConcreteCollection[elemTpe.type](col.toArray[Value[elemTpe.type]], elemTpe)
-      case CBM.xor(_, colSym1, colSym2) =>
-        mkXor(recurse(colSym1), recurse(colSym2))
       case SDBM.xor(_, colSym1, colSym2) =>
         mkXor(recurse(colSym1), recurse(colSym2))
 
@@ -322,26 +311,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
 
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
-
-      case Def(MethodCall(receiver, LegacyCallee(m), argsSyms, _)) if receiver.elem.isInstanceOf[CollElem[_, _]] =>
-        val colSym = receiver.asInstanceOf[Ref[Coll[Any]]]
-        val args = argsSyms.map(_.asInstanceOf[Sym]).map(recurse)
-        val col = recurse(colSym).asCollection[SType]
-        val colTpe = col.tpe
-        val method = SCollectionMethods.methods.find(_.name == m.getName).getOrElse(error(s"unknown method Coll.${m.getName}"))
-        val typeSubst = (method, args) match {
-          case (_ @ SCollectionMethods.FlatMapMethod, Seq(f)) =>
-            val typeSubst = Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
-            typeSubst
-          case (_ @ SCollectionMethods.ZipMethod, Seq(coll)) =>
-            val typeSubst = Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
-            typeSubst
-          case (_, _) => EmptySubst
-        }
-        val specMethod = method.withConcreteTypes(typeSubst + (SCollection.tIV -> colTpe.elemType))
-        builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
-
-
 
       case Def(AnyZk(_, colSyms, _)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)
@@ -429,9 +398,10 @@ trait TreeBuilding extends Base { IR: IRContext =>
             error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
         }
 
-      // Operation callees always have a row (they exist only to be lowered).
+      // Operation callees always have a row (they exist only to be lowered). The collection
+      // builder has no ErgoTree counterpart: the rows of its operations ignore the receiver.
       case Def(mc @ MethodCall(objSym, OpCallee(_, _), argSyms, _)) =>
-        val obj = recurse[SType](objSym)
+        val obj = if (objSym == colBuilder) Global else recurse[SType](objSym)
         val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
         val row = rowFor(mc.callee).getOrElse(error(s"No ErgoTree lowering for ${mc.callee}"))
         row(mc, obj, args)

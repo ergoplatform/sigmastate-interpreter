@@ -27,6 +27,27 @@ trait Elems extends Entities { self: IRContext =>
     implicit lazy val groupElementElement: Elem[sigma.GroupElement] = new GroupElementElem
   }
 
+  object Coll {
+    /** Descriptor of `Coll[A]`; the class name keeps `Elem.name` as `Coll[A]`. */
+    class CollElem[A](val eItem: Elem[A]) extends EntityElem[sigma.Coll[A]] {
+      override def getName(f: TypeDesc => String) = s"$entityName[${f(eItem)}]"
+      override def buildTypeArgs = TypeArgs("A" -> (eItem -> scalan.core.Invariant))
+      override def canEqual(other: Any) = other.isInstanceOf[CollElem[_]]
+      override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
+        case other: CollElem[_] => other.eItem == eItem
+        case _ => false
+      })
+      override def hashCode = eItem.hashCode * 41 + 11
+    }
+    implicit final def collElement[A](implicit eA: Elem[A]): Elem[sigma.Coll[A]] =
+      cachedElem(classOf[CollElem[_]], eA)(new CollElem[A](eA))
+  }
+
+  object CollBuilder {
+    class CollBuilderElem extends EntityElem[sigma.CollBuilder]
+    implicit lazy val collBuilderElement: Elem[sigma.CollBuilder] = new CollBuilderElem
+  }
+
   object WOption {
     /** Descriptor of `Option[A]`; the class name keeps `Elem.name` as `WOption[A]`. */
     class WOptionElem[A](val eItem: Elem[A]) extends EntityElem[Option[A]] {

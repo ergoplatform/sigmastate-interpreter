@@ -55,49 +55,49 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     private val SigmaDslBuilderClass = RClass(classOf[SigmaDslBuilder])
 
-    override def Colls: Ref[CollBuilder] = {
-      asRep[CollBuilder](mkMethodCall(self,
+    override def Colls: Ref[sigma.CollBuilder] = {
+      asRep[sigma.CollBuilder](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("Colls"),
         ArraySeq.empty,
-        true, false, element[CollBuilder]))
+        true, false, element[sigma.CollBuilder]))
     }
 
-    override def atLeast(bound: Ref[Int], props: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    override def atLeast(bound: Ref[Int], props: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("atLeast", classOf[Sym], classOf[Sym]),
         Array[AnyRef](bound, props),
         true, false, element[sigma.SigmaProp]))
     }
 
-    override def allOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    override def allOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("allOf", classOf[Sym]),
         Array[AnyRef](conditions),
         true, false, element[Boolean]))
     }
 
-    override def allZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    override def allZK(conditions: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("allZK", classOf[Sym]),
         Array[AnyRef](conditions),
         true, false, element[sigma.SigmaProp]))
     }
 
-    override def anyOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    override def anyOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("anyOf", classOf[Sym]),
         Array[AnyRef](conditions),
         true, false, element[Boolean]))
     }
 
-    override def anyZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    override def anyZK(conditions: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("anyZK", classOf[Sym]),
         Array[AnyRef](conditions),
         true, false, element[sigma.SigmaProp]))
     }
 
-    override def xorOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    override def xorOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("xorOf", classOf[Sym]),
         Array[AnyRef](conditions),
@@ -111,35 +111,35 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[sigma.SigmaProp]))
     }
 
-    override def blake2b256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    override def blake2b256(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("blake2b256", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    override def sha256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    override def sha256(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("sha256", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    override def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[sigma.BigInt] = {
+    override def byteArrayToBigInt(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.BigInt] = {
       asRep[sigma.BigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("byteArrayToBigInt", classOf[Sym]),
         Array[AnyRef](bytes),
         true, false, element[sigma.BigInt]))
     }
 
-    override def longToByteArray(l: Ref[Long]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    override def longToByteArray(l: Ref[Long]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("longToByteArray", classOf[Sym]),
         Array[AnyRef](l),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    override def byteArrayToLong(bytes: Ref[Coll[Byte]]): Ref[Long] = {
+    override def byteArrayToLong(bytes: Ref[sigma.Coll[Byte]]): Ref[Long] = {
       asRep[Long](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("byteArrayToLong", classOf[Sym]),
         Array[AnyRef](bytes),
@@ -167,48 +167,48 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[sigma.GroupElement]))
     }
 
-    override def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    override def substConstants[T](scriptBytes: Ref[sigma.Coll[Byte]], positions: Ref[sigma.Coll[Int]], newValues: Ref[sigma.Coll[T]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("substConstants", classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](scriptBytes, positions, newValues),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    override def decodePoint(encoded: Ref[Coll[Byte]]): Ref[sigma.GroupElement] = {
+    override def decodePoint(encoded: Ref[sigma.Coll[Byte]]): Ref[sigma.GroupElement] = {
       asRep[sigma.GroupElement](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("decodePoint", classOf[Sym]),
         Array[AnyRef](encoded),
         true, false, element[sigma.GroupElement]))
     }
 
-    override def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
+    override def avlTree(operationFlags: Ref[Byte], digest: Ref[sigma.Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
       asRep[sigma.AvlTree](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
         true, false, element[sigma.AvlTree]))
     }
 
-    override def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    override def xor(l: Ref[sigma.Coll[Byte]], r: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("xor", classOf[Sym], classOf[Sym]),
         Array[AnyRef](l, r),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
+    def serialize[T](value: Ref[T]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("serialize", classOf[Sym]),
         Array[AnyRef](value),
-        true, false, element[Coll[Byte]]))
+        true, false, element[sigma.Coll[Byte]]))
     }
 
-    override def deserializeTo[T](l: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+    override def deserializeTo[T](l: Ref[sigma.Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](l, cT),
         true, false, element[T](cT), Map(tT -> elemToSType(cT))))
     }
-    override def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+    override def fromBigEndianBytes[T](bytes: Ref[sigma.Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](bytes, cT),
@@ -230,7 +230,7 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
 
-    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
+    override def powHit(k: Ref[Int], msg: Ref[sigma.Coll[Byte]], nonce: Ref[sigma.Coll[Byte]], h: Ref[sigma.Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
       asRep[sigma.UnsignedBigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
@@ -270,49 +270,49 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     val resultType: Elem[SigmaDslBuilder] = element[SigmaDslBuilder]
     override def transform(t: Transformer) = SigmaDslBuilderAdapter(t(source))
 
-    def Colls: Ref[CollBuilder] = {
-      asRep[CollBuilder](mkMethodCall(source,
+    def Colls: Ref[sigma.CollBuilder] = {
+      asRep[sigma.CollBuilder](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("Colls"),
         ArraySeq.empty,
-        true, true, element[CollBuilder]))
+        true, true, element[sigma.CollBuilder]))
     }
 
-    def atLeast(bound: Ref[Int], props: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    def atLeast(bound: Ref[Int], props: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("atLeast", classOf[Sym], classOf[Sym]),
         Array[AnyRef](bound, props),
         true, true, element[sigma.SigmaProp]))
     }
 
-    def allOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    def allOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("allOf", classOf[Sym]),
         Array[AnyRef](conditions),
         true, true, element[Boolean]))
     }
 
-    def allZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    def allZK(conditions: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("allZK", classOf[Sym]),
         Array[AnyRef](conditions),
         true, true, element[sigma.SigmaProp]))
     }
 
-    def anyOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    def anyOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("anyOf", classOf[Sym]),
         Array[AnyRef](conditions),
         true, true, element[Boolean]))
     }
 
-    def anyZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+    def anyZK(conditions: Ref[sigma.Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
       asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("anyZK", classOf[Sym]),
         Array[AnyRef](conditions),
         true, true, element[sigma.SigmaProp]))
     }
 
-    def xorOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
+    def xorOf(conditions: Ref[sigma.Coll[Boolean]]): Ref[Boolean] = {
       asRep[Boolean](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("xorOf", classOf[Sym]),
         Array[AnyRef](conditions),
@@ -326,35 +326,35 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[sigma.SigmaProp]))
     }
 
-    def blake2b256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def blake2b256(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("blake2b256", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def sha256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def sha256(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("sha256", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[sigma.BigInt] = {
+    def byteArrayToBigInt(bytes: Ref[sigma.Coll[Byte]]): Ref[sigma.BigInt] = {
       asRep[sigma.BigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("byteArrayToBigInt", classOf[Sym]),
         Array[AnyRef](bytes),
         true, true, element[sigma.BigInt]))
     }
 
-    def longToByteArray(l: Ref[Long]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def longToByteArray(l: Ref[Long]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("longToByteArray", classOf[Sym]),
         Array[AnyRef](l),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def byteArrayToLong(bytes: Ref[Coll[Byte]]): Ref[Long] = {
+    def byteArrayToLong(bytes: Ref[sigma.Coll[Byte]]): Ref[Long] = {
       asRep[Long](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("byteArrayToLong", classOf[Sym]),
         Array[AnyRef](bytes),
@@ -382,56 +382,56 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[sigma.GroupElement]))
     }
 
-    def substConstants[T](scriptBytes: Ref[Coll[Byte]], positions: Ref[Coll[Int]], newValues: Ref[Coll[T]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def substConstants[T](scriptBytes: Ref[sigma.Coll[Byte]], positions: Ref[sigma.Coll[Int]], newValues: Ref[sigma.Coll[T]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("substConstants", classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](scriptBytes, positions, newValues),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def decodePoint(encoded: Ref[Coll[Byte]]): Ref[sigma.GroupElement] = {
+    def decodePoint(encoded: Ref[sigma.Coll[Byte]]): Ref[sigma.GroupElement] = {
       asRep[sigma.GroupElement](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("decodePoint", classOf[Sym]),
         Array[AnyRef](encoded),
         true, true, element[sigma.GroupElement]))
     }
 
-    def avlTree(operationFlags: Ref[Byte], digest: Ref[Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
+    def avlTree(operationFlags: Ref[Byte], digest: Ref[sigma.Coll[Byte]], keyLength: Ref[Int], valueLengthOpt: Ref[Option[Int]]): Ref[sigma.AvlTree] = {
       asRep[sigma.AvlTree](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("avlTree", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](operationFlags, digest, keyLength, valueLengthOpt),
         true, true, element[sigma.AvlTree]))
     }
 
-    def xor(l: Ref[Coll[Byte]], r: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def xor(l: Ref[sigma.Coll[Byte]], r: Ref[sigma.Coll[Byte]]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("xor", classOf[Sym], classOf[Sym]),
         Array[AnyRef](l, r),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
+    def powHit(k: Ref[Int], msg: Ref[sigma.Coll[Byte]], nonce: Ref[sigma.Coll[Byte]], h: Ref[sigma.Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
       asRep[sigma.UnsignedBigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
         true, true, element[sigma.UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
     }
 
-    def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
+    def serialize[T](value: Ref[T]): Ref[sigma.Coll[Byte]] = {
+      asRep[sigma.Coll[Byte]](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("serialize", classOf[Sym]),
         Array[AnyRef](value),
-        true, true, element[Coll[Byte]]))
+        true, true, element[sigma.Coll[Byte]]))
     }
 
-    def deserializeTo[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+    def deserializeTo[T](bytes: Ref[sigma.Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("deserializeTo", classOf[Sym], classOf[Elem[_]]),
         Array[AnyRef](bytes, cT),
         true, true, element[T](cT), Map(tT -> elemToSType(cT))))
     }
 
-    def fromBigEndianBytes[T](bytes: Ref[Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
+    def fromBigEndianBytes[T](bytes: Ref[sigma.Coll[Byte]])(implicit cT: Elem[T]): Ref[T] = {
       asRep[T](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("fromBigEndianBytes", classOf[Sym], classOf[Elem[T]]),
         Array[AnyRef](bytes, cT),
@@ -497,63 +497,63 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object atLeast {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[sigma.Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "atLeast" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[sigma.Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[sigma.Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object allOf {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "allOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = unapply(exp.node)
     }
 
     object allZK {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "allZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object anyOf {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "anyOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = unapply(exp.node)
     }
 
     object anyZK {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "anyZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object xorOf {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "xorOf" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Boolean]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Boolean]])] = unapply(exp.node)
     }
 
     object sigmaProp {
@@ -567,33 +567,33 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object blake2b256 {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "blake2b256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
 
     object sha256 {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "sha256" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
 
     object byteArrayToBigInt {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "byteArrayToBigInt" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
 
     object longToByteArray {
@@ -607,13 +607,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object byteArrayToLong {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "byteArrayToLong" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
 
     object proveDlog {
@@ -637,33 +637,33 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object substConstants {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Int]], Ref[sigma.Coll[T]]) forSome {type T}] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "substConstants" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Int]], Ref[sigma.Coll[T]]) forSome {type T}]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Int]], Ref[Coll[T]]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Int]], Ref[sigma.Coll[T]]) forSome {type T}] = unapply(exp.node)
     }
 
     object decodePoint {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "decodePoint" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
 
     object deserializeTo {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Elem[T]) forSome {type T}] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "deserializeTo" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Elem[T]) forSome {type T}]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Elem[T]) forSome {type T}] = unapply(exp.node)
     }
 
     object serialize {
@@ -678,23 +678,23 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
 
     /** This is necessary to handle CreateAvlTree in GraphBuilding (v6.0) */
     object avlTree {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[sigma.Coll[Byte]], Ref[Int], Ref[Option[Int]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "avlTree" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1), args(2), args(3))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[sigma.Coll[Byte]], Ref[Int], Ref[Option[Int]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[Coll[Byte]], Ref[Int], Ref[Option[Int]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Byte], Ref[sigma.Coll[Byte]], Ref[Int], Ref[Option[Int]])] = unapply(exp.node)
     }
 
     object xor {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Byte]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "xor" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Byte]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[Byte]], Ref[Coll[Byte]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[sigma.Coll[Byte]], Ref[sigma.Coll[Byte]])] = unapply(exp.node)
     }
   }
 } // of object SigmaDslBuilder

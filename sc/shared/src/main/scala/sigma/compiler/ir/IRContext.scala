@@ -2,9 +2,9 @@ package sigma.compiler.ir
 
 import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
-import sigma.ast.SCollectionMethods
+import sigma.ast.{ConcreteCollection, SCollectionMethods}
 import sigma.data.Nullable
-import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule}
+import sigma.compiler.ir.wrappers.sigma.SigmaDslModule
 
 /** Aggregate cake with all inter-dependent modules assembled together.
   * Each instance of this class contains independent IR context, thus many
@@ -41,7 +41,6 @@ trait IRContext
   with Entities
   with Elems
   with DefRewriting
-  with CollsModule
   with SigmaDslModule
   with Lowering
   with TreeBuilding
@@ -60,9 +59,9 @@ trait IRContext
 
   type LazyRep[T] = MutableLazy[Ref[T]]
 
-  private val CBM = CollBuilderMethods
+  private val ConcreteColl = CallPattern(ConcreteCollection)
 
-  def colBuilder: Ref[CollBuilder]
+  def colBuilder: Ref[sigma.CollBuilder]
 
   /** During compilation represent a global value Global, see also SGlobal type. */
   def sigmaDslBuilder: Ref[SigmaDslBuilder]
@@ -88,13 +87,11 @@ trait IRContext
       // Rule: xs.map(f).length  ==> xs.length
       case CollMap(xs, _) =>
         collLength(asRep[Any](xs))
-      // Rule: Const[Coll[T]](coll).length =>
-      case CollConst(coll, _) =>
-        coll.length
+      // Rule: Const[sigma.Coll[T]](coll).length =>
       case DslConst(coll: sigma.Coll[_]) =>
         coll.length
       // Rule: Coll(items @ Seq(x1, x2, x3)).length => items.length
-      case CBM.fromItems(_, items, _) =>
+      case ConcreteColl(_, items) =>
         items.length
       case _ => super.rewriteDef(d)
     }

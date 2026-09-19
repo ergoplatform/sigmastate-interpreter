@@ -78,7 +78,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
   type ROption[T] = Ref[Option[T]]
 
-  private val CBM      = CollBuilderMethods
+  private val ConcreteColl = CallPattern(ConcreteCollection)
   private val IsValid  = CallPattern(SSigmaPropMethods.IsProvenMethod)
 
   /** `p.isValid` as a call node carrying its descriptor. */
@@ -96,9 +96,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `anyOf` predefined function.
     */
   object AnyOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
-      case SDBM.anyOf(_, xs) =>
-        CBM.fromItems.unapply(xs)
+    def unapply(d: Def[_]): Nullable[(Sym, Seq[Sym], Elem[Any])] = d match {
+      case SDBM.anyOf(_, xs) => xs match {
+        case ConcreteColl(b, items) => Nullable((b, items, xs.elem.asInstanceOf[CollElem[Any]].eItem))
+        case _ => Nullable.None
+      }
       case _ => Nullable.None
     }
   }
@@ -107,9 +109,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `allOf` predefined function.
     */
   object AllOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
-      case SDBM.allOf(_, xs) =>
-        CBM.fromItems.unapply(xs)
+    def unapply(d: Def[_]): Nullable[(Sym, Seq[Sym], Elem[Any])] = d match {
+      case SDBM.allOf(_, xs) => xs match {
+        case ConcreteColl(b, items) => Nullable((b, items, xs.elem.asInstanceOf[CollElem[Any]].eItem))
+        case _ => Nullable.None
+      }
       case _ => Nullable.None
     }
   }
@@ -118,9 +122,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `anyZK` predefined function.
     */
   object AnyZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
-      case SDBM.anyZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])]]
+    def unapply(d: Def[_]): Nullable[(Sym, Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
+      case SDBM.anyZK(_, xs) => xs match {
+        case ConcreteColl(b, items) => Nullable((b, items.map(asRep[sigma.SigmaProp](_)), sigmaPropElement))
+        case _ => Nullable.None
+      }
       case _ => Nullable.None
     }
   }
@@ -129,9 +135,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `allZK` predefined function.
     */
   object AllZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
-      case SDBM.allZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])]]
+    def unapply(d: Def[_]): Nullable[(Sym, Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
+      case SDBM.allZK(_, xs) => xs match {
+        case ConcreteColl(b, items) => Nullable((b, items.map(asRep[sigma.SigmaProp](_)), sigmaPropElement))
+        case _ => Nullable.None
+      }
       case _ => Nullable.None
     }
   }
@@ -195,23 +203,22 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           sigmaOr(l1, p)
         isValid(res)
 
-      case SDBM.Colls(_) => colBuilder
       case SDBM.sigmaProp(_, IsValid(p, _)) => p
       case IsValid(SDBM.sigmaProp(_, bool), _) => bool
 
       case AllOf(b, HasSigmas(bools, sigmas), _) =>
-        val zkAll = sigmaDslBuilder.allZK(b.fromItems(sigmas:_*))
+        val zkAll = sigmaDslBuilder.allZK(fromItems(sigmas, sigmaPropElement))
         if (bools.isEmpty)
           isValid(zkAll)
         else
-          isValid(sigmaAnd(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.allOf(b.fromItems(bools:_*))), zkAll))
+          isValid(sigmaAnd(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.allOf(fromItems(bools, BooleanElement))), zkAll))
 
       case AnyOf(b, HasSigmas(bs, ss), _) =>
-        val zkAny = sigmaDslBuilder.anyZK(b.fromItems(ss:_*))
+        val zkAny = sigmaDslBuilder.anyZK(fromItems(ss, sigmaPropElement))
         if (bs.isEmpty)
           isValid(zkAny)
         else
-          isValid(sigmaOr(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.anyOf(b.fromItems(bs:_*))), zkAny))
+          isValid(sigmaOr(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.anyOf(fromItems(bs, BooleanElement))), zkAny))
 
       case AllOf(_,items,_) if items.length == 1 => items(0)
       case AnyOf(_,items,_) if items.length == 1 => items(0)
@@ -242,8 +249,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   private val _sigmaDslBuilder: LazyRep[SigmaDslBuilder] = MutableLazy(variable[SigmaDslBuilder])
   @inline def sigmaDslBuilder: Ref[SigmaDslBuilder] = _sigmaDslBuilder.value
 
-  private val _colBuilder: LazyRep[CollBuilder] = MutableLazy(variable[CollBuilder])
-  @inline def colBuilder: Ref[CollBuilder] = _colBuilder.value
+  private val _colBuilder: LazyRep[sigma.CollBuilder] = MutableLazy(variable[sigma.CollBuilder])
+  @inline def colBuilder: Ref[sigma.CollBuilder] = _colBuilder.value
 
   protected override def onReset(): Unit = {
     super.onReset()
@@ -312,7 +319,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: HeaderElem => SHeader
     case _: PreHeaderElem => SPreHeader
     case _: SigmaPropElem => SSigmaProp
-    case ce: CollElem[_, _] => SCollection(elemToSType(ce.eItem))
+    case ce: CollElem[_] => SCollection(elemToSType(ce.eItem))
     case fe: FuncElem[_, _] => SFunc(elemToSType(fe.eDom), elemToSType(fe.eRange))
     case pe: PairElem[_, _] => STuple(elemToSType(pe.eFst), elemToSType(pe.eSnd))
     case _ => error(s"Don't know how to convert Elem $e to SType")
@@ -432,6 +439,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
                           typeSubst: Map[STypeVar, SType] = Map.empty): Ref[Any] =
     asRep[Any](mkMethodCall(objV, MethodCallee(method), argsV, typeSubst, stypeToElem(node.tpe)))
 
+  /** `Coll(items)` as a call node of the ConcreteCollection operation on the collection builder. */
+  protected def fromItems[A](items: Seq[Ref[A]], eA: Elem[A]): Ref[sigma.Coll[A]] =
+    asRep[sigma.Coll[A]](mkMethodCall(colBuilder, OpCallee(ConcreteCollection), items, Map(), collElement(eA)))
+
   /** `xs.size` as a call node carrying its descriptor. */
   protected def collLength(xs: Ref[Any]): Ref[Int] =
     asRep[Int](mkMethodCall(xs, MethodCallee(SCollectionMethods.SizeMethod), Seq(), Map(), IntElement))
@@ -446,8 +457,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
     class InColl[T: Elem] {
-      def unapply(v: SValue): Nullable[Ref[Coll[T]]] = {
-        val res = asRep[Coll[T]](buildNode(ctx, env, v))
+      def unapply(v: SValue): Nullable[Ref[sigma.Coll[T]]] = {
+        val res = asRep[sigma.Coll[T]](buildNode(ctx, env, v))
         Nullable(res)
       }
     }
@@ -477,11 +488,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         case p: sigma.GroupElement =>
           assert(tpe == SGroupElement)
           DslConst[sigma.GroupElement, sigma.GroupElement](p)
-        case coll: SColl[a] =>
+        case coll: sigma.Coll[a] =>
           val tpeA = tpe.asCollection[SType].elemType
           stypeToElem(tpeA) match {
             case eWA: Elem[wa] =>
-              DslConst[SColl[a], Coll[wa]](coll)(collElement(eWA))
+              DslConst[sigma.Coll[a], sigma.Coll[wa]](coll)(collElement(eWA))
           }
         case box: sigma.Box =>
           DslConst[sigma.Box, sigma.Box](box)
@@ -622,7 +633,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         sigmaDslBuilder.groupGenerator
 
       case ByteArrayToBigInt(In(arr)) =>
-        val arrV = asRep[Coll[Byte]](arr)
+        val arrV = asRep[sigma.Coll[Byte]](arr)
         sigmaDslBuilder.byteArrayToBigInt(arrV)
 
       case LongToByteArray(In(x)) =>
@@ -658,8 +669,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case node: BooleanTransformer[_] =>
         val tpeIn = node.input.tpe.elemType
         val eIn = stypeToElem(tpeIn)
-        val xs = asRep[Coll[Any]](eval(node.input))
-        val eAny = xs.elem.asInstanceOf[CollElem[Any,_]].eItem
+        val xs = asRep[sigma.Coll[Any]](eval(node.input))
+        val eAny = xs.elem.asInstanceOf[CollElem[Any]].eItem
         assert(eIn == eAny, s"Types should be equal: but $eIn != $eAny")
         val predicate = asRep[Any => SType#WrappedType](eval(node.condition))
         val res = predicate.elem.eRange match {
@@ -671,7 +682,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
                 buildCall(node, SCollectionMethods.ExistsMethod, asRep[Any](xs), Seq(asRep[Any](predicate)))
             }
           case e if e.isInstanceOf[SigmaPropElem] =>
-            val children = asRep[Coll[sigma.SigmaProp]](collMap(asRep[Any](xs), asRep[Any => Any](predicate)))
+            val children = asRep[sigma.Coll[sigma.SigmaProp]](collMap(asRep[Any](xs), asRep[Any => Any](predicate)))
             node match {
               case _: ForAll[_] =>
                 sigmaDslBuilder.allZK(children)
@@ -699,23 +710,23 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         buildCall(node, SCollectionMethods.FilterMethod, asRep[Any](eval(input)), Seq(asRep[Any](eval(p))))
 
       case sigma.ast.Apply(f, Seq(x)) if f.tpe.isFunc =>
-        val fV = asRep[Any => Coll[Any]](eval(f))
+        val fV = asRep[Any => sigma.Coll[Any]](eval(f))
         val xV = asRep[Any](eval(x))
         Apply(fV, xV, mayInline = false)
 
       case CalcBlake2b256(In(input)) =>
-        val inputV = asRep[Coll[Byte]](input)
+        val inputV = asRep[sigma.Coll[Byte]](input)
         val res = sigmaDslBuilder.blake2b256(inputV)
         res
 
       case CalcSha256(In(input)) =>
-        val inputV = asRep[Coll[Byte]](input)
+        val inputV = asRep[sigma.Coll[Byte]](input)
         val res = sigmaDslBuilder.sha256(inputV)
         res
 
       case SizeOf(In(xs)) =>
         xs.elem.asInstanceOf[Any] match {
-          case _: CollElem[_,_] =>
+          case _: CollElem[_] =>
             buildCall(node, SCollectionMethods.SizeMethod, xs, Seq())
           case _: PairElem[_,_] =>
             2: Ref[Int]
@@ -763,7 +774,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         sigmaDslBuilder.sigmaProp(eval(bool))
 
       case AtLeast(bound, input) =>
-        val inputV = asRep[Coll[sigma.SigmaProp]](eval(input))
+        val inputV = asRep[sigma.Coll[sigma.SigmaProp]](eval(input))
         val len = collLength(asRep[Any](inputV))
         if (len.isConst) {
           val inputCount = valueFromRep(len)
@@ -794,27 +805,27 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case OR(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.anyOf(colBuilder.fromItems(values: _*))
+          sigmaDslBuilder.anyOf(fromItems(values.map(asRep[Boolean](_)), BooleanElement))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
           sigmaDslBuilder.anyOf(inputV)
       }
 
       case AND(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.allOf(colBuilder.fromItems(values: _*))
+          sigmaDslBuilder.allOf(fromItems(values.map(asRep[Boolean](_)), BooleanElement))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
           sigmaDslBuilder.allOf(inputV)
       }
 
       case XorOf(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.xorOf(colBuilder.fromItems(values: _*))
+          sigmaDslBuilder.xorOf(fromItems(values.map(asRep[Boolean](_)), BooleanElement))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
           sigmaDslBuilder.xorOf(inputV)
       }
 
@@ -841,11 +852,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
       case SigmaAnd(items) =>
         val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
-        sigmaDslBuilder.allZK(colBuilder.fromItems(itemsV: _*))
+        sigmaDslBuilder.allZK(fromItems(itemsV, sigmaPropElement))
 
       case SigmaOr(items) =>
         val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
-        sigmaDslBuilder.anyZK(colBuilder.fromItems(itemsV: _*))
+        sigmaDslBuilder.anyZK(fromItems(itemsV, sigmaPropElement))
         
       case If(c, t, e) =>
         val cV = eval(c)
@@ -889,8 +900,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
       case ConcreteCollection(InSeq(vs), elemType) =>
         val eAny = stypeToElem(elemType).asInstanceOf[Elem[Any]]
-        val values = colBuilder.fromItems(vs: _*)(eAny)
-        values
+        fromItems(vs, eAny)
 
       case sigma.ast.Upcast(In(input), tpe) =>
         val elem = stypeToElem(tpe.asNumType)
@@ -901,11 +911,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         downcast(input)(elem)
 
       case ByteArrayToLong(In(arr)) =>
-        val coll = asRep[Coll[Byte]](arr)
+        val coll = asRep[sigma.Coll[Byte]](arr)
         sigmaDslBuilder.byteArrayToLong(coll)
 
       case Xor(InCollByte(l), InCollByte(r)) =>
-        colBuilder.xor(l, r)
+        asRep[Any](mkMethodCall(colBuilder, OpCallee(Xor), Seq(l, r), Map(), stypeToElem(node.tpe)))
 
       case SubstConstants(InCollByte(bytes), InCollInt(positions), InCollAny(newValues)) =>
         sigmaDslBuilder.substConstants(bytes, positions, newValues)
@@ -935,8 +945,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
             case SGlobalMethods.groupGeneratorMethod.name =>
               g.groupGenerator
             case SGlobalMethods.xorMethod.name =>
-              val c1 = asRep[Coll[Byte]](argsV(0))
-              val c2 = asRep[Coll[Byte]](argsV(1))
+              val c1 = asRep[sigma.Coll[Byte]](argsV(0))
+              val c2 = asRep[sigma.Coll[Byte]](argsV(1))
               g.xor(c1, c2)
             case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[sigma.BigInt](argsV(0))
@@ -946,20 +956,20 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               g.decodeNbits(c1)
             case SGlobalMethods.powHitMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val k = asRep[Int](argsV(0))
-              val msg = asRep[Coll[Byte]](argsV(1))
-              val nonce = asRep[Coll[Byte]](argsV(2))
-              val h = asRep[Coll[Byte]](argsV(3))
+              val msg = asRep[sigma.Coll[Byte]](argsV(1))
+              val nonce = asRep[sigma.Coll[Byte]](argsV(2))
+              val h = asRep[sigma.Coll[Byte]](argsV(3))
               val N = asRep[Int](argsV(4))
               g.powHit(k, msg, nonce, h, N)
             case SGlobalMethods.deserializeToMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Coll[Byte]](argsV(0))
+              val c1 = asRep[sigma.Coll[Byte]](argsV(0))
               val c2 = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.deserializeTo(c1)(c2)
             case SGlobalMethods.serializeMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val value = asRep[Any](argsV(0))
               g.serialize(value)
             case SGlobalMethods.FromBigEndianBytesMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val bytes = asRep[Coll[Byte]](argsV(0))
+              val bytes = asRep[sigma.Coll[Byte]](argsV(0))
               val cT = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
               g.fromBigEndianBytes(bytes)(cT)
             case SGlobalMethods.someMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>

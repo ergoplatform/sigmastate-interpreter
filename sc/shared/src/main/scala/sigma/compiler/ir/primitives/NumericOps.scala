@@ -14,7 +14,7 @@ trait NumericOps extends Base { self: IRContext =>
     def unary_- : Ref[T] = NumericNegate(n)(x.elem).apply(x)
     def toInt: Ref[Int] = NumericToInt(n).apply(x)
     def toLong: Ref[Long] = NumericToLong(n).apply(x)
-    def toBigEndianBytes: Ref[Coll[Byte]] = NumericToBigEndianBytes(n).apply(x)
+    def toBigEndianBytes: Ref[sigma.Coll[Byte]] = NumericToBigEndianBytes(n).apply(x)
   }
 
   /** Extension methods over `Ref[T]` where T is instance of ExactIntegral type-class. */
@@ -91,17 +91,17 @@ trait NumericOps extends Base { self: IRContext =>
   import Coll._
   /** Descriptor of unary `ToBigEndianBytes` conversion operation. */
   case class NumericToBigEndianBytes[T](n: ExactNumeric[T])
-    extends UnOp[T, Coll[Byte]]("ToBigEndianBytes")(element[Coll[Byte]]) {
-    override def applySeq(x: T): Coll[Byte] = {
-      liftableColl(Liftables.ByteIsLiftable).lift(n.toBigEndianBytes(x))
+    extends UnOp[T, sigma.Coll[Byte]]("ToBigEndianBytes")(element[sigma.Coll[Byte]]) {
+    override def applySeq(x: T): sigma.Coll[Byte] = {
+      n.toBigEndianBytes(x)
     }
   }
 
   /** Descriptor of unary `ToBits` conversion operation. */
   case class NumericToBits[T](n: ExactNumeric[T])
-    extends UnOp[T, Coll[Boolean]]("ToBits")(element[Coll[Boolean]]) {
-    override def applySeq(x: T): Coll[Boolean] = {
-      liftableColl(Liftables.BooleanIsLiftable).lift(n.toBits(x))
+    extends UnOp[T, sigma.Coll[Boolean]]("ToBits")(element[sigma.Coll[Boolean]]) {
+    override def applySeq(x: T): sigma.Coll[Boolean] = {
+      n.toBits(x)
     }
   }
 
