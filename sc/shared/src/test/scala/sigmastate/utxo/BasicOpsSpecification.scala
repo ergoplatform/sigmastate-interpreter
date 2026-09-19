@@ -477,8 +477,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val g = CGroupElement(SecP256K1Group.generator)
 
-    // seeded: keeps the compiled script reproducible run to run (values are still random-looking)
-    val rnd = new java.util.Random(20260913L)
+    // the random values end up in the script: see Platform.testSeed for how the seed is chosen
+    val rnd = new java.util.Random(scalan.Platform.testSeed(20260913L))
     def randBigInt: BigInt = {
       val values = new Array[Byte](32)
       rnd.nextBytes(values)
@@ -774,8 +774,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
     // For this test we use n=4 bits, proving v ∈ [0, 16)
     val n = 4
     val v = BigInteger.valueOf(9) // secret value to prove is in range
-    // seeded: derived points are interpolated into the script, so the compiled tree must be reproducible
-    val rng = new java.util.Random(20260914L)
+    // the derived points end up in the script: see Platform.testSeed for how the seed is chosen
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260914L))
     val r = new BigInteger(256, rng).mod(q) // blinding factor
 
     // Pedersen commitment: V = v*G + r*H
@@ -1189,7 +1189,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val n = 64
     val logN = 6
-    val rng = new java.util.Random(20260915L) // seeded: derived points end up in the script text
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260915L)) // derived points end up in the script
 
     // Random 64-bit value
     val v = new BigInteger(63, rng) // [0, 2^63) to stay within range
@@ -1674,7 +1674,7 @@ $lrFoldScript
     val H = group.exponentiate(G, new BigInteger(1,
       Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
 
-    val rng = new java.util.Random(20260916L) // seeded: derived points end up in the script text
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260916L)) // derived points end up in the script
     val r = new BigInteger(256, rng).mod(q)
 
     val V = group.multiplyGroupElements(

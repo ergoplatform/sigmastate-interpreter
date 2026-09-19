@@ -37,12 +37,26 @@ object Platform {
   def threadSleepOrNoOp(millis: Long): Unit =
     Thread.sleep(millis)
 
+  /** Seed for a test whose random inputs end up in the compiled script (`BasicOpsSpecification`):
+    * `SIGMA_TEST_SEED` replays a run; while the ErgoTree snapshot is recorded
+    * (`SIGMA_TREE_SNAPSHOT_DIR`) the test's `fixedSeed` keeps the recorded trees reproducible;
+    * otherwise the seed is fresh and printed so a failure can be replayed.
+    */
+  def testSeed(fixedSeed: Long): Long = sys.env.get("SIGMA_TEST_SEED") match {
+    case Some(s) => s.toLong
+    case None if sys.env.contains("SIGMA_TREE_SNAPSHOT_DIR") => fixedSeed
+    case None =>
+      val seed = new java.security.SecureRandom().nextLong()
+      println(s"Random test inputs seeded with $seed (SIGMA_TEST_SEED=$seed replays this run)")
+      seed
+  }
+
   /** Records compiler output for cross-commit diffing. When the `SIGMA_TREE_SNAPSHOT_DIR`
     * environment variable is set, appends one line
     * `sha256(code) activatedVersion ergoTreeVersion hex(bytes)` to `<dir>/<suite>.txt`;
     * does nothing otherwise. Use a fresh directory per run, then `diff -r` two runs.
     */
-  def recordTreeSnapshot(suite: String, code: String, bytes: Array[Byte]): Unit = {
+  def recordTreeSnapshot(suite: String, code: String, bytes: => Array[Byte]): Unit = {
     sys.env.get("SIGMA_TREE_SNAPSHOT_DIR").foreach { dir =>
       val digest = java.security.MessageDigest.getInstance("SHA-256")
       val key = digest.digest(code.getBytes("UTF-8")).map("%02x".format(_)).mkString
