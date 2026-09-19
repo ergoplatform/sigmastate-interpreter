@@ -18,6 +18,12 @@ trait Lowering { IR: IRContext =>
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // SigmaProp
+    OpCallee(SigmaAnd) -> ((_, p1, args) => SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
+    OpCallee(SigmaOr)  -> ((_, p1, args) => SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
+    MethodCallee(SSigmaPropMethods.PropBytesMethod) -> ((_, p, _) => builder.mkSigmaPropBytes(p.asSigmaProp)),
+    // isValid never reaches the tree (rewrite rules and removeIsProven eliminate it); keep the old failure
+    MethodCallee(SSigmaPropMethods.IsProvenMethod)  -> ((_, p, _) => error(s"Cannot find method 'isValid' on receiver of type ${p.tpe}")),
     // BigInt arithmetic: the callee is the operation's companion
     OpCallee(ArithOp.operations(PlusCode))     -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, PlusCode)),
     OpCallee(ArithOp.operations(MinusCode))    -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, MinusCode)),

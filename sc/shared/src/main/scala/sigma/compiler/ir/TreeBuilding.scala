@@ -38,7 +38,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
-  private val SigmaM = SigmaPropMethods
   private val CollM = CollMethods
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
@@ -374,12 +373,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
 
 
-      case SigmaM.and_sigma_&&(In(p1), In(p2)) =>
-        SigmaAnd(Seq(p1.asSigmaProp, p2.asSigmaProp))
-      case SigmaM.or_sigma_||(In(p1), In(p2)) =>
-        SigmaOr(Seq(p1.asSigmaProp, p2.asSigmaProp))
-      case SigmaM.propBytes(In(prop)) =>
-        mkSigmaPropBytes(prop.asSigmaProp)
 
       case Def(AnyZk(_, colSyms, _)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)

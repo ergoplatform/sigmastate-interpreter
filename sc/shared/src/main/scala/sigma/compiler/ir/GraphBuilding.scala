@@ -80,7 +80,17 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   type ROption[T] = Ref[Option[T]]
 
   private val CBM      = CollBuilderMethods
-  private val SigmaM   = SigmaPropMethods
+  private val IsValid  = CallPattern(SSigmaPropMethods.IsProvenMethod)
+
+  /** `p.isValid` as a call node carrying its descriptor. */
+  private def isValid(p: Ref[sigma.SigmaProp]): Ref[Boolean] =
+    asRep[Boolean](mkMethodCall(p, MethodCallee(SSigmaPropMethods.IsProvenMethod), Seq(), Map(), BooleanElement))
+
+  /** `l && r` and `l || r` on sigma propositions: call nodes of the SigmaAnd / SigmaOr operations. */
+  private def sigmaAnd(l: Ref[sigma.SigmaProp], r: Ref[sigma.SigmaProp]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaAnd), Seq(r), Map(), sigmaPropElement))
+  private def sigmaOr(l: Ref[sigma.SigmaProp], r: Ref[sigma.SigmaProp]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaOr), Seq(r), Map(), sigmaPropElement))
   private val SDBM     = SigmaDslBuilderMethods
 
   /** Recognizer of [[SigmaDslBuilder.anyOf]] method call in Graph-IR. This method call
@@ -109,9 +119,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `anyZK` predefined function.
     */
   object AnyZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
+    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
       case SDBM.anyZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
+        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])]]
       case _ => Nullable.None
     }
   }
@@ -120,9 +130,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * represents `allZK` predefined function.
     */
   object AllZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
+    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
       case SDBM.allZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
+        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])]]
       case _ => Nullable.None
     }
   }
@@ -135,12 +145,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     *         arguments of those nodes and `bs` contains all the other nodes.
     */
   object HasSigmas {
-    def unapply(items: Seq[Sym]): Option[(Seq[Ref[Boolean]], Seq[Ref[SigmaProp]])] = {
+    def unapply(items: Seq[Sym]): Option[(Seq[Ref[Boolean]], Seq[Ref[sigma.SigmaProp]])] = {
       val bs = ArrayBuffer.empty[Ref[Boolean]]
-      val ss = ArrayBuffer.empty[Ref[SigmaProp]]
+      val ss = ArrayBuffer.empty[Ref[sigma.SigmaProp]]
       for (i <- items) {
         i match {
-          case SigmaM.isValid(s) => ss += s
+          case IsValid(s, _) => ss += asRep[sigma.SigmaProp](s)
           case b => bs += asRep[Boolean](b)
         }
       }
@@ -165,42 +175,44 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case ThunkForce(Def(ThunkDef(root, sch))) if sch.isEmpty => root
 
       // Rule: l.isValid op Thunk {... root} => (l op TrivialSigma(root)).isValid
-      case ApplyBinOpLazy(op, SigmaM.isValid(l), Def(ThunkDef(root, _))) if root.elem == BooleanElement =>
+      case ApplyBinOpLazy(op, IsValid(l, _), Def(ThunkDef(root, _))) if root.elem == BooleanElement =>
         // don't need new Thunk because sigma logical ops always strict
-        val r = asRep[SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](root)))
+        val r = asRep[sigma.SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](root)))
+        val lp = asRep[sigma.SigmaProp](l)
         val res = if (op == And)
-          l && r
+          sigmaAnd(lp, r)
         else
-          l || r
-        res.isValid
+          sigmaOr(lp, r)
+        isValid(res)
 
       // Rule: l op Thunk {... prop.isValid} => (TrivialSigma(l) op prop).isValid
-      case ApplyBinOpLazy(op, l, Def(ThunkDef(root @ SigmaM.isValid(prop), sch))) if l.elem == BooleanElement =>
-        val l1 = asRep[SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](l)))
+      case ApplyBinOpLazy(op, l, Def(ThunkDef(root @ IsValid(prop, _), sch))) if l.elem == BooleanElement =>
+        val l1 = asRep[sigma.SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](l)))
+        val p = asRep[sigma.SigmaProp](prop)
         // don't need new Thunk because sigma logical ops always strict
         val res = if (op == And)
-          l1 && prop
+          sigmaAnd(l1, p)
         else
-          l1 || prop
-        res.isValid
+          sigmaOr(l1, p)
+        isValid(res)
 
       case SDBM.Colls(_) => colBuilder
-      case SDBM.sigmaProp(_, SigmaM.isValid(p)) => p
-      case SigmaM.isValid(SDBM.sigmaProp(_, bool)) => bool
+      case SDBM.sigmaProp(_, IsValid(p, _)) => p
+      case IsValid(SDBM.sigmaProp(_, bool), _) => bool
 
       case AllOf(b, HasSigmas(bools, sigmas), _) =>
         val zkAll = sigmaDslBuilder.allZK(b.fromItems(sigmas:_*))
         if (bools.isEmpty)
-          zkAll.isValid
+          isValid(zkAll)
         else
-          (sigmaDslBuilder.sigmaProp(sigmaDslBuilder.allOf(b.fromItems(bools:_*))) && zkAll).isValid
+          isValid(sigmaAnd(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.allOf(b.fromItems(bools:_*))), zkAll))
 
       case AnyOf(b, HasSigmas(bs, ss), _) =>
         val zkAny = sigmaDslBuilder.anyZK(b.fromItems(ss:_*))
         if (bs.isEmpty)
-          zkAny.isValid
+          isValid(zkAny)
         else
-          (sigmaDslBuilder.sigmaProp(sigmaDslBuilder.anyOf(b.fromItems(bs:_*))) || zkAny).isValid
+          isValid(sigmaOr(sigmaDslBuilder.sigmaProp(sigmaDslBuilder.anyOf(b.fromItems(bs:_*))), zkAny))
 
       case AllOf(_,items,_) if items.length == 1 => items(0)
       case AnyOf(_,items,_) if items.length == 1 => items(0)
@@ -245,7 +257,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   def removeIsProven[T,R](f: Ref[T] => Ref[R]): Ref[T] => Ref[R] = { x: Ref[T] =>
     val y = f(x);
     val res = y match {
-      case SigmaPropMethods.isValid(p) => p
+      case IsValid(p, _) => p
       case v => v
     }
     asRep[R](res)
@@ -300,7 +312,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case _: SigmaDslBuilderElem[_] => SGlobal
     case _: HeaderElem => SHeader
     case _: PreHeaderElem => SPreHeader
-    case _: SigmaPropElem[_] => SSigmaProp
+    case _: SigmaPropElem => SSigmaProp
     case ce: CollElem[_, _] => SCollection(elemToSType(ce.eItem))
     case fe: FuncElem[_, _] => SFunc(elemToSType(fe.eDom), elemToSType(fe.eRange))
     case pe: PairElem[_, _] => STuple(elemToSType(pe.eFst), elemToSType(pe.eSnd))
@@ -444,9 +456,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
     val res: Ref[Any] = node match {
       case Constant(v, tpe) => v match {
-        case p: SSigmaProp =>
+        case p: sigma.SigmaProp =>
           assert(tpe == SSigmaProp)
-          DslConst[SSigmaProp, SigmaProp](p)
+          DslConst[sigma.SigmaProp, sigma.SigmaProp](p)
         case bi: sigma.BigInt =>
           assert(tpe == SBigInt)
           DslConst[sigma.BigInt, sigma.BigInt](bi)
@@ -649,8 +661,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               case _: Exists[_] =>
                 xs.exists(asRep[Any => Boolean](predicate))
             }
-          case _: SigmaPropElem[_] =>
-            val children = xs.map(asRep[Any => SigmaProp](predicate))
+          case e if e.isInstanceOf[SigmaPropElem] =>
+            val children = xs.map(asRep[Any => sigma.SigmaProp](predicate))
             node match {
               case _: ForAll[_] =>
                 sigmaDslBuilder.allZK(children)
@@ -733,12 +745,10 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         res
 
       case SigmaPropIsProven(p) =>
-        val pV = asRep[SigmaProp](eval(p))
-        pV.isValid
+        isValid(asRep[sigma.SigmaProp](eval(p)))
 
       case SigmaPropBytes(p) =>
-        val pV = asRep[SigmaProp](eval(p))
-        pV.propBytes
+        buildCall(node, SSigmaPropMethods.PropBytesMethod, asRep[Any](eval(p)), Seq())
 
       case ExtractId(In(box)) =>
         buildCall(node, SBoxMethods.IdMethod, box, Seq())
@@ -766,7 +776,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         sigmaDslBuilder.sigmaProp(eval(bool))
 
       case AtLeast(bound, input) =>
-        val inputV = asRep[Coll[SigmaProp]](eval(input))
+        val inputV = asRep[Coll[sigma.SigmaProp]](eval(input))
         if (inputV.length.isConst) {
           val inputCount = valueFromRep(inputV.length)
           if (inputCount > AtLeast.MaxChildrenCount)
@@ -842,11 +852,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         ApplyUnOp(op, x)
 
       case SigmaAnd(items) =>
-        val itemsV = items.map(item => asRep[SigmaProp](eval(item)))
+        val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
         sigmaDslBuilder.allZK(colBuilder.fromItems(itemsV: _*))
 
       case SigmaOr(items) =>
-        val itemsV = items.map(item => asRep[SigmaProp](eval(item)))
+        val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
         sigmaDslBuilder.anyZK(colBuilder.fromItems(itemsV: _*))
         
       case If(c, t, e) =>

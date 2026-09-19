@@ -7,6 +7,11 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object SigmaProp {
+    class SigmaPropElem extends EntityElem[sigma.SigmaProp]
+    implicit lazy val sigmaPropElement: Elem[sigma.SigmaProp] = new SigmaPropElem
+  }
+
   object BigInt {
     class BigIntElem extends EntityElem[sigma.BigInt]
     implicit lazy val bigIntElement: Elem[sigma.BigInt] = new BigIntElem

@@ -146,13 +146,13 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       res
     }
 
-    private val SigmaM = SigmaProp.SigmaPropMethods
+    private val IsValid = CallPattern(sigma.ast.SSigmaPropMethods.IsProvenMethod)
 
     /** Finds SigmaProp.isProven method calls in the given Lambda `f` */
     private def findIsProven[T](f: Ref[DContext => T]): Option[Sym] = {
       val Def(Lambda(lam,_,_,_)) = f
       val s = lam.flatSchedule.find(sym => sym.node match {
-        case SigmaM.isValid(_) => true
+        case IsValid(_, _) => true
         case _ => false
       })
       s

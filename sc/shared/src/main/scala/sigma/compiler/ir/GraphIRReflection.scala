@@ -49,25 +49,6 @@ object GraphIRReflection {
     )
   )
 
-  { val clazz = classOf[sigma.compiler.ir.wrappers.sigma.SigmaDsl#SigmaProp]
-    val ctx = null.asInstanceOf[SigmaDsl] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "$bar$bar", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaProp].$bar$bar(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
-        },
-        mkMethod(clazz, "isValid", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.SigmaProp].isValid
-        },
-        mkMethod(clazz, "propBytes", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.SigmaProp].propBytes
-        },
-        mkMethod(clazz, "$amp$amp", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaProp].$amp$amp(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
-        }
-      )
-    )
-  }
 
   { val clazz = classOf[sigma.compiler.ir.wrappers.sigma.Colls#CollBuilder]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
@@ -180,7 +161,7 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.SigmaDslBuilder].anyOf(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Boolean]]])
         },
         mkMethod(clazz, "allZK", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaDslBuilder].allZK(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.SigmaProp]]])
+          obj.asInstanceOf[ctx.SigmaDslBuilder].allZK(args(0).asInstanceOf[ctx.Ref[ctx.Coll[sigma.SigmaProp]]])
         },
         mkMethod(clazz, "xorOf", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].xorOf(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Boolean]]])
@@ -210,7 +191,7 @@ object GraphIRReflection {
         },
         mkMethod(clazz, "atLeast", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].atLeast(args(0).asInstanceOf[ctx.Ref[Int]],
-            args(1).asInstanceOf[ctx.Ref[ctx.Coll[ctx.SigmaProp]]])
+            args(1).asInstanceOf[ctx.Ref[ctx.Coll[sigma.SigmaProp]]])
         },
         mkMethod(clazz, "byteArrayToBigInt", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].byteArrayToBigInt(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])
@@ -225,7 +206,7 @@ object GraphIRReflection {
             args(3).asInstanceOf[ctx.Ref[sigma.GroupElement]])
         },
         mkMethod(clazz, "anyZK", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaDslBuilder].anyZK(args(0).asInstanceOf[ctx.Ref[ctx.Coll[ctx.SigmaProp]]])
+          obj.asInstanceOf[ctx.SigmaDslBuilder].anyZK(args(0).asInstanceOf[ctx.Ref[ctx.Coll[sigma.SigmaProp]]])
         },
         mkMethod(clazz, "sha256", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].sha256(args(0).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]])

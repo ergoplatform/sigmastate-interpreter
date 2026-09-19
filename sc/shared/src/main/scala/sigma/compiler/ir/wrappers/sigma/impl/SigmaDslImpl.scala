@@ -33,159 +33,6 @@ import WOption._
 
 
 
-object SigmaProp extends EntityObject("SigmaProp") {
-  // entityConst: single const for each entity
-  import Liftables._
-  import scala.reflect.{ClassTag, classTag}
-  type SSigmaProp = sigma.SigmaProp
-  case class SigmaPropConst(
-        constValue: SSigmaProp
-      ) extends LiftedConst[SSigmaProp, SigmaProp] with SigmaProp
-        with Def[SigmaProp] with SigmaPropConstMethods {
-    val liftable: Liftable[SSigmaProp, SigmaProp] = LiftableSigmaProp
-    val resultType: Elem[SigmaProp] = liftable.eW
-  }
-
-  trait SigmaPropConstMethods extends SigmaProp  { thisConst: Def[_] =>
-
-    private val SigmaPropClass = RClass(classOf[SigmaProp])
-
-    override def isValid: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        SigmaPropClass.getMethod("isValid"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-    override def propBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        SigmaPropClass.getMethod("propBytes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
-        SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
-        Array[AnyRef](other),
-        true, false, element[SigmaProp]))
-    }
-
-    override def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
-        SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
-        Array[AnyRef](other),
-        true, false, element[SigmaProp]))
-    }
-  }
-
-  implicit object LiftableSigmaProp
-    extends Liftable[SSigmaProp, SigmaProp] {
-    lazy val eW: Elem[SigmaProp] = sigmaPropElement
-    lazy val sourceType: RType[SSigmaProp] = {
-      RType[SSigmaProp]
-    }
-    def lift(x: SSigmaProp): Ref[SigmaProp] = SigmaPropConst(x)
-  }
-
-  private val SigmaPropClass = RClass(classOf[SigmaProp])
-
-  // entityAdapter for SigmaProp trait
-  case class SigmaPropAdapter(source: Ref[SigmaProp])
-      extends Node with SigmaProp
-      with Def[SigmaProp] {
-    val resultType: Elem[SigmaProp] = element[SigmaProp]
-    override def transform(t: Transformer) = SigmaPropAdapter(t(source))
-
-    def isValid: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        SigmaPropClass.getMethod("isValid"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-
-    def propBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        SigmaPropClass.getMethod("propBytes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
-        SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
-        Array[AnyRef](other),
-        true, true, element[SigmaProp]))
-    }
-
-    def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
-        SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
-        Array[AnyRef](other),
-        true, true, element[SigmaProp]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefSigmaProp(p: Ref[SigmaProp]): SigmaProp = {
-    if (p.node.isInstanceOf[SigmaProp]) p.node.asInstanceOf[SigmaProp]
-    else
-      SigmaPropAdapter(p)
-  }
-
-  // familyElem
-  class SigmaPropElem[To <: SigmaProp]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SSigmaProp, To](LiftableSigmaProp)
-
-  }
-
-  implicit lazy val sigmaPropElement: Elem[SigmaProp] =
-    new SigmaPropElem[SigmaProp]
-
-  object SigmaPropMethods {
-    object isValid {
-      def unapply(d: Def[_]): Nullable[Ref[SigmaProp]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "isValid" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[SigmaProp]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[SigmaProp]] = unapply(exp.node)
-    }
-
-    object propBytes {
-      def unapply(d: Def[_]): Nullable[Ref[SigmaProp]] = d match {
-        case MethodCall(receiver, LegacyCallee(method), _, _) if method.getName == "propBytes" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
-          val res = receiver
-          Nullable(res).asInstanceOf[Nullable[Ref[SigmaProp]]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[Ref[SigmaProp]] = unapply(exp.node)
-    }
-
-    object and_sigma_&& {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "$amp$amp" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaProp], Ref[SigmaProp])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = unapply(exp.node)
-    }
-
-    object or_sigma_|| {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "$bar$bar" && receiver.elem.isInstanceOf[SigmaPropElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaProp], Ref[SigmaProp])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaProp], Ref[SigmaProp])] = unapply(exp.node)
-    }
-  }
-} // of object SigmaProp
-  registerEntityObject("SigmaProp", SigmaProp)
 
 
 
@@ -215,11 +62,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[CollBuilder]))
     }
 
-    override def atLeast(bound: Ref[Int], props: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def atLeast(bound: Ref[Int], props: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("atLeast", classOf[Sym], classOf[Sym]),
         Array[AnyRef](bound, props),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
     override def allOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -229,11 +76,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Boolean]))
     }
 
-    override def allZK(conditions: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def allZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("allZK", classOf[Sym]),
         Array[AnyRef](conditions),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
     override def anyOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -243,11 +90,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Boolean]))
     }
 
-    override def anyZK(conditions: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def anyZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("anyZK", classOf[Sym]),
         Array[AnyRef](conditions),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
     override def xorOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -257,11 +104,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Boolean]))
     }
 
-    override def sigmaProp(b: Ref[Boolean]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def sigmaProp(b: Ref[Boolean]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("sigmaProp", classOf[Sym]),
         Array[AnyRef](b),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
     override def blake2b256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
@@ -299,18 +146,18 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Long]))
     }
 
-    override def proveDlog(g: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def proveDlog(g: Ref[sigma.GroupElement]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("proveDlog", classOf[Sym]),
         Array[AnyRef](g),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
-    override def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
+    override def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("proveDHTuple", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](g, h, u, v),
-        true, false, element[SigmaProp]))
+        true, false, element[sigma.SigmaProp]))
     }
 
     override def groupGenerator: Ref[sigma.GroupElement] = {
@@ -430,11 +277,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[CollBuilder]))
     }
 
-    def atLeast(bound: Ref[Int], props: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def atLeast(bound: Ref[Int], props: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("atLeast", classOf[Sym], classOf[Sym]),
         Array[AnyRef](bound, props),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
     def allOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -444,11 +291,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Boolean]))
     }
 
-    def allZK(conditions: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def allZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("allZK", classOf[Sym]),
         Array[AnyRef](conditions),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
     def anyOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -458,11 +305,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Boolean]))
     }
 
-    def anyZK(conditions: Ref[Coll[SigmaProp]]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def anyZK(conditions: Ref[Coll[sigma.SigmaProp]]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("anyZK", classOf[Sym]),
         Array[AnyRef](conditions),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
     def xorOf(conditions: Ref[Coll[Boolean]]): Ref[Boolean] = {
@@ -472,11 +319,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Boolean]))
     }
 
-    def sigmaProp(b: Ref[Boolean]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def sigmaProp(b: Ref[Boolean]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("sigmaProp", classOf[Sym]),
         Array[AnyRef](b),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
     def blake2b256(bytes: Ref[Coll[Byte]]): Ref[Coll[Byte]] = {
@@ -514,18 +361,18 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Long]))
     }
 
-    def proveDlog(g: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def proveDlog(g: Ref[sigma.GroupElement]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("proveDlog", classOf[Sym]),
         Array[AnyRef](g),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
-    def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
+    def proveDHTuple(g: Ref[sigma.GroupElement], h: Ref[sigma.GroupElement], u: Ref[sigma.GroupElement], v: Ref[sigma.GroupElement]): Ref[sigma.SigmaProp] = {
+      asRep[sigma.SigmaProp](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("proveDHTuple", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](g, h, u, v),
-        true, true, element[SigmaProp]))
+        true, true, element[sigma.SigmaProp]))
     }
 
     def groupGenerator: Ref[sigma.GroupElement] = {
@@ -650,13 +497,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object atLeast {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "atLeast" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0), args(1))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Int], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object allOf {
@@ -670,13 +517,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object allZK {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "allZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object anyOf {
@@ -690,13 +537,13 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
     object anyZK {
-      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = d match {
+      def unapply(d: Def[_]): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = d match {
         case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "anyZK" && receiver.elem.isInstanceOf[SigmaDslBuilderElem[_]] =>
           val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])]]
+          Nullable(res).asInstanceOf[Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])]]
         case _ => Nullable.None
       }
-      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[SigmaProp]])] = unapply(exp.node)
+      def unapply(exp: Sym): Nullable[(Ref[SigmaDslBuilder], Ref[Coll[sigma.SigmaProp]])] = unapply(exp.node)
     }
 
     object xorOf {
