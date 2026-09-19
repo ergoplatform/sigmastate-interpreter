@@ -2,6 +2,7 @@ package sigma.compiler.ir
 
 import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
+import sigma.ast.SCollectionMethods
 import sigma.data.Nullable
 import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule}
 
@@ -59,7 +60,6 @@ trait IRContext
 
   type LazyRep[T] = MutableLazy[Ref[T]]
 
-  val CM = CollMethods
   private val CBM = CollBuilderMethods
 
   def colBuilder: Ref[CollBuilder]
@@ -80,14 +80,14 @@ trait IRContext
     }
   }
 
+  private val CollLength = CallPattern(SCollectionMethods.SizeMethod)
+  private val CollMap    = CallPattern(SCollectionMethods.MapMethod)
+
   override def rewriteDef[T](d: Def[T]) = d match {
-    case CM.length(ys) => ys.node match {
+    case CollLength(ys, _) => ys.node match {
       // Rule: xs.map(f).length  ==> xs.length
-      case CM.map(xs, _) =>
-        xs.length
-      // Rule: replicate(len, v).length => len
-      case CBM.replicate(_, len, _) =>
-        len
+      case CollMap(xs, _) =>
+        collLength(asRep[Any](xs))
       // Rule: Const[Coll[T]](coll).length =>
       case CollConst(coll, _) =>
         coll.length
@@ -99,25 +99,15 @@ trait IRContext
       case _ => super.rewriteDef(d)
     }
 
-    // Rule: replicate(l, x).zip(replicate(l, y)) ==> replicate(l, (x,y))
-    case CM.zip(CBM.replicate(b1, l1, v1), CBM.replicate(b2, l2, v2)) if b1 == b2 && l1 == l2 =>
-      b1.replicate(l1, Pair(v1, v2))
-
-    case CM.map(xs, _f) => _f.node match {
+    case CollMap(xs, Seq(_f)) => _f.node match {
       case IdentityLambda() => xs
       case _ => xs.node match {
-        // Rule: replicate(l, v).map(f) ==> replicate(l, f(v))
-        case CBM.replicate(b, l, v: Ref[a]) =>
-          val f = asRep[a => Any](_f)
-          b.replicate(l, Apply(f, v, false))
-
         // Rule: xs.map(f).map(g) ==> xs.map(x => g(f(x)))
-        case CM.map(_xs, f: RFunc[a, b]) =>
-          implicit val ea = f.elem.eDom
-          val xs = asRep[Coll[a]](_xs)
-          val g  = asRep[b => Any](_f)
-          xs.map[Any](fun { x: Ref[a] => g(f(x)) })
-
+        case CollMap(_xs, Seq(f)) =>
+          val ff = asRep[Any => Any](f)
+          val g = asRep[Any => Any](_f)
+          implicit val ea: Elem[Any] = ff.elem.asInstanceOf[FuncElem[Any, Any]].eDom
+          collMap(asRep[Any](_xs), fun { x: Ref[Any] => g(ff(x)) })
         case _ => super.rewriteDef(d)
       }
     }

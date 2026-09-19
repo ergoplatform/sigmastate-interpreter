@@ -38,7 +38,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
-  private val CollM = CollMethods
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
 
@@ -323,36 +322,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
 
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
-
-      case CollM.apply(colSym, In(index)) =>
-        val col = recurse(colSym)
-        mkByIndex(col, index.asIntValue, None)
-      case CollM.length(col) =>
-        sigma.ast.SizeOf(recurse(col).asCollection[SType])
-      case CollM.exists(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkExists(col.asCollection[SType], p.asFunc)
-      case CollM.forall(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkForAll(col.asCollection[SType], p.asFunc)
-      case CollM.map(colSym, fSym) =>
-        val Seq(col, f) = Seq(colSym, fSym).map(recurse)
-        mkMapCollection(col.asCollection[SType], f.asFunc)
-      case CollM.getOrElse(colSym, In(index), defValSym) =>
-        val col = recurse(colSym)
-        val defVal = recurse(defValSym)
-        mkByIndex(col, index.asIntValue, Some(defVal))
-      case CollM.append(col1Sym, col2Sym) =>
-        val Seq(col1, col2) = Seq(col1Sym, col2Sym).map(recurse)
-        mkAppend(col1, col2)
-      case CollM.slice(colSym, In(from), In(until)) =>
-        mkSlice(recurse(colSym), from.asIntValue, until.asIntValue)
-      case CollM.foldLeft(colSym, zeroSym, pSym) =>
-        val Seq(col, zero, p) = Seq(colSym, zeroSym, pSym).map(recurse)
-        mkFold(col, zero, p.asFunc)
-      case CollM.filter(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkFilter(col.asCollection[SType], p.asFunc)
 
       case Def(MethodCall(receiver, LegacyCallee(m), argsSyms, _)) if receiver.elem.isInstanceOf[CollElem[_, _]] =>
         val colSym = receiver.asInstanceOf[Ref[Coll[Any]]]

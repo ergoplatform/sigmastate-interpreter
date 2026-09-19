@@ -76,7 +76,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     }
   }
 
-  type RColl[T] = Ref[Coll[T]]
   type ROption[T] = Ref[Option[T]]
 
   private val CBM      = CollBuilderMethods
@@ -433,6 +432,16 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
                           typeSubst: Map[STypeVar, SType] = Map.empty): Ref[Any] =
     asRep[Any](mkMethodCall(objV, MethodCallee(method), argsV, typeSubst, stypeToElem(node.tpe)))
 
+  /** `xs.size` as a call node carrying its descriptor. */
+  protected def collLength(xs: Ref[Any]): Ref[Int] =
+    asRep[Int](mkMethodCall(xs, MethodCallee(SCollectionMethods.SizeMethod), Seq(), Map(), IntElement))
+
+  /** `xs.map(f)` as a call node; the result element type is the lambda's range. */
+  protected def collMap(xs: Ref[Any], f: Ref[Any => Any]): Ref[Any] = {
+    val eRange = f.elem.asInstanceOf[FuncElem[Any, Any]].eRange
+    asRep[Any](mkMethodCall(xs, MethodCallee(SCollectionMethods.MapMethod), Seq(f), Map(), collElement(eRange)))
+  }
+
   protected def buildNode[T <: SType](ctx: Ref[sigma.Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
@@ -657,12 +666,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           case BooleanElement =>
             node match {
               case _: ForAll[_] =>
-                xs.forall(asRep[Any => Boolean](predicate))
+                buildCall(node, SCollectionMethods.ForallMethod, asRep[Any](xs), Seq(asRep[Any](predicate)))
               case _: Exists[_] =>
-                xs.exists(asRep[Any => Boolean](predicate))
+                buildCall(node, SCollectionMethods.ExistsMethod, asRep[Any](xs), Seq(asRep[Any](predicate)))
             }
           case e if e.isInstanceOf[SigmaPropElem] =>
-            val children = xs.map(asRep[Any => sigma.SigmaProp](predicate))
+            val children = asRep[Coll[sigma.SigmaProp]](collMap(asRep[Any](xs), asRep[Any => Any](predicate)))
             node match {
               case _: ForAll[_] =>
                 sigmaDslBuilder.allZK(children)
@@ -673,40 +682,21 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         res
 
       // input.map(mapper)
-      case MapCollection(InCollAny(inputV), sfunc) =>
-        val mapper = asRep[Any => Any](eval(sfunc))
-        inputV.map(mapper)
+      case MapCollection(In(inputV), sfunc) =>
+        buildCall(node, SCollectionMethods.MapMethod, inputV, Seq(asRep[Any](eval(sfunc))))
 
       // input.fold(zero, (acc, x) => op)
       case Fold(input, zero, sfunc) =>
-        val eItem = stypeToElem(input.tpe.elemType)
-        val eState = stypeToElem(zero.tpe)
-        (eState, eItem) match { case (eState: Elem[s], eItem: Elem[a]) =>
-          val inputV = asRep[Coll[a]](eval(input))
-          implicit val eA: Elem[a] = inputV.elem.asInstanceOf[CollElem[a,_]].eItem
-          assert(eItem == eA, s"Types should be equal: but $eItem != $eA")
+        buildCall(node, SCollectionMethods.FoldMethod, asRep[Any](eval(input)), Seq(asRep[Any](eval(zero)), asRep[Any](eval(sfunc))))
 
-          val zeroV = asRep[s](eval(zero))
-          implicit val eS: Elem[s] = zeroV.elem
-          assert(eState == eS, s"Types should be equal: but $eState != $eS")
+      case Slice(In(inputV), In(from), In(until)) =>
+        buildCall(node, SCollectionMethods.SliceMethod, inputV, Seq(from, until))
 
-          val op = asRep[((s,a)) => s](eval(sfunc))
-          val res = inputV.foldLeft(zeroV, op)
-          res
-        }
-
-      case Slice(InCollAny(inputV), In(from), In(until)) =>
-        val fromV = asRep[Int](from)
-        val untilV = asRep[Int](until)
-        inputV.slice(fromV, untilV)
-
-      case Append(InCollAny(col1), InCollAny(col2)) =>
-        col1.append(col2)
+      case Append(In(col1), In(col2)) =>
+        buildCall(node, SCollectionMethods.AppendMethod, col1, Seq(col2))
 
       case Filter(input, p) =>
-        val inputV = asRep[Coll[Any]](eval(input))
-        val pV = asRep[Any => Boolean](eval(p))
-        inputV.filter(pV)
+        buildCall(node, SCollectionMethods.FilterMethod, asRep[Any](eval(input)), Seq(asRep[Any](eval(p))))
 
       case sigma.ast.Apply(f, Seq(x)) if f.tpe.isFunc =>
         val fV = asRep[Any => Coll[Any]](eval(f))
@@ -725,24 +715,21 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
       case SizeOf(In(xs)) =>
         xs.elem.asInstanceOf[Any] match {
-          case _: CollElem[a,_] =>
-            val xsV = asRep[Coll[a]](xs)
-            xsV.length
+          case _: CollElem[_,_] =>
+            buildCall(node, SCollectionMethods.SizeMethod, xs, Seq())
           case _: PairElem[_,_] =>
             2: Ref[Int]
         }
 
       case ByIndex(xs, i, defaultOpt) =>
-        val xsV = asRep[Coll[Any]](eval(xs))
-        val iV = asRep[Int](eval(i))
-        val res = defaultOpt match {
+        val xsV = asRep[Any](eval(xs))
+        val iV = asRep[Any](eval(i))
+        defaultOpt match {
           case Some(defaultValue) =>
-            val defaultV = asRep[Any](eval(defaultValue))
-            xsV.getOrElse(iV, defaultV)
+            buildCall(node, SCollectionMethods.GetOrElseMethod, xsV, Seq(iV, asRep[Any](eval(defaultValue))))
           case None =>
-            xsV(iV)
+            buildCall(node, SCollectionMethods.ApplyMethod, xsV, Seq(iV))
         }
-        res
 
       case SigmaPropIsProven(p) =>
         isValid(asRep[sigma.SigmaProp](eval(p)))
@@ -777,8 +764,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
       case AtLeast(bound, input) =>
         val inputV = asRep[Coll[sigma.SigmaProp]](eval(input))
-        if (inputV.length.isConst) {
-          val inputCount = valueFromRep(inputV.length)
+        val len = collLength(asRep[Any](inputV))
+        if (len.isConst) {
+          val inputCount = valueFromRep(len)
           if (inputCount > AtLeast.MaxChildrenCount)
             error(s"Expected input elements count should not exceed ${AtLeast.MaxChildrenCount}, actual: $inputCount", node.sourceContext.toOption)
         }
@@ -930,72 +918,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val objV = eval(obj)
         val argsV = args.map(eval)
         (objV, method.objType) match {
-          case (xs: RColl[t]@unchecked, SCollectionMethods) => method.name match {
-            case SCollectionMethods.IndicesMethod.name =>
-              xs.indices
-            case SCollectionMethods.PatchMethod.name =>
-              val from = asRep[Int](argsV(0))
-              val patch = asRep[Coll[t]](argsV(1))
-              val replaced = asRep[Int](argsV(2))
-              xs.patch(from, patch, replaced)
-            case SCollectionMethods.UpdatedMethod.name =>
-              val index = asRep[Int](argsV(0))
-              val value = asRep[t](argsV(1))
-              xs.updated(index, value)
-            case SCollectionMethods.AppendMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.append(ys)
-            case SCollectionMethods.SliceMethod.name =>
-              val from = asRep[Int](argsV(0))
-              val until = asRep[Int](argsV(1))
-              xs.slice(from, until)
-            case SCollectionMethods.UpdateManyMethod.name =>
-              val indexes = asRep[Coll[Int]](argsV(0))
-              val values = asRep[Coll[t]](argsV(1))
-              xs.updateMany(indexes, values)
-            case SCollectionMethods.IndexOfMethod.name =>
-              val elem = asRep[t](argsV(0))
-              val from = asRep[Int](argsV(1))
-              xs.indexOf(elem, from)
-            case SCollectionMethods.ZipMethod.name =>
-              val ys = asRep[Coll[Any]](argsV(0))
-              xs.zip(ys)
-            case SCollectionMethods.FlatMapMethod.name =>
-              val f = asRep[Any => Coll[Any]](argsV(0))
-              xs.flatMap(f)
-            case SCollectionMethods.MapMethod.name =>
-              val f = asRep[Any => Any](argsV(0))
-              xs.map(f)
-            case SCollectionMethods.FilterMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.filter(p)
-            case SCollectionMethods.ForallMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.forall(p)
-            case SCollectionMethods.ExistsMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.exists(p)
-            case SCollectionMethods.FoldMethod.name =>
-              val zero = asRep[Any](argsV(0))
-              val op = asRep[((Any, Any)) => Any](argsV(1))
-              xs.foldLeft(zero, op)
-            case SCollectionMethods.GetOrElseMethod.name =>
-              val i = asRep[Int](argsV(0))
-              val d = asRep[t](argsV(1))
-              xs.getOrElse(i, d)
-            case SCollectionMethods.ReverseMethod.name =>
-              xs.reverse
-            case SCollectionMethods.StartsWithMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.startsWith(ys)
-            case SCollectionMethods.EndsWithMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.endsWith(ys)
-            case SCollectionMethods.GetMethod.name =>
-              val idx = asRep[Int](argsV(0))
-              xs.get(idx)
-            case _ => throwError()
-          }
+          case (_, SCollectionMethods) =>
+            buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (_, SOptionMethods) =>
             // getOrElse takes its default lazily: the argument is wrapped into a thunk
             val args1 =

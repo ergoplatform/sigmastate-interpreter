@@ -18,6 +18,17 @@ trait Lowering { IR: IRContext =>
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // Coll
+    MethodCallee(SCollectionMethods.ApplyMethod)     -> ((_, col, args) => builder.mkByIndex(col.asCollection[SType], args(0).asIntValue, None)),
+    MethodCallee(SCollectionMethods.SizeMethod)      -> ((_, col, _)    => SizeOf(col.asCollection[SType])),
+    MethodCallee(SCollectionMethods.ExistsMethod)    -> ((_, col, args) => builder.mkExists(col.asCollection[SType], args(0).asFunc)),
+    MethodCallee(SCollectionMethods.ForallMethod)    -> ((_, col, args) => builder.mkForAll(col.asCollection[SType], args(0).asFunc)),
+    MethodCallee(SCollectionMethods.MapMethod)       -> ((_, col, args) => builder.mkMapCollection(col.asCollection[SType], args(0).asFunc)),
+    MethodCallee(SCollectionMethods.GetOrElseMethod) -> ((_, col, args) => builder.mkByIndex(col.asCollection[SType], args(0).asIntValue, Some(args(1)))),
+    MethodCallee(SCollectionMethods.AppendMethod)    -> ((_, col, args) => builder.mkAppend(col.asCollection[SType], args(0).asCollection[SType])),
+    MethodCallee(SCollectionMethods.SliceMethod)     -> ((_, col, args) => builder.mkSlice(col.asCollection[SType], args(0).asIntValue, args(1).asIntValue)),
+    MethodCallee(SCollectionMethods.FoldMethod)      -> ((_, col, args) => builder.mkFold(col.asCollection[SType], args(0), args(1).asFunc)),
+    MethodCallee(SCollectionMethods.FilterMethod)    -> ((_, col, args) => builder.mkFilter(col.asCollection[SType], args(0).asFunc)),
     // SigmaProp
     OpCallee(SigmaAnd) -> ((_, p1, args) => SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
     OpCallee(SigmaOr)  -> ((_, p1, args) => SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
