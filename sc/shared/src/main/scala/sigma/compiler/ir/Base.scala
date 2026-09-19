@@ -386,8 +386,6 @@ abstract class Base { thisIR: IRContext =>
     @inline final def isConst: Boolean = node.isInstanceOf[Const[_]]
     /** Whether the underlying node is Lambda. */
     @inline final def isLambda: Boolean = node.isInstanceOf[Lambda[_,_]]
-    /** Is this reference of Companion type */
-    @inline final def isCompanionType: Boolean = elem.isInstanceOf[CompanionElem[_]]
 
     /** Returns the string like `x45: Int = Const(10)` */
     def toStringWithDefinition: String
@@ -550,32 +548,6 @@ abstract class Base { thisIR: IRContext =>
     ownerParam
   }
 
-  /** Transforms this object into new one by applying `t` to every Ref inside
-    * its structure. The structure is build out of Seq, Array, Option and Def values.
-    * Other structure items remain unchanged and copied to the new instance.
-    * HOTSPOT: don't beautify the code */
-  protected def transformProductParam(x: Any, t: Transformer): Any = x match {
-    case (_: UnOp[_, _]) | (_: BinOp[_, _]) =>
-      // allows use of context bounds in classes extending UnOp/BinOp.
-      // Note that this must be overridden if some transformation _is_ needed (i.e. if the class contains Ref[_] somewhere)
-      x
-    case e: Ref[_] => t(e)
-    case seq: Seq[_] =>
-      val len = seq.length
-      val res = new Array[AnyRef](len)
-      cfor(0)(_ < len, _ + 1) { i => res(i) = transformProductParam(seq(i), t).asInstanceOf[AnyRef] }
-      res: Seq[_]
-    case arr: Array[_] =>
-      val len = arr.length
-      val res = new Array[AnyRef](len)
-      cfor(0)(_ < len, _ + 1) { i => res(i) = transformProductParam(arr(i), t).asInstanceOf[AnyRef] }
-      res
-    case opt: Option[_] =>
-      if (opt.isEmpty) None else Some(transformProductParam(opt.get, t))
-    case d: Def[_] => d.mirror(t).node
-    case x => x
-  }
-
   /** Prepend owner parameter depending on its kind. */
   private[compiler] def addOwnerParameter(ownerType: OwnerKind, params: Seq[Any]): Seq[AnyRef] = {
     val finalParams = (ownerType match {
@@ -610,7 +582,7 @@ abstract class Base { thisIR: IRContext =>
   /** Extract data value from Const node or throw an exception. */
   @inline final def valueFromRep[A](x: Ref[A]): A = x.node match {
     case Const(x) => x
-    case _ => delayInvoke
+    case _ => !!!(s"Expected a constant node but got ${x.node}")
   }
 
   def def_unapply[T](e: Ref[T]): Nullable[Def[T]] = new Nullable(e.node)

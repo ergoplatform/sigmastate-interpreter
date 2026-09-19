@@ -319,24 +319,11 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(Upcast(inputSym, toSym)) =>
         mkUpcast(recurse(inputSym).asNumValue, elemToSType(toSym).asNumType)
 
-      // Fallback MethodCall rule: should be the last in this list of cases
-      case Def(mc @ MethodCall(objSym, LegacyCallee(m), argSyms, _)) =>
-        val obj = recurse[SType](objSym)
-        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
-        MethodsContainer.getMethod(obj.tpe, m.getName) match {
-          case Some(method) =>
-            val typeSubst = mc.typeSubst
-            val specMethod = method.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
-            builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
-          case None =>
-            error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
-        }
-
       // Operation callees always have a row (they exist only to be lowered). The collection
       // builder has no ErgoTree counterpart: the rows of its operations ignore the receiver.
       case Def(mc @ MethodCall(objSym, OpCallee(_, _), argSyms, _)) =>
         val obj = if (objSym == colBuilder) Global else recurse[SType](objSym)
-        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
+        val args = argSyms.map(recurse[SType])
         val row = rowFor(mc.callee).getOrElse(error(s"No ErgoTree lowering for ${mc.callee}"))
         row(mc, obj, args)
 
@@ -344,7 +331,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
       // rebuilt from the generic descriptor with the same recipes as the legacy fallbacks above.
       case Def(mc @ MethodCall(objSym, MethodCallee(m), argSyms, _)) =>
         val obj = recurse[SType](objSym)
-        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
+        val args = argSyms.map(recurse[SType])
         rowFor(mc.callee) match {
           case Some(row) => row(mc, obj, args)
           case None => plainMethodCall(mc, obj, args)
