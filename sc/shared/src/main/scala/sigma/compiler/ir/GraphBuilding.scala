@@ -61,8 +61,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     }
   }
 
-  type ROption[T] = Ref[Option[T]]
-
   private val IsValid = CallPattern(SSigmaPropMethods.IsProvenMethod)
 
   /** `p.isValid` as a call node carrying its descriptor. */

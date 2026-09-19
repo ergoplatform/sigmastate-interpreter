@@ -21,7 +21,6 @@ import scala.collection.mutable.ArrayBuffer
   * @see buildTree method
   * */
 trait TreeBuilding extends Base { IR: IRContext =>
-  import Liftables._
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -206,9 +205,9 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val tpe = elemToSType(elem)
         mkConstantPlaceholder[tpe.type](id, tpe)
 
-      case Def(wc: LiftedConst[a,_]) =>
+      case Def(DslConst(x)) =>
         val tpe = elemToSType(s.elem)
-        mkConstant[tpe.type](wc.constValue.asInstanceOf[tpe.WrappedType], tpe)
+        mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
 
       case Def(DeserializeContextDef(d, _)) =>
         d

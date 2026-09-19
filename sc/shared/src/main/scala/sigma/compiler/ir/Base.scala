@@ -217,22 +217,13 @@ abstract class Base { thisIR: IRContext =>
     override def resultType: Elem[V#WrappedType] = e
   }
 
-  /** Base class for virtualized instances of type companions.
-    * Each virtualized entity type (trait or class) may have virtualized companion class. */
-  abstract class CompanionDef[T] extends Def[T] {
-    override def productArity = 0
-    override def productElement(n: Int) = !!!(s"productElement($n) called, but productArity = 0", self)
-    override def canEqual(other: Any) = other.isInstanceOf[CompanionDef[_]]
-    override def mirror(t: Transformer): Ref[T] = self
-  }
-
   /** Data type `ST` is liftable is there is Liftable[ST, T] instance for some type `T`.
     * Liftable typeclass allows to define which types can have values embedded as literals
     * into graph IR. */
   object Liftables {
-    // TODO (follow-up): most of this fed the deleted reflective invocation path (`DataEnv`, `EnvRep`,
-    // `liftConst`, the Pair/Func liftables) and has no users left; only `BaseElemLiftable` still names
-    // the source types for `Elem.getName`.
+    // Only `BaseElemLiftable` and the pair, function and thunk instances are still used, and only
+    // to give `Elem.sourceType` (hence the names of the primitive Elems) its source `RType`:
+    // nothing lifts values into the graph through `lift` any more (see `Const` and `DslConst`).
 
     /** Base class for graph nodes which represent data values of liftable types
       * as literal nodes in the graph IR.
@@ -281,12 +272,6 @@ abstract class Base { thisIR: IRContext =>
     /** Shortcut alternative to `implicitly[Liftable[ST,T]]` */
     @inline final def liftable[ST, T](implicit lT: Liftable[ST,T]) = lT
 
-    /** Given data value of source type `ST` and `Liftable` instance between `ST` and `T`,
-      * produces `LiftedConst` node (some concrete implemenation) and returns it's symbol.
-      * This is generic way to put any liftable data object into graph and then use
-      * its symbol in other nodes. */
-    @inline final def liftConst[ST,T](x: ST)(implicit lT: Liftable[ST,T]): Ref[T] = lT.lift(x)
-
     /** Liftable evidence for primitive (base) types (used in BaseElemLiftable). */
     class BaseLiftable[T](implicit val eW: Elem[T], override val sourceType: RType[T]) extends Liftable[T, T] {
       def lift(x: T) = toRep(x)
@@ -329,9 +314,6 @@ abstract class Base { thisIR: IRContext =>
         (implicit lA: Liftable[SA, A], lB: Liftable[SB, B]): Liftable[SA => SB, A => B] =
       new FuncLiftable[SA,SB,A,B]
   }
-
-  /** Whether IR type descriptors should be cached. */
-  val cacheElems = true
 
   /** Whether Tup instances should be cached. */
   val cachePairs = true
@@ -402,15 +384,12 @@ abstract class Base { thisIR: IRContext =>
   }
 
   /** Node embedding a literal value of a DSL type (Box, Coll, BigInt, ...) into the graph.
-    * Unlike [[Const]] it is never given to the constant store and it is extracted to a ValDef
-    * when shared (see `TreeBuilding`), which is how the per-entity constant nodes behaved.
+    * Unlike [[Const]] it is never given to the constant store, and it is extracted to a ValDef
+    * when shared (see `TreeBuilding`).
     * @param constValue the literal value
     * @param eT         type descriptor of the value's IR type
     */
-  case class DslConst[T](constValue: T)(implicit val eT: Elem[T])
-      extends BaseDef[T] with Liftables.LiftedConst[T, T] {
-    override def liftable: Liftables.Liftable[T, T] = !!!(s"DslConst($constValue) has no Liftable")
-
+  case class DslConst[T](constValue: T)(implicit val eT: Elem[T]) extends BaseDef[T] {
     override def hashCode() = constValue.hashCode() * 31 + eT.hashCode()
     override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
       case c: DslConst[_] => constValue == c.constValue && eT == c.eT

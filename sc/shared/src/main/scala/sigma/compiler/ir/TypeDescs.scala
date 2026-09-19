@@ -19,35 +19,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
   /** Type descriptor which is computed lazily on demand. */
   type LElem[A] = Lazy[Elem[A]]
 
-  /** Immutable data environment used to assign data values to graph nodes. */
-  type DataEnv = Map[Sym, AnyRef]
-
-  /** State monad for symbols computed in a data environment.
-    * `DataEnv` is used as the state of the state monad.
-    */
-  case class EnvRep[A](run: DataEnv => (DataEnv, Ref[A])) {
-    def flatMap[B](f: Ref[A] => EnvRep[B]): EnvRep[B] = EnvRep { env =>
-      val (env1, x) = run(env)
-      val res = f(x).run(env1)
-      res
-    }
-    def map[B](f: Ref[A] => Ref[B]): EnvRep[B] = EnvRep { env =>
-      val (env1, x) = run(env)
-      val y = f(x)
-      (env1, y)
-    }
-  }
-  object EnvRep {
-    def add[T](entry: (Ref[T], AnyRef)): EnvRep[T] =
-      EnvRep { env => val (sym, value) = entry; (env + (sym -> value), sym) }
-
-    def lifted[ST, T](x: ST)(implicit lT: Liftables.Liftable[ST, T]): EnvRep[T] = EnvRep { env =>
-      val xSym = lT.lift(x)
-      val resEnv = env + ((xSym, x.asInstanceOf[AnyRef]))
-      (resEnv, xSym)
-    }
-  }
-
   abstract class TypeDesc extends Serializable {
     def getName(f: TypeDesc => String): String
     lazy val name: String = getName(_.name)
