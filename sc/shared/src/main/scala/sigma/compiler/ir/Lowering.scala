@@ -18,7 +18,9 @@ trait Lowering { IR: IRContext =>
   /** Rebuilds an ErgoTree node from the IR call node, its built receiver and built arguments. */
   type Row = (MethodCall, SValue, Seq[SValue]) => SValue
 
-  /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
+  /** The callees that have a dedicated ErgoTree node, keyed by callee identity: one row per such
+    * callee, rebuilding the node from the built receiver and arguments.
+    */
   protected lazy val rows: Map[IRCallee, Row] = Map(
     // Global builtins: the callee is the operation's companion, the receiver the global object
     OpCallee(BoolToSigmaProp)    -> ((_, _, args) => builder.mkBoolToSigmaProp(args(0).asBoolValue)),

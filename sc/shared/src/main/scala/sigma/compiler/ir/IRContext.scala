@@ -44,10 +44,6 @@ trait IRContext
   with TreeBuilding
   with GraphBuilding {
 
-  import Coll._
-  import CollBuilder._
-  import WOption._
-
   /** Pass configuration which is used to turn-off constant propagation.
     * USED IN TESTS ONLY.
     * @see `beginPass(noCostPropagationPass)`  */
@@ -57,7 +53,8 @@ trait IRContext
 
   type LazyRep[T] = MutableLazy[Ref[T]]
 
-  private val ConcreteColl = CallPattern(ConcreteCollection)
+  /** Pattern for `Coll(items)` literal nodes, shared by the rewrite rules here and in GraphBuilding. */
+  protected val ConcreteColl = CallPattern(ConcreteCollection)
 
   def colBuilder: Ref[sigma.CollBuilder]
 

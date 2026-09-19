@@ -12,7 +12,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.{implicitNotFound, unused}
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
-import scala.language.{existentials, implicitConversions}
+import scala.language.implicitConversions
 
 /**
   * The Base trait houses common AST nodes. It also manages a list of encountered definitions which
@@ -230,6 +230,9 @@ abstract class Base { thisIR: IRContext =>
     * Liftable typeclass allows to define which types can have values embedded as literals
     * into graph IR. */
   object Liftables {
+    // TODO (follow-up): most of this fed the deleted reflective invocation path (`DataEnv`, `EnvRep`,
+    // `liftConst`, the Pair/Func liftables) and has no users left; only `BaseElemLiftable` still names
+    // the source types for `Elem.getName`.
 
     /** Base class for graph nodes which represent data values of liftable types
       * as literal nodes in the graph IR.
@@ -402,16 +405,15 @@ abstract class Base { thisIR: IRContext =>
     * Unlike [[Const]] it is never given to the constant store and it is extracted to a ValDef
     * when shared (see `TreeBuilding`), which is how the per-entity constant nodes behaved.
     * @param constValue the literal value
-    * @param eT         type descriptor of the IR type `T`; `ST` is the runtime type of the value
-    *                   (they differ only while staged wrapper types still exist)
+    * @param eT         type descriptor of the value's IR type
     */
-  case class DslConst[ST, T](constValue: ST)(implicit val eT: Elem[T])
-      extends BaseDef[T] with Liftables.LiftedConst[ST, T] {
-    override def liftable: Liftables.Liftable[ST, T] = !!!(s"DslConst($constValue) has no Liftable")
+  case class DslConst[T](constValue: T)(implicit val eT: Elem[T])
+      extends BaseDef[T] with Liftables.LiftedConst[T, T] {
+    override def liftable: Liftables.Liftable[T, T] = !!!(s"DslConst($constValue) has no Liftable")
 
     override def hashCode() = constValue.hashCode() * 31 + eT.hashCode()
     override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
-      case c: DslConst[_, _] => constValue == c.constValue && eT == c.eT
+      case c: DslConst[_] => constValue == c.constValue && eT == c.eT
       case _ => false
     })
   }

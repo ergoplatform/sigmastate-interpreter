@@ -3,7 +3,6 @@ package sigma.compiler.ir
 import org.ergoplatform._
 import sigma.Evaluation.stypeToRType
 import sigma.SigmaException
-import sigma.VersionContext
 import sigma.ast.{Ident, Select, Val}
 import sigma.ast.SType.tT
 import sigma.ast.TypeCodes.LastConstantCode
@@ -22,7 +21,7 @@ import sigma.util.Extensions.ByteOps
 import sigmastate.interpreter.Interpreter.ScriptEnv
 
 import scala.collection.mutable.ArrayBuffer
-import scala.language.{existentials,implicitConversions}
+import scala.language.implicitConversions
 
 
 /** Perform translation of typed expression given by [[Value]] to a graph in IRContext.
@@ -43,7 +42,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   import Context._
   import GroupElement._
   import Header._
-  import Liftables._
   import PreHeader._
   import SigmaDslBuilder._
   import SigmaProp._
@@ -78,7 +76,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
   type ROption[T] = Ref[Option[T]]
 
-  private val ConcreteColl = CallPattern(ConcreteCollection)
   private val IsValid  = CallPattern(SSigmaPropMethods.IsProvenMethod)
 
   /** `p.isValid` as a call node carrying its descriptor. */
@@ -90,18 +87,31 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaAnd), Seq(r), Map(), sigmaPropElement))
   private def sigmaOr(l: Ref[sigma.SigmaProp], r: Ref[sigma.SigmaProp]): Ref[sigma.SigmaProp] =
     asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaOr), Seq(r), Map(), sigmaPropElement))
-  private val SigmaPropOp = CallPattern(BoolToSigmaProp)
-  private val AnyOfOp     = CallPattern(OR)
-  private val AllOfOp     = CallPattern(AND)
-  private val AnyZkOp     = CallPattern(SigmaOr)
-  private val AllZkOp     = CallPattern(SigmaAnd)
+
+  /** Pattern for a builtin call on the global object (`anyOf`, `allZK`, `sigmaProp`, ...), yielding
+    * its arguments. The callee alone does not identify the builtin: `SigmaAnd`/`SigmaOr` also stand
+    * for `p && q` / `p || q` on sigma propositions, so the receiver must be the global object.
+    */
+  private final class GlobalOpPattern(op: ValueCompanion) {
+    private val call = CallPattern(op)
+    def unapply(d: Def[_]): Option[Seq[Sym]] = d match {
+      case call(g, args) if g.elem.isInstanceOf[SigmaDslBuilderElem] => Some(args)
+      case _ => None
+    }
+    def unapply(s: Sym): Option[Seq[Sym]] = unapply(s.node)
+  }
+  private val SigmaPropOp = new GlobalOpPattern(BoolToSigmaProp)
+  private val AnyOfOp     = new GlobalOpPattern(OR)
+  private val AllOfOp     = new GlobalOpPattern(AND)
+  private val AnyZkOp     = new GlobalOpPattern(SigmaOr)
+  private val AllZkOp     = new GlobalOpPattern(SigmaAnd)
 
   /** Recognizer of [[SigmaDslBuilder.anyOf]] method call in Graph-IR. This method call
     * represents `anyOf` predefined function.
     */
   object AnyOf {
     def unapply(d: Def[_]): Nullable[(Sym, Seq[Sym], Elem[Any])] = d match {
-      case AnyOfOp(_, Seq(xs)) => xs match {
+      case AnyOfOp(Seq(xs)) => xs match {
         case ConcreteColl(b, items) => Nullable((b, items, xs.elem.asInstanceOf[CollElem[Any]].eItem))
         case _ => Nullable.None
       }
@@ -114,7 +124,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     */
   object AllOf {
     def unapply(d: Def[_]): Nullable[(Sym, Seq[Sym], Elem[Any])] = d match {
-      case AllOfOp(_, Seq(xs)) => xs match {
+      case AllOfOp(Seq(xs)) => xs match {
         case ConcreteColl(b, items) => Nullable((b, items, xs.elem.asInstanceOf[CollElem[Any]].eItem))
         case _ => Nullable.None
       }
@@ -127,7 +137,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     */
   object AnyZk {
     def unapply(d: Def[_]): Nullable[(Sym, Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
-      case AnyZkOp(_, Seq(xs)) => xs match {
+      case AnyZkOp(Seq(xs)) => xs match {
         case ConcreteColl(b, items) => Nullable((b, items.map(asRep[sigma.SigmaProp](_)), sigmaPropElement))
         case _ => Nullable.None
       }
@@ -140,7 +150,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     */
   object AllZk {
     def unapply(d: Def[_]): Nullable[(Sym, Seq[Ref[sigma.SigmaProp]], Elem[sigma.SigmaProp])] = d match {
-      case AllZkOp(_, Seq(xs)) => xs match {
+      case AllZkOp(Seq(xs)) => xs match {
         case ConcreteColl(b, items) => Nullable((b, items.map(asRep[sigma.SigmaProp](_)), sigmaPropElement))
         case _ => Nullable.None
       }
@@ -207,8 +217,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           sigmaOr(l1, p)
         isValid(res)
 
-      case SigmaPropOp(_, Seq(IsValid(p, _))) => p
-      case IsValid(SigmaPropOp(_, Seq(bool)), _) => bool
+      case SigmaPropOp(Seq(IsValid(p, _))) => p
+      case IsValid(SigmaPropOp(Seq(bool)), _) => bool
 
       case AllOf(b, HasSigmas(bools, sigmas), _) =>
         val zkAll = asRep[sigma.SigmaProp](globalOp(SigmaAnd, Seq(asRep[Any](fromItems(sigmas, sigmaPropElement))), sigmaPropElement))
@@ -422,14 +432,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     */
   protected type CompilingEnv = Map[Any, Ref[_]]
 
-  /** Builds IR graph for the given ErgoTree expression `node`.
-    *
-    * @param ctx  reference to a graph node that represents Context value passed to script interpreter
-    * @param env  compilation environment which resolves variables to graph nodes
-    * @param node ErgoTree expression to be translated to graph
-    * @return reference to the graph node which represents `node` expression as part of in
-    *         the IR graph data structure
-    */
   /** Builds a plain call node for an AST `MethodCall`. The descriptor is the AST node's own and
     * the result type is the AST node's own, so no method resolution happens here.
     */
@@ -466,6 +468,14 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     asRep[Any](mkMethodCall(xs, MethodCallee(SCollectionMethods.MapMethod), Seq(f), Map(), collElement(eRange)))
   }
 
+  /** Builds IR graph for the given ErgoTree expression `node`.
+    *
+    * @param ctx  reference to a graph node that represents Context value passed to script interpreter
+    * @param env  compilation environment which resolves variables to graph nodes
+    * @param node ErgoTree expression to be translated to graph
+    * @return reference to the graph node which represents `node` expression as part of in
+    *         the IR graph data structure
+    */
   protected def buildNode[T <: SType](ctx: Ref[sigma.Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
@@ -491,26 +501,26 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case Constant(v, tpe) => v match {
         case p: sigma.SigmaProp =>
           assert(tpe == SSigmaProp)
-          DslConst[sigma.SigmaProp, sigma.SigmaProp](p)
+          DslConst[sigma.SigmaProp](p)
         case bi: sigma.BigInt =>
           assert(tpe == SBigInt)
-          DslConst[sigma.BigInt, sigma.BigInt](bi)
+          DslConst[sigma.BigInt](bi)
         case ubi: sigma.UnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
-          DslConst[sigma.UnsignedBigInt, sigma.UnsignedBigInt](ubi)
+          DslConst[sigma.UnsignedBigInt](ubi)
         case p: sigma.GroupElement =>
           assert(tpe == SGroupElement)
-          DslConst[sigma.GroupElement, sigma.GroupElement](p)
+          DslConst[sigma.GroupElement](p)
         case coll: sigma.Coll[a] =>
           val tpeA = tpe.asCollection[SType].elemType
           stypeToElem(tpeA) match {
             case eWA: Elem[wa] =>
-              DslConst[sigma.Coll[a], sigma.Coll[wa]](coll)(collElement(eWA))
+              DslConst[sigma.Coll[wa]](coll.asInstanceOf[sigma.Coll[wa]])(collElement(eWA))
           }
         case box: sigma.Box =>
-          DslConst[sigma.Box, sigma.Box](box)
+          DslConst[sigma.Box](box)
         case tree: sigma.AvlTree =>
-          DslConst[sigma.AvlTree, sigma.AvlTree](tree)
+          DslConst[sigma.AvlTree](tree)
         case s: String =>
           val resV = toRep(s)(stypeToElem(tpe).asInstanceOf[Elem[String]])
           resV
@@ -768,6 +778,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case ExtractCreationInfo(In(box)) =>
         buildCall(node, SBoxMethods.creationInfoMethod, box, Seq())
 
+      // One getReg descriptor (the v6 one) represents the operation for every tree version: rows and
+      // callee identity are version-independent, and a constant register id always takes the row.
       case ExtractRegisterAs(In(box), regId, optTpe) =>
         val i: Ref[Int] = regId.number.toInt
         buildCall(node, SBoxMethods.getRegMethodV6, box, Seq(asRep[Any](i)), Map(tT -> optTpe.elemType))
@@ -925,7 +937,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         buildOp(node, DecodePoint, Seq(asRep[Any](bytes)))
 
       // fallback rule for MethodCall, should be the last case in the list
-      case mc @ sigma.ast.MethodCall(obj, method, args, typeSubst) =>
+      case mc @ sigma.ast.MethodCall(obj, method, args, _) =>
         val objV = eval(obj)
         val argsV = args.map(eval)
         (objV, method.objType) match {
@@ -937,8 +949,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               if (method.methodId == SOptionMethods.GetOrElseMethod.methodId) Seq(asRep[Any](Thunk(argsV(0))))
               else argsV.map(asRep[Any](_))
             buildMethodCall(mc, asRep[Any](objV), args1)
-          // getVar always arrives lowered to GetVar; a getVar MethodCall never reached the IR, keep it so
-          case (_, SContextMethods) if method.methodId != SContextMethods.getVarV5Method.methodId =>
+          // The explicit `CONTEXT.getVar[T](id)` form arrives as a call of getVarV5Method; the IR
+          // never supported it (the `getVar[T](id)` builtin lowers to GetVar), so it fails as before.
+          case (_, SContextMethods) if method.methodId == SContextMethods.getVarV5Method.methodId =>
+            throwError()
+          case (_, SContextMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (_, SGroupElementMethods | SBoxMethods | SAvlTreeMethods | SPreHeaderMethods | SHeaderMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))

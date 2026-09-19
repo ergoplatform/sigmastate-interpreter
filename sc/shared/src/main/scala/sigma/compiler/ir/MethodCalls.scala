@@ -23,10 +23,10 @@ trait MethodCalls extends Base { self: IRContext =>
     override def toString: String = method.opName
   }
 
-  /** An ErgoTree operation that has no [[SMethod]] (`CalcBlake2b256`, `SigmaAnd`, `ArithOp` with
-    * its op code, ...).
+  /** An ErgoTree operation that has no [[SMethod]] (`CalcBlake2b256`, `SigmaAnd`, the per-code
+    * `ArithOp` companions, ...).
     */
-  final case class OpCallee(op: ValueCompanion, opCode: Option[Byte] = None) extends IRCallee
+  final case class OpCallee(op: ValueCompanion) extends IRCallee
 
   /** Graph node representing a call of `callee` on `receiver`.
     * @param receiver   node ref of the instance the method is called on
@@ -76,7 +76,7 @@ trait MethodCalls extends Base { self: IRContext =>
   }
   object CallPattern {
     def apply(method: SMethod): CallPattern = new CallPattern(MethodCallee(method))
-    def apply(op: ValueCompanion, opCode: Option[Byte] = None): CallPattern = new CallPattern(OpCallee(op, opCode))
+    def apply(op: ValueCompanion): CallPattern = new CallPattern(OpCallee(op))
   }
 
   /** Creates new MethodCall node and returns its node ref. */

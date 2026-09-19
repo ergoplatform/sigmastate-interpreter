@@ -51,7 +51,11 @@ trait CompilerTestsBase extends TestsBase with NegativeTesting {
     res.buildTree
   }
 
-  /** Check the given [[CompilerResult]] meets equality and sanity requirements. */
+  /** Check the given [[CompilerResult]] meets equality and sanity requirements, and record the
+    * tree in the ErgoTree snapshot when one is enabled. The snapshot line is keyed by the hash of
+    * the source, so `compileTyped` results (source `<no source code>`) share one key and are told
+    * apart by order only.
+    */
   def checkCompilerResult[Ctx <: IRContext](res: CompilerResult[Ctx]): Unit = {
     checkSerializationRoundTrip(res.buildTree)
     scalan.Platform.recordTreeSnapshot(

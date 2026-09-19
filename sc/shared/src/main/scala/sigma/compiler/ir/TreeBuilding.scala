@@ -1,14 +1,11 @@
 package sigma.compiler.ir
 
-import org.ergoplatform._
-import sigma.VersionContext
-import sigma.Evaluation.{rtypeToSType, stypeToRType}
+import sigma.Evaluation.stypeToRType
 import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.ast.syntax.{ValueOps, _}
 import sigma.serialization.OpCodes._
 import sigma.serialization.ConstantStore
-import sigma.data.{ProveDHTuple, ProveDlog}
 import sigma.serialization.ValueCodes.OpCode
 
 import scala.collection.mutable.ArrayBuffer
@@ -26,16 +23,8 @@ import scala.collection.mutable.ArrayBuffer
   * @see buildTree method
   * */
 trait TreeBuilding extends Base { IR: IRContext =>
-  import BigInt._
-  import Box._
   import Coll._
-  import CollBuilder._
-  import Context._
-  import GroupElement._
   import Liftables._
-  import SigmaDslBuilder._
-  import SigmaProp._
-  import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
 
@@ -143,9 +132,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
     }
   }
 
-  /** Recognizes special graph IR nodes which typically have many usages, but
-    * for which no ValDefs should be created.
-    */
   /** Recognizes constants in graph IR. */
   object IsConstantDef {
     def unapply(d: Def[_]): Option[Def[_]] = d match {
@@ -155,15 +141,14 @@ trait TreeBuilding extends Base { IR: IRContext =>
   }
 
   /** Emits a plain `MethodCall` ErgoTree node for a call node without a lowering row, rebuilding
-    * the specialised descriptor from the generic one with the same recipes as before: a Coll
-    * receiver gets only `withConcreteTypes` (its own recipe), everything else
+    * the specialised descriptor from the generic one with the same recipes (and failure texts) as
+    * before: a Coll receiver gets only `withConcreteTypes` (its own recipe), everything else
     * `specializeFor(...).withConcreteTypes(typeSubst)`.
     */
   def plainMethodCall(mc: MethodCall, obj: SValue, args: Seq[SValue]): SValue = {
     val m = mc.callee.asInstanceOf[MethodCallee].method
-    val generic = m.objType.getMethodById(m.methodId)
-      .getOrElse(error(s"Cannot find method '${m.name}' on receiver of type ${obj.tpe}"))
     if (mc.receiver.elem.isInstanceOf[CollElem[_]]) {
+      val generic = m.objType.getMethodById(m.methodId).getOrElse(error(s"unknown method Coll.${m.name}"))
       val col = obj.asCollection[SType]
       val typeSubst = (generic, args) match {
         case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
@@ -175,6 +160,8 @@ trait TreeBuilding extends Base { IR: IRContext =>
       val specMethod = generic.withConcreteTypes(typeSubst + (SCollection.tIV -> col.tpe.elemType))
       builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
     } else {
+      val generic = m.objType.getMethodById(m.methodId)
+        .getOrElse(error(s"Cannot find method '${m.name}' on receiver of type ${obj.tpe}"))
       val typeSubst = mc.typeSubst
       val specMethod = generic.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
       builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
@@ -321,7 +308,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
 
       // Operation callees always have a row (they exist only to be lowered). The collection
       // builder has no ErgoTree counterpart: the rows of its operations ignore the receiver.
-      case Def(mc @ MethodCall(objSym, OpCallee(_, _), argSyms, _)) =>
+      case Def(mc @ MethodCall(objSym, OpCallee(_), argSyms, _)) =>
         val obj = if (objSym == colBuilder) Global else recurse[SType](objSym)
         val args = argSyms.map(recurse[SType])
         val row = rowFor(mc.callee).getOrElse(error(s"No ErgoTree lowering for ${mc.callee}"))
