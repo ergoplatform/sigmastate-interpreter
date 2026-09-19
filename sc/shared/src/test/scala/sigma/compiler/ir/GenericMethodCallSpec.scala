@@ -9,7 +9,7 @@ import sigmastate.helpers.CompilerTestingCommons
 
 /** Methods that have no dedicated ErgoTree node must flow through the compiler as plain
   * `MethodCall` nodes with no per-method code in `sc`: script → ErgoTree → bytes → ErgoTree.
-  * Runs on JVM and JS (spec success criterion 4).
+  * Runs on JVM and JS.
   */
 class GenericMethodCallSpec extends CompilerTestingCommons {
   implicit lazy val IR: TestingIRContext = new TestingIRContext

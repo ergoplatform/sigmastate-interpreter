@@ -1,9 +1,11 @@
 package sigma.compiler.ir
 
+import sigma.Colls
 import sigma.ast._
 import sigma.ast.syntax.SValue
 import sigmastate.helpers.CompilerTestingCommons
 import sigmastate.helpers.SigmaPPrint
+import sigmastate.interpreter.Interpreter.ScriptEnv
 
 /** Pins the ErgoTree produced when each IR rewrite rule that is reachable from ErgoScript
   * fires. A rule that stops firing changes the tree here before the language suites notice.
@@ -13,8 +15,8 @@ import sigmastate.helpers.SigmaPPrint
 class IRRewriteRulesSpec extends CompilerTestingCommons {
   implicit lazy val IR: TestingIRContext = new TestingIRContext
 
-  private def check(rule: String, code: String, expected: SValue): Unit = withClue(s"$rule: ") {
-    val actual = compile(Map(), code)
+  private def check(rule: String, code: String, expected: SValue, env: ScriptEnv = Map()): Unit = withClue(s"$rule: ") {
+    val actual = compile(env, code)
     if (actual != expected) SigmaPPrint.pprintln(actual, width = 100)
     actual shouldBe expected
   }
@@ -32,6 +34,10 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
     check("length(fromItems(items)) => items.length (then folded)",
       "{ Coll(1, 2, 3).size > 0 }",
       TrueLeaf)
+    check("length(DslConst(coll)) => coll.length (then folded)",
+      "{ xs.size > 0 }",
+      TrueLeaf,
+      env = Map("xs" -> Colls.fromItems(1, 2, 3)))
     check("map(xs, identity) => xs",
       s"{ $xs.map({ (x: Int) => x }).size > 0 }",
       GT(SizeOf(xsVar), IntConstant(0)))
@@ -55,6 +61,12 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
     check("bool && isValid(r) => (sigmaProp(bool) && r).isValid",
       s"{ HEIGHT > 1 && $pk }",
       SigmaAnd(Seq(BoolToSigmaProp(heightGt1), pkVar)))
+    check("isValid(l) || bool => (l || sigmaProp(bool)).isValid",
+      s"{ $pk || HEIGHT > 1 }",
+      SigmaOr(Seq(pkVar, BoolToSigmaProp(heightGt1))))
+    check("bool || isValid(r) => (sigmaProp(bool) || r).isValid",
+      s"{ HEIGHT > 1 || $pk }",
+      SigmaOr(Seq(BoolToSigmaProp(heightGt1), pkVar)))
     check("allOf(single) => single",
       "{ allOf(Coll(HEIGHT > 1)) }",
       heightGt1)
@@ -73,5 +85,8 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
     check("allOf(bools ++ sigmas) => sigmaProp(allOf(bools)) && allZK(sigmas)",
       s"{ allOf(Coll($pk, HEIGHT > 1)) }",
       SigmaAnd(Seq(BoolToSigmaProp(heightGt1), pkVar)))
+    check("anyOf(bools ++ sigmas) => sigmaProp(anyOf(bools)) || anyZK(sigmas)",
+      s"{ anyOf(Coll($pk, HEIGHT > 1)) }",
+      SigmaOr(Seq(BoolToSigmaProp(heightGt1), pkVar)))
   }
 }

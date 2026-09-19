@@ -7,11 +7,12 @@ import sigma.ast.SType.tT
 import sigmastate.helpers.CompilerTestingCommons
 
 /** Pins that the explicit type arguments of a `MethodCall` (`fromBigEndianBytes[Int]`, `some[Int]`,
-  * `none[Int]`) survive every graph path that rebuilds nodes (lambda unfolding, thunk inlining,
-  * lazy boolean operands, option defaults) and reach the ErgoTree with their substitution intact.
-  * `MethodCall.mirror` used to drop `typeSubst`; that path is not reachable from ErgoScript today
-  * (this spec passes unchanged at 5633d00e3, before the fix), so the spec guards the invariant
-  * rather than a fixed defect: a future rewrite that mirrors such a node would fail here.
+  * `none[Int]`) reach the ErgoTree with their substitution intact through every graph path that
+  * rebuilds nodes: lambda unfolding, thunk inlining, lazy boolean operands, option defaults and
+  * the map-fusion rule, which mirrors both lambda bodies. `MethodCall.mirror` used to drop
+  * `typeSubst`; TreeBuilding now takes the substitution from the node, so a regression there
+  * shows up below as a tree without the type argument. The last property exercises `mirror`
+  * directly.
   */
 class MethodCallMirrorSpec extends CompilerTestingCommons {
   implicit lazy val IR: TestingIRContext = new TestingIRContext
@@ -71,5 +72,26 @@ class MethodCallMirrorSpec extends CompilerTestingCommons {
         |  Global.some[Int](o.getOrElse(1)).isDefined && Global.none[Int]().isDefined == false
         |}""".stripMargin,
       SGlobalMethods.someMethod -> SInt, SGlobalMethods.noneMethod -> SInt)
+  }
+
+  property("explicit type args survive the map-fusion rule, which mirrors the lambda bodies") {
+    compilesV6(
+      """{
+        |  val xs = getVar[Coll[Coll[Byte]]](1).get
+        |  xs.map({ (b: Coll[Byte]) => fromBigEndianBytes[Int](b) }).map({ (y: Int) => y + 1 })(0) > 0
+        |}""".stripMargin,
+      SGlobalMethods.FromBigEndianBytesMethod -> SInt)
+  }
+
+  property("MethodCall.mirror keeps the type substitution") {
+    import IR.{ByteElement, IntElement, MapTransformer, MethodCallee, collElement, mkMethodCall, sigmaDslBuilderElement, toLazyElem, variable}
+    val global = variable[sigma.SigmaDslBuilder]
+    val bytes = variable[sigma.Coll[Byte]]
+    val bytes2 = variable[sigma.Coll[Byte]]
+    val subst = Map(tT -> (SInt: SType))
+    val call = mkMethodCall(global, MethodCallee(SGlobalMethods.FromBigEndianBytesMethod), Seq(bytes), subst, IntElement)
+    val mirrored = call.node.mirror(new MapTransformer(bytes -> bytes2))
+    mirrored should not be call
+    mirrored.node.asInstanceOf[IR.MethodCall].typeSubst shouldBe subst
   }
 }
