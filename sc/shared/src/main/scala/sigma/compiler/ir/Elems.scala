@@ -48,11 +48,6 @@ trait Elems extends Entities { self: IRContext =>
       cachedElem(classOf[CollElem[_]], eA)(new CollElem[A](eA))
   }
 
-  object CollBuilder {
-    class CollBuilderElem extends EntityElem[sigma.CollBuilder]
-    implicit lazy val collBuilderElement: Elem[sigma.CollBuilder] = new CollBuilderElem
-  }
-
   object WOption {
     /** Descriptor of `Option[A]`; the class name keeps `Elem.name` as `WOption[A]`. */
     class WOptionElem[A](val eItem: Elem[A]) extends EntityElem[Option[A]] {

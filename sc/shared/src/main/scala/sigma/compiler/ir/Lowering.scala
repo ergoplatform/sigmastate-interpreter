@@ -11,47 +11,49 @@ import sigma.serialization.OpCodes._
   * Rows are keyed by callee identity ([[MethodCallee]] compares `(objType, methodId)`,
   * [[OpCallee]] is structural), never by name. Callees without a row are emitted as plain
   * `MethodCall` ErgoTree nodes by [[TreeBuilding]].
+  *
+  * Adding a DSL method: declare its `SMethod` in the `data` module (`methods.scala`); nothing in
+  * `sc` changes unless the method gets a dedicated ErgoTree node, in which case add one row here
+  * and, as for any dedicated node, the `GraphBuilding` arm that builds a call node from it.
   */
 trait Lowering { IR: IRContext =>
-  import SigmaDslBuilder._
-
   /** Rebuilds an ErgoTree node from the IR call node, its built receiver and built arguments. */
-  type Row = (MethodCall, SValue, Seq[SValue]) => SValue
+  type LoweringRow = (MethodCall, SValue, Seq[SValue]) => SValue
 
   /** The callees that have a dedicated ErgoTree node, keyed by callee identity: one row per such
     * callee, rebuilding the node from the built receiver and arguments.
     */
-  protected lazy val rows: Map[IRCallee, Row] = Map(
-    // Global builtins: the callee is the operation's companion, the receiver the global object
-    OpCallee(BoolToSigmaProp)    -> ((_, _, args) => builder.mkBoolToSigmaProp(args(0).asBoolValue)),
-    OpCallee(AND)                -> ((_, _, args) => builder.mkAND(args(0).asCollection[SBoolean.type])),
-    OpCallee(OR)                 -> ((_, _, args) => builder.mkOR(args(0).asCollection[SBoolean.type])),
-    OpCallee(XorOf)              -> ((_, _, args) => builder.mkXorOf(args(0).asCollection[SBoolean.type])),
-    OpCallee(AtLeast)            -> ((_, _, args) => builder.mkAtLeast(args(0).asIntValue, args(1).asCollection[SSigmaProp.type])),
-    OpCallee(CalcBlake2b256)     -> ((_, _, args) => builder.mkCalcBlake2b256(args(0).asByteArray)),
-    OpCallee(CalcSha256)         -> ((_, _, args) => builder.mkCalcSha256(args(0).asByteArray)),
-    OpCallee(ByteArrayToBigInt)  -> ((_, _, args) => builder.mkByteArrayToBigInt(args(0).asByteArray)),
-    OpCallee(LongToByteArray)    -> ((_, _, args) => builder.mkLongToByteArray(args(0).asValue[SLong.type])),
-    OpCallee(ByteArrayToLong)    -> ((_, _, args) => builder.mkByteArrayToLong(args(0).asByteArray)),
-    OpCallee(DecodePoint)        -> ((_, _, args) => builder.mkDecodePoint(args(0).asByteArray)),
-    OpCallee(SubstConstants)     -> ((_, _, args) => builder.mkSubstConst(args(0).asByteArray, args(1).asIntArray, args(2).asCollection[SType])),
-    OpCallee(CreateProveDlog)    -> { (_, _, args) => args(0) match {
+  protected lazy val loweringRows: Map[IRCallee, LoweringRow] = Map(
+    // Global builtins
+    GlobalOpCallee(BoolToSigmaProp) -> ((_, _, args) => builder.mkBoolToSigmaProp(args(0).asBoolValue)),
+    GlobalOpCallee(AND)          -> ((_, _, args) => builder.mkAND(args(0).asCollection[SBoolean.type])),
+    GlobalOpCallee(OR)           -> ((_, _, args) => builder.mkOR(args(0).asCollection[SBoolean.type])),
+    GlobalOpCallee(XorOf)        -> ((_, _, args) => builder.mkXorOf(args(0).asCollection[SBoolean.type])),
+    GlobalOpCallee(AtLeast)      -> ((_, _, args) => builder.mkAtLeast(args(0).asIntValue, args(1).asCollection[SSigmaProp.type])),
+    GlobalOpCallee(CalcBlake2b256) -> ((_, _, args) => builder.mkCalcBlake2b256(args(0).asByteArray)),
+    GlobalOpCallee(CalcSha256)   -> ((_, _, args) => builder.mkCalcSha256(args(0).asByteArray)),
+    GlobalOpCallee(ByteArrayToBigInt) -> ((_, _, args) => builder.mkByteArrayToBigInt(args(0).asByteArray)),
+    GlobalOpCallee(LongToByteArray) -> ((_, _, args) => builder.mkLongToByteArray(args(0).asValue[SLong.type])),
+    GlobalOpCallee(ByteArrayToLong) -> ((_, _, args) => builder.mkByteArrayToLong(args(0).asByteArray)),
+    GlobalOpCallee(DecodePoint)  -> ((_, _, args) => builder.mkDecodePoint(args(0).asByteArray)),
+    GlobalOpCallee(SubstConstants) -> ((_, _, args) => builder.mkSubstConst(args(0).asByteArray, args(1).asIntArray, args(2).asCollection[SType])),
+    GlobalOpCallee(CreateProveDlog) -> { (_, _, args) => args(0) match {
       case gc: Constant[SGroupElement.type]@unchecked => SigmaPropConstant(ProveDlog(gc.value))
       case g => builder.mkCreateProveDlog(g.asGroupElement)
     }},
-    OpCallee(CreateProveDHTuple) -> { (_, _, args) => (args(0), args(1), args(2), args(3)) match {
+    GlobalOpCallee(CreateProveDHTuple) -> { (_, _, args) => (args(0), args(1), args(2), args(3)) match {
       case (gc: Constant[SGroupElement.type]@unchecked, hc: Constant[SGroupElement.type]@unchecked,
             uc: Constant[SGroupElement.type]@unchecked, vc: Constant[SGroupElement.type]@unchecked) =>
         SigmaPropConstant(ProveDHTuple(gc.value, hc.value, uc.value, vc.value))
       case (g, h, u, v) => builder.mkCreateProveDHTuple(g.asGroupElement, h.asGroupElement, u.asGroupElement, v.asGroupElement)
     }},
     MethodCallee(SGlobalMethods.xorMethod) -> ((_, _, args) => builder.mkXor(args(0).asByteArray, args(1).asByteArray)),
-    // CollBuilder: the callee is the operation's companion
-    OpCallee(ConcreteCollection) -> { (mc, _, args) =>
+    // Collection literals and the v5 xor builtin
+    GlobalOpCallee(ConcreteCollection) -> { (mc, _, args) =>
       val elemTpe = elemToSType(mc.resultType).asCollection[SType].elemType
       builder.mkConcreteCollection[elemTpe.type](args.map(_.asValue[elemTpe.type]).toArray[Value[elemTpe.type]], elemTpe)
     },
-    OpCallee(Xor) -> ((_, _, args) => builder.mkXor(args(0).asByteArray, args(1).asByteArray)),
+    GlobalOpCallee(Xor) -> ((_, _, args) => builder.mkXor(args(0).asByteArray, args(1).asByteArray)),
     // Coll
     MethodCallee(SCollectionMethods.ApplyMethod)     -> ((_, col, args) => builder.mkByIndex(col.asCollection[SType], args(0).asIntValue, None)),
     MethodCallee(SCollectionMethods.SizeMethod)      -> ((_, col, _)    => SizeOf(col.asCollection[SType])),
@@ -64,14 +66,12 @@ trait Lowering { IR: IRContext =>
     MethodCallee(SCollectionMethods.FoldMethod)      -> ((_, col, args) => builder.mkFold(col.asCollection[SType], args(0), args(1).asFunc)),
     MethodCallee(SCollectionMethods.FilterMethod)    -> ((_, col, args) => builder.mkFilter(col.asCollection[SType], args(0).asFunc)),
     // SigmaProp
-    OpCallee(SigmaAnd) -> { (mc, p1, args) =>
-      if (mc.receiver.elem.isInstanceOf[SigmaDslBuilderElem]) error(s"Cannot find method 'allZK' on receiver of type ${p1.tpe}")
-      else SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))
-    },
-    OpCallee(SigmaOr)  -> { (mc, p1, args) =>
-      if (mc.receiver.elem.isInstanceOf[SigmaDslBuilderElem]) error(s"Cannot find method 'anyZK' on receiver of type ${p1.tpe}")
-      else SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))
-    },
+    OpCallee(SigmaAnd) -> ((_, p1, args) => SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
+    OpCallee(SigmaOr)  -> ((_, p1, args) => SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
+    // allZK / anyZK of a non-literal collection have no ErgoTree node (the literal form is rewritten
+    // into a SigmaAnd / SigmaOr chain in GraphBuilding); keep the old failure
+    GlobalOpCallee(SigmaAnd) -> ((_, g, _) => error(s"Cannot find method 'allZK' on receiver of type ${g.tpe}")),
+    GlobalOpCallee(SigmaOr)  -> ((_, g, _) => error(s"Cannot find method 'anyZK' on receiver of type ${g.tpe}")),
     MethodCallee(SSigmaPropMethods.PropBytesMethod) -> ((_, p, _) => builder.mkSigmaPropBytes(p.asSigmaProp)),
     // isValid never reaches the tree (rewrite rules and removeIsProven eliminate it); keep the old failure
     MethodCallee(SSigmaPropMethods.IsProvenMethod)  -> ((_, p, _) => error(s"Cannot find method 'isValid' on receiver of type ${p.tpe}")),
@@ -94,7 +94,7 @@ trait Lowering { IR: IRContext =>
     MethodCallee(SContextMethods.getVarV5Method) -> { (mc, ctx, args) =>
       val id = mc.args(0).asInstanceOf[Ref[Byte]]
       if (id.isConst) builder.mkGetVar(valueFromRep(id), elemToSType(mc.resultType).asOption.elemType)
-      else plainMethodCall(mc, ctx, args)
+      else plainMethodCall(mc, SContextMethods.getVarV5Method, ctx, args)
     },
     // Box
     MethodCallee(SBoxMethods.ValueMethod)            -> ((_, box, _) => builder.mkExtractAmount(box.asBox)),
@@ -108,10 +108,10 @@ trait Lowering { IR: IRContext =>
       if (regId.isConst)
         builder.mkExtractRegisterAs(box.asBox, ErgoBox.allRegisters(valueFromRep(regId)), elemToSType(mc.resultType).asOption)
       else
-        plainMethodCall(mc, box, args)
+        plainMethodCall(mc, SBoxMethods.getRegMethodV6, box, args)
     }
   )
 
-  /** The row for `callee`, if it has a dedicated ErgoTree node. */
-  final def rowFor(callee: IRCallee): Option[Row] = rows.get(callee)
+  /** The lowering row for `callee`, if it has a dedicated ErgoTree node. */
+  final def loweringFor(callee: IRCallee): Option[LoweringRow] = loweringRows.get(callee)
 }

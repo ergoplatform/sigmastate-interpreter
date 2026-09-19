@@ -54,9 +54,7 @@ trait IRContext
   type LazyRep[T] = MutableLazy[Ref[T]]
 
   /** Pattern for `Coll(items)` literal nodes, shared by the rewrite rules here and in GraphBuilding. */
-  protected val ConcreteColl = CallPattern(ConcreteCollection)
-
-  def colBuilder: Ref[sigma.CollBuilder]
+  protected val ConcreteColl = CallPattern(GlobalOpCallee(ConcreteCollection))
 
   /** During compilation represent a global value Global, see also SGlobal type. */
   def sigmaDslBuilder: Ref[sigma.SigmaDslBuilder]

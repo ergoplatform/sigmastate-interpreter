@@ -1,7 +1,5 @@
 package sigma.compiler.ir
 
-import sigma.Evaluation.stypeToRType
-import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.ast.syntax.{ValueOps, _}
 import sigma.serialization.OpCodes._
@@ -25,8 +23,6 @@ import scala.collection.mutable.ArrayBuffer
 trait TreeBuilding extends Base { IR: IRContext =>
   import Coll._
   import Liftables._
-
-  /** Convenience synonyms for easier pattern matching. */
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -140,13 +136,12 @@ trait TreeBuilding extends Base { IR: IRContext =>
     }
   }
 
-  /** Emits a plain `MethodCall` ErgoTree node for a call node without a lowering row, rebuilding
-    * the specialised descriptor from the generic one with the same recipes (and failure texts) as
-    * before: a Coll receiver gets only `withConcreteTypes` (its own recipe), everything else
-    * `specializeFor(...).withConcreteTypes(typeSubst)`.
+  /** Emits a plain `MethodCall` ErgoTree node for a call of `m` without a lowering row. A Coll
+    * receiver substitutes only the collection's type variables (`tIV`, and `tOV` for flatMap and
+    * zip); any other receiver specialises the generic descriptor for the receiver and argument
+    * types and applies the call's explicit type substitution.
     */
-  def plainMethodCall(mc: MethodCall, obj: SValue, args: Seq[SValue]): SValue = {
-    val m = mc.callee.asInstanceOf[MethodCallee].method
+  def plainMethodCall(mc: MethodCall, m: SMethod, obj: SValue, args: Seq[SValue]): SValue = {
     if (mc.receiver.elem.isInstanceOf[CollElem[_]]) {
       val generic = m.objType.getMethodById(m.methodId).getOrElse(error(s"unknown method Coll.${m.name}"))
       val col = obj.asCollection[SType]
@@ -276,17 +271,17 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
 
-      case Def(AnyZk(_, colSyms, _)) =>
+      case Def(AnyZk(colSyms)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)
         SigmaOr(col)
-      case Def(AllZk(_, colSyms, _)) =>
+      case Def(AllZk(colSyms)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)
         SigmaAnd(col)
 
-      case Def(AnyOf(_, colSyms, _)) =>
+      case Def(AnyOf(colSyms)) =>
         val col = colSyms.map(recurse(_).asBoolValue)
         mkAnyOf(col)
-      case Def(AllOf(_, colSyms, _)) =>
+      case Def(AllOf(colSyms)) =>
         val col = colSyms.map(recurse(_).asBoolValue)
         mkAllOf(col)
 
@@ -306,22 +301,18 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(Upcast(inputSym, toSym)) =>
         mkUpcast(recurse(inputSym).asNumValue, elemToSType(toSym).asNumType)
 
-      // Operation callees always have a row (they exist only to be lowered). The collection
-      // builder has no ErgoTree counterpart: the rows of its operations ignore the receiver.
-      case Def(mc @ MethodCall(objSym, OpCallee(_), argSyms, _)) =>
-        val obj = if (objSym == colBuilder) Global else recurse[SType](objSym)
-        val args = argSyms.map(recurse[SType])
-        val row = rowFor(mc.callee).getOrElse(error(s"No ErgoTree lowering for ${mc.callee}"))
-        row(mc, obj, args)
-
-      // Method callees: a row if the method has a dedicated ErgoTree node, else a plain MethodCall
-      // rebuilt from the generic descriptor with the same recipes as the legacy fallbacks above.
-      case Def(mc @ MethodCall(objSym, MethodCallee(m), argSyms, _)) =>
+      // Call nodes: the lowering row when the callee has a dedicated ErgoTree node, else a plain
+      // MethodCall rebuilt from the method descriptor. A global builtin's receiver is the global
+      // object, which recurses to Global above and which its row ignores.
+      case Def(mc @ MethodCall(objSym, callee, argSyms, _)) =>
         val obj = recurse[SType](objSym)
         val args = argSyms.map(recurse[SType])
-        rowFor(mc.callee) match {
+        loweringFor(callee) match {
           case Some(row) => row(mc, obj, args)
-          case None => plainMethodCall(mc, obj, args)
+          case None => callee match {
+            case MethodCallee(m) => plainMethodCall(mc, m, obj, args)
+            case _ => error(s"No ErgoTree lowering for $callee")
+          }
         }
 
       case Def(d) =>

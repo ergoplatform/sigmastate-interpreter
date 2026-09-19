@@ -12,7 +12,10 @@ trait MethodCalls extends Base { self: IRContext =>
 
   /** A method with an [[SMethod]] descriptor (`Coll.map`, `Box.getReg`, `Header.checkPow`, ...).
     * Identity is `(objType, methodId)`: specialised copies of one descriptor differ in `stype`
-    * and must still denote the same call.
+    * and must still denote the same call. Note that under v5 the numeric types share one
+    * `objType` for their common methods, so such callees would not tell `Byte.toBytes` from
+    * `Short.toBytes`; the numeric methods never become call nodes (they lower to unary and
+    * binary operation nodes in `GraphBuilding`), and a row for one would need the receiver type.
     */
   final case class MethodCallee(method: SMethod) extends IRCallee {
     override def equals(other: Any): Boolean = other match {
@@ -23,10 +26,16 @@ trait MethodCalls extends Base { self: IRContext =>
     override def toString: String = method.opName
   }
 
-  /** An ErgoTree operation that has no [[SMethod]] (`CalcBlake2b256`, `SigmaAnd`, the per-code
-    * `ArithOp` companions, ...).
+  /** An ErgoTree operation applied to the receiver: `p && q` on sigma propositions (`SigmaAnd`),
+    * the per-code `ArithOp` companions on big integers, ...
     */
   final case class OpCallee(op: ValueCompanion) extends IRCallee
+
+  /** A builtin of the global object (`blake2b256`, `allZK`, `Coll(...)`, `xor`, ...): an ErgoTree
+    * operation whose call node has the global object as receiver, which its lowering ignores. It is
+    * not an [[OpCallee]] because one operation can be both: `SigmaAnd` is `p && q` and `allZK`.
+    */
+  final case class GlobalOpCallee(op: ValueCompanion) extends IRCallee
 
   /** Graph node representing a call of `callee` on `receiver`.
     * @param receiver   node ref of the instance the method is called on
@@ -77,6 +86,7 @@ trait MethodCalls extends Base { self: IRContext =>
   object CallPattern {
     def apply(method: SMethod): CallPattern = new CallPattern(MethodCallee(method))
     def apply(op: ValueCompanion): CallPattern = new CallPattern(OpCallee(op))
+    def apply(callee: IRCallee): CallPattern = new CallPattern(callee)
   }
 
   /** Creates new MethodCall node and returns its node ref. */

@@ -35,7 +35,7 @@ class GenericMethodCallSpec extends CompilerTestingCommons {
   property("methods without a dedicated node have no lowering row") {
     Seq(SHeaderMethods.checkPowMethod, SAvlTreeMethods.digestMethod,
         SUnsignedBigIntMethods.ModInverseMethod, SGlobalMethods.someMethod).foreach { m =>
-      withClue(m.opName) { IR.rowFor(IR.MethodCallee(m)) shouldBe None }
+      withClue(m.opName) { IR.loweringFor(IR.MethodCallee(m)) shouldBe None }
     }
   }
 
