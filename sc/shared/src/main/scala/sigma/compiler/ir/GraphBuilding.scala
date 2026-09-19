@@ -944,33 +944,35 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
           case (_, SGlobalMethods) =>
             buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
-          case (x: Ref[tNum], ms: SNumericTypeMethods) => method.name match {
-            case SNumericTypeMethods.ToBytesMethod.name =>
+          // The numeric methods are shared by every numeric type, so within the group a method is
+          // identified by its id (the descriptor's identity minus the receiver type).
+          case (x: Ref[tNum], _: SNumericTypeMethods) => method.methodId match {
+            case SNumericTypeMethods.ToBytesMethod.methodId =>
               val op = NumericToBigEndianBytes(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.ToBitsMethod.name =>
+            case SNumericTypeMethods.ToBitsMethod.methodId =>
               val op = NumericToBits(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.BitwiseInverseMethod.name =>
+            case SNumericTypeMethods.BitwiseInverseMethod.methodId =>
               val op = NumericBitwiseInverse(elemToExactNumeric(x.elem))(x.elem)
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.BitwiseOrMethod.name =>
+            case SNumericTypeMethods.BitwiseOrMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseOr(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.BitwiseAndMethod.name =>
+            case SNumericTypeMethods.BitwiseAndMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseAnd(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.BitwiseXorMethod.name =>
+            case SNumericTypeMethods.BitwiseXorMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseXor(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.ShiftLeftMethod.name =>
+            case SNumericTypeMethods.ShiftLeftMethod.methodId =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftLeft(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
-            case SNumericTypeMethods.ShiftRightMethod.name =>
+            case SNumericTypeMethods.ShiftRightMethod.methodId =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftRight(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
