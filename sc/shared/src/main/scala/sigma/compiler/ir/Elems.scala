@@ -7,6 +7,16 @@ package sigma.compiler.ir
   */
 trait Elems extends Entities { self: IRContext =>
 
+  object BigInt {
+    class BigIntElem extends EntityElem[sigma.BigInt]
+    implicit lazy val bigIntElement: Elem[sigma.BigInt] = new BigIntElem
+  }
+
+  object UnsignedBigInt {
+    class UnsignedBigIntElem extends EntityElem[sigma.UnsignedBigInt]
+    implicit lazy val unsignedBigIntElement: Elem[sigma.UnsignedBigInt] = new UnsignedBigIntElem
+  }
+
   object GroupElement {
     class GroupElementElem extends EntityElem[sigma.GroupElement]
     implicit lazy val groupElementElement: Elem[sigma.GroupElement] = new GroupElementElem

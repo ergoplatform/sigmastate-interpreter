@@ -69,88 +69,6 @@ object GraphIRReflection {
     )
   }
 
-  { val clazz = classOf[SigmaDsl#BigInt]
-    val ctx = null.asInstanceOf[SigmaDsl] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "add", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].add(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "max", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].max(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "min", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].min(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "subtract", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].subtract(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].multiply(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].mod(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
-        },
-        mkMethod(clazz, "toUnsigned", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.BigInt].toUnsigned()
-        },
-        mkMethod(clazz, "toUnsignedMod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.BigInt].toUnsignedMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        }
-      )
-    )
-  }
-
-  { val clazz = classOf[SigmaDsl#UnsignedBigInt]
-    val ctx = null.asInstanceOf[SigmaDsl] // ok! type level only
-    registerClassEntry(clazz,
-      methods = Map(
-        mkMethod(clazz, "add", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].add(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "max", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].max(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "min", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].min(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "subtract", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].subtract(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "multiply", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].multiply(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].mod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "divide", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].divide(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "plusMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].plusMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "subtractMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].subtractMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "multiplyMod", Array[Class[_]](classOf[Base#Ref[_]], classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].multiplyMod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]], args(1).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "mod", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].mod(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "modInverse", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].modInverse(args(0).asInstanceOf[ctx.Ref[ctx.UnsignedBigInt]])
-        },
-        mkMethod(clazz, "toSigned", Array[Class[_]]()) { (obj, _) =>
-          obj.asInstanceOf[ctx.UnsignedBigInt].toSigned
-        }
-      )
-    )
-  }
-
   { val clazz = classOf[sigma.compiler.ir.wrappers.sigma.Colls#CollBuilder]
     val ctx = null.asInstanceOf[IRContext] // ok! type level only
     registerClassEntry(clazz,
@@ -325,7 +243,7 @@ object GraphIRReflection {
             args(3).asInstanceOf[ctx.Ref[ctx.Coll[Byte]]], args(4).asInstanceOf[ctx.Ref[Int]])
         },
         mkMethod(clazz, "encodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[ctx.BigInt]])
+          obj.asInstanceOf[ctx.SigmaDslBuilder].encodeNbits(args(0).asInstanceOf[ctx.Ref[sigma.BigInt]])
         },
         mkMethod(clazz, "decodeNbits", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
           obj.asInstanceOf[ctx.SigmaDslBuilder].decodeNbits(args(0).asInstanceOf[ctx.Ref[Long]])

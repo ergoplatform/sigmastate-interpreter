@@ -59,8 +59,6 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
   lazy val boxA1 = newAliceBox(100)
   lazy val boxA2 = newAliceBox(200)
 
-  lazy val n1Sym = liftConst(n1)
-
   val timeout = 100
   val minToRaise = 1000L
   val backerPubKeyId = 1.toByte

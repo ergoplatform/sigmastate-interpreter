@@ -31,488 +31,6 @@ import SigmaProp._
 import WOption._
 
 
-object BigInt extends EntityObject("BigInt") {
-  // entityConst: single const for each entity
-  import Liftables._
-  type SBigInt = sigma.BigInt
-  case class BigIntConst(
-        constValue: SBigInt
-      ) extends LiftedConst[SBigInt, BigInt] with BigInt
-        with Def[BigInt] with BigIntConstMethods {
-    val liftable: Liftable[SBigInt, BigInt] = LiftableBigInt
-    val resultType: Elem[BigInt] = liftable.eW
-  }
-
-  trait BigIntConstMethods extends BigInt  { thisConst: Def[_] =>
-
-    private val BigIntClass = RClass(classOf[BigInt])
-
-    override def add(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("add", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    override def subtract(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("subtract", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    override def multiply(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    override def divide(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("divide", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    override def mod(m: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("mod", classOf[Sym]),
-        Array[AnyRef](m),
-        true, false, element[BigInt]))
-    }
-
-    override def min(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("min", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    override def max(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        BigIntClass.getMethod("max", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[BigInt]))
-    }
-
-    import UnsignedBigInt.unsignedBigIntElement
-
-    override def toUnsigned(): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        BigIntClass.getMethod("toUnsigned"),
-        Array[AnyRef](),
-        true, false, element[UnsignedBigInt](unsignedBigIntElement)))
-    }
-
-    override def toUnsignedMod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
-        Array[AnyRef](m),
-        true, false, element[UnsignedBigInt](unsignedBigIntElement)))
-    }
-  }
-
-  implicit object LiftableBigInt
-    extends Liftable[SBigInt, BigInt] {
-    lazy val eW: Elem[BigInt] = bigIntElement
-    lazy val sourceType: RType[SBigInt] = {
-      RType[SBigInt]
-    }
-    def lift(x: SBigInt): Ref[BigInt] = BigIntConst(x)
-  }
-
-  private val BigIntClass = RClass(classOf[BigInt])
-
-  // entityAdapter for BigInt trait
-  case class BigIntAdapter(source: Ref[BigInt])
-      extends Node with BigInt
-      with Def[BigInt] {
-    val resultType: Elem[BigInt] = element[BigInt]
-    override def transform(t: Transformer) = BigIntAdapter(t(source))
-
-    def add(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("add", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    def subtract(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("subtract", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    def multiply(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    def divide(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("divide", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    def mod(m: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("mod", classOf[Sym]),
-        Array[AnyRef](m),
-        true, true, element[BigInt]))
-    }
-
-    def min(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("min", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    def max(that: Ref[BigInt]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        BigIntClass.getMethod("max", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[BigInt]))
-    }
-
-    import UnsignedBigInt.unsignedBigIntElement
-
-    def toUnsigned(): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        BigIntClass.getMethod("toUnsigned"),
-        Array[AnyRef](),
-        true, true, element[UnsignedBigInt](unsignedBigIntElement)))
-    }
-
-    def toUnsignedMod(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        BigIntClass.getMethod("toUnsignedMod", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt](unsignedBigIntElement)))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefBigInt(p: Ref[BigInt]): BigInt = {
-    if (p.node.isInstanceOf[BigInt]) p.node.asInstanceOf[BigInt]
-    else
-      BigIntAdapter(p)
-  }
-
-  // familyElem
-  class BigIntElem[To <: BigInt]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SBigInt, To](LiftableBigInt)
-
-  }
-
-  implicit lazy val bigIntElement: Elem[BigInt] =
-    new BigIntElem[BigInt]
-
-  object BigIntMethods {
-
-    object add {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "add" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object subtract {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "subtract" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object multiply {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "multiply" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object divide {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "divide" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object mod {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "mod" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object min {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "min" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-    object max {
-      def unapply(d: Def[_]): Nullable[(Ref[BigInt], Ref[BigInt])] = d match {
-        case MethodCall(receiver, LegacyCallee(method), args, _) if method.getName == "max" && receiver.elem.isInstanceOf[BigIntElem[_]] =>
-          val res = (receiver, args(0))
-          Nullable(res).asInstanceOf[Nullable[(Ref[BigInt], Ref[BigInt])]]
-        case _ => Nullable.None
-      }
-      def unapply(exp: Sym): Nullable[(Ref[BigInt], Ref[BigInt])] = unapply(exp.node)
-    }
-
-  }
-
-} // of object BigInt
-  registerEntityObject("BigInt", BigInt)
-
-object UnsignedBigInt extends EntityObject("UnsignedBigInt") {
-  import Liftables._
-
-  type SUnsignedBigInt = sigma.UnsignedBigInt
-  unsignedBigIntElement
-
-  case class UnsignedBigIntConst(constValue: SUnsignedBigInt)
-      extends LiftedConst[SUnsignedBigInt, UnsignedBigInt] with UnsignedBigInt
-        with Def[UnsignedBigInt] with UnsignedBigIntConstMethods {
-    val liftable: Liftable[SUnsignedBigInt, UnsignedBigInt] = LiftableUnsignedBigInt
-    val resultType: Elem[UnsignedBigInt] = liftable.eW
-  }
-
-  trait UnsignedBigIntConstMethods extends UnsignedBigInt  { thisConst: Def[_] =>
-
-    private val UnsignedBigIntClass = RClass(classOf[UnsignedBigInt])
-
-    override def add(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("add", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def subtract(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("subtract", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def multiply(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def divide(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("divide", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def mod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("mod", classOf[Sym]),
-        Array[AnyRef](m),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def min(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("min", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def max(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("max", classOf[Sym]),
-        Array[AnyRef](that),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def modInverse(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("modInverse", classOf[Sym]),
-        Array[AnyRef](m),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("plusMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("subtractMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("multiplyMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, false, element[UnsignedBigInt]))
-    }
-
-    override def toSigned(): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
-        UnsignedBigIntClass.getMethod("toSigned"),
-        Array[AnyRef](),
-        true, false, element[BigInt]))
-    }
-  }
-
-  implicit object LiftableUnsignedBigInt extends Liftable[SUnsignedBigInt, UnsignedBigInt] {
-    lazy val eW: Elem[UnsignedBigInt] = unsignedBigIntElement
-    lazy val sourceType: RType[SUnsignedBigInt] = {
-      RType[SUnsignedBigInt]
-    }
-
-    def lift(x: SUnsignedBigInt): Ref[UnsignedBigInt] = UnsignedBigIntConst(x)
-  }
-
-  private val UnsignedBigIntClass = RClass(classOf[UnsignedBigInt])
-
-  // entityAdapter for BigInt trait
-  case class UnsignedBigIntAdapter(source: Ref[UnsignedBigInt])
-    extends Node with UnsignedBigInt
-      with Def[UnsignedBigInt] {
-    val resultType: Elem[UnsignedBigInt] = element[UnsignedBigInt]
-
-    override def transform(t: Transformer) = UnsignedBigIntAdapter(t(source))
-
-    def add(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("add", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def subtract(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("subtract", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def multiply(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("multiply", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def divide(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("divide", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def mod(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("mod", classOf[Sym]),
-        Array[AnyRef](m),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def min(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("min", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def max(that: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("max", classOf[Sym]),
-        Array[AnyRef](that),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def modInverse(m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("modInverse", classOf[Sym]),
-        Array[AnyRef](m),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def plusMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("plusMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def subtractMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("subtractMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def multiplyMod(that: Ref[UnsignedBigInt], m: Ref[UnsignedBigInt]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("multiplyMod", classOf[Sym], classOf[Sym]),
-        Array[AnyRef](that, m),
-        true, true, element[UnsignedBigInt]))
-    }
-
-    def toSigned(): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
-        UnsignedBigIntClass.getMethod("toSigned"),
-        Array[AnyRef](),
-        true, true, element[BigInt]))
-    }
-  }
-
-  // entityUnref: single unref method for each type family
-  implicit final def unrefUnsignedBigInt(p: Ref[UnsignedBigInt]): UnsignedBigInt = {
-    if (p.node.isInstanceOf[UnsignedBigInt]) p.node.asInstanceOf[UnsignedBigInt]
-    else
-      UnsignedBigIntAdapter(p)
-  }
-
-  class UnsignedBigIntElem[To <: UnsignedBigInt]
-    extends EntityElem[To] {
-    override val liftable: Liftables.Liftable[_, To] = asLiftable[SUnsignedBigInt, To](LiftableUnsignedBigInt)
-
-  }
-
-  implicit lazy val unsignedBigIntElement: Elem[UnsignedBigInt] = new UnsignedBigIntElem[UnsignedBigInt]
-}   // of object BigInt
-    registerEntityObject("UnsignedBigInt", UnsignedBigInt)
 
 
 object SigmaProp extends EntityObject("SigmaProp") {
@@ -760,11 +278,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, false, element[Coll[Byte]]))
     }
 
-    override def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
+    override def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[sigma.BigInt] = {
+      asRep[sigma.BigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("byteArrayToBigInt", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, false, element[BigInt]))
+        true, false, element[sigma.BigInt]))
     }
 
     override def longToByteArray(l: Ref[Long]): Ref[Coll[Byte]] = {
@@ -865,25 +383,25 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
 
-    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(self,
+    override def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
+      asRep[sigma.UnsignedBigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
-        true, false, element[UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
+        true, false, element[sigma.UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
     }
 
-    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+    override def encodeNbits(bi: Ref[sigma.BigInt]): Ref[Long] = {
       asRep[Long](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
         Array[AnyRef](bi),
         true, false, element[Long]))
     }
 
-    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(self,
+    override def decodeNbits(l: Ref[Long]): Ref[sigma.BigInt] = {
+      asRep[sigma.BigInt](mkMethodCall(self,
         SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
         Array[AnyRef](l),
-        true, false, element[BigInt]))
+        true, false, element[sigma.BigInt]))
     }
   }
 
@@ -975,11 +493,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
-    def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
+    def byteArrayToBigInt(bytes: Ref[Coll[Byte]]): Ref[sigma.BigInt] = {
+      asRep[sigma.BigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("byteArrayToBigInt", classOf[Sym]),
         Array[AnyRef](bytes),
-        true, true, element[BigInt]))
+        true, true, element[sigma.BigInt]))
     }
 
     def longToByteArray(l: Ref[Long]): Ref[Coll[Byte]] = {
@@ -1045,11 +563,11 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
         true, true, element[Coll[Byte]]))
     }
 
-    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[UnsignedBigInt] = {
-      asRep[UnsignedBigInt](mkMethodCall(source,
+    def powHit(k: Ref[Int], msg: Ref[Coll[Byte]], nonce: Ref[Coll[Byte]], h: Ref[Coll[Byte]], N: Ref[Int]): Ref[sigma.UnsignedBigInt] = {
+      asRep[sigma.UnsignedBigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("powHit", classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym], classOf[Sym]),
         Array[AnyRef](k, msg, nonce, h, N),
-        true, true, element[UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
+        true, true, element[sigma.UnsignedBigInt](UnsignedBigInt.unsignedBigIntElement)))
     }
 
     def serialize[T](value: Ref[T]): Ref[Coll[Byte]] = {
@@ -1088,18 +606,18 @@ object SigmaDslBuilder extends EntityObject("SigmaDslBuilder") {
     }
 
 
-    override def encodeNbits(bi: Ref[BigInt]): Ref[Long] = {
+    override def encodeNbits(bi: Ref[sigma.BigInt]): Ref[Long] = {
       asRep[Long](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("encodeNbits", classOf[Sym]),
         Array[AnyRef](bi),
         true, true, element[Long]))
     }
 
-    override def decodeNbits(l: Ref[Long]): Ref[BigInt] = {
-      asRep[BigInt](mkMethodCall(source,
+    override def decodeNbits(l: Ref[Long]): Ref[sigma.BigInt] = {
+      asRep[sigma.BigInt](mkMethodCall(source,
         SigmaDslBuilderClass.getMethod("decodeNbits", classOf[Sym]),
         Array[AnyRef](l),
-        true, true, element[BigInt]))
+        true, true, element[sigma.BigInt]))
     }
   }
 

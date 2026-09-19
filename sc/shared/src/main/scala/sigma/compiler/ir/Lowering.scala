@@ -3,6 +3,7 @@ package sigma.compiler.ir
 import org.ergoplatform.ErgoBox
 import sigma.ast._
 import sigma.ast.syntax.{SValue, ValueOps}
+import sigma.serialization.OpCodes._
 
 /** The reverse lowering table of the compiler: for a call node whose callee has a dedicated
   * ErgoTree node, the row rebuilds that node from the already built receiver and arguments.
@@ -17,6 +18,14 @@ trait Lowering { IR: IRContext =>
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // BigInt arithmetic: the callee is the operation's companion
+    OpCallee(ArithOp.operations(PlusCode))     -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, PlusCode)),
+    OpCallee(ArithOp.operations(MinusCode))    -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, MinusCode)),
+    OpCallee(ArithOp.operations(MultiplyCode)) -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, MultiplyCode)),
+    OpCallee(ArithOp.operations(DivisionCode)) -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, DivisionCode)),
+    OpCallee(ArithOp.operations(ModuloCode))   -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, ModuloCode)),
+    OpCallee(ArithOp.operations(MinCode))      -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, MinCode)),
+    OpCallee(ArithOp.operations(MaxCode))      -> ((_, x, args) => builder.mkArith(x.asNumValue, args(0).asNumValue, MaxCode)),
     // GroupElement
     MethodCallee(SGroupElementMethods.ExponentiateMethod) -> ((_, g, args) => builder.mkExponentiate(g.asGroupElement, args(0).asBigInt)),
     MethodCallee(SGroupElementMethods.MultiplyMethod)     -> ((_, g, args) => builder.mkMultiplyGroup(g.asGroupElement, args(0).asGroupElement)),

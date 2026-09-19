@@ -42,7 +42,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   private val CollM = CollMethods
   private val CBM = CollBuilderMethods
   private val SDBM = SigmaDslBuilderMethods
-  private val BIM = BigIntMethods
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -322,20 +321,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
         val method = SGlobalMethods.serializeMethod.withConcreteTypes(typeSubst)
         builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(value)), Map.empty)
 
-      case BIM.subtract(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MinusCode)
-      case BIM.add(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, PlusCode)
-      case BIM.multiply(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MultiplyCode)
-      case BIM.divide(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, DivisionCode)
-      case BIM.mod(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, ModuloCode)
-      case BIM.min(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MinCode)
-      case BIM.max(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MaxCode)
 
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))

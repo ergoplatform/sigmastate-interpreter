@@ -290,8 +290,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case StringElement => SString
     case AnyElement => SAny
     case UnitElement => SUnit
-    case _: BigIntElem[_] => SBigInt
-    case _: UnsignedBigIntElem[_] => SUnsignedBigInt
+    case _: BigIntElem => SBigInt
+    case _: UnsignedBigIntElem => SUnsignedBigInt
     case _: GroupElementElem => SGroupElement
     case _: AvlTreeElem => SAvlTree
     case oe: WOptionElem[_] => SOption(elemToSType(oe.eItem))
@@ -447,12 +447,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         case p: SSigmaProp =>
           assert(tpe == SSigmaProp)
           DslConst[SSigmaProp, SigmaProp](p)
-        case bi: SBigInt =>
+        case bi: sigma.BigInt =>
           assert(tpe == SBigInt)
-          DslConst[SBigInt, BigInt](bi)
-        case ubi: SUnsignedBigInt =>
+          DslConst[sigma.BigInt, sigma.BigInt](bi)
+        case ubi: sigma.UnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
-          DslConst[SUnsignedBigInt, UnsignedBigInt](ubi)
+          DslConst[sigma.UnsignedBigInt, sigma.UnsignedBigInt](ubi)
         case p: sigma.GroupElement =>
           assert(tpe == SGroupElement)
           DslConst[sigma.GroupElement, sigma.GroupElement](p)
@@ -775,20 +775,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val boundV = eval(bound)
         sigmaDslBuilder.atLeast(boundV, inputV)
 
+      // BigInt is not a numeric primitive of the IR: its arithmetic is a call node of the operation
       case op: ArithOp[_] if op.tpe == SBigInt =>
-        import OpCodes._
-        val xV = asRep[BigInt](eval(op.left))
-        val yV = asRep[BigInt](eval(op.right))
-        op.opCode match {
-          case PlusCode     => xV.add(yV)
-          case MinusCode    => xV.subtract(yV)
-          case MultiplyCode => xV.multiply(yV)
-          case DivisionCode => xV.divide(yV)
-          case ModuloCode   => xV.mod(yV)
-          case MinCode      => xV.min(yV)
-          case MaxCode      => xV.max(yV)
-          case code         => error(s"Cannot perform buildNode($op): unknown opCode ${code}", op.sourceContext.toOption)
-        }
+        val xV = eval(op.left)
+        val yV = eval(op.right)
+        asRep[Any](mkMethodCall(asRep[Any](xV), OpCallee(ArithOp.operations(op.opCode)), Seq(asRep[Any](yV)), Map(), stypeToElem(op.tpe)))
 
       case op: ArithOp[_] =>
         val tpe = op.left.tpe
@@ -1014,7 +1005,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val c2 = asRep[Coll[Byte]](argsV(1))
               g.xor(c1, c2)
             case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[BigInt](argsV(0))
+              val c1 = asRep[sigma.BigInt](argsV(0))
               g.encodeNbits(c1)
             case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
               val c1 = asRep[Long](argsV(0))
@@ -1076,40 +1067,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftRight(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
-            case SBigIntMethods.ToUnsigned.name =>  // only bigint has toUnsigned method
-              val bi = asRep[BigInt](x)
-              bi.toUnsigned()
-            case SBigIntMethods.ToUnsignedMod.name => // only bigint has toUnsignedMod method
-              val bi = asRep[BigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              bi.toUnsignedMod(m)
-
-            case SUnsignedBigIntMethods.ModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.mod(m)
-            case SUnsignedBigIntMethods.ModInverseMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.modInverse(m)
-            case SUnsignedBigIntMethods.PlusModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.plusMod(that, m)
-            case SUnsignedBigIntMethods.SubtractModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.subtractMod(that, m)
-            case SUnsignedBigIntMethods.MultiplyModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.multiplyMod(that, m)
-            case SUnsignedBigIntMethods.ToSignedMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              ubi.toSigned()
+            // methods of BigInt and UnsignedBigInt that are plain calls carrying their descriptor
+            case _ if method.objType == SBigIntMethods || method.objType == SUnsignedBigIntMethods =>
+              buildMethodCall(mc, asRep[Any](objV), argsV.map(asRep[Any](_)))
             case _ => throwError()
           }
           case _ => throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")
