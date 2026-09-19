@@ -33,18 +33,6 @@ import scala.language.implicitConversions
   * resulting ErgoTree.
   * */
 trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
-  import AvlTree._
-  import BigInt._
-  import UnsignedBigInt._
-  import Box._
-  import Coll._
-  import Context._
-  import GroupElement._
-  import Header._
-  import PreHeader._
-  import SigmaDslBuilder._
-  import SigmaProp._
-  import WOption._
 
   /** Builder used to create ErgoTree nodes. */
   val builder = TransformingSigmaBuilder

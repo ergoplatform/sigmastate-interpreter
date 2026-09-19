@@ -21,7 +21,6 @@ import scala.collection.mutable.ArrayBuffer
   * @see buildTree method
   * */
 trait TreeBuilding extends Base { IR: IRContext =>
-  import Coll._
   import Liftables._
 
   /** Describes assignment of valIds for symbols which become ValDefs.

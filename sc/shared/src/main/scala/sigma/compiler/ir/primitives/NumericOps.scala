@@ -88,7 +88,6 @@ trait NumericOps extends Base { self: IRContext =>
     override def applySeq(x: T): Long = n.toLong(x)
   }
 
-  import Coll._
   /** Descriptor of unary `ToBigEndianBytes` conversion operation. */
   case class NumericToBigEndianBytes[T](n: ExactNumeric[T])
     extends UnOp[T, sigma.Coll[Byte]]("ToBigEndianBytes")(element[sigma.Coll[Byte]]) {

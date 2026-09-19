@@ -8,8 +8,6 @@ class LoopTests extends CompilerTestingCommons { suite =>
   import IR._
 
   property("Test nested loop") {
-    import Coll._
-    import Box._
     /** A call node carrying its descriptor, as GraphBuilding builds them. */
     def call[R](receiver: Sym, m: SMethod, args: Sym*)(implicit eR: Elem[R]): Ref[R] =
       asRep[R](mkMethodCall(receiver, MethodCallee(m), args, Map(), eR))
