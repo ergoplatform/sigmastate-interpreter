@@ -4,7 +4,6 @@ import debox.{cfor, Buffer => DBuffer, Set => DSet}
 import scalan.core.Covariant
 import sigma.compiler.ir.IRContext
 import sigma.data.{AVHashMap, DFunc, Lazy, Nullable, RType}
-import sigma.reflection.RClass
 import sigma.util.GraphUtil
 
 import scala.collection.Seq
@@ -104,7 +103,7 @@ trait Thunks extends Functions { self: IRContext =>
 
   /** Implicitly defines element type for thunks (aka lazy values). */
   implicit def thunkElement[T](implicit eItem: Elem[T]): Elem[Thunk[T]] =
-    cachedElemByClass(eItem)(RClass(classOf[ThunkElem[T]]))
+    cachedElem(classOf[ThunkElem[_]], eItem)(new ThunkElem[T](eItem))
 
   /** Implicit conversion (downcast) to access `ThunkElem.eItem` field. */
   implicit def extendThunkElement[T](elem: Elem[Thunk[T]]): ThunkElem[T] = elem.asInstanceOf[ThunkElem[T]]

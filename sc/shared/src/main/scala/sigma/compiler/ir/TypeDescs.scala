@@ -2,7 +2,6 @@ package sigma.compiler.ir
 
 import scalan.core.{Contravariant, Covariant, Variance}
 import sigma.data.{AVHashMap, Lazy, Nullable, RType}
-import sigma.reflection.{RClass, RConstructor}
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.ListMap
@@ -107,7 +106,7 @@ abstract class TypeDescs extends Base { self: IRContext =>
   }
 
   /** Instances of parametrised Elem classes, one per (class, args), so equal descriptors are
-    * also the same object. Non-reflective replacement for `cachedElemByClass`.
+    * also the same object.
     */
   private val elemInstances = AVHashMap[(Class[_], Seq[AnyRef]), Elem[_]](100)
 
@@ -122,57 +121,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
     }
   }
 
-  /** Get first (and the only) constructor of the `clazz`. */
-  private[compiler] final def getConstructor(clazz: RClass[_]): RConstructor[_] = {
-    val constructors = clazz.getConstructors()
-    if (constructors.length != 1)
-      !!!(s"Element class $clazz has ${constructors.length} constructors, 1 expected")
-    else
-      constructors(0)
-  }
-
-  /** Retrieve an instance of the given Elem class by either looking up in the cache
-    * or creating a new one.
-    * We assume that all Elem instances are uniquely defined by (clazz, args)
-    * @param args  arguments of Elem class constructor
-    * @param clazz Elem class
-    */
-  final def cachedElemByClass[E <: Elem[_]](args: AnyRef*)(implicit clazz: RClass[E]) = {
-    cachedElem0(clazz, Nullable.None.asInstanceOf[Nullable[RConstructor[_]]], args).asInstanceOf[E]
-  }
-
-  /** Elements cache information for each Elem class. */
-  class ElemCacheEntry(
-    /** Constructor of the class to create new instances. */
-    val constructor: RConstructor[_],
-    /** Whether owner argument of constructor exists and of which kind. */
-    val ownerType: OwnerKind,
-    /** Created instances of elements, one for each unique collection of args. */
-    val elements: AVHashMap[Seq[AnyRef], AnyRef]
-  )
-    
-  protected val elemCache = AVHashMap[RClass[_], ElemCacheEntry](1000)
-
-  private[compiler] final def cachedElem0(clazz: RClass[_], optConstructor: Nullable[RConstructor[_]], args: Seq[AnyRef]): Elem[_] = {
-    val entry = elemCache.get(clazz) match {
-      case Nullable(entry) => entry
-      case _ =>
-        val constructor = if (optConstructor.isEmpty) getConstructor(clazz) else optConstructor.get
-        val ownerType = getOwnerKind(constructor)
-        val entry = new ElemCacheEntry(constructor, ownerType, AVHashMap(10))
-        elemCache.put(clazz, entry)
-        entry
-    }
-    val e = entry.elements.get(args) match {
-      case Nullable(e) => e
-      case _ =>
-        val constructorArgs = addOwnerParameter(entry.ownerType, args)
-        val e = entry.constructor.newInstance(constructorArgs: _*).asInstanceOf[AnyRef]
-        entry.elements.put(args, e)
-        e
-    }
-    e.asInstanceOf[Elem[_]]
-  }
 
   final def element[A](implicit ea: Elem[A]): Elem[A] = ea
 
@@ -231,15 +179,15 @@ abstract class TypeDescs extends Base { self: IRContext =>
 
   /** Implicitly defines element type for pairs. */
   implicit final def pairElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[(A, B)] =
-    cachedElemByClass[PairElem[A, B]](ea, eb)(RClass(classOf[PairElem[A, B]]))
+    cachedElem(classOf[PairElem[_, _]], ea, eb)(new PairElem[A, B](ea, eb))
 
   /** Implicitly defines element type for sum types. */
   implicit final def sumElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[A | B] =
-    cachedElemByClass[SumElem[A, B]](ea, eb)(RClass(classOf[SumElem[A, B]]))
+    cachedElem(classOf[SumElem[_, _]], ea, eb)(new SumElem[A, B](ea, eb))
 
   /** Implicitly defines element type for functions. */
   implicit final def funcElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[A => B] =
-    cachedElemByClass[FuncElem[A, B]](ea, eb)(RClass(classOf[FuncElem[A, B]]))
+    cachedElem(classOf[FuncElem[_, _]], ea, eb)(new FuncElem[A, B](ea, eb))
 
   implicit final def PairElemExtensions[A, B](eAB: Elem[(A, B)]): PairElem[A, B] = eAB.asInstanceOf[PairElem[A, B]]
   implicit final def SumElemExtensions[A, B](eAB: Elem[A | B]): SumElem[A, B] = eAB.asInstanceOf[SumElem[A, B]]

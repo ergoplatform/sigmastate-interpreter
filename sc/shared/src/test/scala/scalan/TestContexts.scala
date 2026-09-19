@@ -1,14 +1,9 @@
 package scalan
 
-import sigma.compiler.ir.{GraphIRReflection, IRContext}
+import sigma.compiler.ir.IRContext
 import sigma.{BaseNestedTests, BaseShouldTests, BaseTests, TestUtils}
 
 trait TestContexts extends TestUtils {
-
-  /** On JS the staged wrapper classes resolve through `GraphIRReflection`, which must be
-    * initialised before any `IRContext` is constructed. `SigmaCompiler` forces it too, but a
-    * suite may build its context first, so force it here for every suite that mixes this in. */
-  private val forceGraphIRReflection = GraphIRReflection
 
   trait TestContextApi { ctx: IRContext =>
     def testName: String
@@ -32,9 +27,7 @@ trait TestContexts extends TestUtils {
 
 }
 
-abstract class BaseCtxTests extends BaseTests with TestContexts {
-  val reflection = GraphIRReflection
-}
+abstract class BaseCtxTests extends BaseTests with TestContexts
 
 abstract class BaseNestedCtxTests extends BaseNestedTests with TestContexts
 

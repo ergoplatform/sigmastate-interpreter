@@ -12,7 +12,7 @@ import sigmastate.lang.parsers.ParserException
 import sigma.ast._
 import sigma.ast.syntax.SValue
 import SCollectionMethods.{ExistsMethod, ForallMethod, MapMethod}
-import sigma.compiler.ir.{GraphIRReflection, IRContext}
+import sigma.compiler.ir.IRContext
 import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
 import sigma.exceptions.CompilerException
 import sigma.Environment
@@ -165,7 +165,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
 
 object SigmaCompiler {
   /** Force initialization of reflection before any instance of SigmaCompiler is used. */
-  val _ = (InterpreterReflection, GraphIRReflection)
+  val _ = InterpreterReflection
 
   /** Returns true if the given throwable represents a stack overflow.
     *

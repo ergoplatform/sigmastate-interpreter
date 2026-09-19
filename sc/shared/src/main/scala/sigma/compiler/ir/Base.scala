@@ -5,7 +5,6 @@ import sigma.compiler.ir.core.MutableLazy
 import sigma.ast.{DeserializeContext, DeserializeRegister, SType}
 import sigma.data.{AVHashMap, Nullable, RType}
 import sigma.data.OverloadHack.Overloaded1
-import sigma.reflection.RConstructor
 import sigma.util.StringUtil
 
 import java.util.Arrays
@@ -328,25 +327,6 @@ abstract class Base { thisIR: IRContext =>
       new FuncLiftable[SA,SB,A,B]
   }
 
-  /** Base class for all objects generated for virtualized types to support
-    * staged evaluation machinery.
-    * Each object contains definitions which can be imported when necessary.
-    * All that objects are registered in `entityObjects` hash map,
-    * which is done while IR cake is constructed.
-    */
-  class EntityObject(val entityName: String)
-
-  private[this] val entityObjects = AVHashMap[String, EntityObject](300)
-
-  @inline def getEntityObject(name: String): Nullable[EntityObject] = {
-    entityObjects.get(name)
-  }
-
-  protected def registerEntityObject(name: String, obj: EntityObject): Unit = {
-     assert(!entityObjects.containsKey(name), s"EntityObject for entity $name already registered")
-     entityObjects.put(name, obj)
-  }
-
   /** Whether IR type descriptors should be cached. */
   val cacheElems = true
 
@@ -516,48 +496,6 @@ abstract class Base { thisIR: IRContext =>
     }
   }
 
-  /** Variants of `owner` parameter of constructors of nested classes:
-    * 1) predefined node classes are owned by IR cake (ScalanOwner)
-    * 2) entity classes are owned by enclosing EntityObject */
-  sealed abstract class OwnerKind
-  case object NoOwner extends OwnerKind
-  case object ScalanOwner extends OwnerKind
-  case class  EntityObjectOwner(obj: EntityObject) extends OwnerKind
-
-  /** Returns OwnerKind for the given constructor, using its first parameter. */
-  protected def getOwnerKind(constructor: RConstructor[_]): OwnerKind = {
-    val paramTypes = constructor.getParameterTypes
-    val ownerParam =
-      if (paramTypes.length == 0)
-        NoOwner
-      else {
-        val firstParamClazz = paramTypes(0)
-        if (classOf[EntityObject].isAssignableFrom(firstParamClazz)) {
-          val className = firstParamClazz.getSimpleName
-          val entityName = className.stripSuffix("$").stripSuffix("Cls")
-          getEntityObject(entityName) match {
-            case Nullable(obj) =>
-              EntityObjectOwner(obj)
-            case _ =>
-              !!!(s"Unknown owner type $firstParamClazz")
-          }
-        } else {
-          ScalanOwner
-        }
-      }
-    ownerParam
-  }
-
-  /** Prepend owner parameter depending on its kind. */
-  private[compiler] def addOwnerParameter(ownerType: OwnerKind, params: Seq[Any]): Seq[AnyRef] = {
-    val finalParams = (ownerType match {
-      case EntityObjectOwner(obj) => obj +: params
-      case ScalanOwner => thisIR +: params
-      case NoOwner => params
-    })
-    finalParams.asInstanceOf[Seq[AnyRef]]
-  }
-
   /** Implicit injection of new definition (graph node) into universum of
     * nodes with collapsing semantics. If there exists node `n` in this IR
     * such that `obj equals n`, then the value of `n.self` is returned, i.e.
@@ -618,27 +556,6 @@ abstract class Base { thisIR: IRContext =>
 
     private[compiler] def assignDefFrom[B >: T](sym: Ref[B]): Unit = {
       assignDefInternal(sym.node)
-    }
-
-    private var _adapter: T @uncheckedVariance = _
-    def adapter: T @uncheckedVariance = _adapter
-    def adapter_=(a: T @uncheckedVariance) = { _adapter = a }
-
-    /** Helper method that lazily creates and attaches Adapter to this node reference.
-      * The adapter is created conditionally and on demand.
-      * If T is trait or class (i.e. entity) then created adapter instance implements all its methods.
-      * The the adapter class is generated as part of EntityObject for the entity T.
-      * @see EntityObject
-      */
-    final def getAdapter[S >: T](isInstanceOfT: Boolean, createAdapter: Ref[S] => T @uncheckedVariance): T = {
-      if (isInstanceOfT) _node.asInstanceOf[T]
-      else {
-        val adapter = _adapter
-        if (adapter == null) {
-          _adapter = createAdapter(this)
-        }
-        _adapter
-      }
     }
 
     override def varName = "s" + _node._nodeId
