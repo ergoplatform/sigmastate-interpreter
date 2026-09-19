@@ -38,7 +38,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   import WOption._
 
   /** Convenience synonyms for easier pattern matching. */
-  private val SDBM = SigmaDslBuilderMethods
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -147,13 +146,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
   /** Recognizes special graph IR nodes which typically have many usages, but
     * for which no ValDefs should be created.
     */
-  object IsInternalDef {
-    def unapply(d: Def[_]): Option[Def[_]] = d match {
-      case _: SigmaDslBuilder => Some(d)
-      case _ => None
-    }
-  }
-
   /** Recognizes constants in graph IR. */
   object IsConstantDef {
     def unapply(d: Def[_]): Option[Def[_]] = d match {
@@ -292,21 +284,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(ApplyUnOp(IsLogicalUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
 
-      case SDBM.xor(_, colSym1, colSym2) =>
-        mkXor(recurse(colSym1), recurse(colSym2))
-
-      case SDBM.deserializeTo(g, bytes, eVar) =>
-        val tpe = elemToSType(eVar)
-        val typeSubst = Map(tT -> tpe): STypeSubst
-        // method specialization done to avoid serialization roundtrip issues
-        val method = SGlobalMethods.deserializeToMethod.withConcreteTypes(typeSubst)
-        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(bytes)), typeSubst)
-
-      case SDBM.serialize(g, value) =>
-        val valueTpe = elemToSType(value.elem)
-        val typeSubst = Map(tT -> valueTpe): STypeSubst
-        val method = SGlobalMethods.serializeMethod.withConcreteTypes(typeSubst)
-        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(value)), Map.empty)
 
 
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
@@ -325,49 +302,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(AllOf(_, colSyms, _)) =>
         val col = colSyms.map(recurse(_).asBoolValue)
         mkAllOf(col)
-
-      case SDBM.allOf(_,  items) =>
-        mkAND(recurse(items))
-      case SDBM.anyOf(_,  items) =>
-        mkOR(recurse(items))
-      case SDBM.atLeast(_, bound, items) =>
-        mkAtLeast(recurse(bound), recurse(items))
-      case Def(SDBM.xorOf(_,  items)) =>
-        mkXorOf(recurse(items))
-
-      case Def(SDBM.sigmaProp(_, In(cond))) =>
-        mkBoolToSigmaProp(cond.asBoolValue)
-      case SDBM.proveDlog(_, In(g)) =>
-        g match {
-          case gc: Constant[SGroupElement.type]@unchecked => SigmaPropConstant(ProveDlog(gc.value))
-          case _ => mkCreateProveDlog(g.asGroupElement)
-        }
-      case SDBM.proveDHTuple(_, In(g), In(h), In(u), In(v)) =>
-        (g, h, u, v) match {
-          case (gc: Constant[SGroupElement.type]@unchecked,
-          hc: Constant[SGroupElement.type]@unchecked,
-          uc: Constant[SGroupElement.type]@unchecked,
-          vc: Constant[SGroupElement.type]@unchecked) =>
-            SigmaPropConstant(ProveDHTuple(gc.value, hc.value, uc.value, vc.value))
-          case _ =>
-            mkCreateProveDHTuple(g.asGroupElement, h.asGroupElement, u.asGroupElement, v.asGroupElement)
-        }
-      case SDBM.sigmaProp(_, In(cond)) => // TODO refactor: remove or cover by tests: it is never executed
-        mkBoolToSigmaProp(cond.asBoolValue)
-      case SDBM.byteArrayToBigInt(_, colSym) =>
-        mkByteArrayToBigInt(recurse(colSym))
-      case SDBM.sha256(_, colSym) =>
-        mkCalcSha256(recurse(colSym))
-      case SDBM.blake2b256(_, colSym) =>
-        mkCalcBlake2b256(recurse(colSym))
-      case SDBM.longToByteArray(_, longSym) =>
-        mkLongToByteArray(recurse(longSym))
-      case SDBM.byteArrayToLong(_, colSym) =>
-        mkByteArrayToLong(recurse(colSym))
-      case SDBM.decodePoint(_, colSym) =>
-        mkDecodePoint(recurse(colSym))
-      case SDBM.substConstants(_, In(scriptBytes), In(positions), In(newValues)) =>
-        mkSubstConst(scriptBytes.asByteArray, positions.asIntArray, newValues.asCollection[SType])
 
       case Def(IfThenElseLazy(condSym, thenPSym, elsePSym)) =>
         val Seq(cond, thenP, elseP) = Seq(condSym, thenPSym, elsePSym).map(recurse)
@@ -438,7 +372,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
       val d = s.node
       if (mainG.hasManyUsagesGlobal(s)
         && IsContextProperty.unapply(d).isEmpty
-        && IsInternalDef.unapply(d).isEmpty
           // to increase effect of constant segregation we need to treat the constants specially
           // and don't create ValDef even if the constant is used more than one time,
           // because two equal constants don't always have the same meaning.

@@ -4,7 +4,6 @@ import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
 import sigma.ast.{ConcreteCollection, SCollectionMethods}
 import sigma.data.Nullable
-import sigma.compiler.ir.wrappers.sigma.SigmaDslModule
 
 /** Aggregate cake with all inter-dependent modules assembled together.
   * Each instance of this class contains independent IR context, thus many
@@ -41,7 +40,6 @@ trait IRContext
   with Entities
   with Elems
   with DefRewriting
-  with SigmaDslModule
   with Lowering
   with TreeBuilding
   with GraphBuilding {
@@ -64,7 +62,7 @@ trait IRContext
   def colBuilder: Ref[sigma.CollBuilder]
 
   /** During compilation represent a global value Global, see also SGlobal type. */
-  def sigmaDslBuilder: Ref[SigmaDslBuilder]
+  def sigmaDslBuilder: Ref[sigma.SigmaDslBuilder]
 
   object IsNumericToInt {
     def unapply(d: Def[_]): Nullable[Ref[A] forSome {type A}] = d match {

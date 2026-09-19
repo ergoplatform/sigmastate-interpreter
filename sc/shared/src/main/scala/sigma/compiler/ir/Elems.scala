@@ -3,9 +3,14 @@ package sigma.compiler.ir
 /** Type descriptors of the ErgoScript DSL types in the graph IR. The IR type of a DSL value is
   * its runtime `sigma.*` type; these descriptors relate it to `SType` through `stypeToElem` and
   * `elemToSType` in [[GraphBuilding]]. One object per type keeps the `import Header._` style
-  * import sites working. Populated entity by entity as the staged wrappers are removed.
+  * import sites working.
   */
 trait Elems extends Entities { self: IRContext =>
+
+  object SigmaDslBuilder {
+    class SigmaDslBuilderElem extends EntityElem[sigma.SigmaDslBuilder]
+    implicit lazy val sigmaDslBuilderElement: Elem[sigma.SigmaDslBuilder] = new SigmaDslBuilderElem
+  }
 
   object SigmaProp {
     class SigmaPropElem extends EntityElem[sigma.SigmaProp]

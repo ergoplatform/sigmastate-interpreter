@@ -1,6 +1,7 @@
 package sigma.compiler.ir
 
 import org.ergoplatform.ErgoBox
+import sigma.data.{ProveDHTuple, ProveDlog}
 import sigma.ast._
 import sigma.ast.syntax.{SValue, ValueOps}
 import sigma.serialization.OpCodes._
@@ -12,12 +13,37 @@ import sigma.serialization.OpCodes._
   * `MethodCall` ErgoTree nodes by [[TreeBuilding]].
   */
 trait Lowering { IR: IRContext =>
+  import SigmaDslBuilder._
 
   /** Rebuilds an ErgoTree node from the IR call node, its built receiver and built arguments. */
   type Row = (MethodCall, SValue, Seq[SValue]) => SValue
 
   /** All callees that have a dedicated ErgoTree node. Populated entity by entity. */
   protected lazy val rows: Map[IRCallee, Row] = Map(
+    // Global builtins: the callee is the operation's companion, the receiver the global object
+    OpCallee(BoolToSigmaProp)    -> ((_, _, args) => builder.mkBoolToSigmaProp(args(0).asBoolValue)),
+    OpCallee(AND)                -> ((_, _, args) => builder.mkAND(args(0).asCollection[SBoolean.type])),
+    OpCallee(OR)                 -> ((_, _, args) => builder.mkOR(args(0).asCollection[SBoolean.type])),
+    OpCallee(XorOf)              -> ((_, _, args) => builder.mkXorOf(args(0).asCollection[SBoolean.type])),
+    OpCallee(AtLeast)            -> ((_, _, args) => builder.mkAtLeast(args(0).asIntValue, args(1).asCollection[SSigmaProp.type])),
+    OpCallee(CalcBlake2b256)     -> ((_, _, args) => builder.mkCalcBlake2b256(args(0).asByteArray)),
+    OpCallee(CalcSha256)         -> ((_, _, args) => builder.mkCalcSha256(args(0).asByteArray)),
+    OpCallee(ByteArrayToBigInt)  -> ((_, _, args) => builder.mkByteArrayToBigInt(args(0).asByteArray)),
+    OpCallee(LongToByteArray)    -> ((_, _, args) => builder.mkLongToByteArray(args(0).asValue[SLong.type])),
+    OpCallee(ByteArrayToLong)    -> ((_, _, args) => builder.mkByteArrayToLong(args(0).asByteArray)),
+    OpCallee(DecodePoint)        -> ((_, _, args) => builder.mkDecodePoint(args(0).asByteArray)),
+    OpCallee(SubstConstants)     -> ((_, _, args) => builder.mkSubstConst(args(0).asByteArray, args(1).asIntArray, args(2).asCollection[SType])),
+    OpCallee(CreateProveDlog)    -> { (_, _, args) => args(0) match {
+      case gc: Constant[SGroupElement.type]@unchecked => SigmaPropConstant(ProveDlog(gc.value))
+      case g => builder.mkCreateProveDlog(g.asGroupElement)
+    }},
+    OpCallee(CreateProveDHTuple) -> { (_, _, args) => (args(0), args(1), args(2), args(3)) match {
+      case (gc: Constant[SGroupElement.type]@unchecked, hc: Constant[SGroupElement.type]@unchecked,
+            uc: Constant[SGroupElement.type]@unchecked, vc: Constant[SGroupElement.type]@unchecked) =>
+        SigmaPropConstant(ProveDHTuple(gc.value, hc.value, uc.value, vc.value))
+      case (g, h, u, v) => builder.mkCreateProveDHTuple(g.asGroupElement, h.asGroupElement, u.asGroupElement, v.asGroupElement)
+    }},
+    MethodCallee(SGlobalMethods.xorMethod) -> ((_, _, args) => builder.mkXor(args(0).asByteArray, args(1).asByteArray)),
     // CollBuilder: the callee is the operation's companion
     OpCallee(ConcreteCollection) -> { (mc, _, args) =>
       val elemTpe = elemToSType(mc.resultType).asCollection[SType].elemType
@@ -36,8 +62,14 @@ trait Lowering { IR: IRContext =>
     MethodCallee(SCollectionMethods.FoldMethod)      -> ((_, col, args) => builder.mkFold(col.asCollection[SType], args(0), args(1).asFunc)),
     MethodCallee(SCollectionMethods.FilterMethod)    -> ((_, col, args) => builder.mkFilter(col.asCollection[SType], args(0).asFunc)),
     // SigmaProp
-    OpCallee(SigmaAnd) -> ((_, p1, args) => SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
-    OpCallee(SigmaOr)  -> ((_, p1, args) => SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))),
+    OpCallee(SigmaAnd) -> { (mc, p1, args) =>
+      if (mc.receiver.elem.isInstanceOf[SigmaDslBuilderElem]) error(s"Cannot find method 'allZK' on receiver of type ${p1.tpe}")
+      else SigmaAnd(Seq(p1.asSigmaProp, args(0).asSigmaProp))
+    },
+    OpCallee(SigmaOr)  -> { (mc, p1, args) =>
+      if (mc.receiver.elem.isInstanceOf[SigmaDslBuilderElem]) error(s"Cannot find method 'anyZK' on receiver of type ${p1.tpe}")
+      else SigmaOr(Seq(p1.asSigmaProp, args(0).asSigmaProp))
+    },
     MethodCallee(SSigmaPropMethods.PropBytesMethod) -> ((_, p, _) => builder.mkSigmaPropBytes(p.asSigmaProp)),
     // isValid never reaches the tree (rewrite rules and removeIsProven eliminate it); keep the old failure
     MethodCallee(SSigmaPropMethods.IsProvenMethod)  -> ((_, p, _) => error(s"Cannot find method 'isValid' on receiver of type ${p.tpe}")),
