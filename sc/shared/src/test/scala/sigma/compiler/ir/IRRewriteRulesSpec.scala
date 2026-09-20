@@ -2,6 +2,7 @@ package sigma.compiler.ir
 
 import sigma.Colls
 import sigma.ast._
+import sigma.serialization.OpCodes.{MultiplyCode, PlusCode}
 import sigma.ast.syntax.SValue
 import sigmastate.helpers.CompilerTestingCommons
 import sigmastate.helpers.SigmaPPrint
@@ -38,12 +39,18 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
       "{ xs.size > 0 }",
       TrueLeaf,
       env = Map("xs" -> Colls.fromItems(1, 2, 3)))
+    // these two consume an element: `.size` alone would be folded by the length(map) rule above
     check("map(xs, identity) => xs",
-      s"{ $xs.map({ (x: Int) => x }).size > 0 }",
-      GT(SizeOf(xsVar), IntConstant(0)))
-    check("map(map(xs, f), g) => map(xs, g . f) (then length(map) => length)",
-      s"{ $xs.map({ (x: Int) => x + 1 }).map({ (y: Int) => y * 2 }).size > 0 }",
-      GT(SizeOf(xsVar), IntConstant(0)))
+      s"{ $xs.map({ (x: Int) => x })(0) > 0 }",
+      GT(ByIndex(xsVar, IntConstant(0), None), IntConstant(0)))
+    check("map(map(xs, f), g) => map(xs, g . f)",
+      s"{ $xs.map({ (x: Int) => x + 1 }).map({ (y: Int) => y * 2 })(0) > 0 }",
+      GT(
+        ByIndex(
+          MapCollection(xsVar, FuncValue(Vector((1, SInt)),
+            ArithOp(ArithOp(ValUse(1, SInt), IntConstant(1), PlusCode), IntConstant(2), MultiplyCode))),
+          IntConstant(0), None),
+        IntConstant(0)))
   }
 
   property("sigma rules (GraphBuilding.rewriteDef)") {
