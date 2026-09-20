@@ -1,7 +1,6 @@
 package sigma.compiler.ir
 
 import org.ergoplatform._
-import sigma.Evaluation.stypeToRType
 import sigma.SigmaException
 import sigma.ast.{Ident, Select, Val}
 import sigma.ast.SType.tT
@@ -899,22 +898,18 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val argsV = args.map(eval)
         val objAny = asRep[Any](objV)
         val argsAny = argsV.map(asRep[Any](_))
+        // Three shapes need more than a call node carrying the descriptor; every other method call
+        // is generic (the default arm), whatever its receiver type.
         (objV, method.objType) match {
-          case (_, SOptionMethods) =>
-            // getOrElse takes its default lazily: the argument is wrapped into a thunk
-            val args1 =
-              if (method.methodId == SOptionMethods.GetOrElseMethod.methodId) Seq(asRep[Any](Thunk(argsV(0))))
-              else argsAny
-            buildMethodCall(mc, objAny, args1)
+          // getOrElse takes its default lazily: the argument is wrapped into a thunk
+          case (_, SOptionMethods) if method.methodId == SOptionMethods.GetOrElseMethod.methodId =>
+            buildMethodCall(mc, objAny, Seq(asRep[Any](Thunk(argsV(0)))))
           // The explicit `CONTEXT.getVar[T](id)` form arrives as a call of getVarV5Method, which the
           // IR does not support (the `getVar[T](id)` builtin lowers to GetVar)
           case (_, SContextMethods) if method.methodId == SContextMethods.getVarV5Method.methodId =>
             throwError()
-          case (_, SCollectionMethods | SContextMethods | SGroupElementMethods | SBoxMethods | SAvlTreeMethods
-                  | SPreHeaderMethods | SHeaderMethods | SGlobalMethods) =>
-            buildMethodCall(mc, objAny, argsAny)
-          // The numeric methods are shared by every numeric type, so within the group a method is
-          // identified by its id (the descriptor's identity minus the receiver type).
+          // The shared numeric methods lower to unary and binary operation nodes; within the group a
+          // method is identified by its id (the descriptor's identity minus the receiver type).
           case (x: Ref[tNum], _: SNumericTypeMethods) => method.methodId match {
             case SNumericTypeMethods.ToBytesMethod.methodId =>
               val op = NumericToBigEndianBytes(elemToExactNumeric(x.elem))
@@ -945,12 +940,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftRight(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
-            // methods of BigInt and UnsignedBigInt that are plain calls carrying their descriptor
-            case _ if method.objType == SBigIntMethods || method.objType == SUnsignedBigIntMethods =>
-              buildMethodCall(mc, objAny, argsAny)
-            case _ => throwError()
+            case _ => buildMethodCall(mc, objAny, argsAny)
           }
-          case _ => throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")
+          case _ => buildMethodCall(mc, objAny, argsAny)
         }
 
       case _ =>
