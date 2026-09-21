@@ -14,8 +14,9 @@ trait MethodCalls extends Base { self: IRContext =>
     * Identity is `(objType, methodId)`: specialised copies of one descriptor differ in `stype`
     * and must still denote the same call. Note that under v5 the numeric types share one
     * `objType` for their common methods, so such callees would not tell `Byte.toBytes` from
-    * `Short.toBytes`; the numeric methods never become call nodes (they lower to unary and
-    * binary operation nodes in `GraphBuilding`), and a row for one would need the receiver type.
+    * `Short.toBytes`; `GraphBuilding` rejects those calls under v5 and lowers the v6 copies (whose
+    * `objType` is the numeric type) to unary and binary operation nodes, so no numeric method
+    * becomes a call node, and a row for one would need the receiver type.
     */
   final case class MethodCallee(method: SMethod) extends IRCallee {
     override def equals(other: Any): Boolean = other match {

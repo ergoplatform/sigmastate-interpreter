@@ -1,6 +1,7 @@
 package sigma.compiler.ir
 
 import org.ergoplatform._
+import sigma.Evaluation.stypeToRType
 import sigma.SigmaException
 import sigma.ast.{Ident, Select, Val}
 import sigma.ast.SType.tT
@@ -914,6 +915,11 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
           // IR does not support (the `getVar[T](id)` builtin lowers to GetVar)
           case (_, SContextMethods) if method.methodId == SContextMethods.getVarV5Method.methodId =>
             throwError()
+          // Under v5 the shared numeric methods keep the SNumericTypeMethods object as their container
+          // (it is not the trait the next arm matches and has no method table); the IR never
+          // supported them there and rejects them as it always did
+          case (_, SNumericTypeMethods) =>
+            throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")
           // The shared numeric methods lower to unary and binary operation nodes; within the group a
           // method is identified by its id (the descriptor's identity minus the receiver type).
           case (x: Ref[tNum], _: SNumericTypeMethods) => method.methodId match {

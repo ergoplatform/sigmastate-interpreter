@@ -4,6 +4,7 @@ import sigma.VersionContext
 import sigma.VersionContext.V6SoftForkVersion
 import sigma.ast._
 import sigma.ast.syntax.SValue
+import sigma.exceptions.GraphBuildingException
 import sigmastate.helpers.CompilerTestingCommons
 import sigmastate.helpers.SigmaPPrint
 
@@ -68,5 +69,15 @@ class CallIdentitySpec extends CompilerTestingCommons {
         |  b.getOrElse(0, { (x: Int) => { (y: Long) => 1.toByte } })(1)(2L) == 1.toByte
         |}""".stripMargin)
     check("identically typed empty collections still merge", "{ sigmaProp(Coll[Int]() == Coll[Int]()) }", BoolToSigmaProp(TrueLeaf))
+  }
+
+  property("the shared numeric methods under v5 fail in graph building as before") {
+    // the v5 copies keep the SNumericTypeMethods object as container; the IR never supported them
+    VersionContext.withVersions(2.toByte, 2.toByte) {
+      Seq("toBytes", "toBits").foreach { name =>
+        val e = the[GraphBuildingException] thrownBy compile(Map(), s"{ sigmaProp(getVar[Long](1).get.$name.size > 0) }")
+        e.getMessage should include ("Type Long doesn't have methods")
+      }
+    }
   }
 }
