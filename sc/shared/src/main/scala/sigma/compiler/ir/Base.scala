@@ -390,6 +390,8 @@ abstract class Base { thisIR: IRContext =>
     * @param eT         type descriptor of the value's IR type
     */
   case class DslConst[T](constValue: T)(implicit val eT: Elem[T]) extends BaseDef[T] {
+    /** A constant holds no symbols: mirroring (lambda inlining, map fusion) keeps the node. */
+    override def mirror(t: Transformer): Ref[T] = self
     override def hashCode() = constValue.hashCode() * 31 + eT.hashCode()
     override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
       case c: DslConst[_] => constValue == c.constValue && eT == c.eT

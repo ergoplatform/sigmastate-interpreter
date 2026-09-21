@@ -51,6 +51,12 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
             ArithOp(ArithOp(ValUse(1, SInt), IntConstant(1), PlusCode), IntConstant(2), MultiplyCode))),
           IntConstant(0), None),
         IntConstant(0)))
+    // the first mapper ignores its argument and captures an environment constant: fusing the two
+    // mappers mirrors that DslConst node
+    check("map(map(xs, const), g) => map(xs, g . const)",
+      s"{ $xs.map({ (x: Int) => ys }).map({ (zs: Coll[Int]) => zs.size })(0) > 0 }",
+      GT(ByIndex(MapCollection(xsVar, FuncValue(Vector((1, SInt)), IntConstant(3))), IntConstant(0), None), IntConstant(0)),
+      env = Map("ys" -> Colls.fromItems(1, 2, 3)))
   }
 
   property("sigma rules (GraphBuilding.rewriteDef)") {
