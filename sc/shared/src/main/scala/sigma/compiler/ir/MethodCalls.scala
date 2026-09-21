@@ -57,7 +57,7 @@ trait MethodCalls extends Base { self: IRContext =>
         case other: MethodCall =>
           receiver == other.receiver &&
           callee == other.callee &&
-          resultType.name == other.resultType.name &&
+          resultType == other.resultType &&
           typeSubst == other.typeSubst &&
           args == other.args
         case _ => false
@@ -66,7 +66,7 @@ trait MethodCalls extends Base { self: IRContext =>
 
     override lazy val hashCode: Int = {
       var h = receiver.hashCode() * 31 + callee.hashCode()
-      h = h * 31 + resultType.name.hashCode
+      h = h * 31 + resultType.hashCode
       h = h * 31 + typeSubst.hashCode()
       h = h * 31 + args.hashCode()
       h

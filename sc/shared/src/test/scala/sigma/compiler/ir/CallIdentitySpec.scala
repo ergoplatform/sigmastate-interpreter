@@ -51,4 +51,22 @@ class CallIdentitySpec extends CompilerTestingCommons {
       withClue(code) { methodCalls(compileV6(code)).map(_.typeSubst) should contain only Map.empty }
     }
   }
+
+  property("empty collections of different function types are different nodes") {
+    // both element types render as `Int => Long => Byte`; identity must be the structural type
+    val curried = SFunc(SInt, SFunc(SLong, SByte))
+    val uncurried = SFunc(SFunc(SInt, SLong), SByte)
+    compileV6("(Coll[(Int => Long) => Byte](), Coll[Int => Long => Byte]())").tpe shouldBe
+      STuple(SCollection(uncurried), SCollection(curried))
+    compileV6("(Coll[Int => Long => Byte](), Coll[(Int => Long) => Byte]())").tpe shouldBe
+      STuple(SCollection(curried), SCollection(uncurried))
+    // an unused `a` must not prime the node of `b` with the wrong element type
+    compileV6(
+      """{
+        |  val a = Coll[(Int => Long) => Byte]()
+        |  val b = Coll[Int => Long => Byte]()
+        |  b.getOrElse(0, { (x: Int) => { (y: Long) => 1.toByte } })(1)(2L) == 1.toByte
+        |}""".stripMargin)
+    check("identically typed empty collections still merge", "{ sigmaProp(Coll[Int]() == Coll[Int]()) }", BoolToSigmaProp(TrueLeaf))
+  }
 }
