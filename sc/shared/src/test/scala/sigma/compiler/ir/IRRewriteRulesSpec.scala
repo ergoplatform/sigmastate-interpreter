@@ -83,6 +83,9 @@ class IRRewriteRulesSpec extends CompilerTestingCommons {
     check("allOf(single) => single",
       "{ allOf(Coll(HEIGHT > 1)) }",
       heightGt1)
+    check("anyOf(single) => single",
+      "{ anyOf(Coll(HEIGHT > 1)) }",
+      heightGt1)
     check("anyOf(single sigma) => anyZK(single) => single",
       s"{ anyOf(Coll($pk)) }",
       pkVar)

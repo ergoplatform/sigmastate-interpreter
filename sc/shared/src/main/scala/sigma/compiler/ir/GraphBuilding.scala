@@ -156,9 +156,6 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     // On each branching level each node type should be matched exactly once,
     // for the rewriting to be sound.
     d match {
-      // Rule: ThunkDef(x, Nil).force => x
-      case ThunkForce(Def(ThunkDef(root, sch))) if sch.isEmpty => root
-
       // Rule: l.isValid op Thunk {... root} => (l op TrivialSigma(root)).isValid
       case ApplyBinOpLazy(op, IsValid(l, _), Def(ThunkDef(root, _))) if root.elem == BooleanElement =>
         // don't need new Thunk because sigma logical ops always strict
