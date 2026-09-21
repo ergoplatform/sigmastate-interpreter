@@ -389,10 +389,16 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   protected type CompilingEnv = Map[Any, Ref[_]]
 
   /** Builds a plain call node for an AST `MethodCall`. The descriptor is the AST node's own and
-    * the result type is the AST node's own, so no method resolution happens here.
+    * the result type is the AST node's own, so no method resolution happens here. Only the
+    * substitutions of the method's explicit type arguments are kept: an inferable type argument
+    * written out in the source (`serialize[Int](x)`) must give the same node as the inferred
+    * form, and the serializer writes no other substitution either.
     */
-  protected def buildMethodCall(mc: sigma.ast.MethodCall, objV: Ref[Any], argsV: Seq[Ref[Any]]): Ref[Any] =
-    asRep[Any](mkMethodCall(objV, MethodCallee(mc.method), argsV, mc.typeSubst, stypeToElem(mc.tpe)))
+  protected def buildMethodCall(mc: sigma.ast.MethodCall, objV: Ref[Any], argsV: Seq[Ref[Any]]): Ref[Any] = {
+    val explicit = mc.method.explicitTypeArgs
+    val typeSubst = if (explicit.isEmpty) Map.empty[STypeVar, SType] else mc.typeSubst.filter { case (tv, _) => explicit.contains(tv) }
+    asRep[Any](mkMethodCall(objV, MethodCallee(mc.method), argsV, typeSubst, stypeToElem(mc.tpe)))
+  }
 
   /** Builds a call node for `method` on `objV` that lowers the AST `node`: the result type is
     * the node's own type.
