@@ -5,7 +5,7 @@ import sigma.ast._
 import sigma.crypto.BigIntegers
 import sigma.data._
 import sigma.util.Extensions.{BigIntOps, BigIntegerOps, CoreAvlTreeOps, GroupElementOps, SigmaPropOps}
-import sigma.validation.ValidationRules.CheckSerializableTypeCode
+import sigma.validation.ValidationRules.{CheckSerializableTypeCode, CheckZeroWidthCollection}
 import sigma.{Evaluation, _}
 
 import java.math.BigInteger
@@ -149,7 +149,19 @@ class CoreDataSerializer {
     res
   }
 
-  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] =
+  /** Zero-width types occupy no bytes in serialization: SUnit itself, collections of
+    * zero-width elements, and tuples whose items are all zero-width. */
+  private def isZeroWidth(tpe: SType): Boolean = tpe match {
+    case SUnit => true
+    case tc: SCollectionType[_] => isZeroWidth(tc.elemType)
+    case t: STuple => t.items.forall(isZeroWidth)
+    case _ => false
+  }
+
+  private def deserializeColl[T <: SType](len: Int, tpeElem: T, r: CoreByteReader): Coll[T#WrappedType] = {
+    // Zero-width elements consume no input bytes, so the declared length is not
+    // bounded by positionLimit checks and must be rejected.
+    if (isZeroWidth(tpeElem)) CheckZeroWidthCollection(tpeElem)
     tpeElem match {
       case SBoolean =>
         Colls.fromArray(r.getBits(len)).asInstanceOf[Coll[T#WrappedType]]
@@ -173,6 +185,7 @@ class CoreDataSerializer {
         }
         Colls.fromArray(b.result())
     }
+  }
 }
 
 object CoreDataSerializer extends CoreDataSerializer

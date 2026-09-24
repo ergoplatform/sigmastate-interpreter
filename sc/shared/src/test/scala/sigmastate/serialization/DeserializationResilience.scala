@@ -1,7 +1,8 @@
 package sigma.serialization
 
-import org.ergoplatform.ErgoBox.R4
+import org.ergoplatform.ErgoBox.{R4, R5}
 import org.ergoplatform.{ErgoBoxCandidate, ErgoTreePredef}
+import org.ergoplatform.validation.{ValidationRules => ErgoValidationRules}
 import org.scalacheck.Gen
 import scorex.crypto.authds.avltree.batch.{BatchAVLProver, Insert}
 import scorex.crypto.authds.{ADKey, ADValue}
@@ -11,7 +12,7 @@ import sigma.ast.{SBoolean, SInt, SizeOf, _}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
-import sigma.validation.ValidationRules.CheckPositionLimit
+import sigma.validation.ValidationRules.{CheckPositionLimit, CheckZeroWidthCollection}
 import sigma.{Colls, Environment, VersionContext}
 import sigma.ast.syntax._
 import sigmastate._
@@ -502,6 +503,193 @@ class DeserializationResilience extends DeserializationResilienceTesting {
       ContextExtension.serializer.parse(SigmaSerializer.startReader(w.toBytes)),
       { case SerializerException(msg, _) => msg.contains("Negative id") }
     )
+  }
+
+  /** Writes serialized bytes of a `Coll[Coll[Unit]]` constant value (type bytes
+    * 0x0C 0x0C 0x62) with the given declared lengths. Each inner collection declares
+    * `innerLen` Unit elements which occupy zero bytes in the input.
+    */
+  private def putCollCollUnitValue(w: SigmaByteWriter, nInner: Int, innerLen: Int): Unit = {
+    w.putType(SCollection(SCollection(SUnit)))
+    w.putUShort(nInner)
+    var i = 0
+    while (i < nInner) {
+      w.putUShort(innerLen)
+      i += 1
+    }
+  }
+
+  property("Coll[Coll[Unit]] is rejected during deserialization") {
+    val nInner = 100
+    val innerLen = 0xFFFF // each inner collection declares 65535 zero-width elements
+
+    // constant value level
+    val w = SigmaSerializer.startWriter()
+    putCollCollUnitValue(w, nInner, innerLen)
+    assertExceptionThrown(
+      SigmaSerializer.startReader(w.toBytes).getValue(),
+      { case ValidationException(_, CheckZeroWidthCollection, _, _) => true
+        case _ => false })
+
+    // box register level
+    VersionContext.withVersions(3, 3) {
+      val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+      val wb = SigmaSerializer.startWriter()
+      wb.putULong(1L)               // value
+      wb.putBytes(trueProp.bytes)   // ergoTree
+      wb.putUInt(1)                 // creationHeight
+      wb.putUByte(0)                // no tokens
+      wb.putUByte(1)                // one register
+      putCollCollUnitValue(wb, nInner, innerLen)
+      assertExceptionThrown(
+        ErgoBoxCandidate.serializer.parse(SigmaSerializer.startReader(wb.toBytes)),
+        { case ValidationException(_, CheckZeroWidthCollection, _, _) => true
+          case _ => false })
+    }
+
+    // context extension level (no MaxBoxSize position limit applies there)
+    val we = SigmaSerializer.startWriter()
+    we.putUByte(1)     // one extension value
+    we.put(1.toByte)   // var id
+    putCollCollUnitValue(we, nInner, innerLen)
+    assertExceptionThrown(
+      ContextExtension.serializer.parse(SigmaSerializer.startReader(we.toBytes)),
+      { case ValidationException(_, CheckZeroWidthCollection, _, _) => true
+        case _ => false })
+  }
+
+  property("zero-width collections of any size are rejected, others round-trip") {
+    // even a small Coll[Coll[Unit]] is rejected: zero-width element types are banned
+    val w = SigmaSerializer.startWriter()
+    putCollCollUnitValue(w, nInner = 2, innerLen = 3)
+    assertExceptionThrown(
+      SigmaSerializer.startReader(w.toBytes).getValue(),
+      { case ValidationException(_, CheckZeroWidthCollection, _, _) => true
+        case _ => false })
+
+    // large byte and bit-packed boolean collections in box registers are not affected
+    VersionContext.withVersions(3, 3) {
+      val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+      val byteColl = Constant[SCollection[SByte.type]](
+        Colls.fromArray(Array.fill(1000)(1.toByte)), SCollection(SByte))
+      val boolColl = Constant[SCollection[SBoolean.type]](
+        Colls.fromArray(Array.fill(20000)(true)), SCollection(SBoolean))
+      val b = new ErgoBoxCandidate(1L, trueProp, 1,
+        additionalRegisters = Map(R4 -> byteColl, R5 -> boolColl))
+      ErgoBoxCandidate.serializer.fromBytes(ErgoBoxCandidate.serializer.toBytes(b)) shouldEqual b
+    }
+  }
+
+  property("SUnit type is rejected in box registers and context extension") {
+    VersionContext.withVersions(3, 3) {
+      val trueProp = ErgoTreePredef.TrueProp(ErgoTree.defaultHeaderWithVersion(3))
+
+      // writeValue writes register/extension value bytes (type + data)
+      def checkRejected(writeValue: SigmaByteWriter => Unit,
+                        rule: sigma.validation.ValidationRule): Unit = {
+        val wb = SigmaSerializer.startWriter()
+        wb.putULong(1L)               // value
+        wb.putBytes(trueProp.bytes)   // ergoTree
+        wb.putUInt(1)                 // creationHeight
+        wb.putUByte(0)                // no tokens
+        wb.putUByte(1)                // one register
+        writeValue(wb)
+        assertExceptionThrown(
+          ErgoBoxCandidate.serializer.parse(SigmaSerializer.startReader(wb.toBytes)),
+          { case ValidationException(_, r, _, _) if r == rule => true
+            case _ => false })
+
+        val we = SigmaSerializer.startWriter()
+        we.putUByte(1)     // one extension value
+        we.put(1.toByte)   // var id
+        writeValue(we)
+        assertExceptionThrown(
+          ContextExtension.serializer.parse(SigmaSerializer.startReader(we.toBytes)),
+          { case ValidationException(_, r, _, _) if r == rule => true
+            case _ => false })
+      }
+
+      // collections with zero-width element types are rejected at parse time
+      checkRejected(w => { w.putType(SCollection(SUnit)); w.putUShort(3) },
+        CheckZeroWidthCollection)
+      checkRejected(w => putCollCollUnitValue(w, nInner = 2, innerLen = 2),
+        CheckZeroWidthCollection)
+      // bare Unit and Unit nested in non-zero-width wrappings pass deserialization
+      // but are rejected by CheckV6Type
+      checkRejected(_.putType(SUnit), ErgoValidationRules.CheckV6Type)              // Unit
+      checkRejected(w => { w.putType(STuple(SUnit, SInt)); w.putInt(1) },
+        ErgoValidationRules.CheckV6Type)                                            // (Unit, Int)
+      checkRejected(w => { w.putType(STuple(SInt, SUnit)); w.putInt(1) },
+        ErgoValidationRules.CheckV6Type)                                            // (Int, Unit)
+      checkRejected(w => {                                                          // Coll[(Int, Unit)]
+        w.putType(SCollection(STuple(SInt, SUnit))); w.putUShort(2); w.putInt(1); w.putInt(2)
+      }, ErgoValidationRules.CheckV6Type)
+      checkRejected(w => {                                                          // Coll[Option[Unit]]
+        w.putType(SCollection(SOption(SUnit))); w.putUShort(2); w.put(1.toByte); w.put(0.toByte)
+      }, ErgoValidationRules.CheckV6Type)
+    }
+  }
+
+  property("all zero-width collection wrappings are rejected during deserialization") {
+    // Each case: hand-crafted constant value bytes (type + minimal data skeleton).
+    // Rejection must happen via CheckZeroWidthCollection before the declared elements
+    // are materialized.
+    def rejected(tpe: SType)(writeData: SigmaByteWriter => Unit): Unit = {
+      val w = SigmaSerializer.startWriter()
+      w.putType(tpe)
+      writeData(w)
+      val bytes = w.toBytes
+      assertExceptionThrown(
+        VersionContext.withVersions(3, 3) {
+          SigmaSerializer.startReader(bytes).getValue()
+        },
+        { case ValidationException(_, CheckZeroWidthCollection, _, _) => true
+          case _ => false })
+    }
+
+    rejected(SCollection(SUnit))(_.putUShort(1))                  // Coll[Unit]
+    rejected(SCollection(SCollection(SUnit)))(w => {              // Coll[Coll[Unit]]
+      w.putUShort(1); w.putUShort(1)
+    })
+    rejected(SCollection(SCollection(SCollection(SUnit))))(w =>   // Coll[Coll[Coll[Unit]]]
+      (1 to 3).foreach(_ => w.putUShort(1)))
+    rejected(SCollection(STuple(SUnit, SUnit)))(_.putUShort(2))   // Coll[(Unit, Unit)]
+    rejected(SCollection(STuple(SCollection(SUnit), SUnit)))(w => { // Coll[(Coll[Unit], Unit)]
+      w.putUShort(1); w.putUShort(0)
+    })
+    rejected(SOption(SCollection(SUnit)))(w => {                  // Some(Coll[Unit])
+      w.put(1.toByte); w.putUShort(0)
+    })
+    rejected(SCollection(SOption(SCollection(SUnit))))(w => {     // Coll[Option[Coll[Unit]]]
+      w.putUShort(1); w.put(1.toByte); w.putUShort(0)
+    })
+    rejected(STuple(SUnit, SCollection(SUnit)))(_.putUShort(0))   // (Unit, Coll[Unit])
+  }
+
+  property("non-zero-width wrappings of SUnit round-trip") {
+    // deserialize then re-serialize must reproduce the input bytes
+    def roundTrip[T <: SType](tpe: T)(writeData: SigmaByteWriter => Unit): Unit = {
+      VersionContext.withVersions(3, 3) {
+        val w = SigmaSerializer.startWriter()
+        writeData(w)
+        val bytes = w.toBytes
+        val v = DataSerializer.deserialize(tpe, SigmaSerializer.startReader(bytes))
+        val w2 = SigmaSerializer.startWriter()
+        DataSerializer.serialize(v, tpe, w2)
+        w2.toBytes shouldBe bytes
+      }
+    }
+
+    roundTrip(SUnit)(identity)                        // bare Unit (no data bytes)
+    roundTrip(STuple(SUnit, SUnit))(identity)         // all-Unit tuple (bounded by type bytes)
+    // Coll[Option[Unit]]: each element consumes a tag byte, so it is byte-bounded
+    roundTrip(SCollection(SOption(SUnit))) { w =>
+      w.putUShort(2); w.put(1.toByte); w.put(0.toByte)
+    }
+    // Coll[(Unit, Int)]: each element consumes 4 bytes for the Int item
+    roundTrip(SCollection(STuple(SUnit, SInt))) { w =>
+      w.putUShort(2); w.putInt(5); w.putInt(6)
+    }
   }
 
 }
