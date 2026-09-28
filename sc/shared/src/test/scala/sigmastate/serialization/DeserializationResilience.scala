@@ -280,6 +280,34 @@ class DeserializationResilience extends DeserializationResilienceTesting {
       ValueSerializer.deserialize(reader(ValueSerializer.serialize(expr), maxTreeDepth = 3))
   }
 
+  property("type descriptor nesting depth is limited") {
+    // each SCollectionType.CollectionTypeCode (0x0C) byte nests the type one level deeper
+    def nestedCollTypeBytes(depth: Int): Array[Byte] =
+      Array.fill[Byte](depth)(SCollectionType.CollectionTypeCode) ++ Array(SByte.typeCode)
+
+    // depth within the limit parses fine
+    val okType = SigmaSerializer.startReader(nestedCollTypeBytes(TypeSerializer.MaxTypeDepth)).getType()
+    var depth = 0
+    var t = okType
+    while (t.isInstanceOf[SCollectionType[_]]) {
+      t = t.asInstanceOf[SCollectionType[_]].elemType.asInstanceOf[SType]
+      depth += 1
+    }
+    depth shouldBe TypeSerializer.MaxTypeDepth
+    t shouldBe SByte
+
+    // one level above the limit is rejected with a catchable exception
+    an[DeserializeCallDepthExceeded] should be thrownBy
+      SigmaSerializer.startReader(nestedCollTypeBytes(TypeSerializer.MaxTypeDepth + 1)).getType()
+
+    // arbitrary deep nesting is rejected without StackOverflowError, also on the
+    // constant parsing path (used for box registers and context extension values)
+    an[DeserializeCallDepthExceeded] should be thrownBy
+      SigmaSerializer.startReader(nestedCollTypeBytes(100000)).getType()
+    an[DeserializeCallDepthExceeded] should be thrownBy
+      SigmaSerializer.startReader(nestedCollTypeBytes(100000)).getValue()
+  }
+
   property("exceed ergo box max size check") {
     val bigTree = mkTestErgoTree(SigmaAnd(
       Gen.listOfN((SigmaSerializer.MaxPropositionSize / 2) / sigma.crypto.groupSize,

@@ -4,6 +4,7 @@ import debox.cfor
 import sigma.VersionContext
 import sigma.ast.SCollectionType.{CollectionTypeCode, NestedCollectionTypeCode}
 import sigma.ast._
+import sigma.data.SigmaConstants
 import sigma.util.safeNewArray
 import sigma.validation.ValidationRules.{CheckPrimitiveTypeCode, CheckPrimitiveTypeCodeV6, CheckTypeCode, CheckTypeCodeV6}
 
@@ -130,6 +131,9 @@ class TypeSerializer {
   def deserialize(r: CoreByteReader): SType = deserialize(r, 0)
 
   private def deserialize(r: CoreByteReader, depth: Int): SType = {
+    if (depth > TypeSerializer.MaxTypeDepth)
+      throw new DeserializeCallDepthExceeded(
+        s"nested type deserialization call depth($depth) exceeds allowed maximum ${TypeSerializer.MaxTypeDepth}")
     val c = r.getUByte()
     if (c <= 0)
       throw new InvalidTypePrefix(s"Cannot deserialize type prefix $c. Unexpected buffer $r with bytes ${r.getBytes(r.remaining)}")
@@ -252,6 +256,9 @@ class TypeSerializer {
 }
 
 object TypeSerializer extends TypeSerializer {
+  /** Max nesting depth of a deserialized type descriptor. */
+  val MaxTypeDepth: Int = SigmaConstants.MaxTypeDepth.value
+
   /** The list of embeddable types, i.e. types that can be combined with type constructor for optimized encoding.
     * For each embeddable type `T`, and type constructor `C`, the type `C[T]` can be represented by single byte. */
     def embeddableIdToType: Array[SType] = {
