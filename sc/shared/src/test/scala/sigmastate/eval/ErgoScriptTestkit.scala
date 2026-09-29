@@ -32,8 +32,6 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
     new TestContext with IRContext
 
   import IR._
-  import BigInt._
-  import Context._
   import Liftables._
 
   override lazy val compiler = SigmaCompiler(CompilerSettings(
@@ -58,8 +56,6 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
 
   lazy val boxA1 = newAliceBox(100)
   lazy val boxA2 = newAliceBox(200)
-
-  lazy val n1Sym = liftConst(n1)
 
   val timeout = 100
   val minToRaise = 1000L
@@ -107,7 +103,7 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       script: Script,
       ergoCtx: Option[ErgoLikeContext] = None,
       testContract: Option[DContext => Any] = None,
-      expectedCalc: Option[Ref[Context] => Ref[Any]] = None,
+      expectedCalc: Option[Ref[DContext] => Ref[Any]] = None,
       expectedTree: Option[SValue] = None,
       expectedResult: Result = NoResult,
       printGraphs: Boolean = true,
@@ -148,13 +144,13 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
       res
     }
 
-    private val SigmaM = SigmaProp.SigmaPropMethods
+    private val IsValid = CallPattern(sigma.ast.SSigmaPropMethods.IsProvenMethod)
 
     /** Finds SigmaProp.isProven method calls in the given Lambda `f` */
-    private def findIsProven[T](f: Ref[Context => T]): Option[Sym] = {
+    private def findIsProven[T](f: Ref[DContext => T]): Option[Sym] = {
       val Def(Lambda(lam,_,_,_)) = f
       val s = lam.flatSchedule.find(sym => sym.node match {
-        case SigmaM.isValid(_) => true
+        case IsValid(_, _) => true
         case _ => false
       })
       s
@@ -162,7 +158,7 @@ trait ErgoScriptTestkit extends ContractsTestkit with LangTests
 
     /** Checks that if SigmaProp.isProven method calls exists in the given Lambda's schedule,
       * then it is the last operation. */
-    private def verifyIsProven[T](f: Ref[Context => T]): Try[Unit] = {
+    private def verifyIsProven[T](f: Ref[DContext => T]): Try[Unit] = {
       val isProvenOpt = findIsProven(f)
       Try {
         isProvenOpt match {

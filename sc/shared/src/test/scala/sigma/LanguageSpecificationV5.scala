@@ -9694,14 +9694,5 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     printDebug("==========================================================")
     printDebug(Interpreter.verifySignatureProfiler.generateReport())
     printDebug("==========================================================")
-
-// Uncomment to print reflection metadata for missing classes and methods.
-// Make sure also:
-// - this.printDebugInfo is set to true
-// - Debug code in Platform.resolveClass is also uncommented
-// Note, ReflectionGenerator is only available on JVM, so the line below should be
-// commented back to run tests on JS.
-//    printDebug(ReflectionGenerator.generateReport())
-//    printDebug("==========================================================")
   }
 }

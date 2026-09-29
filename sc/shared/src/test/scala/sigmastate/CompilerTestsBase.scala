@@ -10,6 +10,7 @@ import sigma.compiler.ir.IRContext
 import sigma.ast.syntax.ValueOps
 import sigma.compiler.{CompilerResult, CompilerSettings, SigmaCompiler}
 import sigmastate.helpers.{NegativeTesting, SigmaPPrint}
+import sigma.reflection.Platform.safeSimpleName
 
 trait CompilerTestsBase extends TestsBase with NegativeTesting {
   protected val _lowerMethodCalls = new DynamicVariable[Boolean](true)
@@ -50,9 +51,15 @@ trait CompilerTestsBase extends TestsBase with NegativeTesting {
     res.buildTree
   }
 
-  /** Check the given [[CompilerResult]] meets equality and sanity requirements. */
+  /** Check the given [[CompilerResult]] meets equality and sanity requirements, and record the
+    * tree in the ErgoTree snapshot when one is enabled. The snapshot line is keyed by the hash of
+    * the source, so `compileTyped` results (source `<no source code>`) share one key and are told
+    * apart by order only.
+    */
   def checkCompilerResult[Ctx <: IRContext](res: CompilerResult[Ctx]): Unit = {
     checkSerializationRoundTrip(res.buildTree)
+    scalan.Platform.recordTreeSnapshot(
+      safeSimpleName(getClass), res.code, ValueSerializer.serialize(res.buildTree))
   }
 
 

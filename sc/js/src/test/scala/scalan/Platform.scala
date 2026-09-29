@@ -16,4 +16,15 @@ object Platform {
   /** On JS it is no-operation. */
   def threadSleepOrNoOp(@unused millis: Long): Unit = {
   }
+
+  /** On JS it is no-operation. The JVM version appends compiler output to a snapshot file. */
+  def recordTreeSnapshot(@unused suite: String, @unused code: String, @unused bytes: => Array[Byte]): Unit = {
+  }
+
+  /** On JS there is no environment to read: the seed is always fresh and printed. */
+  def testSeed(@unused fixedSeed: Long): Long = {
+    val seed = scala.util.Random.nextLong()
+    println(s"Random test inputs seeded with $seed")
+    seed
+  }
 }

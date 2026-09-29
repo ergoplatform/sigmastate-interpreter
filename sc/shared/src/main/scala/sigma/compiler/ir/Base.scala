@@ -5,7 +5,6 @@ import sigma.compiler.ir.core.MutableLazy
 import sigma.ast.{DeserializeContext, DeserializeRegister, SType}
 import sigma.data.{AVHashMap, Nullable, RType}
 import sigma.data.OverloadHack.Overloaded1
-import sigma.reflection.RConstructor
 import sigma.util.StringUtil
 
 import java.util.Arrays
@@ -13,7 +12,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.{implicitNotFound, unused}
 import scala.collection.compat.immutable.ArraySeq
 import scala.collection.mutable
-import scala.language.{existentials, implicitConversions}
+import scala.language.implicitConversions
 
 /**
   * The Base trait houses common AST nodes. It also manages a list of encountered definitions which
@@ -218,19 +217,13 @@ abstract class Base { thisIR: IRContext =>
     override def resultType: Elem[V#WrappedType] = e
   }
 
-  /** Base class for virtualized instances of type companions.
-    * Each virtualized entity type (trait or class) may have virtualized companion class. */
-  abstract class CompanionDef[T] extends Def[T] {
-    override def productArity = 0
-    override def productElement(n: Int) = !!!(s"productElement($n) called, but productArity = 0", self)
-    override def canEqual(other: Any) = other.isInstanceOf[CompanionDef[_]]
-    override def mirror(t: Transformer): Ref[T] = self
-  }
-
   /** Data type `ST` is liftable is there is Liftable[ST, T] instance for some type `T`.
     * Liftable typeclass allows to define which types can have values embedded as literals
     * into graph IR. */
   object Liftables {
+    // Only `BaseElemLiftable` and the pair, function and thunk instances are still used, and only
+    // to give `Elem.sourceType` (hence the names of the primitive Elems) its source `RType`:
+    // nothing lifts values into the graph through `lift` any more (see `Const` and `DslConst`).
 
     /** Base class for graph nodes which represent data values of liftable types
       * as literal nodes in the graph IR.
@@ -279,12 +272,6 @@ abstract class Base { thisIR: IRContext =>
     /** Shortcut alternative to `implicitly[Liftable[ST,T]]` */
     @inline final def liftable[ST, T](implicit lT: Liftable[ST,T]) = lT
 
-    /** Given data value of source type `ST` and `Liftable` instance between `ST` and `T`,
-      * produces `LiftedConst` node (some concrete implemenation) and returns it's symbol.
-      * This is generic way to put any liftable data object into graph and then use
-      * its symbol in other nodes. */
-    @inline final def liftConst[ST,T](x: ST)(implicit lT: Liftable[ST,T]): Ref[T] = lT.lift(x)
-
     /** Liftable evidence for primitive (base) types (used in BaseElemLiftable). */
     class BaseLiftable[T](implicit val eW: Elem[T], override val sourceType: RType[T]) extends Liftable[T, T] {
       def lift(x: T) = toRep(x)
@@ -328,28 +315,6 @@ abstract class Base { thisIR: IRContext =>
       new FuncLiftable[SA,SB,A,B]
   }
 
-  /** Base class for all objects generated for virtualized types to support
-    * staged evaluation machinery.
-    * Each object contains definitions which can be imported when necessary.
-    * All that objects are registered in `entityObjects` hash map,
-    * which is done while IR cake is constructed.
-    */
-  class EntityObject(val entityName: String)
-
-  private[this] val entityObjects = AVHashMap[String, EntityObject](300)
-
-  @inline def getEntityObject(name: String): Nullable[EntityObject] = {
-    entityObjects.get(name)
-  }
-
-  protected def registerEntityObject(name: String, obj: EntityObject): Unit = {
-     assert(!entityObjects.containsKey(name), s"EntityObject for entity $name already registered")
-     entityObjects.put(name, obj)
-  }
-
-  /** Whether IR type descriptors should be cached. */
-  val cacheElems = true
-
   /** Whether Tup instances should be cached. */
   val cachePairs = true
 
@@ -386,8 +351,6 @@ abstract class Base { thisIR: IRContext =>
     @inline final def isConst: Boolean = node.isInstanceOf[Const[_]]
     /** Whether the underlying node is Lambda. */
     @inline final def isLambda: Boolean = node.isInstanceOf[Lambda[_,_]]
-    /** Is this reference of Companion type */
-    @inline final def isCompanionType: Boolean = elem.isInstanceOf[CompanionElem[_]]
 
     /** Returns the string like `x45: Int = Const(10)` */
     def toStringWithDefinition: String
@@ -416,6 +379,22 @@ abstract class Base { thisIR: IRContext =>
     override def hashCode() = x.hashCode() * 31 + eT.hashCode()
     override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
       case c: Const[_] => x == c.x && eT == c.eT
+      case _ => false
+    })
+  }
+
+  /** Node embedding a literal value of a DSL type (Box, Coll, BigInt, ...) into the graph.
+    * Unlike [[Const]] it is never given to the constant store, and it is extracted to a ValDef
+    * when shared (see `TreeBuilding`).
+    * @param constValue the literal value
+    * @param eT         type descriptor of the value's IR type
+    */
+  case class DslConst[T](constValue: T)(implicit val eT: Elem[T]) extends BaseDef[T] {
+    /** A constant holds no symbols: mirroring (lambda inlining, map fusion) keeps the node. */
+    override def mirror(t: Transformer): Ref[T] = self
+    override def hashCode() = constValue.hashCode() * 31 + eT.hashCode()
+    override def equals(other: Any) = (this eq other.asInstanceOf[AnyRef]) || (other match {
+      case c: DslConst[_] => constValue == c.constValue && eT == c.eT
       case _ => false
     })
   }
@@ -500,74 +479,6 @@ abstract class Base { thisIR: IRContext =>
     }
   }
 
-  /** Variants of `owner` parameter of constructors of nested classes:
-    * 1) predefined node classes are owned by IR cake (ScalanOwner)
-    * 2) entity classes are owned by enclosing EntityObject */
-  sealed abstract class OwnerKind
-  case object NoOwner extends OwnerKind
-  case object ScalanOwner extends OwnerKind
-  case class  EntityObjectOwner(obj: EntityObject) extends OwnerKind
-
-  /** Returns OwnerKind for the given constructor, using its first parameter. */
-  protected def getOwnerKind(constructor: RConstructor[_]): OwnerKind = {
-    val paramTypes = constructor.getParameterTypes
-    val ownerParam =
-      if (paramTypes.length == 0)
-        NoOwner
-      else {
-        val firstParamClazz = paramTypes(0)
-        if (classOf[EntityObject].isAssignableFrom(firstParamClazz)) {
-          val className = firstParamClazz.getSimpleName
-          val entityName = className.stripSuffix("$").stripSuffix("Cls")
-          getEntityObject(entityName) match {
-            case Nullable(obj) =>
-              EntityObjectOwner(obj)
-            case _ =>
-              !!!(s"Unknown owner type $firstParamClazz")
-          }
-        } else {
-          ScalanOwner
-        }
-      }
-    ownerParam
-  }
-
-  /** Transforms this object into new one by applying `t` to every Ref inside
-    * its structure. The structure is build out of Seq, Array, Option and Def values.
-    * Other structure items remain unchanged and copied to the new instance.
-    * HOTSPOT: don't beautify the code */
-  protected def transformProductParam(x: Any, t: Transformer): Any = x match {
-    case (_: UnOp[_, _]) | (_: BinOp[_, _]) =>
-      // allows use of context bounds in classes extending UnOp/BinOp.
-      // Note that this must be overridden if some transformation _is_ needed (i.e. if the class contains Ref[_] somewhere)
-      x
-    case e: Ref[_] => t(e)
-    case seq: Seq[_] =>
-      val len = seq.length
-      val res = new Array[AnyRef](len)
-      cfor(0)(_ < len, _ + 1) { i => res(i) = transformProductParam(seq(i), t).asInstanceOf[AnyRef] }
-      res: Seq[_]
-    case arr: Array[_] =>
-      val len = arr.length
-      val res = new Array[AnyRef](len)
-      cfor(0)(_ < len, _ + 1) { i => res(i) = transformProductParam(arr(i), t).asInstanceOf[AnyRef] }
-      res
-    case opt: Option[_] =>
-      if (opt.isEmpty) None else Some(transformProductParam(opt.get, t))
-    case d: Def[_] => d.mirror(t).node
-    case x => x
-  }
-
-  /** Prepend owner parameter depending on its kind. */
-  private[compiler] def addOwnerParameter(ownerType: OwnerKind, params: Seq[Any]): Seq[AnyRef] = {
-    val finalParams = (ownerType match {
-      case EntityObjectOwner(obj) => obj +: params
-      case ScalanOwner => thisIR +: params
-      case NoOwner => params
-    })
-    finalParams.asInstanceOf[Seq[AnyRef]]
-  }
-
   /** Implicit injection of new definition (graph node) into universum of
     * nodes with collapsing semantics. If there exists node `n` in this IR
     * such that `obj equals n`, then the value of `n.self` is returned, i.e.
@@ -592,7 +503,7 @@ abstract class Base { thisIR: IRContext =>
   /** Extract data value from Const node or throw an exception. */
   @inline final def valueFromRep[A](x: Ref[A]): A = x.node match {
     case Const(x) => x
-    case _ => delayInvoke
+    case _ => !!!(s"Expected a constant node but got ${x.node}")
   }
 
   def def_unapply[T](e: Ref[T]): Nullable[Def[T]] = new Nullable(e.node)
@@ -628,27 +539,6 @@ abstract class Base { thisIR: IRContext =>
 
     private[compiler] def assignDefFrom[B >: T](sym: Ref[B]): Unit = {
       assignDefInternal(sym.node)
-    }
-
-    private var _adapter: T @uncheckedVariance = _
-    def adapter: T @uncheckedVariance = _adapter
-    def adapter_=(a: T @uncheckedVariance) = { _adapter = a }
-
-    /** Helper method that lazily creates and attaches Adapter to this node reference.
-      * The adapter is created conditionally and on demand.
-      * If T is trait or class (i.e. entity) then created adapter instance implements all its methods.
-      * The the adapter class is generated as part of EntityObject for the entity T.
-      * @see EntityObject
-      */
-    final def getAdapter[S >: T](isInstanceOfT: Boolean, createAdapter: Ref[S] => T @uncheckedVariance): T = {
-      if (isInstanceOfT) _node.asInstanceOf[T]
-      else {
-        val adapter = _adapter
-        if (adapter == null) {
-          _adapter = createAdapter(this)
-        }
-        _adapter
-      }
     }
 
     override def varName = "s" + _node._nodeId

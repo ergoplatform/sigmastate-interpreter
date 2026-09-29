@@ -2,7 +2,6 @@ package sigma.compiler.ir
 
 import debox.{cfor, Buffer => DBuffer}
 import sigma.data.{Lazy, Nullable}
-import sigma.reflection.RMethod
 
 import java.util
 import scala.language.existentials
@@ -22,13 +21,6 @@ trait Transforming { self: IRContext =>
     def name: String
     /** Configuration parameters of this pass. */
     def config: PassConfig = Pass.defaultPassConfig
-    /**
-      * Pass specific optional decision.
-      * @param d receiver of the method
-      * @param m method to invoke
-      * @return Some(decision) if some this Pass defines some logic, None - then core behavior is used
-      */
-    def isInvokeEnabled(d: Def[_], m: RMethod): Option[Boolean] = None
   }
   object Pass {
     val defaultPassName = "default"

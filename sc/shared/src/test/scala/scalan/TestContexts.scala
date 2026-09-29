@@ -1,15 +1,11 @@
 package scalan
 
-import sigma.compiler.ir.{GraphIRReflection, IRContext}
-import sigma.reflection.RMethod
+import sigma.compiler.ir.IRContext
 import sigma.{BaseNestedTests, BaseShouldTests, BaseTests, TestUtils}
 
 trait TestContexts extends TestUtils {
 
   trait TestContextApi { ctx: IRContext =>
-    def invokeAll: Boolean
-    def isInvokeEnabled(d: Def[_], m: RMethod): Boolean
-    def shouldUnpack(e: Elem[_]): Boolean
     def testName: String
     def emitF(name: String, sfs: (() => Sym)*): Unit
     def emit(name: String, ss: Sym*): Unit = {
@@ -23,10 +19,6 @@ trait TestContexts extends TestUtils {
   abstract class TestContext(val testName: String) extends IRContext with TestContextApi {
     def this() = this(currentTestNameAsFileName)
 
-    override val invokeAll = true
-    override def isInvokeEnabled(d: Def[_], m: RMethod) = invokeAll
-    override def shouldUnpack(e: Elem[_]) = true
-
     // workaround for non-existence of by-name repeated parameters
     def emitF(name: String, sfs: (() => Sym)*): Unit =
       Platform.stage(this)(prefix, testName, name, sfs)
@@ -35,9 +27,7 @@ trait TestContexts extends TestUtils {
 
 }
 
-abstract class BaseCtxTests extends BaseTests with TestContexts {
-  val reflection = GraphIRReflection
-}
+abstract class BaseCtxTests extends BaseTests with TestContexts
 
 abstract class BaseNestedCtxTests extends BaseNestedTests with TestContexts
 

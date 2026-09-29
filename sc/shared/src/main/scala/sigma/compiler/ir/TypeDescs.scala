@@ -1,11 +1,7 @@
 package sigma.compiler.ir
 
-import debox.cfor
 import scalan.core.{Contravariant, Covariant, Variance}
 import sigma.data.{AVHashMap, Lazy, Nullable, RType}
-import sigma.reflection.{RClass, RConstructor, RMethod}
-import sigma.util.CollectionUtil
-import sigma.compiler.ir.wrappers.WrapSpec
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.ListMap
@@ -13,7 +9,6 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 
 /** Defines [[Elem]] descriptor of types in IRContext together with related utilities.
-  * @see MethodDesc
   * @see TypeDesc
   */
 abstract class TypeDescs extends Base { self: IRContext =>
@@ -23,77 +18,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
 
   /** Type descriptor which is computed lazily on demand. */
   type LElem[A] = Lazy[Elem[A]]
-
-  /** Immutable data environment used to assign data values to graph nodes. */
-  type DataEnv = Map[Sym, AnyRef]
-
-  /** State monad for symbols computed in a data environment.
-    * `DataEnv` is used as the state of the state monad.
-    */
-  case class EnvRep[A](run: DataEnv => (DataEnv, Ref[A])) {
-    def flatMap[B](f: Ref[A] => EnvRep[B]): EnvRep[B] = EnvRep { env =>
-      val (env1, x) = run(env)
-      val res = f(x).run(env1)
-      res
-    }
-    def map[B](f: Ref[A] => Ref[B]): EnvRep[B] = EnvRep { env =>
-      val (env1, x) = run(env)
-      val y = f(x)
-      (env1, y)
-    }
-  }
-  object EnvRep {
-    def add[T](entry: (Ref[T], AnyRef)): EnvRep[T] =
-      EnvRep { env => val (sym, value) = entry; (env + (sym -> value), sym) }
-
-    def lifted[ST, T](x: ST)(implicit lT: Liftables.Liftable[ST, T]): EnvRep[T] = EnvRep { env =>
-      val xSym = lT.lift(x)
-      val resEnv = env + ((xSym, x.asInstanceOf[AnyRef]))
-      (resEnv, xSym)
-    }
-  }
-
-  /** Abstract class for a method descriptors to assist invocation of MethodCall nodes. */
-  sealed abstract class MethodDesc {
-    /** The described method */
-    def method: RMethod
-  }
-
-  /** Decriptor for a method of a class.
-    * @param method The RMethod object representing the method.
-    */
-  case class RMethodDesc(method: RMethod) extends MethodDesc
-
-  /** Descriptor for a method of a wrapper class.
-    *
-    * @param wrapSpec The wrapping specification of the method.
-    * @param method   The RMethod object representing the method.
-    */
-  case class WMethodDesc(wrapSpec: WrapSpec, method: RMethod) extends MethodDesc
-
-  // TODO optimize performance hot spot (45% of invokeUnlifted time), reduce allocation of Some
-  final def getSourceValues(dataEnv: DataEnv, forWrapper: Boolean, stagedValues: AnyRef*): Seq[AnyRef] = {
-    import sigma.data.OverloadHack._
-    val limit = stagedValues.length
-    val res = mutable.ArrayBuilder.make[AnyRef]
-    res.sizeHint(limit)
-    cfor(0)(_ < limit, _ + 1) { i =>
-      val v = stagedValues.apply(i)
-      v match {
-        case s: Sym =>
-          res += dataEnv(s)
-        case vec: Seq[AnyRef]@unchecked =>
-          res += getSourceValues(dataEnv, forWrapper, vec:_*)
-        case e: Elem[_] =>
-          val arg =
-            if (forWrapper) e.sourceType.classTag  // WrapSpec classes use ClassTag implicit arguments
-            else e.sourceType
-          res += arg
-        case _: Overloaded => // filter out special arguments
-      }
-    }
-    res.result()
-  }
 
   abstract class TypeDesc extends Serializable {
     def getName(f: TypeDesc => String): String
@@ -141,76 +65,6 @@ abstract class TypeDescs extends Base { self: IRContext =>
       !!!(s"Cannot get Liftable instance for $this")
 
     final lazy val sourceType: RType[_] = liftable.sourceType
-    protected def collectMethods: Map[RMethod, MethodDesc] = Map() // TODO optimize: all implementations
-    protected lazy val methods: Map[RMethod, MethodDesc] = collectMethods
-
-    // TODO optimize: benchamrk against the version below it
-    //    def invokeUnlifted(mc: MethodCall, dataEnv: DataEnv): AnyRef = {
-    //      val srcArgs = DBuffer.ofSize[AnyRef](mc.args.length + 10)  // with some spare space to have only single allocation
-    //      val res = methods.get(mc.method) match {
-    //        case Some(WMethodDesc(wrapSpec, method)) =>
-    //          getSourceValues(dataEnv, true, mc.receiver, srcArgs)
-    //          getSourceValues(dataEnv, true, mc.args, srcArgs)
-    //          def msg = s"Cannot invoke method $method on object $wrapSpec with arguments $srcArgs"
-    //          val res =
-    //            try method.invoke(wrapSpec, srcArgs.toArray:_*)
-    //            catch {
-    //              case t: Throwable => !!!(msg, t)
-    //            }
-    //          res
-    //        case Some(RMethodDesc(method)) =>
-    //          getSourceValues(dataEnv, false, mc.receiver, srcArgs)
-    //          val srcObj = srcArgs(0)
-    //          srcArgs.pop()
-    //          getSourceValues(dataEnv, false, mc.args, srcArgs)
-    //          def msg = s"Cannot invoke method $method on object $srcObj with arguments ${srcArgs.toArray.toSeq}"
-    //          val res =
-    //            try method.invoke(srcObj, srcArgs.toArray:_*)
-    //            catch {
-    //              case t: Throwable => !!!(msg, t)
-    //            }
-    //          res
-    //        case None =>
-    //          !!!(s"Cannot perform unliftedInvoke of $mc")
-    //      }
-    //      // this if is required because res == null in case of Unit return type
-    //      if (mc.selfType == UnitElement) ().asInstanceOf[AnyRef] else res
-    //    }
-
-    /** Invoke source type method corresponding to the given MethodCall node.
-      * The instance of receiver is obtained from `dataEnv` using mc.receiver symbol.
-      * The Method descriptor of the source class is taken from `this.methods` mapping.
-      * @param mc   IR node representing method invocation
-      * @param dataEnv  environment where each symbol of 'mc' has associated data value
-      * @return  data value returned from invoked method
-      */
-    def invokeUnlifted(mc: MethodCall, dataEnv: DataEnv): Any = {
-      val res = methods.get(mc.method) match {
-        case Some(WMethodDesc(wrapSpec, method)) =>
-          val srcArgs = getSourceValues(dataEnv, true, mc.receiver +: mc.args:_*)
-          def msg = s"Cannot invoke method $method on object $wrapSpec with arguments $srcArgs"
-          val res =
-            try method.invoke(wrapSpec, srcArgs:_*)
-            catch {
-              case t: Throwable => !!!(msg, t)
-            }
-          res
-        case Some(RMethodDesc(method)) =>
-          val srcObj = getSourceValues(dataEnv, false, mc.receiver).head
-          val srcArgs = getSourceValues(dataEnv, false, mc.args:_*)
-          def msg = s"Cannot invoke method $method on object $srcObj with arguments $srcArgs"
-          val res =
-            try method.invoke(srcObj, srcArgs:_*)
-            catch {
-              case t: Throwable => !!!(msg, t)
-            }
-          res
-        case None =>
-          !!!(s"Cannot perform unliftedInvoke of $mc")
-      }
-      // this if is required because res == null in case of Unit return type
-      if (mc.resultType == UnitElement) ().asInstanceOf[AnyRef] else res
-    }
 
     def <:<(e: Elem[_]) = e.getClass.isAssignableFrom(this.getClass)
   }
@@ -220,107 +74,24 @@ abstract class TypeDescs extends Base { self: IRContext =>
     implicit def rtypeToElem[SA, A](tSA: RType[SA])(implicit lA: Liftables.Liftable[SA,A]): Elem[A] = lA.eW
 
     final def unapply[T, E <: Elem[T]](s: Ref[T]): Nullable[E] = Nullable(s.elem.asInstanceOf[E])
-
-    /** Build a mapping between methods of staged class and the corresponding methods of source class.
-      * The methods are related using names.
-      * The computed mapping can be used to project MethodCalls IR nodes back to the corresponding
-      * methods of source classes and then making their invocation using Java Reflection (Method.invoke).
-      * @param cls         staged class where `methodNames` should be looked up
-      * @param srcCls      source class where `methodNames` should be looked up
-      * @param methodNames list of method names to lookup in both classes
-      * @return  a sequence of pairs relating for each staged method the corresponding method from
-      *          source classes.
-      */
-    def declaredMethods(cls: RClass[_], srcCls: RClass[_], methodNames: Set[String]): Seq[(RMethod, MethodDesc)] = {
-      val rmethods = cls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val smethods = srcCls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val mapping = CollectionUtil.joinSeqs(rmethods, smethods)(_.getName, _.getName)
-      mapping.map { case (rm, sm) =>
-        (rm, RMethodDesc(sm))
-      }.toSeq
-    }
-
-    /** Build a mapping between methods of staged wrapper and the corresponding methods of wrapper spec class.
-      * The methods are related using names.
-      * @param wrapSpec    wrapper specification class where `methodNames` should be looked up
-      * @param wcls        wrapper class where `methodNames` should be looked up
-      * @param methodNames list of method names to lookup in both classes
-      * @return  a sequence of pairs relating for each wrapper method the corresponding method from
-      *          source classes.
-      */
-    def declaredWrapperMethods(wrapSpec: WrapSpec, wcls: RClass[_], methodNames: Set[String]): Seq[(RMethod, MethodDesc)] = {
-      val specCls = RClass(wrapSpec.getClass)
-      val wMethods = wcls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val specMethods = specCls.getDeclaredMethods.filter(m => methodNames.contains(m.getName))
-      val mapping = CollectionUtil.joinSeqs(wMethods, specMethods)(_.getName, _.getName)
-      mapping.map { case (wm, sm) =>
-        (wm, WMethodDesc(wrapSpec, sm))
-      }.toSeq
-    }
-
   }
 
-  /** Invoke source type method corresponding to the given MethodCall node.
-    * This method delegated the work to the given element instance.
-    * @param e    type descriptor of receiver node
-    * @param mc   IR node representing method invocation
-    * @param dataEnv  environment where each symbol of 'mc' has associated data value
-    * @return  data value returned from invoked method
+  /** Instances of parametrised Elem classes, one per (class, args), so equal descriptors are
+    * also the same object.
     */
-  def invokeUnlifted(e: Elem[_], mc: MethodCall, dataEnv: DataEnv): Any =
-    e.invokeUnlifted(mc, dataEnv)
+  private val elemInstances = AVHashMap[(Class[_], Seq[AnyRef]), Elem[_]](100)
 
-  /** Get first (and the only) constructor of the `clazz`. */
-  private[compiler] final def getConstructor(clazz: RClass[_]): RConstructor[_] = {
-    val constructors = clazz.getConstructors()
-    if (constructors.length != 1)
-      !!!(s"Element class $clazz has ${constructors.length} constructors, 1 expected")
-    else
-      constructors(0)
-  }
-
-  /** Retrieve an instance of the given Elem class by either looking up in the cache
-    * or creating a new one.
-    * We assume that all Elem instances are uniquely defined by (clazz, args)
-    * @param args  arguments of Elem class constructor
-    * @param clazz Elem class
-    */
-  final def cachedElemByClass[E <: Elem[_]](args: AnyRef*)(implicit clazz: RClass[E]) = {
-    cachedElem0(clazz, Nullable.None.asInstanceOf[Nullable[RConstructor[_]]], args).asInstanceOf[E]
-  }
-
-  /** Elements cache information for each Elem class. */
-  class ElemCacheEntry(
-    /** Constructor of the class to create new instances. */
-    val constructor: RConstructor[_],
-    /** Whether owner argument of constructor exists and of which kind. */
-    val ownerType: OwnerKind,
-    /** Created instances of elements, one for each unique collection of args. */
-    val elements: AVHashMap[Seq[AnyRef], AnyRef]
-  )
-    
-  protected val elemCache = AVHashMap[RClass[_], ElemCacheEntry](1000)
-
-  private[compiler] final def cachedElem0(clazz: RClass[_], optConstructor: Nullable[RConstructor[_]], args: Seq[AnyRef]): Elem[_] = {
-    val entry = elemCache.get(clazz) match {
-      case Nullable(entry) => entry
+  final def cachedElem[E <: Elem[_]](clazz: Class[_], args: AnyRef*)(construct: => E): E = {
+    val key = (clazz, args)
+    elemInstances.get(key) match {
+      case Nullable(e) => e.asInstanceOf[E]
       case _ =>
-        val constructor = if (optConstructor.isEmpty) getConstructor(clazz) else optConstructor.get
-        val ownerType = getOwnerKind(constructor)
-        val entry = new ElemCacheEntry(constructor, ownerType, AVHashMap(10))
-        elemCache.put(clazz, entry)
-        entry
-    }
-    val e = entry.elements.get(args) match {
-      case Nullable(e) => e
-      case _ =>
-        val constructorArgs = addOwnerParameter(entry.ownerType, args)
-        val e = entry.constructor.newInstance(constructorArgs: _*).asInstanceOf[AnyRef]
-        entry.elements.put(args, e)
+        val e = construct
+        elemInstances.put(key, e)
         e
     }
-    e.asInstanceOf[Elem[_]]
   }
+
 
   final def element[A](implicit ea: Elem[A]): Elem[A] = ea
 
@@ -379,15 +150,15 @@ abstract class TypeDescs extends Base { self: IRContext =>
 
   /** Implicitly defines element type for pairs. */
   implicit final def pairElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[(A, B)] =
-    cachedElemByClass[PairElem[A, B]](ea, eb)(RClass(classOf[PairElem[A, B]]))
+    cachedElem(classOf[PairElem[_, _]], ea, eb)(new PairElem[A, B](ea, eb))
 
   /** Implicitly defines element type for sum types. */
   implicit final def sumElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[A | B] =
-    cachedElemByClass[SumElem[A, B]](ea, eb)(RClass(classOf[SumElem[A, B]]))
+    cachedElem(classOf[SumElem[_, _]], ea, eb)(new SumElem[A, B](ea, eb))
 
   /** Implicitly defines element type for functions. */
   implicit final def funcElement[A, B](implicit ea: Elem[A], eb: Elem[B]): Elem[A => B] =
-    cachedElemByClass[FuncElem[A, B]](ea, eb)(RClass(classOf[FuncElem[A, B]]))
+    cachedElem(classOf[FuncElem[_, _]], ea, eb)(new FuncElem[A, B](ea, eb))
 
   implicit final def PairElemExtensions[A, B](eAB: Elem[(A, B)]): PairElem[A, B] = eAB.asInstanceOf[PairElem[A, B]]
   implicit final def SumElemExtensions[A, B](eAB: Elem[A | B]): SumElem[A, B] = eAB.asInstanceOf[SumElem[A, B]]

@@ -27,9 +27,7 @@ class GraphVizExport[Ctx <: IRContext](val ctx: Ctx) {
   }
 
   protected def nodeColor(td: TypeDesc): String = td match {
-    case _: ConcreteElem[_, _] => "green"
     case _: FuncElem[_, _] => "magenta"
-    case _: CompanionElem[_] => "lightgray"
     case _ => "gray"
   }
 

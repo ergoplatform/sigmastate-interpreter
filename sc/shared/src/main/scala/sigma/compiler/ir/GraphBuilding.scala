@@ -3,7 +3,6 @@ package sigma.compiler.ir
 import org.ergoplatform._
 import sigma.Evaluation.stypeToRType
 import sigma.SigmaException
-import sigma.VersionContext
 import sigma.ast.{Ident, Select, Val}
 import sigma.ast.SType.tT
 import sigma.ast.TypeCodes.LastConstantCode
@@ -22,7 +21,7 @@ import sigma.util.Extensions.ByteOps
 import sigmastate.interpreter.Interpreter.ScriptEnv
 
 import scala.collection.mutable.ArrayBuffer
-import scala.language.{existentials,implicitConversions}
+import scala.language.implicitConversions
 
 
 /** Perform translation of typed expression given by [[Value]] to a graph in IRContext.
@@ -34,20 +33,6 @@ import scala.language.{existentials,implicitConversions}
   * resulting ErgoTree.
   * */
 trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
-  import AvlTree._
-  import BigInt._
-  import UnsignedBigInt._
-  import Box._
-  import Coll._
-  import CollBuilder._
-  import Context._
-  import GroupElement._
-  import Header._
-  import Liftables._
-  import PreHeader._
-  import SigmaDslBuilder._
-  import SigmaProp._
-  import WOption._
 
   /** Builder used to create ErgoTree nodes. */
   val builder = TransformingSigmaBuilder
@@ -76,54 +61,64 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     }
   }
 
-  type RColl[T] = Ref[Coll[T]]
-  type ROption[T] = Ref[WOption[T]]
+  private val IsValid = CallPattern(SSigmaPropMethods.IsProvenMethod)
 
-  private val CBM      = CollBuilderMethods
-  private val SigmaM   = SigmaPropMethods
-  private val SDBM     = SigmaDslBuilderMethods
+  /** `p.isValid` as a call node carrying its descriptor. */
+  private def isValid(p: Ref[sigma.SigmaProp]): Ref[Boolean] =
+    asRep[Boolean](mkMethodCall(p, MethodCallee(SSigmaPropMethods.IsProvenMethod), Seq(), Map(), BooleanElement))
 
-  /** Recognizer of [[SigmaDslBuilder.anyOf]] method call in Graph-IR. This method call
-    * represents `anyOf` predefined function.
-    */
+  /** `l && r` and `l || r` on sigma propositions: call nodes of the SigmaAnd / SigmaOr operations. */
+  private def sigmaAnd(l: Ref[sigma.SigmaProp], r: Ref[sigma.SigmaProp]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaAnd), Seq(r), Map(), sigmaPropElement))
+  private def sigmaOr(l: Ref[sigma.SigmaProp], r: Ref[sigma.SigmaProp]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](mkMethodCall(l, OpCallee(SigmaOr), Seq(r), Map(), sigmaPropElement))
+
+  private val SigmaPropOp = CallPattern(GlobalOpCallee(BoolToSigmaProp))
+  private val AnyOfOp     = CallPattern(GlobalOpCallee(OR))
+  private val AllOfOp     = CallPattern(GlobalOpCallee(AND))
+  private val AnyZkOp     = CallPattern(GlobalOpCallee(SigmaOr))
+  private val AllZkOp     = CallPattern(GlobalOpCallee(SigmaAnd))
+
+  /** The global builtins as call nodes: `sigmaProp(b)`, `allOf(bools)`, `anyOf(bools)`,
+    * `allZK(props)`, `anyZK(props)`. */
+  private def sigmaProp(b: Sym): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](globalOp(BoolToSigmaProp, Seq(asRep[Any](b)), sigmaPropElement))
+  private def allOf(bools: Seq[Ref[Boolean]]): Ref[Boolean] =
+    asRep[Boolean](globalOp(AND, Seq(asRep[Any](fromItems(bools, BooleanElement))), BooleanElement))
+  private def anyOf(bools: Seq[Ref[Boolean]]): Ref[Boolean] =
+    asRep[Boolean](globalOp(OR, Seq(asRep[Any](fromItems(bools, BooleanElement))), BooleanElement))
+  private def allZK(props: Seq[Ref[sigma.SigmaProp]]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](globalOp(SigmaAnd, Seq(asRep[Any](fromItems(props, sigmaPropElement))), sigmaPropElement))
+  private def anyZK(props: Seq[Ref[sigma.SigmaProp]]): Ref[sigma.SigmaProp] =
+    asRep[sigma.SigmaProp](globalOp(SigmaOr, Seq(asRep[Any](fromItems(props, sigmaPropElement))), sigmaPropElement))
+
+  /** Recognizers of the `anyOf` / `allOf` / `anyZK` / `allZK` builtins applied to a collection
+    * literal, yielding the literal's items. */
   object AnyOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
-      case SDBM.anyOf(_, xs) =>
-        CBM.fromItems.unapply(xs)
-      case _ => Nullable.None
+    def unapply(d: Def[_]): Option[Seq[Sym]] = d match {
+      case AnyOfOp(_, Seq(ConcreteColl(_, items))) => Some(items)
+      case _ => None
     }
   }
 
-  /** Recognizer of [[SigmaDslBuilder.allOf]] method call in Graph-IR. This method call
-    * represents `allOf` predefined function.
-    */
   object AllOf {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[A]], Elem[A]) forSome {type A}] = d match {
-      case SDBM.allOf(_, xs) =>
-        CBM.fromItems.unapply(xs)
-      case _ => Nullable.None
+    def unapply(d: Def[_]): Option[Seq[Sym]] = d match {
+      case AllOfOp(_, Seq(ConcreteColl(_, items))) => Some(items)
+      case _ => None
     }
   }
 
-  /** Recognizer of [[SigmaDslBuilder.anyZK]] method call in Graph-IR. This method call
-    * represents `anyZK` predefined function.
-    */
   object AnyZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
-      case SDBM.anyZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
-      case _ => Nullable.None
+    def unapply(d: Def[_]): Option[Seq[Sym]] = d match {
+      case AnyZkOp(_, Seq(ConcreteColl(_, items))) => Some(items)
+      case _ => None
     }
   }
 
-  /** Recognizer of [[SigmaDslBuilder.allZK]] method call in Graph-IR. This method call
-    * represents `allZK` predefined function.
-    */
   object AllZk {
-    def unapply(d: Def[_]): Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])] = d match {
-      case SDBM.allZK(_, xs) =>
-        CBM.fromItems.unapply(xs).asInstanceOf[Nullable[(Ref[CollBuilder], Seq[Ref[SigmaProp]], Elem[SigmaProp])]]
-      case _ => Nullable.None
+    def unapply(d: Def[_]): Option[Seq[Sym]] = d match {
+      case AllZkOp(_, Seq(ConcreteColl(_, items))) => Some(items)
+      case _ => None
     }
   }
 
@@ -135,12 +130,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     *         arguments of those nodes and `bs` contains all the other nodes.
     */
   object HasSigmas {
-    def unapply(items: Seq[Sym]): Option[(Seq[Ref[Boolean]], Seq[Ref[SigmaProp]])] = {
+    def unapply(items: Seq[Sym]): Option[(Seq[Ref[Boolean]], Seq[Ref[sigma.SigmaProp]])] = {
       val bs = ArrayBuffer.empty[Ref[Boolean]]
-      val ss = ArrayBuffer.empty[Ref[SigmaProp]]
+      val ss = ArrayBuffer.empty[Ref[sigma.SigmaProp]]
       for (i <- items) {
         i match {
-          case SigmaM.isValid(s) => ss += s
+          case IsValid(s, _) => ss += asRep[sigma.SigmaProp](s)
           case b => bs += asRep[Boolean](b)
         }
       }
@@ -161,60 +156,54 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     // On each branching level each node type should be matched exactly once,
     // for the rewriting to be sound.
     d match {
-      // Rule: ThunkDef(x, Nil).force => x
-      case ThunkForce(Def(ThunkDef(root, sch))) if sch.isEmpty => root
-
       // Rule: l.isValid op Thunk {... root} => (l op TrivialSigma(root)).isValid
-      case ApplyBinOpLazy(op, SigmaM.isValid(l), Def(ThunkDef(root, _))) if root.elem == BooleanElement =>
+      case ApplyBinOpLazy(op, IsValid(l, _), Def(ThunkDef(root, _))) if root.elem == BooleanElement =>
         // don't need new Thunk because sigma logical ops always strict
-        val r = asRep[SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](root)))
+        val r = sigmaProp(root)
+        val lp = asRep[sigma.SigmaProp](l)
         val res = if (op == And)
-          l && r
+          sigmaAnd(lp, r)
         else
-          l || r
-        res.isValid
+          sigmaOr(lp, r)
+        isValid(res)
 
       // Rule: l op Thunk {... prop.isValid} => (TrivialSigma(l) op prop).isValid
-      case ApplyBinOpLazy(op, l, Def(ThunkDef(root @ SigmaM.isValid(prop), sch))) if l.elem == BooleanElement =>
-        val l1 = asRep[SigmaProp](sigmaDslBuilder.sigmaProp(asRep[Boolean](l)))
+      case ApplyBinOpLazy(op, l, Def(ThunkDef(root @ IsValid(prop, _), sch))) if l.elem == BooleanElement =>
+        val l1 = sigmaProp(l)
+        val p = asRep[sigma.SigmaProp](prop)
         // don't need new Thunk because sigma logical ops always strict
         val res = if (op == And)
-          l1 && prop
+          sigmaAnd(l1, p)
         else
-          l1 || prop
-        res.isValid
+          sigmaOr(l1, p)
+        isValid(res)
 
-      case SDBM.Colls(_) => colBuilder
-      case SDBM.sigmaProp(_, SigmaM.isValid(p)) => p
-      case SigmaM.isValid(SDBM.sigmaProp(_, bool)) => bool
+      case SigmaPropOp(_, Seq(IsValid(p, _))) => p
+      case IsValid(SigmaPropOp(_, Seq(bool)), _) => bool
 
-      case AllOf(b, HasSigmas(bools, sigmas), _) =>
-        val zkAll = sigmaDslBuilder.allZK(b.fromItems(sigmas:_*))
-        if (bools.isEmpty)
-          zkAll.isValid
-        else
-          (sigmaDslBuilder.sigmaProp(sigmaDslBuilder.allOf(b.fromItems(bools:_*))) && zkAll).isValid
+      case AllOf(HasSigmas(bools, sigmas)) =>
+        val zkAll = allZK(sigmas)
+        if (bools.isEmpty) isValid(zkAll)
+        else isValid(sigmaAnd(sigmaProp(allOf(bools)), zkAll))
 
-      case AnyOf(b, HasSigmas(bs, ss), _) =>
-        val zkAny = sigmaDslBuilder.anyZK(b.fromItems(ss:_*))
-        if (bs.isEmpty)
-          zkAny.isValid
-        else
-          (sigmaDslBuilder.sigmaProp(sigmaDslBuilder.anyOf(b.fromItems(bs:_*))) || zkAny).isValid
+      case AnyOf(HasSigmas(bools, sigmas)) =>
+        val zkAny = anyZK(sigmas)
+        if (bools.isEmpty) isValid(zkAny)
+        else isValid(sigmaOr(sigmaProp(anyOf(bools)), zkAny))
 
-      case AllOf(_,items,_) if items.length == 1 => items(0)
-      case AnyOf(_,items,_) if items.length == 1 => items(0)
-      case AllZk(_,items,_) if items.length == 1 => items(0)
-      case AnyZk(_,items,_) if items.length == 1 => items(0)
+      case AllOf(items) if items.length == 1 => items(0)
+      case AnyOf(items) if items.length == 1 => items(0)
+      case AllZk(items) if items.length == 1 => items(0)
+      case AnyZk(items) if items.length == 1 => items(0)
 
       case _ =>
         if (currentPass.config.constantPropagation) {
           // additional constant propagation rules (see other similar cases)
           d match {
-            case AnyOf(_,items,_) if (items.forall(_.isConst)) =>
+            case AnyOf(items) if items.forall(_.isConst) =>
               val bs = items.map { case Def(Const(b: Boolean)) => b }
               toRep(bs.exists(_ == true))
-            case AllOf(_,items,_) if (items.forall(_.isConst)) =>
+            case AllOf(items) if items.forall(_.isConst) =>
               val bs = items.map { case Def(Const(b: Boolean)) => b }
               toRep(bs.forall(_ == true))
             case _ =>
@@ -228,16 +217,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
   /** Lazy values, which are immutable, but can be reset, so that the next time they are accessed
     * the expression is re-evaluated. Each value should be reset in onReset() method. */
-  private val _sigmaDslBuilder: LazyRep[SigmaDslBuilder] = MutableLazy(variable[SigmaDslBuilder])
-  @inline def sigmaDslBuilder: Ref[SigmaDslBuilder] = _sigmaDslBuilder.value
-
-  private val _colBuilder: LazyRep[CollBuilder] = MutableLazy(variable[CollBuilder])
-  @inline def colBuilder: Ref[CollBuilder] = _colBuilder.value
+  private val _sigmaDslBuilder: LazyRep[sigma.SigmaDslBuilder] = MutableLazy(variable[sigma.SigmaDslBuilder])
+  @inline def sigmaDslBuilder: Ref[sigma.SigmaDslBuilder] = _sigmaDslBuilder.value
 
   protected override def onReset(): Unit = {
     super.onReset()
     // WARNING: every lazy value should be listed here, otherwise bevavior after resetContext is undefined and may throw.
-    Array(_sigmaDslBuilder, _colBuilder)
+    Array(_sigmaDslBuilder)
       .foreach(_.reset())
   }
 
@@ -245,7 +231,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
   def removeIsProven[T,R](f: Ref[T] => Ref[R]): Ref[T] => Ref[R] = { x: Ref[T] =>
     val y = f(x);
     val res = y match {
-      case SigmaPropMethods.isValid(p) => p
+      case IsValid(p, _) => p
       case v => v
     }
     asRep[R](res)
@@ -290,50 +276,22 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     case StringElement => SString
     case AnyElement => SAny
     case UnitElement => SUnit
-    case _: BigIntElem[_] => SBigInt
-    case _: UnsignedBigIntElem[_] => SUnsignedBigInt
-    case _: GroupElementElem[_] => SGroupElement
-    case _: AvlTreeElem[_] => SAvlTree
-    case oe: WOptionElem[_, _] => SOption(elemToSType(oe.eItem))
-    case _: BoxElem[_] => SBox
-    case _: ContextElem[_] => SContext
-    case _: SigmaDslBuilderElem[_] => SGlobal
-    case _: HeaderElem[_] => SHeader
-    case _: PreHeaderElem[_] => SPreHeader
-    case _: SigmaPropElem[_] => SSigmaProp
-    case ce: CollElem[_, _] => SCollection(elemToSType(ce.eItem))
+    case _: BigIntElem => SBigInt
+    case _: UnsignedBigIntElem => SUnsignedBigInt
+    case _: GroupElementElem => SGroupElement
+    case _: AvlTreeElem => SAvlTree
+    case oe: WOptionElem[_] => SOption(elemToSType(oe.eItem))
+    case _: BoxElem => SBox
+    case _: ContextElem => SContext
+    case _: SigmaDslBuilderElem => SGlobal
+    case _: HeaderElem => SHeader
+    case _: PreHeaderElem => SPreHeader
+    case _: SigmaPropElem => SSigmaProp
+    case ce: CollElem[_] => SCollection(elemToSType(ce.eItem))
     case fe: FuncElem[_, _] => SFunc(elemToSType(fe.eDom), elemToSType(fe.eRange))
     case pe: PairElem[_, _] => STuple(elemToSType(pe.eFst), elemToSType(pe.eSnd))
     case _ => error(s"Don't know how to convert Elem $e to SType")
   }
-
-  /** Translates Elem to the corresponding Liftable instance.
-    * @param eWT type descriptor
-    */
-  def liftableFromElem[WT](eWT: Elem[WT]): Liftable[_,WT] = (eWT match {
-    case BooleanElement => BooleanIsLiftable
-    case ByteElement => ByteIsLiftable
-    case ShortElement => ShortIsLiftable
-    case IntElement => IntIsLiftable
-    case LongElement => LongIsLiftable
-    case StringElement => StringIsLiftable
-    case UnitElement => UnitIsLiftable
-    case _: BigIntElem[_] => LiftableBigInt
-    case _: UnsignedBigIntElem[_] => LiftableUnsignedBigInt
-    case _: GroupElementElem[_] => LiftableGroupElement
-    case ce: CollElem[t,_] =>
-      implicit val lt = liftableFromElem[t](ce.eItem)
-      liftableColl(lt)
-    case pe: PairElem[a,b] =>
-      implicit val la = liftableFromElem[a](pe.eFst)
-      implicit val lb = liftableFromElem[b](pe.eSnd)
-      PairIsLiftable(la, lb)
-    case pe: FuncElem[a,b] =>
-      implicit val la = liftableFromElem[a](pe.eDom)
-      implicit val lb = liftableFromElem[b](pe.eRange)
-      FuncIsLiftable(la, lb)
-  }).asInstanceOf[Liftable[_,WT]]
-
   import sigma.data.NumericOps._
   private lazy val elemToExactNumericMap = Map[Elem[_], ExactNumeric[_]](
     (ByteElement, ByteIsExactIntegral),
@@ -413,9 +371,9 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * Context to some type T.
     * @param env contains values for each named constant used
     */
-  def buildGraph[T](env: ScriptEnv, typed: SValue): Ref[Context => T] = {
+  def buildGraph[T](env: ScriptEnv, typed: SValue): Ref[sigma.Context => T] = {
     val envVals = env.map { case (name, v) => (name: Any, builder.liftAny(v).get) }
-    fun(removeIsProven({ ctxC: Ref[Context] =>
+    fun(removeIsProven({ ctxC: Ref[sigma.Context] =>
       val env = envVals.map { case (k, v) => k -> buildNode(ctxC, Map.empty, v) }.toMap
       val res = asRep[T](buildNode(ctxC, env, typed))
       res
@@ -428,6 +386,48 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     */
   protected type CompilingEnv = Map[Any, Ref[_]]
 
+  /** Builds a plain call node for an AST `MethodCall`. The descriptor is the AST node's own and
+    * the result type is the AST node's own, so no method resolution happens here. Only the
+    * substitutions of the method's explicit type arguments are kept: an inferable type argument
+    * written out in the source (`serialize[Int](x)`) must give the same node as the inferred
+    * form, and the serializer writes no other substitution either.
+    */
+  protected def buildMethodCall(mc: sigma.ast.MethodCall, objV: Ref[Any], argsV: Seq[Ref[Any]]): Ref[Any] = {
+    val explicit = mc.method.explicitTypeArgs
+    val typeSubst = if (explicit.isEmpty) Map.empty[STypeVar, SType] else mc.typeSubst.filter { case (tv, _) => explicit.contains(tv) }
+    asRep[Any](mkMethodCall(objV, MethodCallee(mc.method), argsV, typeSubst, stypeToElem(mc.tpe)))
+  }
+
+  /** Builds a call node for `method` on `objV` that lowers the AST `node`: the result type is
+    * the node's own type.
+    */
+  protected def methodCallFor(node: SValue, method: SMethod, objV: Ref[Any], argsV: Seq[Ref[Any]],
+                              typeSubst: Map[STypeVar, SType] = Map.empty): Ref[Any] =
+    asRep[Any](mkMethodCall(objV, MethodCallee(method), argsV, typeSubst, stypeToElem(node.tpe)))
+
+  /** A call node of the global builtin `op` (its receiver is the global object); `resultElem` is
+    * the builtin's result type. */
+  protected def globalOp(op: ValueCompanion, argsV: Seq[Ref[Any]], resultElem: Elem[_]): Ref[Any] =
+    asRep[Any](mkMethodCall(asRep[Any](sigmaDslBuilder), GlobalOpCallee(op), argsV, Map(), resultElem))
+
+  /** Same as [[globalOp]] with the result type of the AST `node` it lowers. */
+  protected def globalOpFor(node: SValue, op: ValueCompanion, argsV: Seq[Ref[Any]]): Ref[Any] =
+    globalOp(op, argsV, stypeToElem(node.tpe))
+
+  /** `Coll(items)` as a call node of the ConcreteCollection builtin. */
+  protected def fromItems[A](items: Seq[Ref[A]], eA: Elem[A]): Ref[sigma.Coll[A]] =
+    asRep[sigma.Coll[A]](mkMethodCall(asRep[Any](sigmaDslBuilder), GlobalOpCallee(ConcreteCollection), items, Map(), collElement(eA)))
+
+  /** `xs.size` as a call node carrying its descriptor. */
+  protected def collLength(xs: Ref[Any]): Ref[Int] =
+    asRep[Int](mkMethodCall(xs, MethodCallee(SCollectionMethods.SizeMethod), Seq(), Map(), IntElement))
+
+  /** `xs.map(f)` as a call node; the result element type is the lambda's range. */
+  protected def collMap(xs: Ref[Any], f: Ref[Any => Any]): Ref[Any] = {
+    val eRange = f.elem.asInstanceOf[FuncElem[Any, Any]].eRange
+    asRep[Any](mkMethodCall(xs, MethodCallee(SCollectionMethods.MapMethod), Seq(f), Map(), collElement(eRange)))
+  }
+
   /** Builds IR graph for the given ErgoTree expression `node`.
     *
     * @param ctx  reference to a graph node that represents Context value passed to script interpreter
@@ -436,12 +436,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
     * @return reference to the graph node which represents `node` expression as part of in
     *         the IR graph data structure
     */
-  protected def buildNode[T <: SType](ctx: Ref[Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
+  protected def buildNode[T <: SType](ctx: Ref[sigma.Context], env: CompilingEnv, node: Value[T]): Ref[T#WrappedType] = {
     def eval[T <: SType](node: Value[T]): Ref[T#WrappedType] = buildNode(ctx, env, node)
     object In { def unapply(v: SValue): Nullable[Ref[Any]] = Nullable(asRep[Any](buildNode(ctx, env, v))) }
     class InColl[T: Elem] {
-      def unapply(v: SValue): Nullable[Ref[Coll[T]]] = {
-        val res = asRep[Coll[T]](buildNode(ctx, env, v))
+      def unapply(v: SValue): Nullable[Ref[sigma.Coll[T]]] = {
+        val res = asRep[sigma.Coll[T]](buildNode(ctx, env, v))
         Nullable(res)
       }
     }
@@ -459,36 +459,28 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
     val res: Ref[Any] = node match {
       case Constant(v, tpe) => v match {
-        case p: SSigmaProp =>
+        case p: sigma.SigmaProp =>
           assert(tpe == SSigmaProp)
-          val resV = liftConst(p)
-          resV
-        case bi: SBigInt =>
+          DslConst[sigma.SigmaProp](p)
+        case bi: sigma.BigInt =>
           assert(tpe == SBigInt)
-          val resV = liftConst(bi)
-          resV
-        case ubi: SUnsignedBigInt =>
+          DslConst[sigma.BigInt](bi)
+        case ubi: sigma.UnsignedBigInt =>
           assert(tpe == SUnsignedBigInt)
-          val resV = liftConst(ubi)
-          resV
-        case p: SGroupElement =>
+          DslConst[sigma.UnsignedBigInt](ubi)
+        case p: sigma.GroupElement =>
           assert(tpe == SGroupElement)
-          val resV = liftConst(p)
-          resV
-        case coll: SColl[a] =>
+          DslConst[sigma.GroupElement](p)
+        case coll: sigma.Coll[a] =>
           val tpeA = tpe.asCollection[SType].elemType
           stypeToElem(tpeA) match {
             case eWA: Elem[wa] =>
-              implicit val l = liftableFromElem[wa](eWA).asInstanceOf[Liftable[a, wa]]
-              val resVals = liftConst[SColl[a], Coll[wa]](coll)
-              resVals
+              DslConst[sigma.Coll[wa]](coll.asInstanceOf[sigma.Coll[wa]])(collElement(eWA))
           }
-        case box: SBox =>
-          val boxV = liftConst(box)
-          boxV
+        case box: sigma.Box =>
+          DslConst[sigma.Box](box)
         case tree: sigma.AvlTree =>
-          val treeV = liftConst(tree)
-          treeV
+          DslConst[sigma.AvlTree](tree)
         case s: String =>
           val resV = toRep(s)(stypeToElem(tpe).asInstanceOf[Elem[String]])
           resV
@@ -501,12 +493,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         constantPlaceholder(id, stypeToElem(tpe))
       case sigma.ast.Context => ctx
       case Global => sigmaDslBuilder
-      case Height => ctx.HEIGHT
-      case Inputs => ctx.INPUTS
-      case Outputs => ctx.OUTPUTS
-      case Self => ctx.SELF
-      case LastBlockUtxoRootHash => ctx.LastBlockUtxoRootHash
-      case MinerPubkey => ctx.minerPubKey
+      case Height => methodCallFor(node, SContextMethods.heightMethod, asRep[Any](ctx), Seq())
+      case Inputs => methodCallFor(node, SContextMethods.inputsMethod, asRep[Any](ctx), Seq())
+      case Outputs => methodCallFor(node, SContextMethods.outputsMethod, asRep[Any](ctx), Seq())
+      case Self => methodCallFor(node, SContextMethods.selfMethod, asRep[Any](ctx), Seq())
+      case LastBlockUtxoRootHash => methodCallFor(node, SContextMethods.lastBlockUtxoRootHashMethod, asRep[Any](ctx), Seq())
+      case MinerPubkey => methodCallFor(node, SContextMethods.minerPubKeyMethod, asRep[Any](ctx), Seq())
 
       case Ident(n, _) =>
         env.getOrElse(n, !!!(s"Variable $n not found in environment $env"))
@@ -567,8 +559,8 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         eval(mkByIndex(col.asCollection[SType], index.asValue[SInt.type], None))
 
       case GetVar(id, optTpe) =>
-        val e = stypeToElem(optTpe.elemType)
-        ctx.getVar(id)(e)
+        val idV: Ref[Byte] = id
+        methodCallFor(node, SContextMethods.getVarV5Method, asRep[Any](ctx), Seq(asRep[Any](idV)), Map(tT -> optTpe.elemType))
 
       case d: DeserializeContext[T] =>
         val e = stypeToElem(d.tpe)
@@ -603,49 +595,35 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val resV = buildNode(ctx, curEnv, res)
         resV
 
-      case CreateProveDlog(In(_v)) =>
-        val v = asRep[GroupElement](_v)
-        sigmaDslBuilder.proveDlog(v)
+      case CreateProveDlog(In(v)) =>
+        globalOpFor(node, CreateProveDlog, Seq(v))
 
-      case CreateProveDHTuple(In(_gv), In(_hv), In(_uv), In(_vv)) =>
-        val gv = asRep[GroupElement](_gv)
-        val hv = asRep[GroupElement](_hv)
-        val uv = asRep[GroupElement](_uv)
-        val vv = asRep[GroupElement](_vv)
-        sigmaDslBuilder.proveDHTuple(gv, hv, uv, vv)
+      case CreateProveDHTuple(In(gv), In(hv), In(uv), In(vv)) =>
+        globalOpFor(node, CreateProveDHTuple, Seq(gv, hv, uv, vv))
 
       case Exponentiate(In(l), In(r)) =>
-        val lV = asRep[GroupElement](l)
-        val rV = asRep[BigInt](r)
-        lV.exp(rV)
+        methodCallFor(node, SGroupElementMethods.ExponentiateMethod, l, Seq(r))
 
-      case MultiplyGroup(In(_l), In(_r)) =>
-        val l = asRep[GroupElement](_l)
-        val r = asRep[GroupElement](_r)
-        l.multiply(r)
+      case MultiplyGroup(In(l), In(r)) =>
+        methodCallFor(node, SGroupElementMethods.MultiplyMethod, l, Seq(r))
 
       case GroupGenerator =>
-        sigmaDslBuilder.groupGenerator
+        methodCallFor(node, SGlobalMethods.groupGeneratorMethod, asRep[Any](sigmaDslBuilder), Seq())
 
       case ByteArrayToBigInt(In(arr)) =>
-        val arrV = asRep[Coll[Byte]](arr)
-        sigmaDslBuilder.byteArrayToBigInt(arrV)
+        globalOpFor(node, ByteArrayToBigInt, Seq(arr))
 
       case LongToByteArray(In(x)) =>
-        val xV = asRep[Long](x)
-        sigmaDslBuilder.longToByteArray(xV)
+        globalOpFor(node, LongToByteArray, Seq(x))
 
-      // opt.get
-      case OptionGet(In(opt: ROption[_]@unchecked)) =>
-        opt.get
+      case OptionGet(In(opt)) =>
+        methodCallFor(node, SOptionMethods.GetMethod, opt, Seq())
 
-      // opt.isDefined
-      case OptionIsDefined(In(opt: ROption[_]@unchecked)) =>
-        opt.isDefined
+      case OptionIsDefined(In(opt)) =>
+        methodCallFor(node, SOptionMethods.IsDefinedMethod, opt, Seq())
 
-      // opt.getOrElse(default)
-      case OptionGetOrElse(In(opt: ROption[a]@unchecked), In(default)) =>
-        opt.getOrElse(asRep[a](default))
+      case OptionGetOrElse(In(opt), In(default)) =>
+        methodCallFor(node, SOptionMethods.GetOrElseMethod, opt, Seq(asRep[Any](Thunk(default))))
 
       // tup._1 or tup._2
       case SelectField(In(tup), fieldIndex) =>
@@ -667,160 +645,124 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case node: BooleanTransformer[_] =>
         val tpeIn = node.input.tpe.elemType
         val eIn = stypeToElem(tpeIn)
-        val xs = asRep[Coll[Any]](eval(node.input))
-        val eAny = xs.elem.asInstanceOf[CollElem[Any,_]].eItem
+        val xs = asRep[sigma.Coll[Any]](eval(node.input))
+        val eAny = xs.elem.asInstanceOf[CollElem[Any]].eItem
         assert(eIn == eAny, s"Types should be equal: but $eIn != $eAny")
         val predicate = asRep[Any => SType#WrappedType](eval(node.condition))
         val res = predicate.elem.eRange match {
           case BooleanElement =>
             node match {
               case _: ForAll[_] =>
-                xs.forall(asRep[Any => Boolean](predicate))
+                methodCallFor(node, SCollectionMethods.ForallMethod, asRep[Any](xs), Seq(asRep[Any](predicate)))
               case _: Exists[_] =>
-                xs.exists(asRep[Any => Boolean](predicate))
+                methodCallFor(node, SCollectionMethods.ExistsMethod, asRep[Any](xs), Seq(asRep[Any](predicate)))
             }
-          case _: SigmaPropElem[_] =>
-            val children = xs.map(asRep[Any => SigmaProp](predicate))
+          case e if e.isInstanceOf[SigmaPropElem] =>
+            val children = asRep[sigma.Coll[sigma.SigmaProp]](collMap(asRep[Any](xs), asRep[Any => Any](predicate)))
             node match {
               case _: ForAll[_] =>
-                sigmaDslBuilder.allZK(children)
+                globalOp(SigmaAnd, Seq(asRep[Any](children)), sigmaPropElement)
               case _: Exists[_] =>
-                sigmaDslBuilder.anyZK(children)
+                globalOp(SigmaOr, Seq(asRep[Any](children)), sigmaPropElement)
             }
         }
         res
 
       // input.map(mapper)
-      case MapCollection(InCollAny(inputV), sfunc) =>
-        val mapper = asRep[Any => Any](eval(sfunc))
-        inputV.map(mapper)
+      case MapCollection(In(inputV), sfunc) =>
+        methodCallFor(node, SCollectionMethods.MapMethod, inputV, Seq(asRep[Any](eval(sfunc))))
 
       // input.fold(zero, (acc, x) => op)
       case Fold(input, zero, sfunc) =>
-        val eItem = stypeToElem(input.tpe.elemType)
-        val eState = stypeToElem(zero.tpe)
-        (eState, eItem) match { case (eState: Elem[s], eItem: Elem[a]) =>
-          val inputV = asRep[Coll[a]](eval(input))
-          implicit val eA: Elem[a] = inputV.elem.asInstanceOf[CollElem[a,_]].eItem
-          assert(eItem == eA, s"Types should be equal: but $eItem != $eA")
+        methodCallFor(node, SCollectionMethods.FoldMethod, asRep[Any](eval(input)), Seq(asRep[Any](eval(zero)), asRep[Any](eval(sfunc))))
 
-          val zeroV = asRep[s](eval(zero))
-          implicit val eS: Elem[s] = zeroV.elem
-          assert(eState == eS, s"Types should be equal: but $eState != $eS")
+      case Slice(In(inputV), In(from), In(until)) =>
+        methodCallFor(node, SCollectionMethods.SliceMethod, inputV, Seq(from, until))
 
-          val op = asRep[((s,a)) => s](eval(sfunc))
-          val res = inputV.foldLeft(zeroV, op)
-          res
-        }
-
-      case Slice(InCollAny(inputV), In(from), In(until)) =>
-        val fromV = asRep[Int](from)
-        val untilV = asRep[Int](until)
-        inputV.slice(fromV, untilV)
-
-      case Append(InCollAny(col1), InCollAny(col2)) =>
-        col1.append(col2)
+      case Append(In(col1), In(col2)) =>
+        methodCallFor(node, SCollectionMethods.AppendMethod, col1, Seq(col2))
 
       case Filter(input, p) =>
-        val inputV = asRep[Coll[Any]](eval(input))
-        val pV = asRep[Any => Boolean](eval(p))
-        inputV.filter(pV)
+        methodCallFor(node, SCollectionMethods.FilterMethod, asRep[Any](eval(input)), Seq(asRep[Any](eval(p))))
 
       case sigma.ast.Apply(f, Seq(x)) if f.tpe.isFunc =>
-        val fV = asRep[Any => Coll[Any]](eval(f))
+        val fV = asRep[Any => sigma.Coll[Any]](eval(f))
         val xV = asRep[Any](eval(x))
         Apply(fV, xV, mayInline = false)
 
       case CalcBlake2b256(In(input)) =>
-        val inputV = asRep[Coll[Byte]](input)
-        val res = sigmaDslBuilder.blake2b256(inputV)
-        res
+        globalOpFor(node, CalcBlake2b256, Seq(input))
 
       case CalcSha256(In(input)) =>
-        val inputV = asRep[Coll[Byte]](input)
-        val res = sigmaDslBuilder.sha256(inputV)
-        res
+        globalOpFor(node, CalcSha256, Seq(input))
 
       case SizeOf(In(xs)) =>
         xs.elem.asInstanceOf[Any] match {
-          case _: CollElem[a,_] =>
-            val xsV = asRep[Coll[a]](xs)
-            xsV.length
+          case _: CollElem[_] =>
+            methodCallFor(node, SCollectionMethods.SizeMethod, xs, Seq())
           case _: PairElem[_,_] =>
             2: Ref[Int]
         }
 
       case ByIndex(xs, i, defaultOpt) =>
-        val xsV = asRep[Coll[Any]](eval(xs))
-        val iV = asRep[Int](eval(i))
-        val res = defaultOpt match {
+        val xsV = asRep[Any](eval(xs))
+        val iV = asRep[Any](eval(i))
+        defaultOpt match {
           case Some(defaultValue) =>
-            val defaultV = asRep[Any](eval(defaultValue))
-            xsV.getOrElse(iV, defaultV)
+            methodCallFor(node, SCollectionMethods.GetOrElseMethod, xsV, Seq(iV, asRep[Any](eval(defaultValue))))
           case None =>
-            xsV(iV)
+            methodCallFor(node, SCollectionMethods.ApplyMethod, xsV, Seq(iV))
         }
-        res
 
       case SigmaPropIsProven(p) =>
-        val pV = asRep[SigmaProp](eval(p))
-        pV.isValid
+        isValid(asRep[sigma.SigmaProp](eval(p)))
 
       case SigmaPropBytes(p) =>
-        val pV = asRep[SigmaProp](eval(p))
-        pV.propBytes
+        methodCallFor(node, SSigmaPropMethods.PropBytesMethod, asRep[Any](eval(p)), Seq())
 
-      case ExtractId(In(box: Ref[Box]@unchecked)) =>
-        box.id
+      case ExtractId(In(box)) =>
+        methodCallFor(node, SBoxMethods.IdMethod, box, Seq())
 
-      case ExtractBytesWithNoRef(In(box: Ref[Box]@unchecked)) =>
-        box.bytesWithoutRef
+      case ExtractBytesWithNoRef(In(box)) =>
+        methodCallFor(node, SBoxMethods.BytesWithoutRefMethod, box, Seq())
 
       case ExtractAmount(In(box)) =>
-        val boxV = asRep[Box](box)
-        boxV.value
+        methodCallFor(node, SBoxMethods.ValueMethod, box, Seq())
 
-      case ExtractScriptBytes(In(box: Ref[Box]@unchecked)) =>
-        box.propositionBytes
+      case ExtractScriptBytes(In(box)) =>
+        methodCallFor(node, SBoxMethods.PropositionBytesMethod, box, Seq())
 
-      case ExtractBytes(In(box: Ref[Box]@unchecked)) =>
-        box.bytes
+      case ExtractBytes(In(box)) =>
+        methodCallFor(node, SBoxMethods.BytesMethod, box, Seq())
 
-      case ExtractCreationInfo(In(box: Ref[Box]@unchecked)) =>
-        box.creationInfo
+      case ExtractCreationInfo(In(box)) =>
+        methodCallFor(node, SBoxMethods.creationInfoMethod, box, Seq())
 
-      case ExtractRegisterAs(In(box: Ref[Box]@unchecked), regId, optTpe) =>
-        val elem = stypeToElem(optTpe.elemType).asInstanceOf[Elem[Any]]
+      // One getReg descriptor (the v6 one) represents the operation for every tree version: rows and
+      // callee identity are version-independent, and a constant register id always takes the row.
+      case ExtractRegisterAs(In(box), regId, optTpe) =>
         val i: Ref[Int] = regId.number.toInt
-        box.getReg(i)(elem)
+        methodCallFor(node, SBoxMethods.getRegMethodV6, box, Seq(asRep[Any](i)), Map(tT -> optTpe.elemType))
 
       case BoolToSigmaProp(bool) =>
-        sigmaDslBuilder.sigmaProp(eval(bool))
+        globalOpFor(node, BoolToSigmaProp, Seq(asRep[Any](eval(bool))))
 
       case AtLeast(bound, input) =>
-        val inputV = asRep[Coll[SigmaProp]](eval(input))
-        if (inputV.length.isConst) {
-          val inputCount = valueFromRep(inputV.length)
+        val inputV = asRep[sigma.Coll[sigma.SigmaProp]](eval(input))
+        val len = collLength(asRep[Any](inputV))
+        if (len.isConst) {
+          val inputCount = valueFromRep(len)
           if (inputCount > AtLeast.MaxChildrenCount)
             error(s"Expected input elements count should not exceed ${AtLeast.MaxChildrenCount}, actual: $inputCount", node.sourceContext.toOption)
         }
         val boundV = eval(bound)
-        sigmaDslBuilder.atLeast(boundV, inputV)
+        globalOpFor(node, AtLeast, Seq(asRep[Any](boundV), asRep[Any](inputV)))
 
+      // BigInt is not a numeric primitive of the IR: its arithmetic is a call node of the operation
       case op: ArithOp[_] if op.tpe == SBigInt =>
-        import OpCodes._
-        val xV = asRep[BigInt](eval(op.left))
-        val yV = asRep[BigInt](eval(op.right))
-        op.opCode match {
-          case PlusCode     => xV.add(yV)
-          case MinusCode    => xV.subtract(yV)
-          case MultiplyCode => xV.multiply(yV)
-          case DivisionCode => xV.divide(yV)
-          case ModuloCode   => xV.mod(yV)
-          case MinCode      => xV.min(yV)
-          case MaxCode      => xV.max(yV)
-          case code         => error(s"Cannot perform buildNode($op): unknown opCode ${code}", op.sourceContext.toOption)
-        }
+        val xV = eval(op.left)
+        val yV = eval(op.right)
+        asRep[Any](mkMethodCall(asRep[Any](xV), OpCallee(ArithOp.operations(op.opCode)), Seq(asRep[Any](yV)), Map(), stypeToElem(op.tpe)))
 
       case op: ArithOp[_] =>
         val tpe = op.left.tpe
@@ -837,28 +779,28 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
       case OR(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.anyOf(colBuilder.fromItems(values: _*))
+          globalOpFor(node, OR, Seq(asRep[Any](fromItems(values.map(asRep[Boolean](_)), BooleanElement))))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
-          sigmaDslBuilder.anyOf(inputV)
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
+          globalOpFor(node, OR, Seq(asRep[Any](inputV)))
       }
 
       case AND(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.allOf(colBuilder.fromItems(values: _*))
+          globalOpFor(node, AND, Seq(asRep[Any](fromItems(values.map(asRep[Boolean](_)), BooleanElement))))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
-          sigmaDslBuilder.allOf(inputV)
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
+          globalOpFor(node, AND, Seq(asRep[Any](inputV)))
       }
 
       case XorOf(input) => input match {
         case ConcreteCollection(items, _) =>
           val values = items.map(eval)
-          sigmaDslBuilder.xorOf(colBuilder.fromItems(values: _*))
+          globalOpFor(node, XorOf, Seq(asRep[Any](fromItems(values.map(asRep[Boolean](_)), BooleanElement))))
         case _ =>
-          val inputV = asRep[Coll[Boolean]](eval(input))
-          sigmaDslBuilder.xorOf(inputV)
+          val inputV = asRep[sigma.Coll[Boolean]](eval(input))
+          globalOpFor(node, XorOf, Seq(asRep[Any](inputV)))
       }
 
       case BinOr(l, r) =>
@@ -883,12 +825,12 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         ApplyUnOp(op, x)
 
       case SigmaAnd(items) =>
-        val itemsV = items.map(item => asRep[SigmaProp](eval(item)))
-        sigmaDslBuilder.allZK(colBuilder.fromItems(itemsV: _*))
+        val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
+        globalOpFor(node, SigmaAnd, Seq(asRep[Any](fromItems(itemsV, sigmaPropElement))))
 
       case SigmaOr(items) =>
-        val itemsV = items.map(item => asRep[SigmaProp](eval(item)))
-        sigmaDslBuilder.anyZK(colBuilder.fromItems(itemsV: _*))
+        val itemsV = items.map(item => asRep[sigma.SigmaProp](eval(item)))
+        globalOpFor(node, SigmaOr, Seq(asRep[Any](fromItems(itemsV, sigmaPropElement))))
         
       case If(c, t, e) =>
         val cV = eval(c)
@@ -932,8 +874,7 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
 
       case ConcreteCollection(InSeq(vs), elemType) =>
         val eAny = stypeToElem(elemType).asInstanceOf[Elem[Any]]
-        val values = colBuilder.fromItems(vs: _*)(eAny)
-        values
+        fromItems(vs, eAny)
 
       case sigma.ast.Upcast(In(input), tpe) =>
         val elem = stypeToElem(tpe.asNumType)
@@ -944,372 +885,73 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         downcast(input)(elem)
 
       case ByteArrayToLong(In(arr)) =>
-        val coll = asRep[Coll[Byte]](arr)
-        sigmaDslBuilder.byteArrayToLong(coll)
+        globalOpFor(node, ByteArrayToLong, Seq(arr))
 
       case Xor(InCollByte(l), InCollByte(r)) =>
-        colBuilder.xor(l, r)
+        globalOpFor(node, Xor, Seq(asRep[Any](l), asRep[Any](r)))
 
       case SubstConstants(InCollByte(bytes), InCollInt(positions), InCollAny(newValues)) =>
-        sigmaDslBuilder.substConstants(bytes, positions, newValues)
+        globalOpFor(node, SubstConstants, Seq(asRep[Any](bytes), asRep[Any](positions), asRep[Any](newValues)))
 
       case DecodePoint(InCollByte(bytes)) =>
-        sigmaDslBuilder.decodePoint(bytes)
+        globalOpFor(node, DecodePoint, Seq(asRep[Any](bytes)))
 
       // fallback rule for MethodCall, should be the last case in the list
-      case sigma.ast.MethodCall(obj, method, args, typeSubst) =>
+      case mc @ sigma.ast.MethodCall(obj, method, args, _) =>
         val objV = eval(obj)
         val argsV = args.map(eval)
+        val objAny = asRep[Any](objV)
+        val argsAny = argsV.map(asRep[Any](_))
+        // Three shapes need more than a call node carrying the descriptor; every other method call
+        // is generic (the default arm), whatever its receiver type.
         (objV, method.objType) match {
-          case (xs: RColl[t]@unchecked, SCollectionMethods) => method.name match {
-            case SCollectionMethods.IndicesMethod.name =>
-              xs.indices
-            case SCollectionMethods.PatchMethod.name =>
-              val from = asRep[Int](argsV(0))
-              val patch = asRep[Coll[t]](argsV(1))
-              val replaced = asRep[Int](argsV(2))
-              xs.patch(from, patch, replaced)
-            case SCollectionMethods.UpdatedMethod.name =>
-              val index = asRep[Int](argsV(0))
-              val value = asRep[t](argsV(1))
-              xs.updated(index, value)
-            case SCollectionMethods.AppendMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.append(ys)
-            case SCollectionMethods.SliceMethod.name =>
-              val from = asRep[Int](argsV(0))
-              val until = asRep[Int](argsV(1))
-              xs.slice(from, until)
-            case SCollectionMethods.UpdateManyMethod.name =>
-              val indexes = asRep[Coll[Int]](argsV(0))
-              val values = asRep[Coll[t]](argsV(1))
-              xs.updateMany(indexes, values)
-            case SCollectionMethods.IndexOfMethod.name =>
-              val elem = asRep[t](argsV(0))
-              val from = asRep[Int](argsV(1))
-              xs.indexOf(elem, from)
-            case SCollectionMethods.ZipMethod.name =>
-              val ys = asRep[Coll[Any]](argsV(0))
-              xs.zip(ys)
-            case SCollectionMethods.FlatMapMethod.name =>
-              val f = asRep[Any => Coll[Any]](argsV(0))
-              xs.flatMap(f)
-            case SCollectionMethods.MapMethod.name =>
-              val f = asRep[Any => Any](argsV(0))
-              xs.map(f)
-            case SCollectionMethods.FilterMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.filter(p)
-            case SCollectionMethods.ForallMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.forall(p)
-            case SCollectionMethods.ExistsMethod.name =>
-              val p = asRep[Any => Boolean](argsV(0))
-              xs.exists(p)
-            case SCollectionMethods.FoldMethod.name =>
-              val zero = asRep[Any](argsV(0))
-              val op = asRep[((Any, Any)) => Any](argsV(1))
-              xs.foldLeft(zero, op)
-            case SCollectionMethods.GetOrElseMethod.name =>
-              val i = asRep[Int](argsV(0))
-              val d = asRep[t](argsV(1))
-              xs.getOrElse(i, d)
-            case SCollectionMethods.ReverseMethod.name =>
-              xs.reverse
-            case SCollectionMethods.StartsWithMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.startsWith(ys)
-            case SCollectionMethods.EndsWithMethod.name =>
-              val ys = asRep[Coll[t]](argsV(0))
-              xs.endsWith(ys)
-            case SCollectionMethods.GetMethod.name =>
-              val idx = asRep[Int](argsV(0))
-              xs.get(idx)
-            case _ => throwError()
-          }
-          case (opt: ROption[t]@unchecked, SOptionMethods) => method.name match {
-            case SOptionMethods.GetMethod.name =>
-              opt.get
-            case SOptionMethods.GetOrElseMethod.name =>
-              val defaultTh = asRep[t](argsV(0))
-              opt.getOrElse(Thunk(defaultTh))
-            case SOptionMethods.IsDefinedMethod.name =>
-              opt.isDefined
-            case SOptionMethods.MapMethod.name =>
-              opt.map(asRep[t => Any](argsV(0)))
-            case SOptionMethods.FilterMethod.name =>
-              opt.filter(asRep[t => Boolean](argsV(0)))
-            case _ => throwError()
-          }
-          case (ge: Ref[GroupElement]@unchecked, SGroupElementMethods) => method.name match {
-            case SGroupElementMethods.GetEncodedMethod.name =>
-              ge.getEncoded
-            case SGroupElementMethods.NegateMethod.name =>
-              ge.negate
-            case SGroupElementMethods.MultiplyMethod.name =>
-              val g2 = asRep[GroupElement](argsV(0))
-              ge.multiply(g2)
-            case SGroupElementMethods.ExponentiateMethod.name =>
-              val k = asRep[BigInt](argsV(0))
-              ge.exp(k)
-            case SGroupElementMethods.ExponentiateUnsignedMethod.name =>
-              val k = asRep[UnsignedBigInt](argsV(0))
-              ge.expUnsigned(k)
-            case _ => throwError()
-          }
-          case (box: Ref[Box]@unchecked, SBoxMethods) => method.name match {
-            case SBoxMethods.tokensMethod.name =>
-              box.tokens
-            case SBoxMethods.getRegMethodV6.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Int](argsV(0))
-              val c2 = stypeToElem(typeSubst.apply(tT))
-              box.getReg(c1)(c2)
-            case _ => throwError()
-          }
-          case (ctx: Ref[Context]@unchecked, SContextMethods) => method.name match {
-            case SContextMethods.dataInputsMethod.name =>
-              ctx.dataInputs
-            case SContextMethods.headersMethod.name =>
-              ctx.headers
-            case SContextMethods.preHeaderMethod.name =>
-              ctx.preHeader
-            case SContextMethods.inputsMethod.name =>
-              ctx.INPUTS
-            case SContextMethods.outputsMethod.name =>
-              ctx.OUTPUTS
-            case SContextMethods.heightMethod.name =>
-              ctx.HEIGHT
-            case SContextMethods.selfMethod.name =>
-              ctx.SELF
-            case SContextMethods.selfBoxIndexMethod.name =>
-              ctx.selfBoxIndex
-            case SContextMethods.lastBlockUtxoRootHashMethod.name =>
-              ctx.LastBlockUtxoRootHash
-            case SContextMethods.minerPubKeyMethod.name =>
-              ctx.minerPubKey
-            case SContextMethods.getVarFromInputMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Short](argsV(0))
-              val c2 = asRep[Byte](argsV(1))
-              val c3 = stypeToElem(typeSubst.apply(tT))
-              ctx.getVarFromInput(c1, c2)(c3)
-            case _ => throwError()
-          }
-          case (tree: Ref[AvlTree]@unchecked, SAvlTreeMethods) => method.name match {
-            case SAvlTreeMethods.digestMethod.name =>
-              tree.digest
-            case SAvlTreeMethods.keyLengthMethod.name =>
-              tree.keyLength
-            case SAvlTreeMethods.valueLengthOptMethod.name =>
-              tree.valueLengthOpt
-            case SAvlTreeMethods.enabledOperationsMethod.name =>
-              tree.enabledOperations
-            case SAvlTreeMethods.isInsertAllowedMethod.name =>
-              tree.isInsertAllowed
-            case SAvlTreeMethods.isRemoveAllowedMethod.name =>
-              tree.isRemoveAllowed
-            case SAvlTreeMethods.isUpdateAllowedMethod.name =>
-              tree.isUpdateAllowed
-            case SAvlTreeMethods.updateDigestMethod.name =>
-              val digest = asRep[Coll[Byte]](argsV(0))
-              tree.updateDigest(digest)
-            case SAvlTreeMethods.updateOperationsMethod.name =>
-              val operations = asRep[Byte](argsV(0))
-              tree.updateOperations(operations)
-            case SAvlTreeMethods.getMethod.name =>
-              val key = asRep[Coll[Byte]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.get(key, proof)
-            case SAvlTreeMethods.getManyMethod.name =>
-              val keys = asRep[Coll[Coll[Byte]]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.getMany(keys, proof)
-            case SAvlTreeMethods.containsMethod.name =>
-              val key = asRep[Coll[Byte]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.contains(key, proof)
-            case SAvlTreeMethods.insertMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.insert(operations, proof)
-            case SAvlTreeMethods.removeMethod.name =>
-              val operations = asRep[Coll[Coll[Byte]]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.remove(operations, proof)
-            case SAvlTreeMethods.updateMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.update(operations, proof)
-            case SAvlTreeMethods.insertOrUpdateMethod.name =>
-              val operations = asRep[Coll[(Coll[Byte], Coll[Byte])]](argsV(0))
-              val proof = asRep[Coll[Byte]](argsV(1))
-              tree.insertOrUpdate(operations, proof)
-            case _ => throwError()
-          }
-          case (ph: Ref[PreHeader]@unchecked, SPreHeaderMethods) => method.name match {
-            case SPreHeaderMethods.versionMethod.name =>
-              ph.version
-            case SPreHeaderMethods.parentIdMethod.name =>
-              ph.parentId
-            case SPreHeaderMethods.timestampMethod.name =>
-              ph.timestamp
-            case SPreHeaderMethods.nBitsMethod.name =>
-              ph.nBits
-            case SPreHeaderMethods.heightMethod.name =>
-              ph.height
-            case SPreHeaderMethods.minerPkMethod.name =>
-              ph.minerPk
-            case SPreHeaderMethods.votesMethod.name =>
-              ph.votes
-            case _ => throwError()
-          }
-          case (h: Ref[Header]@unchecked, SHeaderMethods) => method.name match {
-            case SHeaderMethods.idMethod.name =>
-              h.id
-            case SHeaderMethods.versionMethod.name =>
-              h.version
-            case SHeaderMethods.parentIdMethod.name =>
-              h.parentId
-            case SHeaderMethods.ADProofsRootMethod.name =>
-              h.ADProofsRoot
-            case SHeaderMethods.stateRootMethod.name =>
-              h.stateRoot
-            case SHeaderMethods.transactionsRootMethod.name =>
-              h.transactionsRoot
-            case SHeaderMethods.timestampMethod.name =>
-              h.timestamp
-            case SHeaderMethods.nBitsMethod.name =>
-              h.nBits
-            case SHeaderMethods.heightMethod.name =>
-              h.height
-            case SHeaderMethods.extensionRootMethod.name =>
-              h.extensionRoot
-            case SHeaderMethods.minerPkMethod.name =>
-              h.minerPk
-            case SHeaderMethods.powOnetimePkMethod.name =>
-              h.powOnetimePk
-            case SHeaderMethods.powNonceMethod.name =>
-              h.powNonce
-            case SHeaderMethods.powDistanceMethod.name =>
-              h.powDistance
-            case SHeaderMethods.votesMethod.name =>
-              h.votes
-            case SHeaderMethods.checkPowMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              h.checkPow
-            case _ => throwError()
-          }
-          case (g: Ref[SigmaDslBuilder]@unchecked, SGlobalMethods) => method.name match {
-            case SGlobalMethods.groupGeneratorMethod.name =>
-              g.groupGenerator
-            case SGlobalMethods.xorMethod.name =>
-              val c1 = asRep[Coll[Byte]](argsV(0))
-              val c2 = asRep[Coll[Byte]](argsV(1))
-              g.xor(c1, c2)
-            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[BigInt](argsV(0))
-              g.encodeNbits(c1)
-            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Long](argsV(0))
-              g.decodeNbits(c1)
-            case SGlobalMethods.powHitMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val k = asRep[Int](argsV(0))
-              val msg = asRep[Coll[Byte]](argsV(1))
-              val nonce = asRep[Coll[Byte]](argsV(2))
-              val h = asRep[Coll[Byte]](argsV(3))
-              val N = asRep[Int](argsV(4))
-              g.powHit(k, msg, nonce, h, N)
-            case SGlobalMethods.encodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[BigInt](argsV(0))
-              g.encodeNbits(c1)
-            case SGlobalMethods.decodeNBitsMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Long](argsV(0))
-              g.decodeNbits(c1)
-            case SGlobalMethods.deserializeToMethod.name if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-              val c1 = asRep[Coll[Byte]](argsV(0))
-              val c2 = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
-              g.deserializeTo(c1)(c2)
-            case SGlobalMethods.serializeMethod.name =>
-              val value = asRep[Any](argsV(0))
-              g.serialize(value)
-            case SGlobalMethods.FromBigEndianBytesMethod.name =>
-              val bytes = asRep[Coll[Byte]](argsV(0))
-              val cT = stypeToElem(method.stype.tRange.withSubstTypes(typeSubst))
-              g.fromBigEndianBytes(bytes)(cT)
-            case SGlobalMethods.someMethod.name =>
-              val value = asRep[tT.WrappedType](argsV(0))
-              val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
-              g.some(value)(cT)
-            case SGlobalMethods.noneMethod.name =>
-              val cT = stypeToElem(typeSubst.apply(tT)).asInstanceOf[Elem[tT.WrappedType]]
-              g.none()(cT)
-            case _ => throwError()
-          }
-          case (x: Ref[tNum], ms: SNumericTypeMethods) => method.name match {
-            case SNumericTypeMethods.ToBytesMethod.name =>
+          // getOrElse takes its default lazily: the argument is wrapped into a thunk
+          case (_, SOptionMethods) if method.methodId == SOptionMethods.GetOrElseMethod.methodId =>
+            buildMethodCall(mc, objAny, Seq(asRep[Any](Thunk(argsV(0)))))
+          // The explicit `CONTEXT.getVar[T](id)` form arrives as a call of getVarV5Method, which the
+          // IR does not support (the `getVar[T](id)` builtin lowers to GetVar)
+          case (_, SContextMethods) if method.methodId == SContextMethods.getVarV5Method.methodId =>
+            throwError()
+          // Under v5 the shared numeric methods keep the SNumericTypeMethods object as their container
+          // (it is not the trait the next arm matches and has no method table); the IR never
+          // supported them there and rejects them as it always did
+          case (_, SNumericTypeMethods) =>
+            throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")
+          // The shared numeric methods lower to unary and binary operation nodes; within the group a
+          // method is identified by its id (the descriptor's identity minus the receiver type).
+          case (x: Ref[tNum], _: SNumericTypeMethods) => method.methodId match {
+            case SNumericTypeMethods.ToBytesMethod.methodId =>
               val op = NumericToBigEndianBytes(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.ToBitsMethod.name =>
+            case SNumericTypeMethods.ToBitsMethod.methodId =>
               val op = NumericToBits(elemToExactNumeric(x.elem))
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.BitwiseInverseMethod.name =>
+            case SNumericTypeMethods.BitwiseInverseMethod.methodId =>
               val op = NumericBitwiseInverse(elemToExactNumeric(x.elem))(x.elem)
               ApplyUnOp(op, x)
-            case SNumericTypeMethods.BitwiseOrMethod.name =>
+            case SNumericTypeMethods.BitwiseOrMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseOr(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.BitwiseAndMethod.name =>
+            case SNumericTypeMethods.BitwiseAndMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseAnd(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.BitwiseXorMethod.name =>
+            case SNumericTypeMethods.BitwiseXorMethod.methodId =>
               val y = asRep[tNum](argsV(0))
               val op = NumericBitwiseXor(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOp(op, x, y)
-            case SNumericTypeMethods.ShiftLeftMethod.name =>
+            case SNumericTypeMethods.ShiftLeftMethod.methodId =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftLeft(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
-            case SNumericTypeMethods.ShiftRightMethod.name =>
+            case SNumericTypeMethods.ShiftRightMethod.methodId =>
               val y = asRep[Int](argsV(0))
               val op = NumericShiftRight(elemToExactNumeric(x.elem))(x.elem)
               ApplyBinOpDiffArgs(op, x, y)
-            case SBigIntMethods.ToUnsigned.name =>  // only bigint has toUnsigned method
-              val bi = asRep[BigInt](x)
-              bi.toUnsigned()
-            case SBigIntMethods.ToUnsignedMod.name => // only bigint has toUnsignedMod method
-              val bi = asRep[BigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              bi.toUnsignedMod(m)
-
-            case SUnsignedBigIntMethods.ModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.mod(m)
-            case SUnsignedBigIntMethods.ModInverseMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val m = asRep[UnsignedBigInt](argsV(0))
-              ubi.modInverse(m)
-            case SUnsignedBigIntMethods.PlusModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.plusMod(that, m)
-            case SUnsignedBigIntMethods.SubtractModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.subtractMod(that, m)
-            case SUnsignedBigIntMethods.MultiplyModMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              val that = asRep[UnsignedBigInt](argsV(0))
-              val m = asRep[UnsignedBigInt](argsV(1))
-              ubi.multiplyMod(that, m)
-            case SUnsignedBigIntMethods.ToSignedMethod.name if ms.isInstanceOf[SUnsignedBigIntMethods.type] =>
-              val ubi = asRep[UnsignedBigInt](x)
-              ubi.toSigned()
-            case _ => throwError()
+            case _ => buildMethodCall(mc, objAny, argsAny)
           }
-          case _ => throwError(s"Type ${stypeToRType(obj.tpe).name} doesn't have methods")
+          case _ => buildMethodCall(mc, objAny, argsAny)
         }
 
       case _ =>

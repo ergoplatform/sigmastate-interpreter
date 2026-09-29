@@ -2,9 +2,8 @@ package sigma.compiler.ir
 
 import sigma.compiler.ir.core.MutableLazy
 import sigma.compiler.ir.primitives._
+import sigma.ast.{ConcreteCollection, SCollectionMethods}
 import sigma.data.Nullable
-import sigma.compiler.ir.wrappers.scala.WOptionsModule
-import sigma.compiler.ir.wrappers.sigma.{CollsModule, SigmaDslModule}
 
 /** Aggregate cake with all inter-dependent modules assembled together.
   * Each instance of this class contains independent IR context, thus many
@@ -39,16 +38,11 @@ trait IRContext
   with Transforming
   with Thunks
   with Entities
+  with Elems
   with DefRewriting
-  with CollsModule
-  with SigmaDslModule
+  with Lowering
   with TreeBuilding
-  with GraphBuilding
-  with WOptionsModule {
-
-  import Coll._
-  import CollBuilder._
-  import WOption._
+  with GraphBuilding {
 
   /** Pass configuration which is used to turn-off constant propagation.
     * USED IN TESTS ONLY.
@@ -59,14 +53,11 @@ trait IRContext
 
   type LazyRep[T] = MutableLazy[Ref[T]]
 
-  val CM = CollMethods
-  private val CBM = CollBuilderMethods
-  private val WOptionM = WOptionMethods
-
-  def colBuilder: Ref[CollBuilder]
+  /** Pattern for `Coll(items)` literal nodes, shared by the rewrite rules here and in GraphBuilding. */
+  protected val ConcreteColl = CallPattern(GlobalOpCallee(ConcreteCollection))
 
   /** During compilation represent a global value Global, see also SGlobal type. */
-  def sigmaDslBuilder: Ref[SigmaDslBuilder]
+  def sigmaDslBuilder: Ref[sigma.SigmaDslBuilder]
 
   object IsNumericToInt {
     def unapply(d: Def[_]): Nullable[Ref[A] forSome {type A}] = d match {
@@ -81,66 +72,38 @@ trait IRContext
     }
   }
 
+  private val CollLength = CallPattern(SCollectionMethods.SizeMethod)
+  private val CollMap    = CallPattern(SCollectionMethods.MapMethod)
+
   override def rewriteDef[T](d: Def[T]) = d match {
-    case CM.length(ys) => ys.node match {
+    case CollLength(ys, _) => ys.node match {
       // Rule: xs.map(f).length  ==> xs.length
-      case CM.map(xs, _) =>
-        xs.length
-      // Rule: replicate(len, v).length => len
-      case CBM.replicate(_, len, _) =>
-        len
-      // Rule: Const[Coll[T]](coll).length =>
-      case CollConst(coll, _) =>
+      case CollMap(xs, _) =>
+        collLength(asRep[Any](xs))
+      // Rule: Const[sigma.Coll[T]](coll).length =>
+      case DslConst(coll: sigma.Coll[_]) =>
         coll.length
       // Rule: Coll(items @ Seq(x1, x2, x3)).length => items.length
-      case CBM.fromItems(_, items, _) =>
+      case ConcreteColl(_, items) =>
         items.length
       case _ => super.rewriteDef(d)
     }
 
-    // Rule: replicate(l, x).zip(replicate(l, y)) ==> replicate(l, (x,y))
-    case CM.zip(CBM.replicate(b1, l1, v1), CBM.replicate(b2, l2, v2)) if b1 == b2 && l1 == l2 =>
-      b1.replicate(l1, Pair(v1, v2))
-
-    case CM.map(xs, _f) => _f.node match {
+    case CollMap(xs, Seq(_f)) => _f.node match {
       case IdentityLambda() => xs
       case _ => xs.node match {
-        // Rule: replicate(l, v).map(f) ==> replicate(l, f(v))
-        case CBM.replicate(b, l, v: Ref[a]) =>
-          val f = asRep[a => Any](_f)
-          b.replicate(l, Apply(f, v, false))
-
         // Rule: xs.map(f).map(g) ==> xs.map(x => g(f(x)))
-        case CM.map(_xs, f: RFunc[a, b]) =>
-          implicit val ea = f.elem.eDom
-          val xs = asRep[Coll[a]](_xs)
-          val g  = asRep[b => Any](_f)
-          xs.map[Any](fun { x: Ref[a] => g(f(x)) })
-
+        case CollMap(_xs, Seq(f)) =>
+          val ff = asRep[Any => Any](f)
+          val g = asRep[Any => Any](_f)
+          implicit val ea: Elem[Any] = ff.elem.asInstanceOf[FuncElem[Any, Any]].eDom
+          collMap(asRep[Any](_xs), fun { x: Ref[Any] => g(ff(x)) })
         case _ => super.rewriteDef(d)
       }
     }
 
-    case WOptionM.getOrElse(opt, _) => opt.node match {
-      case WOptionConst(Some(x), lA) => lA.lift(x)
-      case _ => super.rewriteDef(d)
-    }
-
     case _ => super.rewriteDef(d)
   }
-
-  override def invokeUnlifted(e: Elem[_], mc: MethodCall, dataEnv: DataEnv): Any = e match {
-    case _: CollElem[_,_] => mc match {
-      case CollMethods.map(_, f) =>
-        val newMC = mc.copy(args = mc.args :+ f.elem.eRange)(mc.resultType, mc.isAdapterCall, mc.typeSubst)
-        super.invokeUnlifted(e, newMC, dataEnv)
-      case _ =>
-        super.invokeUnlifted(e, mc, dataEnv)
-    }
-    case _ =>
-      super.invokeUnlifted(e, mc, dataEnv)
-  }
-
 }
 
 /** IR context to be used by script development tools to compile ErgoScript into ErgoTree bytecode. */

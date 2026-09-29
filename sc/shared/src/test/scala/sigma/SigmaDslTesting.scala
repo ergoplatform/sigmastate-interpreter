@@ -12,7 +12,7 @@ import org.scalatest.exceptions.TestFailedException
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import scalan.Platform.threadSleepOrNoOp
+import scalan.Platform.{recordTreeSnapshot, threadSleepOrNoOp}
 import sigma.Extensions.ArrayOps
 import sigma.data.{CBox, CollType, OptionType, PairType, ProveDlog, RType, SigmaLeaf}
 import sigma.VersionContext.V6SoftForkVersion
@@ -351,7 +351,9 @@ class SigmaDslTesting extends AnyPropSpec
         // We set size for trees v0 as well, to have the same size and so the same cost in V6 interpreter
         // (where tree size is accounted in cost)
         val header = ErgoTree.setSizeBit(ErgoTree.headerWithVersion(ZeroHeader, ergoTreeVersionInTests))
-        ErgoTree.withSegregation(header, SigmaOr(prop, multisig))
+        val tree = ErgoTree.withSegregation(header, SigmaOr(prop, multisig))
+        recordTreeSnapshot(sigma.reflection.Platform.safeSimpleName(suite.getClass) + "-wrapper", code, tree.bytes)
+        tree
       }
 
       def ergoCtx(prover: FeatureProvingInterpreter, compiledTree: ErgoTree, expectedValue: B) = {

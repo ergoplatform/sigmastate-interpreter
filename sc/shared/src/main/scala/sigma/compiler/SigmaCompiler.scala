@@ -12,7 +12,7 @@ import sigmastate.lang.parsers.ParserException
 import sigma.ast._
 import sigma.ast.syntax.SValue
 import SCollectionMethods.{ExistsMethod, ForallMethod, MapMethod}
-import sigma.compiler.ir.{GraphIRReflection, IRContext}
+import sigma.compiler.ir.IRContext
 import sigma.compiler.phases.{SigmaBinder, SigmaTyper}
 import sigma.exceptions.CompilerException
 import sigma.Environment
@@ -44,7 +44,7 @@ case class CompilerSettings(
 case class CompilerResult[Ctx <: IRContext](
   env: ScriptEnv,
   code: String,
-  compiledGraph: Ctx#Ref[Ctx#Context => Any],
+  compiledGraph: Ctx#Ref[sigma.Context => Any],
   /** Tree obtained from graph created by GraphBuilding */
   buildTree: SValue
 )
@@ -92,7 +92,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
   /** Compiles the given ErgoScript source code. */
   def compile(env: ScriptEnv, code: String)(implicit IR: IRContext): CompilerResult[IR.type] = {
     val typed = typecheck(env, code)
-    val res = compileTyped(env, typed).copy(code = code)
+    val res = compileTyped(env, typed).copy[IR.type](code = code)
     res
   }
 
@@ -165,7 +165,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
 
 object SigmaCompiler {
   /** Force initialization of reflection before any instance of SigmaCompiler is used. */
-  val _ = (InterpreterReflection, GraphIRReflection)
+  val _ = InterpreterReflection
 
   /** Returns true if the given throwable represents a stack overflow.
     *

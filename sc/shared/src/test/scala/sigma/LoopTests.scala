@@ -1,5 +1,6 @@
 package sigma
 
+import sigma.ast.{SBoxMethods, SCollectionMethods, SMethod}
 import sigmastate.helpers.CompilerTestingCommons
 
 class LoopTests extends CompilerTestingCommons { suite =>
@@ -7,29 +8,30 @@ class LoopTests extends CompilerTestingCommons { suite =>
   import IR._
 
   property("Test nested loop") {
-    import Coll._
-    import Context._; import Box._
+    /** A call node carrying its descriptor, as GraphBuilding builds them. */
+    def call[R](receiver: Sym, m: SMethod, args: Sym*)(implicit eR: Elem[R]): Ref[R] =
+      asRep[R](mkMethodCall(receiver, MethodCallee(m), args, Map(), eR))
+
     // variable to capture internal lambdas
-    var proj2: Ref[((Coll[Byte], Int)) => Int] = null
+    var proj2: Ref[((sigma.Coll[Byte], Int)) => Int] = null
     var sumFold: Ref[((Int, Int)) => Int] = null
-    var pred: Ref[(((Coll[Byte], Int), Box)) => Boolean] = null
+    var pred: Ref[(((sigma.Coll[Byte], Int), sigma.Box)) => Boolean] = null
     var total: Ref[Int] = null
 
-    val f = fun { in: Ref[(Context, Coll[(Coll[Byte], Int)])] =>
-      val Pair(ctx, spenders) = in
-      val feeBox = ctx.OUTPUTS(0)
-      proj2 = fun { e: Ref[(Coll[Byte], Int)] => e._2 }
-      val ratios = spenders.map(proj2)
+    val f = fun { in: Ref[(sigma.Coll[sigma.Box], sigma.Coll[(sigma.Coll[Byte], Int)])] =>
+      val Pair(outputs, spenders) = in
+      proj2 = fun { e: Ref[(sigma.Coll[Byte], Int)] => e._2 }
+      val ratios = call[sigma.Coll[Int]](spenders, SCollectionMethods.MapMethod, proj2)
       sumFold = fun { in: Ref[(Int, Int)] => in._1 + in._2 }
-      total = ratios.foldLeft(0, sumFold)
-      pred = fun { e: Ref[(((Coll[Byte], Int), Box))] =>
+      total = call[Int](ratios, SCollectionMethods.FoldMethod, toRep(0), sumFold)
+      pred = fun { e: Ref[(((sigma.Coll[Byte], Int), sigma.Box))] =>
         val ratio = e._1._2
         val box = e._2
         val share = total * ratio
-        box.value >= share.toLong
+        call[Long](box, SBoxMethods.ValueMethod) >= share.toLong
       }
-      val validOuts = spenders.zip(ctx.OUTPUTS).forall(pred)
-      validOuts
+      val zipped = call[sigma.Coll[((sigma.Coll[Byte], Int), sigma.Box)]](spenders, SCollectionMethods.ZipMethod, outputs)
+      call[Boolean](zipped, SCollectionMethods.ForallMethod, pred)
     }
     val Def(l: Lambda[_,_]) = f
     assert(l.freeVars.contains(proj2))
@@ -39,4 +41,3 @@ class LoopTests extends CompilerTestingCommons { suite =>
     emit("f", f)
   }
 }
-

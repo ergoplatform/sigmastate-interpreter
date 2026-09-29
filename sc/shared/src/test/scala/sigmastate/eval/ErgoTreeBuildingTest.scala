@@ -2,7 +2,8 @@ package sigmastate.eval
 
 import sigmastate._
 import sigma.ast._
-import sigmastate.helpers.ContextEnrichingTestProvingInterpreter
+import sigmastate.crypto.DLogProtocol.DLogProverInput
+import java.math.BigInteger
 import sigmastate.interpreter.Interpreter._
 import scalan.BaseCtxTests
 import sigma.ast.syntax.ValueOps
@@ -85,9 +86,9 @@ class ErgoTreeBuildingTest extends BaseCtxTests
   }
 
   test("Crowd Funding") {
-    val prover = new ContextEnrichingTestProvingInterpreter()
-    val backerPK  = prover.dlogSecrets(0).publicImage
-    val projectPK = prover.dlogSecrets(1).publicImage
+    // fixed secrets: the keys end up in the compiled tree, so random ones make the output vary per run
+    val backerPK  = DLogProverInput(BigInteger.valueOf(101)).publicImage
+    val projectPK = DLogProverInput(BigInteger.valueOf(102)).publicImage
     val env = envCF ++ Seq("projectPubKey" -> projectPK, "backerPubKey" -> backerPK)
     build(env, "CrowdFunding", crowdFundingScript,
       BlockValue(Array(

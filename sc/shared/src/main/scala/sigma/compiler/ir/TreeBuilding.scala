@@ -1,14 +1,9 @@
 package sigma.compiler.ir
 
-import org.ergoplatform._
-import sigma.VersionContext
-import sigma.Evaluation.{rtypeToSType, stypeToRType}
-import sigma.ast.SType.tT
 import sigma.ast._
 import sigma.ast.syntax.{ValueOps, _}
 import sigma.serialization.OpCodes._
 import sigma.serialization.ConstantStore
-import sigma.data.{ProveDHTuple, ProveDlog}
 import sigma.serialization.ValueCodes.OpCode
 
 import scala.collection.mutable.ArrayBuffer
@@ -26,27 +21,6 @@ import scala.collection.mutable.ArrayBuffer
   * @see buildTree method
   * */
 trait TreeBuilding extends Base { IR: IRContext =>
-  import BigInt._
-  import Box._
-  import Coll._
-  import CollBuilder._
-  import Context._
-  import GroupElement._
-  import Liftables._
-  import SigmaDslBuilder._
-  import SigmaProp._
-  import WOption._
-
-  /** Convenience synonyms for easier pattern matching. */
-  private val ContextM = ContextMethods
-  private val SigmaM = SigmaPropMethods
-  private val CollM = CollMethods
-  private val BoxM = BoxMethods
-  private val CBM = CollBuilderMethods
-  private val SDBM = SigmaDslBuilderMethods
-  private val OM = WOptionMethods
-  private val BIM = BigIntMethods
-  private val GM = GroupElementMethods
 
   /** Describes assignment of valIds for symbols which become ValDefs.
     * Each ValDef in current scope have entry in this map */
@@ -137,22 +111,17 @@ trait TreeBuilding extends Base { IR: IRContext =>
   /** Recognizes context property in the graph IR and returns the corresponding
     * ErgoTree node.
     */
+  private val HeightCall  = CallPattern(SContextMethods.heightMethod)
+  private val InputsCall  = CallPattern(SContextMethods.inputsMethod)
+  private val OutputsCall = CallPattern(SContextMethods.outputsMethod)
+  private val SelfCall    = CallPattern(SContextMethods.selfMethod)
+
   object IsContextProperty {
     def unapply(d: Def[_]): Option[SValue] = d match {
-      case ContextM.HEIGHT(_) => Some(Height)
-      case ContextM.INPUTS(_) => Some(Inputs)
-      case ContextM.OUTPUTS(_) => Some(Outputs)
-      case ContextM.SELF(_) => Some(Self)
-      case _ => None
-    }
-  }
-
-  /** Recognizes special graph IR nodes which typically have many usages, but
-    * for which no ValDefs should be created.
-    */
-  object IsInternalDef {
-    def unapply(d: Def[_]): Option[Def[_]] = d match {
-      case _: SigmaDslBuilder | _: CollBuilder => Some(d)
+      case HeightCall(_, _) => Some(Height)
+      case InputsCall(_, _) => Some(Inputs)
+      case OutputsCall(_, _) => Some(Outputs)
+      case SelfCall(_, _) => Some(Self)
       case _ => None
     }
   }
@@ -165,11 +134,38 @@ trait TreeBuilding extends Base { IR: IRContext =>
     }
   }
 
+  /** Emits a plain `MethodCall` ErgoTree node for a call of `m` without a lowering row. A Coll
+    * receiver substitutes only the collection's type variables (`tIV`, and `tOV` for flatMap and
+    * zip); any other receiver specialises the generic descriptor for the receiver and argument
+    * types and applies the call's explicit type substitution.
+    */
+  def plainMethodCall(mc: MethodCall, m: SMethod, obj: SValue, args: Seq[SValue]): SValue = {
+    if (mc.receiver.elem.isInstanceOf[CollElem[_]]) {
+      val generic = m.objType.getMethodById(m.methodId).getOrElse(error(s"unknown method Coll.${m.name}"))
+      val col = obj.asCollection[SType]
+      val typeSubst = (generic, args) match {
+        case (SCollectionMethods.FlatMapMethod, Seq(f)) =>
+          Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
+        case (SCollectionMethods.ZipMethod, Seq(coll)) =>
+          Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
+        case _ => EmptySubst
+      }
+      val specMethod = generic.withConcreteTypes(typeSubst + (SCollection.tIV -> col.tpe.elemType))
+      builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
+    } else {
+      val generic = m.objType.getMethodById(m.methodId)
+        .getOrElse(error(s"Cannot find method '${m.name}' on receiver of type ${obj.tpe}"))
+      val typeSubst = mc.typeSubst
+      val specMethod = generic.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
+      builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
+    }
+  }
+
   /** Transforms the given graph node into the corresponding ErgoTree node.
     * It is mutually recursive with processAstGraph, so it's part of the recursive
     * algorithms required by buildTree method.
     */
-  private def buildValue(ctx: Ref[Context],
+  private def buildValue(ctx: Ref[sigma.Context],
                  mainG: PGraph,
                  env: DefEnv,
                  s: Sym,
@@ -203,19 +199,15 @@ trait TreeBuilding extends Base { IR: IRContext =>
               .asInstanceOf[ConstantNode[SType]]
             s.put(constant)(builder)
           case None =>
-            if(x.isInstanceOf[CollConst[_, _]]) { // hack used to process NumericToBigEndianBytes only
-              mkConstant[tpe.type](x.asInstanceOf[CollConst[_, _]].constValue.asInstanceOf[tpe.WrappedType], tpe)
-            } else {
-              mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
-            }
+            mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
         }
       case Def(IR.ConstantPlaceholder(id, elem)) =>
         val tpe = elemToSType(elem)
         mkConstantPlaceholder[tpe.type](id, tpe)
 
-      case Def(wc: LiftedConst[a,_]) =>
+      case Def(DslConst(x)) =>
         val tpe = elemToSType(s.elem)
-        mkConstant[tpe.type](wc.constValue.asInstanceOf[tpe.WrappedType], tpe)
+        mkConstant[tpe.type](x.asInstanceOf[tpe.WrappedType], tpe)
 
       case Def(DeserializeContextDef(d, _)) =>
         d
@@ -272,184 +264,24 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(ApplyUnOp(IsLogicalUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
 
-      case CBM.fromItems(_, colSyms, elemT) =>
-        val elemTpe = elemToSType(elemT)
-        val col = colSyms.map(recurse(_).asValue[elemTpe.type])
-        mkConcreteCollection[elemTpe.type](col.toArray[Value[elemTpe.type]], elemTpe)
-      case CBM.xor(_, colSym1, colSym2) =>
-        mkXor(recurse(colSym1), recurse(colSym2))
-      case SDBM.xor(_, colSym1, colSym2) =>
-        mkXor(recurse(colSym1), recurse(colSym2))
 
-      case ContextM.getVar(_, Def(Const(id)), eVar) =>
-        val tpe = elemToSType(eVar)
-        mkGetVar(id, tpe)
-
-      case SDBM.deserializeTo(g, bytes, eVar) =>
-        val tpe = elemToSType(eVar)
-        val typeSubst = Map(tT -> tpe): STypeSubst
-        // method specialization done to avoid serialization roundtrip issues
-        val method = SGlobalMethods.deserializeToMethod.withConcreteTypes(typeSubst)
-        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(bytes)), typeSubst)
-
-      case SDBM.serialize(g, value) =>
-        val valueTpe = elemToSType(value.elem)
-        val typeSubst = Map(tT -> valueTpe): STypeSubst
-        val method = SGlobalMethods.serializeMethod.withConcreteTypes(typeSubst)
-        builder.mkMethodCall(recurse(g), method, IndexedSeq(recurse(value)), Map.empty)
-
-      case BIM.subtract(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MinusCode)
-      case BIM.add(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, PlusCode)
-      case BIM.multiply(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MultiplyCode)
-      case BIM.divide(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, DivisionCode)
-      case BIM.mod(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, ModuloCode)
-      case BIM.min(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MinCode)
-      case BIM.max(In(x), In(y)) =>
-        mkArith(x.asNumValue, y.asNumValue, MaxCode)
 
       case Def(ApplyUnOp(IsNumericUnOp(mkNode), xSym)) =>
         mkNode(recurse(xSym))
 
-      case CollM.apply(colSym, In(index)) =>
-        val col = recurse(colSym)
-        mkByIndex(col, index.asIntValue, None)
-      case CollM.length(col) =>
-        sigma.ast.SizeOf(recurse(col).asCollection[SType])
-      case CollM.exists(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkExists(col.asCollection[SType], p.asFunc)
-      case CollM.forall(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkForAll(col.asCollection[SType], p.asFunc)
-      case CollM.map(colSym, fSym) =>
-        val Seq(col, f) = Seq(colSym, fSym).map(recurse)
-        mkMapCollection(col.asCollection[SType], f.asFunc)
-      case CollM.getOrElse(colSym, In(index), defValSym) =>
-        val col = recurse(colSym)
-        val defVal = recurse(defValSym)
-        mkByIndex(col, index.asIntValue, Some(defVal))
-      case CollM.append(col1Sym, col2Sym) =>
-        val Seq(col1, col2) = Seq(col1Sym, col2Sym).map(recurse)
-        mkAppend(col1, col2)
-      case CollM.slice(colSym, In(from), In(until)) =>
-        mkSlice(recurse(colSym), from.asIntValue, until.asIntValue)
-      case CollM.foldLeft(colSym, zeroSym, pSym) =>
-        val Seq(col, zero, p) = Seq(colSym, zeroSym, pSym).map(recurse)
-        mkFold(col, zero, p.asFunc)
-      case CollM.filter(colSym, pSym) =>
-        val Seq(col, p) = Seq(colSym, pSym).map(recurse)
-        mkFilter(col.asCollection[SType], p.asFunc)
-
-      case Def(MethodCall(receiver, m, argsSyms, _)) if receiver.elem.isInstanceOf[CollElem[_, _]] =>
-        val colSym = receiver.asInstanceOf[Ref[Coll[Any]]]
-        val args = argsSyms.map(_.asInstanceOf[Sym]).map(recurse)
-        val col = recurse(colSym).asCollection[SType]
-        val colTpe = col.tpe
-        val method = SCollectionMethods.methods.find(_.name == m.getName).getOrElse(error(s"unknown method Coll.${m.getName}"))
-        val typeSubst = (method, args) match {
-          case (_ @ SCollectionMethods.FlatMapMethod, Seq(f)) =>
-            val typeSubst = Map(SCollection.tOV -> f.asFunc.tpe.tRange.asCollection.elemType)
-            typeSubst
-          case (_ @ SCollectionMethods.ZipMethod, Seq(coll)) =>
-            val typeSubst = Map(SCollection.tOV -> coll.asCollection[SType].tpe.elemType)
-            typeSubst
-          case (_, _) => EmptySubst
-        }
-        val specMethod = method.withConcreteTypes(typeSubst + (SCollection.tIV -> colTpe.elemType))
-        builder.mkMethodCall(col, specMethod, args.toIndexedSeq, Map())
-
-      case BoxM.value(In(box)) =>
-        mkExtractAmount(box.asBox)
-      case BoxM.propositionBytes(In(box)) =>
-        mkExtractScriptBytes(box.asBox)
-      case BoxM.getReg(In(box), regId, _) if regId.isConst =>
-        val tpe = elemToSType(s.elem).asOption
-        mkExtractRegisterAs(box.asBox, ErgoBox.allRegisters(valueFromRep(regId)), tpe)
-     case BoxM.creationInfo(In(box)) =>
-        mkExtractCreationInfo(box.asBox)
-      case BoxM.id(In(box)) =>
-        mkExtractId(box.asBox)
-      case BoxM.bytes(In(box)) =>
-        mkExtractBytes(box.asBox)
-      case BoxM.bytesWithoutRef(In(box)) =>
-        mkExtractBytesWithNoRef(box.asBox)
-
-      case OM.get(In(optionSym)) =>
-        mkOptionGet(optionSym.asValue[SOption[SType]])
-      case OM.getOrElse(In(optionSym), In(defVal)) =>
-        mkOptionGetOrElse(optionSym.asValue[SOption[SType]], defVal)
-      case OM.isDefined(In(optionSym)) =>
-        mkOptionIsDefined(optionSym.asValue[SOption[SType]])
-
-      case SigmaM.and_sigma_&&(In(p1), In(p2)) =>
-        SigmaAnd(Seq(p1.asSigmaProp, p2.asSigmaProp))
-      case SigmaM.or_sigma_||(In(p1), In(p2)) =>
-        SigmaOr(Seq(p1.asSigmaProp, p2.asSigmaProp))
-      case SigmaM.propBytes(In(prop)) =>
-        mkSigmaPropBytes(prop.asSigmaProp)
-
-      case Def(AnyZk(_, colSyms, _)) =>
+      case Def(AnyZk(colSyms)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)
         SigmaOr(col)
-      case Def(AllZk(_, colSyms, _)) =>
+      case Def(AllZk(colSyms)) =>
         val col = colSyms.map(recurse(_).asSigmaProp)
         SigmaAnd(col)
 
-      case Def(AnyOf(_, colSyms, _)) =>
+      case Def(AnyOf(colSyms)) =>
         val col = colSyms.map(recurse(_).asBoolValue)
         mkAnyOf(col)
-      case Def(AllOf(_, colSyms, _)) =>
+      case Def(AllOf(colSyms)) =>
         val col = colSyms.map(recurse(_).asBoolValue)
         mkAllOf(col)
-
-      case SDBM.allOf(_,  items) =>
-        mkAND(recurse(items))
-      case SDBM.anyOf(_,  items) =>
-        mkOR(recurse(items))
-      case SDBM.atLeast(_, bound, items) =>
-        mkAtLeast(recurse(bound), recurse(items))
-      case Def(SDBM.xorOf(_,  items)) =>
-        mkXorOf(recurse(items))
-
-      case Def(SDBM.sigmaProp(_, In(cond))) =>
-        mkBoolToSigmaProp(cond.asBoolValue)
-      case SDBM.proveDlog(_, In(g)) =>
-        g match {
-          case gc: Constant[SGroupElement.type]@unchecked => SigmaPropConstant(ProveDlog(gc.value))
-          case _ => mkCreateProveDlog(g.asGroupElement)
-        }
-      case SDBM.proveDHTuple(_, In(g), In(h), In(u), In(v)) =>
-        (g, h, u, v) match {
-          case (gc: Constant[SGroupElement.type]@unchecked,
-          hc: Constant[SGroupElement.type]@unchecked,
-          uc: Constant[SGroupElement.type]@unchecked,
-          vc: Constant[SGroupElement.type]@unchecked) =>
-            SigmaPropConstant(ProveDHTuple(gc.value, hc.value, uc.value, vc.value))
-          case _ =>
-            mkCreateProveDHTuple(g.asGroupElement, h.asGroupElement, u.asGroupElement, v.asGroupElement)
-        }
-      case SDBM.sigmaProp(_, In(cond)) => // TODO refactor: remove or cover by tests: it is never executed
-        mkBoolToSigmaProp(cond.asBoolValue)
-      case SDBM.byteArrayToBigInt(_, colSym) =>
-        mkByteArrayToBigInt(recurse(colSym))
-      case SDBM.sha256(_, colSym) =>
-        mkCalcSha256(recurse(colSym))
-      case SDBM.blake2b256(_, colSym) =>
-        mkCalcBlake2b256(recurse(colSym))
-      case SDBM.longToByteArray(_, longSym) =>
-        mkLongToByteArray(recurse(longSym))
-      case SDBM.byteArrayToLong(_, colSym) =>
-        mkByteArrayToLong(recurse(colSym))
-      case SDBM.decodePoint(_, colSym) =>
-        mkDecodePoint(recurse(colSym))
-      case SDBM.substConstants(_, In(scriptBytes), In(positions), In(newValues)) =>
-        mkSubstConst(scriptBytes.asByteArray, positions.asIntArray, newValues.asCollection[SType])
 
       case Def(IfThenElseLazy(condSym, thenPSym, elsePSym)) =>
         val Seq(cond, thenP, elseP) = Seq(condSym, thenPSym, elsePSym).map(recurse)
@@ -467,23 +299,18 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case Def(Upcast(inputSym, toSym)) =>
         mkUpcast(recurse(inputSym).asNumValue, elemToSType(toSym).asNumType)
 
-      case GM.exp(In(obj), In(arg)) =>
-        mkExponentiate(obj.asGroupElement, arg.asBigInt)
-
-      case GM.multiply(In(obj), In(arg)) =>
-        mkMultiplyGroup(obj.asGroupElement, arg.asGroupElement)
-
-      // Fallback MethodCall rule: should be the last in this list of cases
-      case Def(mc @ MethodCall(objSym, m, argSyms, _)) =>
+      // Call nodes: the lowering row when the callee has a dedicated ErgoTree node, else a plain
+      // MethodCall rebuilt from the method descriptor. A global builtin's receiver is the global
+      // object, which recurses to Global above and which its row ignores.
+      case Def(mc @ MethodCall(objSym, callee, argSyms, _)) =>
         val obj = recurse[SType](objSym)
-        val args = argSyms.collect { case argSym: Sym => recurse[SType](argSym) }
-        MethodsContainer.getMethod(obj.tpe, m.getName) match {
-          case Some(method) =>
-            val typeSubst = mc.typeSubst
-            val specMethod = method.specializeFor(obj.tpe, args.map(_.tpe)).withConcreteTypes(typeSubst)
-            builder.mkMethodCall(obj, specMethod, args.toIndexedSeq, typeSubst)
-          case None =>
-            error(s"Cannot find method '${m.getName}' on receiver of type ${obj.tpe}")
+        val args = argSyms.map(recurse[SType])
+        loweringFor(callee) match {
+          case Some(row) => row(mc, obj, args)
+          case None => callee match {
+            case MethodCallee(m) => plainMethodCall(mc, m, obj, args)
+            case _ => error(s"No ErgoTree lowering for $callee")
+          }
         }
 
       case Def(d) =>
@@ -495,7 +322,7 @@ trait TreeBuilding extends Base { IR: IRContext =>
     * It is mutually recursive with buildValue, so it's part of the recursive
     * algorithms required by buildTree method.
     */
-  private def processAstGraph(ctx: Ref[Context],
+  private def processAstGraph(ctx: Ref[sigma.Context],
                               mainG: PGraph,
                               env: DefEnv,
                               subG: AstGraph,
@@ -508,7 +335,6 @@ trait TreeBuilding extends Base { IR: IRContext =>
       val d = s.node
       if (mainG.hasManyUsagesGlobal(s)
         && IsContextProperty.unapply(d).isEmpty
-        && IsInternalDef.unapply(d).isEmpty
           // to increase effect of constant segregation we need to treat the constants specially
           // and don't create ValDef even if the constant is used more than one time,
           // because two equal constants don't always have the same meaning.
@@ -543,11 +369,11 @@ trait TreeBuilding extends Base { IR: IRContext =>
     *                            segregated and a placeholder is inserted in the resulting expression.
     * @return expression of ErgoTree which corresponds to the function `f`
     */
-  def buildTree[T <: SType](f: Ref[Context => Any],
+  def buildTree[T <: SType](f: Ref[sigma.Context => Any],
                             constantsProcessing: Option[ConstantStore] = None): Value[T] = {
     val Def(Lambda(lam,_,_,_)) = f
     val mainG = new PGraph(lam.y)
-    val block = processAstGraph(asRep[Context](lam.x), mainG, Map.empty, mainG, 0, constantsProcessing)
+    val block = processAstGraph(asRep[sigma.Context](lam.x), mainG, Map.empty, mainG, 0, constantsProcessing)
     block.asValue[T]
   }
 }

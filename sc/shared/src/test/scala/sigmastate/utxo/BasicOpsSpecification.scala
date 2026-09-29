@@ -43,7 +43,6 @@ import sigmastate.utils.Helpers._
 
 import java.math.BigInteger
 import scala.collection.compat.immutable.ArraySeq
-import java.security.SecureRandom
 import scala.annotation.tailrec
 import scala.util.Try
 
@@ -478,10 +477,11 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val g = CGroupElement(SecP256K1Group.generator)
 
+    // the random values end up in the script: see Platform.testSeed for how the seed is chosen
+    val rnd = new java.util.Random(scalan.Platform.testSeed(20260913L))
     def randBigInt: BigInt = {
-      val random = new SecureRandom()
       val values = new Array[Byte](32)
-      random.nextBytes(values)
+      rnd.nextBytes(values)
       BigInt(values).mod(td.TestData.BigIntMaxValue.asInstanceOf[CBigInt].wrappedValue)
     }
 
@@ -774,7 +774,9 @@ class BasicOpsSpecification extends CompilerTestingCommons
     // For this test we use n=4 bits, proving v ∈ [0, 16)
     val n = 4
     val v = BigInteger.valueOf(9) // secret value to prove is in range
-    val r = new BigInteger(256, new SecureRandom()).mod(q) // blinding factor
+    // the derived points end up in the script: see Platform.testSeed for how the seed is chosen
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260914L))
+    val r = new BigInteger(256, rng).mod(q) // blinding factor
 
     // Pedersen commitment: V = v*G + r*H
     val V = group.multiplyGroupElements(
@@ -799,10 +801,10 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }.toArray
 
     // Random blinding scalars
-    val alpha = new BigInteger(256, new SecureRandom()).mod(q)
-    val rho = new BigInteger(256, new SecureRandom()).mod(q)
-    val sL = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
-    val sR = (0 until n).map(_ => new BigInteger(256, new SecureRandom()).mod(q)).toArray
+    val alpha = new BigInteger(256, rng).mod(q)
+    val rho = new BigInteger(256, rng).mod(q)
+    val sL = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
+    val sR = (0 until n).map(_ => new BigInteger(256, rng).mod(q)).toArray
 
     // A = h^alpha * gs^aL * hs^aR (vector Pedersen commitment to aL, aR)
     var A = group.exponentiate(H, alpha)
@@ -854,8 +856,8 @@ class BasicOpsSpecification extends CompilerTestingCommons
     }
 
     // T1 = t1*G + tau1*H, T2 = t2*G + tau2*H
-    val tau1 = new BigInteger(256, new SecureRandom()).mod(q)
-    val tau2 = new BigInteger(256, new SecureRandom()).mod(q)
+    val tau1 = new BigInteger(256, rng).mod(q)
+    val tau2 = new BigInteger(256, rng).mod(q)
     val T1 = group.multiplyGroupElements(
       group.exponentiate(G, t1), group.exponentiate(H, tau1))
     val T2 = group.multiplyGroupElements(
@@ -1187,7 +1189,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
 
     val n = 64
     val logN = 6
-    val rng = new SecureRandom()
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260915L)) // derived points end up in the script
 
     // Random 64-bit value
     val v = new BigInteger(63, rng) // [0, 2^63) to stay within range
@@ -1672,7 +1674,7 @@ $lrFoldScript
     val H = group.exponentiate(G, new BigInteger(1,
       Blake2b256("Bulletproof_H_generator".getBytes("UTF-8"))).mod(q))
 
-    val rng = new SecureRandom()
+    val rng = new java.util.Random(scalan.Platform.testSeed(20260916L)) // derived points end up in the script
     val r = new BigInteger(256, rng).mod(q)
 
     val V = group.multiplyGroupElements(
