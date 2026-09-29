@@ -48,6 +48,11 @@ class CoreDataSerializer {
     case SAvlTree =>
       AvlTreeData.serializer.serialize(v.asInstanceOf[AvlTree].toAvlTreeData, w)
     case tColl: SCollectionType[a] =>
+      // Zero-width elements occupy no bytes in the serialized form, so such
+      // collections cannot be deserialized (see deserializeColl); fail early.
+      if (isZeroWidth(tColl.elemType))
+        throw new SerializerException(
+          s"Collection with zero-width element type ${tColl.elemType} cannot be serialized")
       val coll = v.asInstanceOf[tColl.WrappedType]
       w.putUShort(coll.length)
       tColl.elemType match {

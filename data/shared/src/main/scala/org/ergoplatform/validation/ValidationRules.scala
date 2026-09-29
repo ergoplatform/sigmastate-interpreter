@@ -170,10 +170,9 @@ object ValidationRules {
       checkRule()
 
       def v6TypeCheck(tpe: SType): Unit = {
-        if (tpe.isOption || tpe.typeCode == SHeader.typeCode ||
-            tpe.typeCode == SUnsignedBigInt.typeCode || tpe.typeCode == SUnit.typeCode) {
+        if (tpe.isOption || tpe.typeCode == SHeader.typeCode || tpe.typeCode == SUnsignedBigInt.typeCode) {
           throwValidationException(
-            SerializerException(s"Invalid type used in register or context var extension: $tpe"),
+            SerializerException(s"V6 type used in register or context var extension: $tpe"),
             Array[Any](tpe))
         }
       }
