@@ -276,6 +276,30 @@ object SigmaPredef {
           Seq(ArgInfo("input", "collection of bytes")))
     )
 
+    val ErgoTreeEqualNoHeaderFunc = PredefinedFunc("ergoTreeEqualNoHeader",
+      Lambda(Array("tree1" -> SByteArray, "tree2" -> SByteArray), SBoolean, None),
+      PredefFuncInfo(
+        { case (_, Seq(t1: Value[SByteArray]@unchecked, t2: Value[SByteArray]@unchecked)) =>
+          // compare serialized ErgoTrees ignoring the first (header) byte of each tree,
+          // i.e. ergoTreeEqualNoHeader(tree1, tree2) ==
+          //   (tree1.slice(1, tree1.size) == tree2.slice(1, tree2.size))
+          mkEQ(
+            mkSlice(t1, IntConstant(1), mkSizeOf(t1)),
+            mkSlice(t2, IntConstant(1), mkSizeOf(t2)))
+        }),
+      OperationInfo(None,
+        """Compares two serialized ErgoTree instances (\lst{Coll[Byte]}) for equality,
+         | ignoring the header byte (the first byte of each serialized tree).
+         | This is a frontend-only function: it is desugared into a comparison of the
+         | tree bytes with the header byte skipped.
+         | Returns \lst{true} if both trees have equal bytes after the header byte,
+         | \lst{false} otherwise.
+        """.stripMargin,
+        Seq(
+          ArgInfo("tree1", "serialized ErgoTree bytes"),
+          ArgInfo("tree2", "serialized ErgoTree bytes")))
+    )
+
     val ByteArrayToBigIntFunc = PredefinedFunc("byteArrayToBigInt",
       Lambda(Array("input" -> SByteArray), SBigInt, None),
       PredefFuncInfo(
@@ -548,6 +572,7 @@ object SigmaPredef {
       FromBase58Func,
       Blake2b256Func,
       Sha256Func,
+      ErgoTreeEqualNoHeaderFunc,
       ByteArrayToBigIntFunc,
       ByteArrayToLongFunc,
       DecodePointFunc,

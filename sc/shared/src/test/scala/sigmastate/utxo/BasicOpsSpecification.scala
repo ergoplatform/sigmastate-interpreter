@@ -4592,6 +4592,53 @@ $lrFoldScript
     )
   }
 
+  property("ergoTreeEqualNoHeader") {
+    // serialized ErgoTree bytes: first byte is the header byte, the rest is the tree body
+    val treeBytes1 = ByteArrayConstant(Array[Byte](0.toByte, 10.toByte, 20.toByte))
+    val treeBytes2 = ByteArrayConstant(Array[Byte](1.toByte, 10.toByte, 20.toByte)) // same body, different header byte
+    val treeBytes3 = ByteArrayConstant(Array[Byte](0.toByte, 10.toByte, 21.toByte)) // different body
+    val treeEnv = env + ("tree1" -> treeBytes1, "tree2" -> treeBytes2, "tree3" -> treeBytes3)
+
+    // the expected tree is obtained by compiling the desugared equivalent of the
+    // function call with the same env; both go through the identical compiler
+    // pipeline (including constant folding), so the shapes always match
+    def expectedNoHeaderEq(n1: String, n2: String): SValue =
+      withVersions(VersionContext.MaxSupportedScriptVersion, VersionContext.MaxSupportedScriptVersion) {
+        compile(treeEnv, s"$n1.slice(1, $n1.size) == $n2.slice(1, $n2.size)").asBoolValue.toSigmaProp
+      }
+
+    test("ergoTreeEqualNoHeader_sameBody",
+      treeEnv, ext,
+      "ergoTreeEqualNoHeader(tree1, tree2)",
+      expectedNoHeaderEq("tree1", "tree2"),
+      true
+    )
+
+    test("ergoTreeEqualNoHeader_identical",
+      treeEnv, ext,
+      "ergoTreeEqualNoHeader(tree1, tree1)",
+      expectedNoHeaderEq("tree1", "tree1"),
+      true
+    )
+
+    test("ergoTreeEqualNoHeader_differentBody",
+      treeEnv, ext,
+      "ergoTreeEqualNoHeader(tree1, tree3) == false",
+      null,
+      true
+    )
+
+    // the function encapsulates the hand-rolled pattern from the issue:
+    // blake2b256(tree.slice(1, tree.size))
+    test("ergoTreeEqualNoHeader_matchesSlicePattern",
+      treeEnv, ext,
+      """ergoTreeEqualNoHeader(tree1, tree2) ==
+        |  (blake2b256(tree1.slice(1, tree1.size)) == blake2b256(tree2.slice(1, tree2.size)))""".stripMargin,
+      null,
+      true
+    )
+  }
+
   property("user defined function") {
     test("function", env, ext,
       "{ def inc(i: Int) = i + 1; inc(2) == 3 }",

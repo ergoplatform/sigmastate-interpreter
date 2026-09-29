@@ -1118,6 +1118,12 @@ def blake2b256(input: Coll[Byte]): Coll[Byte]
 /** Cryptographic hash function Sha256 (See scorex.crypto.hash.Sha256) */
 def sha256(input: Coll[Byte]): Coll[Byte]
 
+/** Compares two serialized ErgoTree instances (Coll[Byte]) for equality, ignoring
+ * the header byte (the first byte of each serialized tree).
+ * Frontend-only function, desugared to tree1.slice(1, tree1.size) == tree2.slice(1, tree2.size).
+ * Returns true if both trees have equal bytes after the header byte, false otherwise. */
+def ergoTreeEqualNoHeader(tree1: Coll[Byte], tree2: Coll[Byte]): Boolean
+
 /** Create an instance of type T from bytes of its wrapped type. 
 See https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979 for more details */
 def deserializeTo[T](input: Coll[Byte]): T
