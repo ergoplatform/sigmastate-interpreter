@@ -1,7 +1,7 @@
 package sigma.validation
 
 import sigma.{SigmaException, VersionContext}
-import sigma.ast.{SGlobal, SOption, TypeCodes}
+import sigma.ast.{SGlobal, SOption, SType, TypeCodes}
 import sigma.serialization.{ReaderPositionLimitExceeded, SerializerException}
 import sigma.util.Extensions.toUByte
 import sigma.serialization.TypeSerializer.embeddableIdToType
@@ -191,12 +191,32 @@ object ValidationRules {
     }
   }
 
+  /** Zero-width element types (SUnit and composites built only from it, e.g.
+    * Coll[Unit] or (Unit, Unit)) consume no input bytes when deserialized, so their
+    * declared collection length is not bounded by CheckPositionLimit.
+    * Introduced after v6.0.6, soft-forkable via SoftForkWhenReplaced.
+    */
+  object CheckZeroWidthCollection extends ValidationRule(1020,
+    "Check that elements of a deserialized collection are not zero-width.")
+      with SoftForkWhenReplaced {
+    override protected def settings: SigmaValidationSettings = coreSettings
+
+    final def apply(tpe: SType): Unit = {
+      checkRule()
+      throwValidationException(
+        new SerializerException(
+          s"Collection with zero-width element type $tpe cannot be deserialized"),
+        Array[Any](tpe))
+    }
+  }
+
   private val ruleSpecsV5: Seq[ValidationRule] = Seq(
     CheckPrimitiveTypeCode,
     CheckTypeCode,
     CheckSerializableTypeCode,
     CheckTypeWithMethods,
-    CheckPositionLimit
+    CheckPositionLimit,
+    CheckZeroWidthCollection
   )
 
   private val ruleSpecsV6: Seq[ValidationRule] = Seq(
@@ -204,7 +224,8 @@ object ValidationRules {
     CheckTypeCodeV6,
     CheckSerializableTypeCode,
     CheckTypeWithMethods,
-    CheckPositionLimit
+    CheckPositionLimit,
+    CheckZeroWidthCollection
   )
 
   private def coreSettingsTemplate(ruleSpecs: Seq[ValidationRule]): SigmaValidationSettings = {
