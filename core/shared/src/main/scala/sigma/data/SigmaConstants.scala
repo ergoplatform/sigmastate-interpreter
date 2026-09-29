@@ -1,6 +1,6 @@
 package sigma.data
 
-import sigma.util.CollectionUtil.TraversableOps // used in Scala 2.11
+import sigma.util.CollectionUtil.TraversableOps // provides distinctBy on Scala 2.12
 
 /** Descriptor of a constant which represents some size value.
   * @tparam T type of the constant value
@@ -78,6 +78,10 @@ object SigmaConstants {
     "size of nonce array from Autolykos POW solution in Header.powNonce array") {
   }
 
+  object MaxTypeDepth extends SizeConstant[Int](8, 16,
+    "Type descriptor nesting depth should not be greater than provided value") {
+  }
+
   /** List of registered size constants with unique ids. */
   val ConstTable: Seq[SizeConstant[_]] = {
     val rows = Seq(
@@ -94,7 +98,8 @@ object SigmaConstants {
       MaxChildrenCountForAtLeastOp,
       MaxLoopLevelInCostFunction,
       VotesArraySize,
-      AutolykosPowSolutionNonceArraySize
+      AutolykosPowSolutionNonceArraySize,
+      MaxTypeDepth
     )
     require(rows.length == rows.distinctBy(_.id).length, s"Duplicate constant id in $rows")
     rows

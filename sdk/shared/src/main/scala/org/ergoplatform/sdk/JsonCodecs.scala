@@ -20,7 +20,6 @@ import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
 import sigma.validation.SigmaValidationSettings
 import sigma.{AnyValue, Coll, Colls, Header, PreHeader, SigmaException}
 import sigmastate.eval.{CPreHeader, _}
-import sigmastate.utils.Helpers._   // required for Scala 2.11
 
 import java.math.BigInteger
 import scala.collection.mutable

@@ -7,7 +7,6 @@ import sigma.compiler.ir.wrappers.sigma.impl.CollsDefs
 import scala.collection.compat.immutable.ArraySeq
 
 package impl {
-  import sigma.compiler.ir.meta.ModuleInfo
   import sigma.compiler.ir.{Base, GraphIRReflection, IRContext}
   import sigma.data.{Nullable, RType}
   import sigma.reflection.{RClass, RMethod}
@@ -16,8 +15,6 @@ package impl {
 /** Implementation part of IR represenation related to Coll type and methods. */
 trait CollsDefs extends Base with Colls {
   self: IRContext =>
-
-  registerModule(CollsModule)
 
 import Coll._
 import CollBuilder._
@@ -696,9 +693,6 @@ object CollBuilder extends EntityObject("CollBuilder") {
 
 }
 
-object CollsModule extends ModuleInfo("sigma", "Colls") {
-  val reflection = GraphIRReflection
-}
 }
 
 trait CollsModule extends CollsDefs {self: IRContext =>}

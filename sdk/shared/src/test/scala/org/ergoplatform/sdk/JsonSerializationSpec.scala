@@ -16,7 +16,7 @@ import sigma.ast._
 import sigma.crypto.CryptoConstants
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.serialization.SerializationSpecification
-import sigmastate.utils.Helpers.DecoderResultOps  // required for Scala 2.11
+import sigmastate.utils.Helpers.DecoderResultOps
 
 class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
 

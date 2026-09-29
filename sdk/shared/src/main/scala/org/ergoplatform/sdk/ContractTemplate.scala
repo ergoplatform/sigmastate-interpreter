@@ -1,6 +1,5 @@
 package org.ergoplatform.sdk
 
-import cats.syntax.either._ // required for Scala 2.11
 import debox.cfor
 import io.circe._
 import io.circe.syntax.EncoderOps

@@ -192,7 +192,7 @@ object CollectionUtil {
       xs.asInstanceOf[Source[B]]
     }
 
-    /** This methods is for compatibility with Scala 2.11. */
+    /** Needed while cross-building for Scala 2.12: stdlib `distinctBy` exists since 2.13. */
     def distinctBy[K](key: A => K)
         (implicit cbf: BuildFrom[Source[A], A, Source[A]]): Source[A] = {
       val keys = mutable.Set[K]()

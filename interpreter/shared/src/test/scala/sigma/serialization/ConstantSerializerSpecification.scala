@@ -86,7 +86,7 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     forAll { x: AvlTree => roundTripTest(Constant[SAvlTree.type](x, SAvlTree)) }
     forAll { x: Header => roundTripTest(Constant[SHeader.type](x, SHeader), Some(VersionContext.V6SoftForkVersion)) }
     forAll { x: Array[Byte] => roundTripTest(Constant[SByteArray](x.toColl, SByteArray)) }
-    forAll { t: SPredefType => testCollection(t) }
+    forAll { t: SPredefType => whenever(t != SUnit) { testCollection(t) } }
     forAll { t: SPredefType => testTuples(t) }
   }
 
@@ -99,7 +99,8 @@ class ConstantSerializerSpecification extends TableSerializationSpecification {
     testCollection(SBigInt)
     testCollection(SGroupElement)
     testCollection(SSigmaProp)
-    testCollection(SUnit)
+    // NOTE: SUnit collections are intentionally not round-trip tested: deserialization
+    // of zero-width collection elements is rejected (CheckZeroWidthCollection)
     testCollection(SBox)
     testCollection(SAvlTree)
     testCollection(SHeader)

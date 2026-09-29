@@ -156,9 +156,11 @@ class DataSerializerSpecification extends SerializationSpecification {
     forAll { x: AvlTree => roundtrip[SAvlTree.type](x, SAvlTree) }
     forAll { x: Array[Byte] => roundtrip[SByteArray](x.toColl, SByteArray) }
     forAll { x: Header => roundtrip[SHeader.type](x, SHeader, Some(VersionContext.V6SoftForkVersion)) }
-    forAll { t: SPredefType => testCollection(t) }
+    // NOTE: SUnit is excluded from collection/option-of-collection round trips:
+    // deserialization of zero-width collection elements is rejected (CheckZeroWidthCollection)
+    forAll { t: SPredefType => whenever(t != SUnit) { testCollection(t) } }
     forAll { t: SPredefType => testTuples(t) }
-    forAll { t: SPredefType => testOption(t) }
+    forAll { t: SPredefType => whenever(t != SUnit) { testOption(t) } }
   }
 
   property("Should check limits and fail") {

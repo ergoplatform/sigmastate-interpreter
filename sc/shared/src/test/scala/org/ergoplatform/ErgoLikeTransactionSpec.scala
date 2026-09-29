@@ -21,7 +21,6 @@ import sigma.SigmaDslTesting
 import sigma.Extensions._
 import sigma.ast.SCollection.SByteArray
 import sigmastate.CrossVersionProps
-import sigmastate.utils.Helpers.EitherOps  // required for Scala 2.11
 
   class ErgoLikeTransactionSpec extends SigmaDslTesting with CrossVersionProps with JsonCodecs {
 
