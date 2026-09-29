@@ -10,7 +10,6 @@ import scala.language.existentials
 /** Implements utilites for graph transformation and rewriting.
   * @see Pass
   * @see MapTransformer
-  * @see Rewriter
   */
 trait Transforming { self: IRContext =>
 
@@ -23,8 +22,6 @@ trait Transforming { self: IRContext =>
     def name: String
     /** Configuration parameters of this pass. */
     def config: PassConfig = Pass.defaultPassConfig
-    /** Called when this pass is being finalized. */
-    def doFinalization(): Unit = {}
     /**
       * Pass specific optional decision.
       * @param d receiver of the method
@@ -42,15 +39,8 @@ trait Transforming { self: IRContext =>
 
   /** Configuration parameters of the Pass descriptor. */
   case class PassConfig(
-    /** Whether the pair type `(A,B)` should be specialized to `{_1: A, _2:B} struct type.`.
-      * This is used in structs flattening transformation and can also be used in other way. */
-    shouldUnpackTuples: Boolean = false,
-    /** Turn on/off the RW rule to extract a value of the field if the value is known in the graph. */
-    shouldExtractFields: Boolean = true,
     /** Turn on/off constant propagation RW rules. */
-    constantPropagation: Boolean = true,
-    /** Used in SlicingPass */
-    shouldSlice: Boolean = false)
+    constantPropagation: Boolean = true)
 
   /** Default pass to be used when IR is used without special compiler configuration. */
   class DefaultPass(val name: String, override val config: PassConfig = PassConfig()) extends Pass
@@ -105,46 +95,11 @@ trait Transforming { self: IRContext =>
     def empty(initialCapacity: Int = 100) = new MapTransformer(new util.HashMap[Sym, Sym](initialCapacity))
   }
 
-  abstract class Rewriter { self =>
-    def apply[T](x: Ref[T]): Ref[T]
-
-    def orElse(other: Rewriter): Rewriter = new Rewriter {
-      def apply[T](x: Ref[T]) = {
-        val y = self(x)
-        (x == y) match { case true => other(x) case _ => y }
-      }
-    }
-    def andThen(other: Rewriter): Rewriter = new Rewriter {
-      def apply[T](x: Ref[T]) = {
-        val y = self(x)
-        val res = other(y)
-        res
-      }
-    }
-
-    def |(other: Rewriter) = orElse(other)
-    def ~(other: Rewriter) = andThen(other)
-  }
-
-  /** Turns partial function into rewriter (i.e. set of rewriting rules) */
-  implicit class PartialRewriter(pf: PartialFunction[Sym, Sym]) extends Rewriter {
-    def apply[T](x: Ref[T]): Ref[T] =
-      if (pf.isDefinedAt(x))
-        pf(x).asInstanceOf[Ref[T]]
-      else
-        x
-  }
-
-  /** Identity rewriter, i.e. doesn't change the graph when applied. */
-  val NoRewriting: Rewriter = new Rewriter {
-    def apply[T](x: Ref[T]) = x
-  }
-
   /** Base class for mirrors of graph nodes. Provides default implementations which can be
     * overriden if special logic is required.
     * HOTSPOT: don't beautify the code */
   abstract class Mirror {
-    def apply[A](t: Transformer, rewriter: Rewriter, node: Ref[A], d: Def[A]): Sym = d.mirror(t)
+    def apply[A](t: Transformer, node: Ref[A], d: Def[A]): Sym = d.mirror(t)
 
     protected def mirrorElem(node: Sym): Elem[_] = node.elem
 
@@ -154,8 +109,8 @@ trait Transforming { self: IRContext =>
       t + (v, newVar)
     }
 
-    protected def mirrorDef[A](t: Transformer, rewriter: Rewriter, node: Ref[A], d: Def[A]): Transformer = {
-      val res = apply(t, rewriter, node, d)
+    protected def mirrorDef[A](t: Transformer, node: Ref[A], d: Def[A]): Transformer = {
+      val res = apply(t, node, d)
       t + (node, res)
     }
 
@@ -168,9 +123,9 @@ trait Transforming { self: IRContext =>
       newLambdaDef
     }
 
-    protected def mirrorLambda[A, B](t: Transformer, rewriter: Rewriter, node: Ref[A => B], lam: Lambda[A, B]): Transformer = {
+    protected def mirrorLambda[A, B](t: Transformer, node: Ref[A => B], lam: Lambda[A, B]): Transformer = {
       var tRes: Transformer = t
-      val t1 = mirrorNode(t, rewriter, lam.x)
+      val t1 = mirrorNode(t, lam.x)
 
       // original root
       val originalRoot = lam.y
@@ -187,7 +142,7 @@ trait Transforming { self: IRContext =>
 //        lambdaStack = newLambdaCandidate :: lambdaStack
         val newRoot = { // reifyEffects block
           val schedule = lam.scheduleIds
-          val t2 = mirrorSymbols(t1, rewriter, schedule)
+          val t2 = mirrorSymbols(t1, schedule)
           tRes = t2
           tRes(originalRoot) // this will be a new root
         }
@@ -203,7 +158,7 @@ trait Transforming { self: IRContext =>
       tRes + (node, resLam)
     }
 
-    protected def mirrorThunk[A](t: Transformer, rewriter: Rewriter, node: Ref[Thunk[A]], thunk: ThunkDef[A]): Transformer = {
+    protected def mirrorThunk[A](t: Transformer, node: Ref[Thunk[A]], thunk: ThunkDef[A]): Transformer = {
       var scheduleIdsPH: ScheduleIds = null
       val newRootPH = placeholder(Lazy(node.elem.eItem))
       val newThunk = new ThunkDef(newRootPH, { assert(scheduleIdsPH != null); scheduleIdsPH })
@@ -211,7 +166,7 @@ trait Transforming { self: IRContext =>
 
       val newScope = thunkStack.beginScope(newThunkSym)
       val schedule = thunk.scheduleIds
-      val t1 = mirrorSymbols(t, rewriter, schedule)
+      val t1 = mirrorSymbols(t, schedule)
       thunkStack.endScope()
 
       val newRoot = t1(thunk.root)
@@ -227,29 +182,29 @@ trait Transforming { self: IRContext =>
 
     protected def isMirrored(t: Transformer, node: Sym): Boolean = t.isDefinedAt(node)
 
-    def mirrorNode(t: Transformer, rewriter: Rewriter, node: Sym): Transformer = {
+    def mirrorNode(t: Transformer, node: Sym): Transformer = {
       if (isMirrored(t, node)) t
       else {
         node.node match {
           case _: Variable[_] =>
             mirrorVar(t, node)
           case lam: Lambda[a, b] =>
-            mirrorLambda(t, rewriter, node.asInstanceOf[Ref[a => b]], lam)
+            mirrorLambda(t, node.asInstanceOf[Ref[a => b]], lam)
           case th: ThunkDef[a] =>
-            mirrorThunk(t, rewriter, node.asInstanceOf[Ref[Thunk[a]]], th)
+            mirrorThunk(t, node.asInstanceOf[Ref[Thunk[a]]], th)
           case d =>
-            mirrorDef(t, rewriter, node, d)
+            mirrorDef(t, node, d)
         }
       }
     }
 
     /** HOTSPOT: */
-    def mirrorSymbols(t0: Transformer, rewriter: Rewriter, nodes: DBuffer[Int]): Transformer = {
+    def mirrorSymbols(t0: Transformer, nodes: DBuffer[Int]): Transformer = {
       var t: Transformer = t0
       cfor(0)(_ < nodes.length, _ + 1) { i =>
         val n = nodes(i)
         val s = getSym(n)
-        t = mirrorNode(t, rewriter, s)
+        t = mirrorNode(t, s)
       }
       t
     }

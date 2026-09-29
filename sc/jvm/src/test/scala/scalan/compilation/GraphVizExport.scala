@@ -107,8 +107,6 @@ class GraphVizExport[Ctx <: IRContext](val ctx: Ctx) {
     case ApplyBinOp(op, lhs, rhs) => s"$lhs ${op.opName} $rhs"
     case ApplyUnOp(op, arg) => op match {
       case NumericToInt(_) => s"$arg.toInt"
-      case ToString() => s"$arg.toString"
-      case HashCode() => s"$arg.hashCode"
       case _ => s"${op.opName} $arg"
     }
     case _ => d.toString

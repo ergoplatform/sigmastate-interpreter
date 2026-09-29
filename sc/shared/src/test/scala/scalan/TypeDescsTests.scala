@@ -1,22 +1,13 @@
-package special.wrappers
+package scalan
 
 import sigma.data.RType
 
-import scala.language.reflectiveCalls
+class TypeDescsTests extends BaseCtxTests {
 
-class WRTypeTests extends WrappersTests {
-
-  lazy val ctx = new WrappersCtx
+  lazy val ctx = new TestContext with TestLibrary
   import ctx._
   import Coll._
-  import WRType._
-  import EnvRep._
   import Liftables._
-
-  test("invokeUnlifted") {
-    val ty = RType[Int]
-    check(ty, { env: EnvRep[WRType[Int]] => for { xs <- env } yield xs.name }, ty.name)
-  }
 
   test("Implicit conversion from RType to Elem") {
     val eInt: Elem[Int] = sigma.IntType
