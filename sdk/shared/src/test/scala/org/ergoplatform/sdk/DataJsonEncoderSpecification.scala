@@ -202,7 +202,7 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
     implicit val wWrapped = wrappedTypeGen(tpe)
     val tT = Evaluation.stypeToRType(tpe)
     @nowarn implicit val tag = tT.classTag
-    @nowarn implicit val tAny = sigma.AnyType
+    implicit val tAny = sigma.AnyType
 
 
     def test() = {
