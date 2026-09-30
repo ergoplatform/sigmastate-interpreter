@@ -285,49 +285,67 @@ trait Interpreter {
     fullCost
   }
 
-  /** Checks the possible soft-fork condition.
+  /** Coarse-grained soft-fork gate over the ErgoTree script-version dimension.
+    *
+    * Complements the fine-grained per-operation gate `trySoftForkable`
+    * (see `ValidationRules` and the call in `reductionWithDeserialize`):
+    * this method gates the *whole tree* by its version header, while
+    * `trySoftForkable` gates individual ops/types/methods within a known
+    * script version.
+    *
+    * See `docs/aot-jit-switch.md` for the full validation-action matrix;
+    * rules 17-24 cover the boundary that this method enforces. The
+    * `ScriptVersionSwitchSpecification` test suite pins each branch.
     *
     * @param ergoTree contract which needs to be executed
     * @param context  evaluation context to use for detecting soft-fork condition
-    * @return `None`, if no soft-fork has been detected and ErgoTree execution can proceed normally
-    *         `Some(true -> context.initCost)`, if soft-fork has been detected, but we
-    *         cannot proceed with ErgoTree, however can accept relying on 90% of upgraded
-    *         nodes (due to activation has already been done).
-    * @throws InterpreterException when cannot proceed and no activation yet.
+    * @return
+    *   - `None` -- interpreter can proceed and fully verify.
+    *   - `Some(true -> context.initCost)` -- activated version is beyond
+    *     what this release supports AND the box's tree is likewise beyond
+    *     support; accept without verification, relying on >=90% of
+    *     upgraded nodes that drove activation.
+    * @throws InterpreterException when `ergoTree.version > activatedScriptVersion`
+    *         inside the supported range (this state should never appear on-chain;
+    *         the network invariant is `ergoTreeVersion <= activatedVersion`).
     */
   protected def checkSoftForkCondition(ergoTree: ErgoTree, context: CTX): Option[VerificationResult] = {
-    // TODO v6.0: the condition below should be revised if necessary (see https://github.com/ScorexFoundation/sigmastate-interpreter/issues/904)
-    // The following conditions define behavior which depend on the version of ergoTree
-    // This works in addition to more fine-grained soft-forkability mechanism implemented
-    // using ValidationRules (see trySoftForkable method call here and in reduceToCrypto).
-
-    if (context.activatedScriptVersion > VersionContext.MaxSupportedScriptVersion) {
-      // The activated protocol exceeds capabilities of this interpreter.
-      // NOTE: this path should never be taken for validation of candidate blocks
-      // in which case Ergo node should always pass Interpreter.MaxSupportedScriptVersion
-      // as the value of ErgoLikeContext.activatedScriptVersion.
-      // see also ErgoLikeContext ScalaDoc.
-
-      // Currently more than 90% of nodes has already switched to a higher version,
-      // thus we can accept without verification, but only if we cannot verify
-      // the given ergoTree
-      if (ergoTree.version > VersionContext.MaxSupportedScriptVersion) {
-        // We accept the box spending and rely on 90% of all the other nodes.
-        // Thus, the old node will stay in sync with the network.
-        return Some(true -> context.initCost)
-      }
-      // otherwise, we can verify the box spending and thus, proceed normally
-
+    if (VersionContext.isFutureActivatedVersion(context.activatedScriptVersion)) {
+      // Activated protocol exceeds this interpreter's capabilities.
+      // NOTE: this path should never be taken for validation of candidate blocks --
+      // Ergo node should always pass Interpreter.MaxSupportedScriptVersion as the
+      // value of ErgoLikeContext.activatedScriptVersion during candidate validation.
+      // See ErgoLikeContext scaladoc.
+      softForkAcceptIfBeyondSupport(ergoTree, context)
     } else {
-      // activated version is within the supported range [0..MaxSupportedScriptVersion]
-      // in addition, ErgoTree version should never exceed the currently activated protocol
-
-      if (ergoTree.version > context.activatedScriptVersion) {
-        throw new InterpreterException(
-          s"ErgoTree version ${ergoTree.version} is higher than activated ${context.activatedScriptVersion}")
-      }
+      requireTreeVersionWithinActivated(ergoTree, context)
+      None
     }
-    None // proceed normally
+  }
+
+  /** Activated version is beyond `MaxSupportedScriptVersion`. Accept without
+    * verification only when the tree itself is also beyond support
+    * (we cannot verify it); otherwise the tree is at a known version and we
+    * proceed to full reduction.
+    */
+  private def softForkAcceptIfBeyondSupport(ergoTree: ErgoTree, context: CTX): Option[VerificationResult] = {
+    if (ergoTree.version > VersionContext.MaxSupportedScriptVersion) {
+      // Stay in sync with the network by accepting the box spending and relying
+      // on the >=90% of nodes that already understand this tree version.
+      Some(true -> context.initCost)
+    } else {
+      None
+    }
+  }
+
+  /** Activated version is within `[0..MaxSupportedScriptVersion]`. Enforce the
+    * network invariant: a tree's version may not exceed the activated version.
+    */
+  private def requireTreeVersionWithinActivated(ergoTree: ErgoTree, context: CTX): Unit = {
+    if (ergoTree.version > context.activatedScriptVersion) {
+      throw new InterpreterException(
+        s"ErgoTree version ${ergoTree.version} is higher than activated ${context.activatedScriptVersion}")
+    }
   }
 
   /** Executes the script in a given context.
