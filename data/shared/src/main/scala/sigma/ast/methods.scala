@@ -319,6 +319,7 @@ object SNumericTypeMethods extends MethodsContainer {
           case SLongMethods => LongIsExactIntegral.toBigEndianBytes(obj.asInstanceOf[Long])
           case SBigIntMethods => obj.asInstanceOf[BigInt].toBytes
           case SUnsignedBigIntMethods => obj.asInstanceOf[UnsignedBigInt].toBytes
+          case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
         }
       })
       .withInfo(PropertyCall,
@@ -342,6 +343,7 @@ object SNumericTypeMethods extends MethodsContainer {
           case SLongMethods => LongIsExactIntegral.toBits(obj.asInstanceOf[Long])
           case SBigIntMethods => BigIntIsExactIntegral.toBits(obj.asInstanceOf[BigInt])
           case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.toBits(obj.asInstanceOf[UnsignedBigInt])
+          case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
         }
       })
       .withInfo(PropertyCall,
@@ -363,6 +365,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.bitwiseInverse(obj.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseInverse(obj.asInstanceOf[BigInt])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseInverse(obj.asInstanceOf[UnsignedBigInt])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(PropertyCall, desc = "Returns bitwise inverse of this numeric. ")
@@ -378,6 +381,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.bitwiseOr(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseOr(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseOr(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(MethodCall,
@@ -395,6 +399,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.bitwiseAnd(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseAnd(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseAnd(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(MethodCall,
@@ -412,6 +417,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.bitwiseXor(obj.asInstanceOf[Long], other.head.asInstanceOf[Long])
         case SBigIntMethods => BigIntIsExactIntegral.bitwiseXor(obj.asInstanceOf[BigInt], other.head.asInstanceOf[BigInt])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.bitwiseXor(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[UnsignedBigInt])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(MethodCall,
@@ -429,6 +435,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.shiftLeft(obj.asInstanceOf[Long], other.head.asInstanceOf[Int])
         case SBigIntMethods => BigIntIsExactIntegral.shiftLeft(obj.asInstanceOf[BigInt], other.head.asInstanceOf[Int])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.shiftLeft(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[Int])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(MethodCall,
@@ -449,6 +456,7 @@ object SNumericTypeMethods extends MethodsContainer {
         case SLongMethods => LongIsExactIntegral.shiftRight(obj.asInstanceOf[Long], other.head.asInstanceOf[Int])
         case SBigIntMethods => BigIntIsExactIntegral.shiftRight(obj.asInstanceOf[BigInt], other.head.asInstanceOf[Int])
         case SUnsignedBigIntMethods => UnsignedBigIntIsExactIntegral.shiftRight(obj.asInstanceOf[UnsignedBigInt], other.head.asInstanceOf[Int])
+        case _ => throw new MatchError(s"Unexpected objType in ${m.name}: ${m.objType}")
       }
     })
     .withInfo(MethodCall,
