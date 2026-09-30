@@ -276,6 +276,21 @@ object SigmaPredef {
           Seq(ArgInfo("input", "collection of bytes")))
     )
 
+    // Frontend-only expansion: reuse existing nodes, serialization and evaluation costs.
+    val StripErgoTreeHeaderFunc = PredefinedFunc("stripErgoTreeHeader",
+      Lambda(Array("treeBytes" -> SByteArray), SByteArray, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: Value[SByteArray]@unchecked)) =>
+          mkSlice(arg, IntConstant(1), mkSizeOf(arg))
+        }),
+      OperationInfo(None,
+        """Skips exactly the first byte of serialized ErgoTree bytes.
+          |Equivalent to treeBytes.slice(1, treeBytes.size); empty or one-byte inputs return an empty collection.
+          |Does not validate the input or normalize size fields, segregated constants or serialization formats.
+        """.stripMargin,
+        Seq(ArgInfo("treeBytes", "serialized ErgoTree bytes")))
+    )
+
     val ByteArrayToBigIntFunc = PredefinedFunc("byteArrayToBigInt",
       Lambda(Array("input" -> SByteArray), SBigInt, None),
       PredefFuncInfo(
@@ -548,6 +563,7 @@ object SigmaPredef {
       FromBase58Func,
       Blake2b256Func,
       Sha256Func,
+      StripErgoTreeHeaderFunc,
       ByteArrayToBigIntFunc,
       ByteArrayToLongFunc,
       DecodePointFunc,

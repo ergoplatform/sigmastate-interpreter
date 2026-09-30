@@ -1118,6 +1118,12 @@ def blake2b256(input: Coll[Byte]): Coll[Byte]
 /** Cryptographic hash function Sha256 (See scorex.crypto.hash.Sha256) */
 def sha256(input: Coll[Byte]): Coll[Byte]
 
+/** Skips the first header byte of serialized ErgoTree bytes.
+  * Equivalent to treeBytes.slice(1, treeBytes.size).
+  * Empty and one-byte inputs produce an empty collection.
+  */
+def stripErgoTreeHeader(treeBytes: Coll[Byte]): Coll[Byte]
+
 /** Create an instance of type T from bytes of its wrapped type. 
 See https://github.com/ScorexFoundation/sigmastate-interpreter/pull/979 for more details */
 def deserializeTo[T](input: Coll[Byte]): T
@@ -1332,6 +1338,19 @@ def executeFromSelfRegWithDefault[T](id: Int, default: T): T
   */
 def substConstants[T](scriptBytes: Coll[Byte], positions: Coll[Int], newValues: Coll[T]): Coll[Byte]
 ```
+
+To compare or hash serialized ErgoTrees while ignoring their first header byte:
+
+```scala
+val receiptTreeHash = blake2b256(stripErgoTreeHeader(OUTPUTS(0).propositionBytes))
+```
+
+`stripErgoTreeHeader` preserves every byte after the first byte. It does not
+validate or deserialize the input, remove an optional size field or segregated
+constants, or normalize different serialization formats. Equality of the result
+therefore means byte equality after the first byte, not semantic equivalence of
+the contracts. The compiler expands the helper to the existing collection slice
+operation; it does not introduce a new ErgoTree opcode.
 
 ## Known Limitations
 
