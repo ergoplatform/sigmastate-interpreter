@@ -37,7 +37,22 @@ class SigmaBinder(env: ScriptEnv, builder: SigmaBuilder,
     * and infer their types. */
   private def eval(e: SValue, env: ScriptEnv): SValue = rewrite(reduce(strategy[Any]({
     case i @ Ident(n, NoType) => env.get(n) match {
-      case Some(v) => Option(liftAny(v).get.withPropagatedSrcCtx(i.sourceContext))
+      case Some(v) =>
+        val lifted = liftAny(v)
+        if (lifted.isEmpty) v match {
+          case _: SType =>
+            // Env entry binds the name to its declared SType (template/contract
+            // parameter typing). Leave the Ident alone — SigmaTyper resolves it
+            // via the SType-filtered typeEnv in SigmaCompiler.typecheck, and
+            // SigmaCompiler.compileTyped turns it into a ConstantPlaceholder.
+            None
+          case _ =>
+            SigmaBinder.error(
+              s"Variable '$n' has value of unsupported type '${v.getClass.getName}' in env",
+              i.sourceContext)
+        } else {
+          Option(lifted.get.withPropagatedSrcCtx(i.sourceContext))
+        }
       case None => n match {
         case "HEIGHT" => Some(Height)
         case "MinerPubkey" => Some(MinerPubkey)
