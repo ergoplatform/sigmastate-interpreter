@@ -614,6 +614,13 @@ trait GraphBuilding extends Base with DefRewriting { IR: IRContext =>
         val vv = asRep[GroupElement](_vv)
         sigmaDslBuilder.proveDHTuple(gv, hv, uv, vv)
 
+      case CreateAvlTree(In(_flags), In(_digest), In(_keyLength), In(_valueLengthOpt)) =>
+        val flags = asRep[Byte](_flags)
+        val digest = asRep[Coll[Byte]](_digest)
+        val keyLength = asRep[Int](_keyLength)
+        val valueLengthOpt = asRep[WOption[Int]](_valueLengthOpt)
+        sigmaDslBuilder.avlTree(flags, digest, keyLength, valueLengthOpt)
+
       case Exponentiate(In(l), In(r)) =>
         val lV = asRep[GroupElement](l)
         val rV = asRep[BigInt](r)

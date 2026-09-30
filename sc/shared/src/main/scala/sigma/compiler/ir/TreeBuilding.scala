@@ -451,6 +451,14 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case SDBM.substConstants(_, In(scriptBytes), In(positions), In(newValues)) =>
         mkSubstConst(scriptBytes.asByteArray, positions.asIntArray, newValues.asCollection[SType])
 
+      case SDBM.avlTree(_, In(flags), In(digest), In(keyLength), In(valueLengthOpt)) =>
+        mkCreateAvlTree(
+          flags.asByteValue,
+          digest.asByteArray,
+          keyLength.asIntValue,
+          valueLengthOpt.asOption[SInt.type]
+        )
+
       case Def(IfThenElseLazy(condSym, thenPSym, elsePSym)) =>
         val Seq(cond, thenP, elseP) = Seq(condSym, thenPSym, elsePSym).map(recurse)
         mkIf(cond, thenP, elseP)
