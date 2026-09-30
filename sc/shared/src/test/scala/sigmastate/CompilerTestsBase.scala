@@ -4,6 +4,7 @@ import scala.util.DynamicVariable
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigma.ast.{ErgoTree, SType, TransformingSigmaBuilder, Value}
 import org.ergoplatform.ErgoAddressEncoder.TestnetNetworkPrefix
+import sigma.VersionContext
 import sigma.ast.syntax.{SValue, SigmaPropValue}
 import sigma.serialization.ValueSerializer
 import sigma.compiler.ir.IRContext
@@ -44,10 +45,12 @@ trait CompilerTestsBase extends TestsBase with NegativeTesting {
   }
 
   /** Compile the given code to ErgoTree expression. */
-  def compile(env: ScriptEnv, code: String)(implicit IR: IRContext): Value[SType] = {
-    val res = compiler.compile(env, code)
-    checkCompilerResult(res)
-    res.buildTree
+  def compile(env: ScriptEnv, code: String, version: Byte = 0)(implicit IR: IRContext): Value[SType] = {
+    VersionContext.withVersions(version, version) {
+      val res = compiler.compile(env, code)
+      checkCompilerResult(res)
+      res.buildTree
+    }
   }
 
   /** Check the given [[CompilerResult]] meets equality and sanity requirements. */
