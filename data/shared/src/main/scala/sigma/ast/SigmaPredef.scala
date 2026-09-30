@@ -687,15 +687,6 @@ object SigmaPredef {
           "Select tuple field by its 1-based index. E.g. \\lst{input._1} is transformed to \\lst{SelectField(input, 1)}",
           Seq(ArgInfo("input", "tuple of items"), ArgInfo("fieldIndex", "index of an item to select")))
       ),
-      PredefinedFunc("treeLookup",
-        Lambda(Array("tree" -> SAvlTree, "key" -> SByteArray, "proof" -> SByteArray), SOption(SByteArray), None),
-        PredefFuncInfo(undefined),
-        OperationInfo(TreeLookup,
-          "",
-          Seq(ArgInfo("tree", "tree to lookup the key"),
-          ArgInfo("key", "a key of an item in the \\lst{tree} to lookup"),
-          ArgInfo("proof", "proof to perform verification of the operation")))
-      ),
       PredefinedFunc("if",
         Lambda(Array(paramT), Array("condition" -> SBoolean, "trueBranch" -> tT, "falseBranch" -> tT), tT, None),
         PredefFuncInfo(undefined),

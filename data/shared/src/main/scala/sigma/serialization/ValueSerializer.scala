@@ -52,6 +52,8 @@ object ValueSerializer extends SigmaSerializerCompanion[Value[SType]] {
     Relation2Serializer(EQ, mkEQ[SType]),
     Relation2Serializer(NEQ, mkNEQ[SType]),
     CreateAvlTreeSerializer(mkCreateAvlTree),
+    // Retained so legacy ErgoTrees carrying opcode 71 (AvlTreeGetCode) still
+    // deserialize; the compiler emits MethodCall(AvlTree.get) instead. See #645.
     QuadrupleSerializer(TreeLookup, mkTreeLookup),
     Relation2Serializer(BinOr, mkBinOr),
     Relation2Serializer(BinAnd, mkBinAnd),
