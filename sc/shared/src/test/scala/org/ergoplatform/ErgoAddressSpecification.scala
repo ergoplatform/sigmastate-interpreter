@@ -187,15 +187,32 @@ class ErgoAddressSpecification extends SigmaDslTesting
       val pk: ProveDlog = DLogProverInput(BigInteger.ONE).publicImage
       val p2pk = P2PKAddress(pk)(ergoAddressEncoder)
 
-      val invalidAddrType = 4.toByte
-      val withNetworkByte = (ergoAddressEncoder.networkPrefix + invalidAddrType).toByte +: p2pk.contentBytes
+      // type 4 (versioned P2SH) with wrong content length (P2PK bytes = 33 bytes, not 25)
+      val versionedP2SHType = 4.toByte
+      val withNetworkByte = (ergoAddressEncoder.networkPrefix + versionedP2SHType).toByte +: p2pk.contentBytes
 
       val checksum = hash256(withNetworkByte).take(ErgoAddressEncoder.ChecksumLength)
       val invalidAddrStr = Base58.encode(withNetworkByte ++ checksum)
 
       assertExceptionThrown(
         ergoAddressEncoder.fromString(invalidAddrStr).getOrThrow,
-        t => t.getMessage.contains("Unsupported address type: 4")
+        t => t.getMessage.contains("Invalid length of content bytes in versioned P2SH address")
+      )
+    }
+
+    {
+      val pk: ProveDlog = DLogProverInput(BigInteger.ONE).publicImage
+      val p2pk = P2PKAddress(pk)(ergoAddressEncoder)
+
+      val unsupportedAddrType = 5.toByte
+      val withNetworkByte = (ergoAddressEncoder.networkPrefix + unsupportedAddrType).toByte +: p2pk.contentBytes
+
+      val checksum = hash256(withNetworkByte).take(ErgoAddressEncoder.ChecksumLength)
+      val invalidAddrStr = Base58.encode(withNetworkByte ++ checksum)
+
+      assertExceptionThrown(
+        ergoAddressEncoder.fromString(invalidAddrStr).getOrThrow,
+        t => t.getMessage.contains("Unsupported address type: 5")
       )
     }
 
@@ -349,6 +366,82 @@ class ErgoAddressSpecification extends SigmaDslTesting
       testPay2SHAddress(addr, script = invalidId -> IntConstant(10)),
       rootCauseLike[NoSuchElementException]("None.get")
     )
+  }
+
+  property("Pay2SHAddressVersioned roundtrip") {
+    forAll(proveDlogGen) { pk =>
+      for (v <- Seq(0, 1, 2).map(_.toByte)) {
+        val tree = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, v), pk)
+        val addr = Pay2SHAddressVersioned(tree)
+        addr.treeVersion shouldBe v
+        addr.contentBytes.length shouldBe 25
+        addressRoundtrip(addr)
+      }
+    }
+  }
+
+  property("Pay2SHAddressVersioned different versions produce different hashes for same script") {
+    forAll(proveDlogGen) { pk =>
+      val tree0 = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, 0), pk)
+      val tree1 = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, 1), pk)
+      val v0 = Pay2SHAddressVersioned(tree0)
+      val v1 = Pay2SHAddressVersioned(tree1)
+      v0 should not equal v1
+      (v0.scriptHash sameElements v1.scriptHash) shouldBe false
+    }
+  }
+
+  property("Pay2SHAddressVersioned fromProposition roundtrip") {
+    forAll(proveDlogGen) { pk =>
+      for (v <- Seq(0, 1, 2).map(_.toByte)) {
+        val tree = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, v), pk)
+        val addr = Pay2SHAddressVersioned(tree)
+        val recovered = ergoAddressEncoder.fromProposition(addr.script).success.value
+        recovered shouldBe addr
+        recovered.hashCode() shouldBe addr.hashCode()
+      }
+    }
+  }
+
+  property("Pay2SHAddressVersioned script uses pinned ErgoTree version") {
+    forAll(proveDlogGen) { pk =>
+      for (v <- Seq(0, 1, 2).map(_.toByte)) {
+        val tree = ErgoTree.fromSigmaBoolean(ErgoTree.headerWithVersion(ZeroHeader, v), pk)
+        val addr = Pay2SHAddressVersioned(tree)
+        addr.script.version shouldBe v
+      }
+    }
+  }
+
+  property("Pay2SHAddressVersioned old P2SH (type 2) unaffected") {
+    forAll(proveDlogGen) { pk =>
+      val oldAddr = Pay2SHAddress(ErgoTree.fromSigmaBoolean(ergoTreeHeaderInTests, pk))
+      addressRoundtrip(oldAddr)
+      oldAddr.addressTypePrefix shouldBe 2
+    }
+  }
+
+  property("spending a box protected by Pay2SHAddressVersioned contract") {
+    val (prop, scriptBytes) = createPropAndScriptBytes()
+    val scriptId = Pay2SHAddress.scriptId
+
+    for (v <- Seq(0, 1, 2).map(_.toByte) if v <= activatedVersionInTests) {
+      val addr = Pay2SHAddressVersioned(prop, v)
+      // context variable 126 receives the original script bytes (same as for P2SH)
+      val versionedScriptBytes = scriptBytes  // unversioned Value bytes, unchanged
+      val boxToSpend = testBox(10, addr.script, creationHeight = 5)
+      val ctx = ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
+          .withExtension(ContextExtension(Seq(
+            scriptId -> ByteArrayConstant(versionedScriptBytes)
+          ).toMap))
+
+      val env: ScriptEnv = Map()
+      val prover = new ErgoLikeTestProvingInterpreter()
+      val pr = prover.prove(env + (ScriptNameProp -> s"prove"), addr.script, ctx, fakeMessage).getOrThrow
+
+      val verifier = new ErgoLikeTestInterpreter
+      verifier.verify(env + (ScriptNameProp -> s"verify"), addr.script, ctx, pr.proof, fakeMessage).getOrThrow._1 shouldBe true
+    }
   }
 
 }
