@@ -143,6 +143,8 @@ trait TreeBuilding extends Base { IR: IRContext =>
       case ContextM.INPUTS(_) => Some(Inputs)
       case ContextM.OUTPUTS(_) => Some(Outputs)
       case ContextM.SELF(_) => Some(Self)
+      case ContextM.LastBlockUtxoRootHash(_) => Some(LastBlockUtxoRootHash)
+      case ContextM.minerPubKey(_) => Some(MinerPubkey)
       case _ => None
     }
   }

@@ -4747,43 +4747,92 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       }
     }
 
+    val lastBlockUtxoRootHashCostDetails =
+      if (lowerMethodCallsInTests)
+        TracedCost(traceBase.dropRight(1) :+ FixedCostItem(LastBlockUtxoRootHash.opDesc, FixedCost(JitCost(15))))
+      else
+        methodCostDetails(SContextMethods.lastBlockUtxoRootHashMethod, 15)
     verifyCases(
-      Seq(ctx -> Expected(Success(ctx.LastBlockUtxoRootHash), cost = 1766, methodCostDetails(SContextMethods.lastBlockUtxoRootHashMethod, 15), 1766, Seq.fill(4)(2002))),
-      existingPropTest("LastBlockUtxoRootHash", { (x: Context) => x.LastBlockUtxoRootHash }),
+      Seq(ctx -> Expected(Success(ctx.LastBlockUtxoRootHash), cost = 1765, lastBlockUtxoRootHashCostDetails, 1765, Seq.fill(4)(1993))),
+      existingFeature(
+        { (x: Context) => x.LastBlockUtxoRootHash },
+        "{ (x: Context) => x.LastBlockUtxoRootHash }",
+        if (lowerMethodCallsInTests)
+          FuncValue(Vector((1, SContext)), LastBlockUtxoRootHash)
+        else
+          FuncValue(
+            Vector((1, SContext)),
+            MethodCall(sigma.ast.Context, SContextMethods.lastBlockUtxoRootHashMethod, Vector(), Map())
+          )),
       preGeneratedSamples = Some(samples))
 
-    val isUpdateAllowedCostDetails = TracedCost(
-      traceBase ++ Array(
-        FixedCostItem(PropertyCall),
-        FixedCostItem(SContextMethods.lastBlockUtxoRootHashMethod, FixedCost(JitCost(15))),
-        FixedCostItem(PropertyCall),
-        FixedCostItem(SAvlTreeMethods.isUpdateAllowedMethod, FixedCost(JitCost(15)))
-      )
-    )
+    val isUpdateAllowedCostDetails =
+      if (lowerMethodCallsInTests)
+        TracedCost(
+          traceBase.dropRight(1) ++ Array(
+            FixedCostItem(LastBlockUtxoRootHash.opDesc, FixedCost(JitCost(15))),
+            FixedCostItem(PropertyCall),
+            FixedCostItem(SAvlTreeMethods.isUpdateAllowedMethod, FixedCost(JitCost(15)))
+          )
+        )
+      else
+        TracedCost(
+          traceBase ++ Array(
+            FixedCostItem(PropertyCall),
+            FixedCostItem(SContextMethods.lastBlockUtxoRootHashMethod, FixedCost(JitCost(15))),
+            FixedCostItem(PropertyCall),
+            FixedCostItem(SAvlTreeMethods.isUpdateAllowedMethod, FixedCost(JitCost(15)))
+          )
+        )
     verifyCases(
-      Seq(ctx -> Expected(Success(ctx.LastBlockUtxoRootHash.isUpdateAllowed), cost = 1767, isUpdateAllowedCostDetails, 1767, Seq.fill(4)(2009))),
+      Seq(ctx -> Expected(Success(ctx.LastBlockUtxoRootHash.isUpdateAllowed), cost = 1766, isUpdateAllowedCostDetails, 1766, Seq.fill(4)(2000))),
       existingFeature(
         { (x: Context) => x.LastBlockUtxoRootHash.isUpdateAllowed },
         "{ (x: Context) => x.LastBlockUtxoRootHash.isUpdateAllowed }",
-        FuncValue(
-          Vector((1, SContext)),
-          MethodCall.typed[Value[SBoolean.type]](
-            MethodCall.typed[Value[SAvlTree.type]](
-              ValUse(1, SContext),
-              SContextMethods.getMethodByName("LastBlockUtxoRootHash"),
+        if (lowerMethodCallsInTests)
+          FuncValue(
+            Vector((1, SContext)),
+            MethodCall.typed[Value[SBoolean.type]](
+              LastBlockUtxoRootHash,
+              SAvlTreeMethods.getMethodByName("isUpdateAllowed"),
               Vector(),
               Map()
-            ),
-            SAvlTreeMethods.getMethodByName("isUpdateAllowed"),
-            Vector(),
-            Map()
+            )
           )
-        )),
+        else
+          FuncValue(
+            Vector((1, SContext)),
+            MethodCall.typed[Value[SBoolean.type]](
+              MethodCall.typed[Value[SAvlTree.type]](
+                sigma.ast.Context,
+                SContextMethods.getMethodByName("LastBlockUtxoRootHash"),
+                Vector(),
+                Map()
+              ),
+              SAvlTreeMethods.getMethodByName("isUpdateAllowed"),
+              Vector(),
+              Map()
+            )
+          )),
       preGeneratedSamples = Some(samples))
 
+    val minerPubKeyCostDetails =
+      if (lowerMethodCallsInTests)
+        TracedCost(traceBase.dropRight(1) :+ FixedCostItem(MinerPubkey.opDesc, FixedCost(JitCost(20))))
+      else
+        methodCostDetails(SContextMethods.minerPubKeyMethod, 20)
     verifyCases(
-      Seq(ctx -> Expected(Success(ctx.minerPubKey), cost = 1767, methodCostDetails(SContextMethods.minerPubKeyMethod, 20), 1767, Seq.fill(4)(2003))),
-      existingPropTest("minerPubKey", { (x: Context) => x.minerPubKey }),
+      Seq(ctx -> Expected(Success(ctx.minerPubKey), cost = 1766, minerPubKeyCostDetails, 1766, Seq.fill(4)(1994))),
+      existingFeature(
+        { (x: Context) => x.minerPubKey },
+        "{ (x: Context) => x.minerPubKey }",
+        if (lowerMethodCallsInTests)
+          FuncValue(Vector((1, SContext)), MinerPubkey)
+        else
+          FuncValue(
+            Vector((1, SContext)),
+            MethodCall(sigma.ast.Context, SContextMethods.minerPubKeyMethod, Vector(), Map())
+          )),
       preGeneratedSamples = Some(samples))
 
     testCases(
