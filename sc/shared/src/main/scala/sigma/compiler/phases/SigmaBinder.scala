@@ -92,7 +92,7 @@ class SigmaBinder(env: ScriptEnv, builder: SigmaBuilder,
         if (env.contains(n)) error(s"Variable $n already defined ($n = ${env(n)}", v.sourceContext)
         val b1 = eval(b, env)
         builder.currentSrcCtx.withValue(v.sourceContext) {
-          mkVal(n, if (t != NoType) t else b1.tpe, b1)
+          mkVal(n, t, b1)
         }
       }
       val t1 = eval(t, env)

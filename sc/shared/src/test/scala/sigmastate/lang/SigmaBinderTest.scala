@@ -91,11 +91,11 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
 
   property("val constructs") {
     bind(env, "{val X = 10; X > 2}") shouldBe
-      Block(Val("X", SInt, IntConstant(10)), GT(IntIdent("X"), 2))
+      Block(Val("X", NoType, IntConstant(10)), GT(IntIdent("X"), 2))
     bind(env, "{val X = 10; X >= X}") shouldBe
-      Block(Val("X", SInt, IntConstant(10)), GE(IntIdent("X"), IntIdent("X")))
+      Block(Val("X", NoType, IntConstant(10)), GE(IntIdent("X"), IntIdent("X")))
     bind(env, "{val X = 10 - 1; X >= X}") shouldBe
-      Block(Val("X", SInt, Minus(10, 1)), GE(IntIdent("X"), IntIdent("X")))
+      Block(Val("X", NoType, Minus(10, 1)), GE(IntIdent("X"), IntIdent("X")))
     bind(env, "{val X = 10 + 1; X >= X}") shouldBe
       Block(Val("X", NoType, plus(10, 1)), GE(IntIdent("X"), IntIdent("X")))
     bind(env,
@@ -103,11 +103,11 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
         |val Y = 11
         |X > Y}
       """.stripMargin) shouldBe Block(
-      Seq(Val("X", SInt, IntConstant(10)), Val("Y", SInt, IntConstant(11))),
+      Seq(Val("X", NoType, IntConstant(10)), Val("Y", NoType, IntConstant(11))),
       GT(IntIdent("X"), IntIdent("Y")))
     bind(env, "{val X = (10, true); X._1 > 2 && X._2}") shouldBe
       Block(
-        Val("X", STuple(SInt, SBoolean), Tuple(IntConstant(10), TrueLeaf)),
+        Val("X", NoType, Tuple(IntConstant(10), TrueLeaf)),
         MethodCallLike(GT(Select(IntIdent("X"), "_1").asValue[SInt.type], 2), "&&", IndexedSeq(Select(IntIdent("X"), "_2").asValue[SBoolean.type])))
   }
 
@@ -154,7 +154,7 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
       """if (true) { val A = x; 1 }
         |else if (x == y) 2 else 3""".stripMargin) shouldBe
       If(TrueLeaf,
-        Block(Val("A", SInt, IntConstant(10)), IntConstant(1)),
+        Block(Val("A", NoType, IntConstant(10)), IntConstant(1)),
         If(EQ(IntConstant(10), IntConstant(11)), IntConstant(2), IntConstant(3)))
   }
 
@@ -177,7 +177,13 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
 
   property("function definitions") {
     bind(env, "{val f = {(a: Int) => a - 1}; f}") shouldBe
-      Block(Val("f", SFunc(IndexedSeq(SInt), NoType), Lambda(IndexedSeq("a" -> SInt), NoType, mkMinus(IntIdent("a"), 1))), Ident("f"))
+      Block(Val("f", NoType, Lambda(IndexedSeq("a" -> SInt), NoType, mkMinus(IntIdent("a"), 1))), Ident("f"))
+    // FunDef without return type — givenType stays NoType
+    bind(env, "{def f(a: Int) = a - 1; f}") shouldBe
+      Block(Val("f", NoType, Lambda(IndexedSeq("a" -> SInt), NoType, mkMinus(IntIdent("a"), 1))), Ident("f"))
+    // FunDef with explicit return type — givenType = R preserved (not lifted to SFunc)
+    bind(env, "{def f(a: Int): Int = a - 1; f}") shouldBe
+      Block(Val("f", SInt, Lambda(IndexedSeq("a" -> SInt), SInt, mkMinus(IntIdent("a"), 1))), Ident("f"))
   }
 
   property("predefined primitives") {
