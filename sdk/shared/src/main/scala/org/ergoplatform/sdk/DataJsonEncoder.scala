@@ -51,7 +51,7 @@ object DataJsonEncoder {
     case SByte => v.asInstanceOf[Byte].asJson
     case SShort => v.asInstanceOf[Short].asJson
     case SInt => v.asInstanceOf[Int].asJson
-    case SLong => v.asInstanceOf[Long].asJson
+    case SLong => Json.fromString(v.asInstanceOf[Long].toString)
     case SBigInt =>
       encodeBytes(v.asInstanceOf[BigInt].toBytes.toArray)
     case SUnsignedBigInt =>
@@ -171,7 +171,9 @@ object DataJsonEncoder {
       case SByte => json.asNumber.get.toByte.get
       case SShort => json.asNumber.get.toShort.get
       case SInt => json.asNumber.get.toInt.get
-      case SLong => json.asNumber.get.toLong.get
+      case SLong =>
+        json.asString.map(s => java.lang.Long.parseLong(s))
+          .getOrElse(json.asNumber.get.toLong.get)
       case SBigInt =>
         SigmaDsl.BigInt(new BigInteger(decodeBytes(json)))
       case SUnsignedBigInt =>
