@@ -1,0 +1,122 @@
+{
+    "Simple Contract": {
+        "prefix": "contract-simple",
+        "body": [
+            "{",
+            "  val ${1:owner} = SELF.R4[GroupElement].get",
+            "  val ${2:deadline} = SELF.R5[Int].get",
+            "  ",
+            "  val deadlinePassed = HEIGHT > ${2:deadline}",
+            "  sigmaProp(deadlinePassed && proveDlog(${1:owner}))",
+            "}"
+        ],
+        "description": "Simple time-locked contract with owner signature"
+    },
+    "Auction Contract": {
+        "prefix": "contract-auction",
+        "body": [
+            "{",
+            "  val seller = SELF.R4[GroupElement].get",
+            "  val minBid = SELF.R5[Long].get",
+            "  val endHeight = SELF.R6[Int].get",
+            "  ",
+            "  val isBid = HEIGHT < endHeight && OUTPUTS(0).value >= minBid",
+            "  val isClose = HEIGHT >= endHeight && proveDlog(seller)",
+            "  ",
+            "  sigmaProp(isBid || isClose)",
+            "}"
+        ],
+        "description": "Auction contract with bidding and closing"
+    },
+    "Val Declaration": {
+        "prefix": "val",
+        "body": [
+            "val ${1:name} = ${2:value}"
+        ],
+        "description": "Value declaration"
+    },
+    "Val with Type": {
+        "prefix": "valt",
+        "body": [
+            "val ${1:name}: ${2:Type} = ${3:value}"
+        ],
+        "description": "Value declaration with type annotation"
+    },
+    "Def Declaration": {
+        "prefix": "def",
+        "body": [
+            "def ${1:name}(${2:params}) = ${3:body}"
+        ],
+        "description": "Function declaration"
+    },
+    "If Expression": {
+        "prefix": "if",
+        "body": [
+            "if (${1:condition}) ${2:then} else ${3:else}"
+        ],
+        "description": "If-else expression"
+    },
+    "Signature Verification": {
+        "prefix": "proveDlog",
+        "body": [
+            "proveDlog(${1:publicKey})"
+        ],
+        "description": "Verify signature for public key"
+    },
+    "Blake2b Hash": {
+        "prefix": "blake",
+        "body": [
+            "blake2b256(${1:data})"
+        ],
+        "description": "Compute Blake2b256 hash"
+    },
+    "Box Register Access": {
+        "prefix": "register",
+        "body": [
+            "SELF.R${1:4}[${2:Type}].get"
+        ],
+        "description": "Access box register"
+    },
+    "Output Validation": {
+        "prefix": "output",
+        "body": [
+            "OUTPUTS(${1:0}).${2:value}"
+        ],
+        "description": "Access output box property"
+    },
+    "Collection Map": {
+        "prefix": "map",
+        "body": [
+            "${1:collection}.map({ (${2:x}) => ${3:x} })"
+        ],
+        "description": "Map over collection"
+    },
+    "Collection Filter": {
+        "prefix": "filter",
+        "body": [
+            "${1:collection}.filter({ (${2:x}) => ${3:condition} })"
+        ],
+        "description": "Filter collection"
+    },
+    "Collection Fold": {
+        "prefix": "fold",
+        "body": [
+            "${1:collection}.fold(${2:initial}, { (${3:acc}, ${4:x}) => ${5:acc} })"
+        ],
+        "description": "Fold collection"
+    },
+    "Threshold Signature": {
+        "prefix": "atleast",
+        "body": [
+            "atLeast(${1:k}, Coll(${2:props}))"
+        ],
+        "description": "Threshold signature (k-of-n)"
+    },
+    "Token Validation": {
+        "prefix": "token",
+        "body": [
+            "${1:box}.tokens(${2:0})._1 == ${3:tokenId}"
+        ],
+        "description": "Validate token ID"
+    }
+}
