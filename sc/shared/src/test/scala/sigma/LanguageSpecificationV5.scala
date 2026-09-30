@@ -9689,6 +9689,48 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
+  // Cross-version test for the equalBoxExcept predef (issue #1034). The helper
+  // is pure compiler sugar that lowers to value/propositionBytes/tokens equality
+  // and uses operations available since the earliest ErgoTree version, so it must
+  // be equivalent under v5 as well as under v6 (this is asserted here for v5,
+  // and a sibling test in LanguageSpecificationV6 covers v6).
+  // LanguageSpecificationBase sets okRunTestsWithoutMCLowering = true, so this
+  // property is also re-run with _lowerMethodCalls = false, exercising the
+  // MethodCall(tokensMethod) path that BasicOpsSpec's variant does not cover.
+  property("equalBoxExcept equivalence") {
+    val b1 = create_b1
+    val b2 = create_b2
+    val scalaImpl = { (xs: (Box, Box)) =>
+      xs._1.value == xs._2.value &&
+        xs._1.propositionBytes == xs._2.propositionBytes &&
+        xs._1.tokens == xs._2.tokens
+    }
+    val emptyExclude = existingFeature(scalaImpl,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll[Int]()) }")
+    val noOpExclude = existingFeature(scalaImpl,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll(3, 7, 8)) }")
+    val allExcluded = existingFeature((_: (Box, Box)) => true,
+      "{ (xs: (Box, Box)) => equalBoxExcept(xs._1, xs._2, Coll(0, 1, 2)) }")
+
+    def expectedBool(v: Boolean) = new Expected[Boolean](ExpectedResult(Success(v), None))
+    val cases = Seq(
+      ((b1, b1), expectedBool(true)),
+      ((b1, b2), expectedBool(false)),
+      ((b2, b1), expectedBool(false)),
+      ((b2, b2), expectedBool(true))
+    )
+    val cases2 = Seq(
+      ((b1, b1), expectedBool(true)),
+      ((b1, b2), expectedBool(true)),
+      ((b2, b1), expectedBool(true)),
+      ((b2, b2), expectedBool(true))
+    )
+
+    verifyCases(cases,  emptyExclude, preGeneratedSamples = Some(ArraySeq.empty))
+    verifyCases(cases,  noOpExclude,  preGeneratedSamples = Some(ArraySeq.empty))
+    verifyCases(cases2, allExcluded,  preGeneratedSamples = Some(ArraySeq.empty))
+  }
+
   override protected def afterAll(): Unit = {
     printDebug(CErgoTreeEvaluator.DefaultProfiler.generateReport())
     printDebug("==========================================================")

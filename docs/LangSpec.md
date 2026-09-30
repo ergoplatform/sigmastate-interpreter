@@ -1331,6 +1331,33 @@ def executeFromSelfRegWithDefault[T](id: Int, default: T): T
   *         replaced and all other bytes remain exactly the same
   */
 def substConstants[T](scriptBytes: Coll[Byte], positions: Coll[Int], newValues: Coll[T]): Coll[Byte]
+
+/** Returns true when `b1` and `b2` are equal on the mandatory registers that
+  * this helper can compare, ignoring the register ids listed in `exclude` as
+  * well as R3 (always implicitly excluded, since the `txId + outputIndex` tail
+  * of `creationInfo` differs between any input box and its successor output by
+  * construction).
+  *
+  * Currently the helper compares only `value` (R0), `propositionBytes` (R1) and
+  * `tokens` (R2). The non-mandatory registers R4-R9 are typed and cannot be
+  * compared without specifying an element type, so they are not folded into the
+  * helper; if your contract needs a specific R4-R9 register to stay equal, add
+  * the equality clause yourself, for example:
+  * <pre class="stHighlight">
+  *   equalBoxExcept(b1, b2, Coll[Int]()) &&
+  *     b1.R4[Long].get == b2.R4[Long].get
+  * </pre>
+  *
+  * The `exclude` argument must be a compile-time literal `Coll[Int]`; the call
+  * expands at compile time into a conjunction of the surviving `==` checks.
+  * Putting R3 (3) or any of R4-R9 (4-9) into `exclude` is a no-op: it does not
+  * change the set of comparisons the helper emits.
+  *
+  * @param b1 first box to compare
+  * @param b2 second box to compare
+  * @param exclude compile-time literal of register ids whose comparison is skipped
+  */
+def equalBoxExcept(b1: Box, b2: Box, exclude: Coll[Int]): Boolean
 ```
 
 ## Known Limitations

@@ -5063,6 +5063,35 @@ $lrFoldScript
     )
   }
 
+  property("equalBoxExcept - mandatory fields match across SELF and OUTPUTS(0)") {
+    // The test harness creates SELF and OUTPUTS(0) with the same value (10), the
+    // same script (so propositionBytes match) and no tokens. Their R3 differs
+    // (creationHeight 5 vs 0; tx ref absent on SELF vs newBox1) and their R4/R5
+    // also differ, but equalBoxExcept excludes R3 implicitly and never compares
+    // R4-R9, so the helper must return true on this transaction.
+    test("equalBoxExceptIdentity", env, ext,
+      "{ equalBoxExcept(SELF, OUTPUTS(0), Coll[Int]()) }",
+      null,
+      true
+    )
+  }
+
+  property("equalBoxExcept - R7/R8 in exclude is a no-op, still true") {
+    test("equalBoxExceptR7R8", env, ext,
+      "{ equalBoxExcept(SELF, OUTPUTS(0), Coll(7, 8)) }",
+      null,
+      true
+    )
+  }
+
+  property("equalBoxExcept - excluding all mandatory comparable registers collapses to true") {
+    test("equalBoxExceptAllExcluded", env, ext,
+      "{ equalBoxExcept(SELF, OUTPUTS(0), Coll(0, 1, 2)) }",
+      null,
+      true
+    )
+  }
+
   property("expUnsigned - with mod inside") {
       val zz = SecP256K1Group.order.add(new BigInteger("8"))
       def someTest() = test("exp", env, ext,
