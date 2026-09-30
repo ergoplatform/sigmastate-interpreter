@@ -9139,6 +9139,64 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
+  // allZK / anyZK are pure compiler sugar (issue #543): they lower to the SAME SigmaAnd / SigmaOr
+  // nodes that `&&` / `||` produce on sigma propositions, which exist since v4/v5. They are therefore
+  // available in all script versions, not gated to v6. These properties pin the v5 (pre-v6) behavior:
+  // the compiled ErgoTree is the expected SigmaAnd/SigmaOr and the result matches the reference.
+  property("allZK equivalence") {
+    val allZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.allZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => allZK(Coll(x._1, x._2)) }",
+      FuncValue(
+        Vector((1, SPair(SSigmaProp, SSigmaProp))),
+        SigmaAnd(
+          Seq(
+            SelectField.typed[SigmaPropValue](ValUse(1, SPair(SSigmaProp, SSigmaProp)), 1.toByte),
+            SelectField.typed[SigmaPropValue](ValUse(1, SPair(SSigmaProp, SSigmaProp)), 2.toByte)
+          )
+        )))
+    val dlA = ProveDlog(Helpers.decodeECPoint("02ea9bf6da7f512386c6ca509d40f8c5e7e0ffb3eea5dc3c398443ea17f4510798"))
+    val dlB = ProveDlog(Helpers.decodeECPoint("03a426a66fc1af2792b35d9583904c3fb877b49ae5cea45b7a2aa105ffa4c68606"))
+    val pkA = CSigmaProp(dlA)
+    val pkB = CSigmaProp(dlB)
+    def expected(v: SigmaProp) = new Expected(ExpectedResult(Success(v), None))
+    verifyCases(
+      Seq(
+        (pkA, pkB)                               -> expected(CSigmaProp(CAND.normalized(Array(dlA, dlB)))),
+        (CSigmaProp(TrivialProp.TrueProp), pkB)  -> expected(pkB),                              // true && x == x
+        (CSigmaProp(TrivialProp.FalseProp), pkB) -> expected(CSigmaProp(TrivialProp.FalseProp)) // false && x == false
+      ),
+      allZK,
+      preGeneratedSamples = Some(Seq.empty))
+  }
+
+  property("anyZK equivalence") {
+    val anyZK = existingFeature(
+      { (x: (SigmaProp, SigmaProp)) => SigmaDsl.anyZK(Colls.fromItems(x._1, x._2)) },
+      "{ (x: (SigmaProp, SigmaProp)) => anyZK(Coll(x._1, x._2)) }",
+      FuncValue(
+        Vector((1, SPair(SSigmaProp, SSigmaProp))),
+        SigmaOr(
+          Seq(
+            SelectField.typed[SigmaPropValue](ValUse(1, SPair(SSigmaProp, SSigmaProp)), 1.toByte),
+            SelectField.typed[SigmaPropValue](ValUse(1, SPair(SSigmaProp, SSigmaProp)), 2.toByte)
+          )
+        )))
+    val dlA = ProveDlog(Helpers.decodeECPoint("02ea9bf6da7f512386c6ca509d40f8c5e7e0ffb3eea5dc3c398443ea17f4510798"))
+    val dlB = ProveDlog(Helpers.decodeECPoint("03a426a66fc1af2792b35d9583904c3fb877b49ae5cea45b7a2aa105ffa4c68606"))
+    val pkA = CSigmaProp(dlA)
+    val pkB = CSigmaProp(dlB)
+    def expected(v: SigmaProp) = new Expected(ExpectedResult(Success(v), None))
+    verifyCases(
+      Seq(
+        (pkA, pkB)                               -> expected(CSigmaProp(COR.normalized(Array(dlA, dlB)))),
+        (CSigmaProp(TrivialProp.TrueProp), pkB)  -> expected(CSigmaProp(TrivialProp.TrueProp)), // true || x == true
+        (CSigmaProp(TrivialProp.FalseProp), pkB) -> expected(pkB)                               // false || x == x
+      ),
+      anyZK,
+      preGeneratedSamples = Some(Seq.empty))
+  }
+
   property("SigmaProp.propBytes equivalence") {
     verifyCases(
       {

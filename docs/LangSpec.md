@@ -1105,6 +1105,20 @@ def xorOf(conditions: Coll[Boolean]): Boolean
  * if at least k properties can be proven to be true. 
  */
 def atLeast(k: Int, properties: Coll[SigmaProp]): SigmaProp
+
+/** Returns a SigmaProp (a `SigmaAnd` node) which can be ZK proven to be true if *all* the
+ * propositions can be proven to be true, without revealing which proof was presented.
+ * Equivalent to combining the propositions with `&&`. The argument must be a literal
+ * collection: its size is fixed at compile time.
+ */
+def allZK(propositions: Coll[SigmaProp]): SigmaProp
+
+/** Returns a SigmaProp (a `SigmaOr` node) which can be ZK proven to be true if *any* of the
+ * propositions can be proven to be true, without revealing which proof was presented.
+ * Equivalent to combining the propositions with `||`. The argument must be a literal
+ * collection: its size is fixed at compile time.
+ */
+def anyZK(propositions: Coll[SigmaProp]): SigmaProp
     
 /** Embedding of Boolean values to SigmaProp values. As an example, this
  * operation allows boolean expressions to be used as arguments of
