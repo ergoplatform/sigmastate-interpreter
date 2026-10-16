@@ -86,7 +86,7 @@ class DHTupleExampleSpecification extends CompilerTestingCommons
       spendingTransaction = tx,
       self = inBox, activatedVersionInTests
     )
-    val dhtBob = DiffieHellmanTupleProverInput(y, ProveDHTuple(g, g_x, g_y, g_xy))
+    val dhtBob = DiffieHellmanTupleProverInput.create(y, ProveDHTuple(g, g_x, g_y, g_xy))
 
     val proofBob = (new ContextEnrichingTestProvingInterpreter).withDHSecrets(
       Seq(dhtBob)
@@ -94,7 +94,7 @@ class DHTupleExampleSpecification extends CompilerTestingCommons
 
     verifier.verify(env, script, context, proofBob, fakeMessage).get._1 shouldBe true
 
-    val dhtAlice = DiffieHellmanTupleProverInput(x, ProveDHTuple(g, g_y, g_x, g_xy))
+    val dhtAlice = DiffieHellmanTupleProverInput.create(x, ProveDHTuple(g, g_y, g_x, g_xy))
 
     val proofAlice = (new ContextEnrichingTestProvingInterpreter).withDHSecrets(
       Seq(dhtAlice)
@@ -102,13 +102,9 @@ class DHTupleExampleSpecification extends CompilerTestingCommons
 
     verifier.verify(env, script, context, proofAlice, fakeMessage).get._1 shouldBe true
 
-    val dhtBad = DiffieHellmanTupleProverInput(BigInt(10).bigInteger, ProveDHTuple(g, g_y, g_x, g_xy))
-
-    val proofBad = (new ContextEnrichingTestProvingInterpreter).withDHSecrets(
-      Seq(dhtBad)
-    ).prove(env, script, context, fakeMessage).get.proof
-
-    verifier.verify(env, script, context, proofBad, fakeMessage).get._1 shouldBe false
+    assertThrows[IllegalArgumentException] {
+      DiffieHellmanTupleProverInput.create(BigInt(10).bigInteger, ProveDHTuple(g, g_y, g_x, g_xy))
+    }
 
   }
 
