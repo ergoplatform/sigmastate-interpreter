@@ -32,12 +32,13 @@ object NBitsUtils {
     */
   def encodeCompactBits(requiredDifficulty: BigInt): Long = {
     val value = requiredDifficulty.bigInteger
+    val absValue = value.abs()
     var result: Long = 0L
-    var size: Int = value.toByteArray.length
+    var size: Int = absValue.toByteArray.length
     if (size <= 3) {
-      result = value.longValue << 8 * (3 - size)
+      result = absValue.longValue << 8 * (3 - size)
     } else {
-      result = value.shiftRight(8 * (size - 3)).longValue
+      result = absValue.shiftRight(8 * (size - 3)).longValue
     }
     // The 0x00800000 bit denotes the sign.
     // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
@@ -45,7 +46,7 @@ object NBitsUtils {
       result >>= 8
       size += 1
     }
-    result |= size << 24
+    result |= size.toLong << 24
     val a: Int = if (value.signum == -1) 0x00800000 else 0
     result |= a
     result
