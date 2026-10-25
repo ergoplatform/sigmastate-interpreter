@@ -163,7 +163,7 @@ abstract class Base { thisIR: IRContext =>
     private var _self: Ref[T @uncheckedVariance] = _
 
     /** Reference to this definition created lazily on demand. */
-    def self: Ref[T] = {
+    final def self: Ref[T] = {
       if (_self == null) _self = freshSym(this)
       _self
     }

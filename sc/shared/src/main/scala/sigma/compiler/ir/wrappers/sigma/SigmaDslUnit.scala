@@ -39,38 +39,41 @@ import scalan._
       def negate: Ref[GroupElement];
       def getEncoded: Ref[Coll[Byte]]
     };
+    private lazy val SigmaPropClass = RClass(classOf[SigmaProp])
+
     trait SigmaProp extends Def[SigmaProp] {
       import Coll._
       import SigmaProp._
 
-      private val SigmaPropClass = RClass(classOf[SigmaProp])
+      protected def sigmaPropReceiver: Ref[SigmaProp] = self
+      protected def sigmaPropIsAdapterCall: Boolean = false
 
       def isValid: Ref[Boolean] = {
-        asRep[Boolean](mkMethodCall(self,
+        asRep[Boolean](mkMethodCall(sigmaPropReceiver,
           SigmaPropClass.getMethod("isValid"),
           ArraySeq.empty,
-          true, false, element[Boolean]))
+          true, sigmaPropIsAdapterCall, element[Boolean]))
       }
 
       def propBytes: Ref[Coll[Byte]] = {
-        asRep[Coll[Byte]](mkMethodCall(self,
+        asRep[Coll[Byte]](mkMethodCall(sigmaPropReceiver,
           SigmaPropClass.getMethod("propBytes"),
           ArraySeq.empty,
-          true, false, element[Coll[Byte]]))
+          true, sigmaPropIsAdapterCall, element[Coll[Byte]]))
       }
 
       def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-        asRep[SigmaProp](mkMethodCall(self,
+        asRep[SigmaProp](mkMethodCall(sigmaPropReceiver,
           SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
           Array[AnyRef](other),
-          true, false, element[SigmaProp]))
+          true, sigmaPropIsAdapterCall, element[SigmaProp]))
       }
 
       def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-        asRep[SigmaProp](mkMethodCall(self,
+        asRep[SigmaProp](mkMethodCall(sigmaPropReceiver,
           SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
           Array[AnyRef](other),
-          true, false, element[SigmaProp]))
+          true, sigmaPropIsAdapterCall, element[SigmaProp]))
       }
     };
     trait Box extends Def[Box] {

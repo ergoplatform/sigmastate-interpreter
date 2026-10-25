@@ -709,7 +709,8 @@ object SigmaProp extends EntityObject("SigmaProp") {
       extends Node with SigmaProp
       with Def[SigmaProp] {
     val resultType: Elem[SigmaProp] = element[SigmaProp]
-    override def self: Ref[SigmaProp] = source
+    override protected def sigmaPropReceiver: Ref[SigmaProp] = source
+    override protected def sigmaPropIsAdapterCall: Boolean = true
     override def transform(t: Transformer) = SigmaPropAdapter(t(source))
   }
 
