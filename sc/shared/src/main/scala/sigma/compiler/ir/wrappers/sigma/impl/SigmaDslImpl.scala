@@ -690,42 +690,9 @@ object SigmaProp extends EntityObject("SigmaProp") {
   case class SigmaPropConst(
         constValue: SSigmaProp
       ) extends LiftedConst[SSigmaProp, SigmaProp] with SigmaProp
-        with Def[SigmaProp] with SigmaPropConstMethods {
+        with Def[SigmaProp] {
     val liftable: Liftable[SSigmaProp, SigmaProp] = LiftableSigmaProp
     val resultType: Elem[SigmaProp] = liftable.eW
-  }
-
-  trait SigmaPropConstMethods extends SigmaProp  { thisConst: Def[_] =>
-
-    private val SigmaPropClass = RClass(classOf[SigmaProp])
-
-    override def isValid: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(self,
-        SigmaPropClass.getMethod("isValid"),
-        ArraySeq.empty,
-        true, false, element[Boolean]))
-    }
-
-    override def propBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(self,
-        SigmaPropClass.getMethod("propBytes"),
-        ArraySeq.empty,
-        true, false, element[Coll[Byte]]))
-    }
-
-    override def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
-        SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
-        Array[AnyRef](other),
-        true, false, element[SigmaProp]))
-    }
-
-    override def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(self,
-        SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
-        Array[AnyRef](other),
-        true, false, element[SigmaProp]))
-    }
   }
 
   implicit object LiftableSigmaProp
@@ -737,42 +704,13 @@ object SigmaProp extends EntityObject("SigmaProp") {
     def lift(x: SSigmaProp): Ref[SigmaProp] = SigmaPropConst(x)
   }
 
-  private val SigmaPropClass = RClass(classOf[SigmaProp])
-
   // entityAdapter for SigmaProp trait
   case class SigmaPropAdapter(source: Ref[SigmaProp])
       extends Node with SigmaProp
       with Def[SigmaProp] {
     val resultType: Elem[SigmaProp] = element[SigmaProp]
+    override def self: Ref[SigmaProp] = source
     override def transform(t: Transformer) = SigmaPropAdapter(t(source))
-
-    def isValid: Ref[Boolean] = {
-      asRep[Boolean](mkMethodCall(source,
-        SigmaPropClass.getMethod("isValid"),
-        ArraySeq.empty,
-        true, true, element[Boolean]))
-    }
-
-    def propBytes: Ref[Coll[Byte]] = {
-      asRep[Coll[Byte]](mkMethodCall(source,
-        SigmaPropClass.getMethod("propBytes"),
-        ArraySeq.empty,
-        true, true, element[Coll[Byte]]))
-    }
-
-    def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
-        SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
-        Array[AnyRef](other),
-        true, true, element[SigmaProp]))
-    }
-
-    def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
-      asRep[SigmaProp](mkMethodCall(source,
-        SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
-        Array[AnyRef](other),
-        true, true, element[SigmaProp]))
-    }
   }
 
   // entityUnref: single unref method for each type family

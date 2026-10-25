@@ -1,7 +1,9 @@
 package sigma.compiler.ir.wrappers.sigma
 
+import scala.collection.compat.immutable.ArraySeq
 import scalan._
   import sigma.compiler.ir.{Base, IRContext}
+  import sigma.reflection.RClass
 
   /** IR representation of ErgoScript (Sigma) language types and methods. */
   trait SigmaDsl extends Base { self: IRContext =>
@@ -38,10 +40,38 @@ import scalan._
       def getEncoded: Ref[Coll[Byte]]
     };
     trait SigmaProp extends Def[SigmaProp] {
-      def isValid: Ref[Boolean];
-      def propBytes: Ref[Coll[Byte]];
-      def &&(other: Ref[SigmaProp]): Ref[SigmaProp];
-      def ||(other: Ref[SigmaProp]): Ref[SigmaProp];
+      import Coll._
+      import SigmaProp._
+
+      private val SigmaPropClass = RClass(classOf[SigmaProp])
+
+      def isValid: Ref[Boolean] = {
+        asRep[Boolean](mkMethodCall(self,
+          SigmaPropClass.getMethod("isValid"),
+          ArraySeq.empty,
+          true, false, element[Boolean]))
+      }
+
+      def propBytes: Ref[Coll[Byte]] = {
+        asRep[Coll[Byte]](mkMethodCall(self,
+          SigmaPropClass.getMethod("propBytes"),
+          ArraySeq.empty,
+          true, false, element[Coll[Byte]]))
+      }
+
+      def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
+        asRep[SigmaProp](mkMethodCall(self,
+          SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
+          Array[AnyRef](other),
+          true, false, element[SigmaProp]))
+      }
+
+      def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
+        asRep[SigmaProp](mkMethodCall(self,
+          SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
+          Array[AnyRef](other),
+          true, false, element[SigmaProp]))
+      }
     };
     trait Box extends Def[Box] {
       def id: Ref[Coll[Byte]];
