@@ -164,6 +164,32 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       .getOrElse(false) shouldBe true
   }
 
+  property("Evaluate stripErgoTreeHeader") {
+    testEval("stripErgoTreeHeader(Coll[Byte]()).size == 0")
+    testEval("stripErgoTreeHeader(Coll[Byte](0.toByte)).size == 0")
+    testEval("stripErgoTreeHeader(bytes1) == Coll[Byte](2.toByte, 3.toByte)")
+    testEval("stripErgoTreeHeader(SELF.propositionBytes) == SELF.propositionBytes.slice(1, SELF.propositionBytes.size)")
+    testEval("blake2b256(stripErgoTreeHeader(bytes1)) == blake2b256(bytes1.slice(1, bytes1.size))")
+  }
+
+  property("Evaluate stripErgoTreeHeader on runtime boundary inputs") {
+    // Compile once, without environment constants: both byte collections arrive
+    // through the execution context, so Slice cannot be folded away by the compiler.
+    val code = "stripErgoTreeHeader(getVar[Coll[Byte]](10).get) == getVar[Coll[Byte]](11).get"
+    val prop = mkTestErgoTree(compile(Interpreter.emptyEnv, code)(IR).asBoolValue.toSigmaProp)
+    val challenge = Array.fill[Byte](32)(1)
+    Seq(Array.emptyByteArray, Array[Byte](24),
+      Array[Byte](24, -128, 0, -1, 127), Array[Byte](-1, 42)).foreach { bytes =>
+      val extension = ContextExtension.empty.add(
+        10.toByte -> ByteArrayConstant(bytes),
+        11.toByte -> ByteArrayConstant(bytes.drop(1)))
+      val ctx = testingContext().withExtension(extension)
+      val proof = prover.prove(prop, ctx, challenge).get.proof
+      verifier.verify(Interpreter.emptyEnv, prop, ctx, proof, challenge)
+        .map(_._1).getOrElse(false) shouldBe true
+    }
+  }
+
   property("Evaluate array ops") {
     testEval(
       """{

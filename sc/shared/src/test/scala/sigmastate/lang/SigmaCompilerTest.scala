@@ -187,6 +187,19 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     an[IllegalArgumentException] should be thrownBy comp(""" fromBase64("^%$#@")""")
   }
 
+  property("stripErgoTreeHeader lowers to existing slice nodes") {
+    val helper = comp("stripErgoTreeHeader(getVar[Coll[Byte]](10).get)")
+    val explicit = comp("{ val bytes = getVar[Coll[Byte]](10).get; bytes.slice(1, bytes.size) }")
+    helper shouldBe explicit
+    ValueSerializer.serialize(helper).toSeq shouldBe ValueSerializer.serialize(explicit).toSeq
+
+    // Exercise actual function calls, rather than constructing Slice in Scala.
+    Seq("Coll[Byte]()", "Coll[Byte](0.toByte)", "Coll[Byte](0.toByte, 1.toByte, 2.toByte)").foreach { bytes =>
+      comp(s"stripErgoTreeHeader($bytes)") shouldBe comp(s"{ val bytes = $bytes; bytes.slice(1, bytes.size) }")
+    }
+    an [TyperException] should be thrownBy comp("stripErgoTreeHeader(Coll(1, 2))")
+  }
+
   property("decodePoint") {
     comp(env, "decodePoint(Coll[Byte](1.toByte))") shouldBe DecodePoint(ConcreteCollection.fromItems(ByteConstant(1)))
   }
