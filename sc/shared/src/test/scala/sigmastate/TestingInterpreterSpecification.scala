@@ -164,6 +164,14 @@ class TestingInterpreterSpecification extends CompilerTestingCommons
       .getOrElse(false) shouldBe true
   }
 
+  property("Evaluate stripErgoTreeHeader") {
+    testEval("stripErgoTreeHeader(Coll[Byte]()).size == 0")
+    testEval("stripErgoTreeHeader(Coll[Byte](0.toByte)).size == 0")
+    testEval("stripErgoTreeHeader(bytes1) == Coll[Byte](2.toByte, 3.toByte)")
+    testEval("stripErgoTreeHeader(SELF.propositionBytes) == SELF.propositionBytes.slice(1, SELF.propositionBytes.size)")
+    testEval("blake2b256(stripErgoTreeHeader(bytes1)) == blake2b256(bytes1.slice(1, bytes1.size))")
+  }
+
   property("Evaluate array ops") {
     testEval(
       """{

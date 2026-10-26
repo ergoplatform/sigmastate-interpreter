@@ -276,6 +276,21 @@ object SigmaPredef {
           Seq(ArgInfo("input", "collection of bytes")))
     )
 
+    /** Compiler-only convenience function: use the existing Slice and SizeOf nodes.
+      * In particular, this does not introduce an opcode or normalize tree encodings.
+      */
+    val StripErgoTreeHeaderFunc = PredefinedFunc("stripErgoTreeHeader",
+      Lambda(Array("treeBytes" -> SByteArray), SByteArray, None),
+      PredefFuncInfo(
+        { case (_, Seq(arg: Value[SByteArray]@unchecked)) =>
+          mkSlice(arg, IntConstant(1), mkSizeOf(arg))
+        }),
+      OperationInfo(None,
+        "Removes exactly the first byte of serialized ErgoTree bytes. Empty and one-byte inputs return an empty collection. " +
+          "Does not validate the tree or normalize size prefixes or segregated constants.",
+        Seq(ArgInfo("treeBytes", "serialized ErgoTree bytes")))
+    )
+
     val ByteArrayToBigIntFunc = PredefinedFunc("byteArrayToBigInt",
       Lambda(Array("input" -> SByteArray), SBigInt, None),
       PredefFuncInfo(
@@ -548,6 +563,7 @@ object SigmaPredef {
       FromBase58Func,
       Blake2b256Func,
       Sha256Func,
+      StripErgoTreeHeaderFunc,
       ByteArrayToBigIntFunc,
       ByteArrayToLongFunc,
       DecodePointFunc,
