@@ -405,8 +405,11 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     compiler.typecheck(rawEnv, parsed) shouldBe typed
     compiler.compileParsed(rawEnv, parsed).buildTree shouldBe
       compiler.compileParsed(wrappedEnv, parsed).buildTree
-    val result = compiler.compileTyped(rawEnv, typed)
-    result.buildTree shouldBe compiler.compileTyped(wrappedEnv, typed).buildTree
+    // Keep an identifier in this path so graph construction must resolve the environment.
+    val typedReference = Ident("z", SBigInt)
+    val result = compiler.compileTyped(rawEnv, typedReference)
+    result.buildTree shouldBe compiler.compileTyped(wrappedEnv, typedReference).buildTree
+    result.buildTree shouldBe typed
     result.env shouldBe rawEnv
   }
 
