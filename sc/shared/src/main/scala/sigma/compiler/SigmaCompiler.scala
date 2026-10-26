@@ -76,7 +76,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
   def typecheck(env: ScriptEnv, parsed: SValue): Value[SType] = {
     SigmaCompiler.checkStackOverflow(parsed.sourceContext.toOption) {
       val predefinedFuncRegistry = new PredefinedFuncRegistry(builder)
-      val binder = new SigmaBinder(env, builder, networkPrefix, predefinedFuncRegistry)
+      val binder = new SigmaBinder(normalizeEnvironment(env), builder, networkPrefix, predefinedFuncRegistry)
       val bound = binder.bind(parsed)
       val typeEnv = env.collect { case (k, v: SType) => k -> v }
       val typer = new SigmaTyper(builder, predefinedFuncRegistry, typeEnv, settings.lowerMethodCalls)
@@ -87,6 +87,14 @@ class SigmaCompiler private(settings: CompilerSettings) {
   def typecheck(env: ScriptEnv, code: String): Value[SType] = {
     val parsed = parse(code)
     typecheck(env, parsed)
+  }
+
+  /** Accept Scala host BigInts in compiler environments without changing constant
+    * lifting on the consensus evaluation path (Platform.liftToConstant).
+    */
+  private def normalizeEnvironment(env: ScriptEnv): ScriptEnv = env.map {
+    case (name, value: scala.math.BigInt) => name -> sigma.eval.SigmaDsl.BigInt(value.bigInteger)
+    case binding => binding
   }
 
   /** Compiles the given ErgoScript source code. */
@@ -109,7 +117,7 @@ class SigmaCompiler private(settings: CompilerSettings) {
           .zipWithIndex
           .map { case ((name, t), index) => name -> ConstantPlaceholder(index, t) }
           .toMap
-      val compiledGraph = IR.buildGraph(env ++ placeholdersEnv, typedExpr)
+      val compiledGraph = IR.buildGraph(normalizeEnvironment(env) ++ placeholdersEnv, typedExpr)
       val compiledTree = IR.buildTree(compiledGraph)
       CompilerResult(env, "<no source code>", compiledGraph, compiledTree)
     }

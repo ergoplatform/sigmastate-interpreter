@@ -383,4 +383,31 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     compiler.typecheck(Map.empty[String, Any], compiler.parse("1 + 2")) shouldBe
       Plus(IntConstant(1), IntConstant(2))
   }
+
+  property("Scala BigInt compiler environment values compile like Sigma BigInt values") {
+    val values = Seq(scala.math.BigInt(0), scala.math.BigInt(1), scala.math.BigInt(-1),
+      (scala.math.BigInt(1) << 255) - 1, -(scala.math.BigInt(1) << 255))
+    values.foreach { value =>
+      val wrapped = sigma.eval.SigmaDsl.BigInt(value.bigInteger)
+      comp(Map("z" -> value), "z") shouldBe comp(Map("z" -> wrapped), "z")
+      comp(Map("z" -> value, "n" -> 7), "z == n.toBigInt") shouldBe
+        comp(Map("z" -> wrapped, "n" -> 7), "z == n.toBigInt")
+    }
+  }
+
+  property("Scala BigInt environment is supported by parsed and typed compiler entry points") {
+    val compiler = SigmaCompiler(TestnetNetworkPrefix)
+    val value = scala.math.BigInt("123456789012345678901234567890")
+    val rawEnv: ScriptEnv = Map("z" -> value)
+    val wrappedEnv: ScriptEnv = Map("z" -> sigma.eval.SigmaDsl.BigInt(value.bigInteger))
+    val parsed = compiler.parse("z")
+    val typed = compiler.typecheck(wrappedEnv, parsed)
+    compiler.typecheck(rawEnv, parsed) shouldBe typed
+    compiler.compileParsed(rawEnv, parsed).buildTree shouldBe
+      compiler.compileParsed(wrappedEnv, parsed).buildTree
+    val result = compiler.compileTyped(rawEnv, typed)
+    result.buildTree shouldBe compiler.compileTyped(wrappedEnv, typed).buildTree
+    result.env shouldBe rawEnv
+  }
+
 }
