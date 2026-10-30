@@ -27,7 +27,9 @@ object SecretString {
 
 /** Encapsulates secret array of characters (char[]) with proper equality.
   * The secret data can be erased in memory and not leaked to GC.
-  * Note that calling any methods after `erase()` will throw a runtime exception.
+  * After `erase()`, `isEmpty()`, `getData()`, `hashCode()`, `equals(...)`, and
+  * `toStringUnsecure()` throw a runtime exception.
+  * Calling `erase()` again overwrites the array and leaves the instance erased.
   * Using this class is more secure and safe than using char[] directly.
   *
   * Secret data, should not be copied outside of this instance.
