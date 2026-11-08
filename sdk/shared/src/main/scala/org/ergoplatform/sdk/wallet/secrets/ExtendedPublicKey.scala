@@ -1,5 +1,6 @@
 package org.ergoplatform.sdk.wallet.secrets
 
+import scorex.utils.Ints
 import sigma.crypto.{BigIntegers, CryptoConstants, CryptoFacade}
 import sigma.data.ProveDlog
 import sigmastate.crypto.DLogProtocol.DLogProverInput
@@ -32,8 +33,13 @@ final class ExtendedPublicKey(/*private[secrets] */val keyBytes: Array[Byte],
   })
 
   override def hashCode(): Int = {
-    var h = java.util.Arrays.hashCode(keyBytes)
-    h = 31 * h + java.util.Arrays.hashCode(chainCode)
+    var h =
+      if (keyBytes != null && keyBytes.length >= 4) Ints.fromByteArray(keyBytes)
+      else java.util.Arrays.hashCode(keyBytes)
+    h = 31 * h + (
+      if (chainCode != null && chainCode.length >= 4) Ints.fromByteArray(chainCode)
+      else java.util.Arrays.hashCode(chainCode)
+    )
     h = 31 * h + path.hashCode()
     h
   }
