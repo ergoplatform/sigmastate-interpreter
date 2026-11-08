@@ -138,7 +138,7 @@ class AtomicSwapExampleSpecification extends CompilerTestingCommons with Compile
     verifier.verify(env, prop2Tree, ctx1, pr, fakeMessage).get._1 shouldBe true
 
     //B extracts preimage x of hx
-    val t = pr.extension.values(1)
+    val t = pr.extension.values(1).get
     val proverB2 = proverB.withContextExtender(1, t.asInstanceOf[CollectionConstant[SByte.type]])
 
     //B spends coins of A in chain1 with knowledge of x

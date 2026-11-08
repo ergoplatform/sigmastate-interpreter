@@ -31,7 +31,7 @@ import sigma.Extensions.ArrayOps
 import sigma.crypto.CryptoConstants
 import sigma.data.CSigmaDslBuilder.Colls
 import sigma.exceptions.InterpreterException
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 
 import java.lang.reflect.InvocationTargetException
 import java.math.BigInteger
@@ -1830,17 +1830,17 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
     )
 
     val tx2 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(true)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> BooleanConstant(true))))))),
       IndexedSeq(input.wrappedValue)
     )
 
     val tx3 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> IntConstant(0)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> IntConstant(0))))))),
       IndexedSeq(input.wrappedValue)
     )
 
     val tx4 = ErgoLikeTransaction(
-      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(Map(11.toByte -> BooleanConstant(false)))))),
+      IndexedSeq(Input(input.ebox.id, ProverResult(Array.emptyByteArray, ContextExtension(SigmaMap(Map(11.toByte -> BooleanConstant(false))))))),
       IndexedSeq(input.wrappedValue)
     )
 
@@ -1870,18 +1870,16 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         )
       ),
       _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-      vars = Colls
-        .replicate[AnyValue](10, null) // reserve 10 vars
-        .append(Coll[AnyValue](
-          CAnyValue(Helpers.decodeBytes("00")),
-          CAnyValue(true))),
+      vars = SigmaMap(Map(
+        10.toByte -> ByteArrayConstant(Helpers.decodeBytes("00")),
+        11.toByte -> BooleanConstant(true))),
       spendingTransaction = tx,
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
     val ctx2 = ctx.copy(spendingTransaction = tx2)
-    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = ctx.vars.patch(11, Coll(CAnyValue(0)), 1))
-    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = ctx.vars.patch(11, Coll(CAnyValue(false)), 1))
+    val ctx3 = ctx.copy(spendingTransaction = tx3, vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap.updated(11.toByte, IntConstant(0))))
+    val ctx4 = ctx.copy(spendingTransaction = tx4, vars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap.updated(11.toByte, BooleanConstant(false))))
 
     (ctx, ctx2, ctx3, ctx4)
   }

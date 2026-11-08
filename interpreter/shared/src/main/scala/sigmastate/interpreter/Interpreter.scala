@@ -109,20 +109,15 @@ trait Interpreter {
   /** @param updateContext  call back to setup new context (with updated cost limit) to be passed next time */
   protected def substDeserialize(context: CTX, updateContext: CTX => Unit, node: SValue): Option[SValue] = node match {
     case d: DeserializeContext[_] =>
-      if (context.extension.values.contains(d.id))
-        context.extension.values(d.id) match {
-          case eba: EvaluatedValue[SByteArray]@unchecked if eba.tpe == SByteArray =>
-            val scriptBytes = eba.value.toArray
-            val (ctx1, script) = deserializeMeasured(context, scriptBytes)
-            updateContext(ctx1)
+      context.extension.values(d.id).collect {
+        case eba: EvaluatedValue[SByteArray]@unchecked if eba.tpe == SByteArray =>
+          val scriptBytes = eba.value.toArray
+          val (ctx1, script) = deserializeMeasured(context, scriptBytes)
+          updateContext(ctx1)
 
-            CheckDeserializedScriptType(d, script)
-            Some(script)
-          case _ =>
-            None
-        }
-      else
-        None
+          CheckDeserializedScriptType(d, script)
+          script
+      }
     case _ => None
   }
 
