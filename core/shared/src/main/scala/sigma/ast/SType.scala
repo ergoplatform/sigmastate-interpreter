@@ -213,13 +213,13 @@ object SType {
   }
 
   def isAssignableTo(tpe: SType): Boolean = tpe match {
-    case SBoolean => true
-    case SByte => true
-    case SShort => true
-    case SInt => true
-    case SLong => true
-    case SBigInt => true
-    case SString => true
+    case _: SMonoType => true
+    case SCollectionType(elemType) => isAssignableTo(elemType)
+    case SOption(elemType) => isAssignableTo(elemType)
+    case STuple(items) => items.forall(isAssignableTo)
+    case SFunc(tDom, tRange, _) => tDom.forall(isAssignableTo) && isAssignableTo(tRange)
+    case STypeApply(_, args) => args.forall(isAssignableTo)
+    case STypeVar(_) => true
     case NoType => false
     case _ => false
   }

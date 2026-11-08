@@ -88,7 +88,12 @@ class SigmaTyper(val builder: SigmaBuilder,
           error(s"Variable $n already defined ($n = ${curEnv(n)}", v.sourceContext)
         val expectedForB = if (explicitType != NoType) Some(explicitType) else None
         val b1 = assignType(curEnv, b, expectedForB)
-        val resultType = SType.getResultType(b1.tpe)
+        val resultType = b match {
+          case Lambda(_, _, givenResType, _) if givenResType != NoType =>
+            SType.getResultType(b1.tpe)
+          case _ =>
+            b1.tpe
+        }
         if (SType.isAssignableTo(explicitType) && explicitType != resultType)
           error(s"Expected type ${explicitType}, but got ${b1.tpe}", v.sourceContext)
         curEnv = curEnv + (n -> b1.tpe)

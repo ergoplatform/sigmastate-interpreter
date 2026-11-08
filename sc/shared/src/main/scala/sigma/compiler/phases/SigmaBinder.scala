@@ -91,8 +91,9 @@ class SigmaBinder(env: ScriptEnv, builder: SigmaBuilder,
       val newBinds = for (v @ Val(n, t, b) <- binds) yield {
         if (env.contains(n)) error(s"Variable $n already defined ($n = ${env(n)}", v.sourceContext)
         val b1 = eval(b, env)
+        val givenType = if (t != NoType) t else if (canInferType(b1)) b1.tpe else NoType
         builder.currentSrcCtx.withValue(v.sourceContext) {
-          mkVal(n, if (t != NoType) t else b1.tpe, b1)
+          mkVal(n, givenType, b1)
         }
       }
       val t1 = eval(t, env)
@@ -119,4 +120,13 @@ class SigmaBinder(env: ScriptEnv, builder: SigmaBuilder,
 
 object SigmaBinder {
   def error(msg: String, srcCtx: Nullable[SourceContext]) = throw new BinderException(msg, srcCtx.toOption)
+
+  private def canInferType(v: SValue): Boolean = v match {
+    case Tuple(items) => items.forall(canInferType)
+    case _: Constant[_] => true
+    case ArithOp(l, r, _) => canInferType(l) && canInferType(r) && l.tpe == r.tpe
+    case Lambda(_, _, givenResType, body) =>
+      givenResType == NoType && body.forall(b => b.tpe == NoType || canInferType(b))
+    case _ => false
+  }
 }
