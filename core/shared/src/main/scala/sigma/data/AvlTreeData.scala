@@ -1,7 +1,10 @@
 package sigma.data
 
 import sigma.serialization.{CoreByteReader, CoreByteWriter, CoreSerializer}
+import sigma.util.NBitsUtils
 import sigma.{Coll, Colls, crypto}
+
+import java.util.{Arrays, Objects}
 
 
 case class AvlTreeFlags(insertAllowed: Boolean, updateAllowed: Boolean, removeAllowed: Boolean) {
@@ -51,7 +54,15 @@ object AvlTreeFlags {
 case class AvlTreeData(digest: Coll[Byte],
                        treeFlags: AvlTreeFlags,
                        keyLength: Int,
-                       valueLengthOpt: Option[Int] = None)
+                       valueLengthOpt: Option[Int] = None) {
+  override def hashCode(): Int = {
+    val arr = digest.toArray
+    val digestHash =
+      if (arr.length < 4) Arrays.hashCode(arr)
+      else NBitsUtils.readUint32BE(arr).toInt
+    (digestHash * 31 + keyLength.hashCode()) * 31 + Objects.hash(valueLengthOpt, treeFlags)
+  }
+}
 
 object AvlTreeData {
   val DigestSize: Int = crypto.hashLength + 1 //please read class comments above for details

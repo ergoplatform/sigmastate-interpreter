@@ -128,4 +128,20 @@ class DerivationPathSpec
     DerivationPath.fromEncoded("m/44'/429'/1'/0/1").get.isEip3 shouldBe false
   }
 
+  property("ExtendedSecretKey and ExtendedPublicKey hashCode consistency") {
+    val mnemonic = "liar exercise solve delay betray sheriff method empower disease river recall vacuum"
+    val seed = JavaHelpers.mnemonicToSeed(mnemonic, None)
+    val masterKey1 = ExtendedSecretKey.deriveMasterKey(seed, usePre1627KeyDerivation = false)
+    val masterKey2 = ExtendedSecretKey.deriveMasterKey(seed, usePre1627KeyDerivation = false)
+    val childKey = masterKey1.child(1)
+
+    masterKey1 shouldEqual masterKey2
+    masterKey1.hashCode() shouldBe masterKey2.hashCode()
+    masterKey1.publicKey shouldEqual masterKey2.publicKey
+    masterKey1.publicKey.hashCode() shouldBe masterKey2.publicKey.hashCode()
+
+    masterKey1.hashCode() should not be childKey.hashCode()
+    masterKey1.publicKey.hashCode() should not be childKey.publicKey.hashCode()
+  }
+
 }

@@ -3,9 +3,9 @@ package org.ergoplatform
 import org.ergoplatform.ErgoBox.BoxId
 import scorex.crypto.authds.ADKey
 import scorex.util.encode.Base16
+import scorex.utils.Ints
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
-import sigma.util.CollectionUtil
 
 /**
   * Inputs, that are used to enrich script context, but won't be spent by the transaction
@@ -20,7 +20,9 @@ case class DataInput(boxId: BoxId) {
     case _ => false
   }
 
-  override def hashCode(): Int = CollectionUtil.deepHashCode(boxId)
+  override def hashCode(): Int =
+    if (boxId != null && boxId.length >= 4) Ints.fromByteArray(boxId)
+    else java.util.Arrays.hashCode(boxId)
 }
 
 /**
@@ -41,7 +43,9 @@ class UnsignedInput(val boxId: BoxId, val extension: ContextExtension) {
     case _ => false
   }
 
-  override def hashCode(): Int = CollectionUtil.deepHashCode(boxId)
+  override def hashCode(): Int =
+    if (boxId != null && boxId.length >= 4) Ints.fromByteArray(boxId)
+    else java.util.Arrays.hashCode(boxId)
 
   /**
     * Input, that should be signed by prover and verified by verifier.
