@@ -1,10 +1,13 @@
 package sigma.crypto
 
+import org.bitcoin.{NativeSecp256k1, Secp256k1Context}
+import org.bouncycastle.asn1.x9.X9ECParameters
 import org.bouncycastle.crypto.digests.SHA512Digest
 import org.bouncycastle.crypto.ec.CustomNamedCurves
 import org.bouncycastle.crypto.generators.PKCS5S2ParametersGenerator
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.math.ec.{ECCurve, ECFieldElement, ECPoint}
+import org.bouncycastle.util.{BigIntegers => BcBigIntegers}
 
 import java.math.BigInteger
 import sigma.Coll
@@ -13,9 +16,55 @@ import sigma.ast._
 
 import java.text.Normalizer.Form.NFKD
 import java.text.Normalizer
+import scala.util.DynamicVariable
 
 /** JVM specific implementation of crypto methods*/
 object Platform {
+  private[crypto] lazy val secp256k1Params: X9ECParameters = CustomNamedCurves.getByName("secp256k1")
+  private[crypto] lazy val secp256k1Curve: ECCurve = secp256k1Params.getCurve
+  private[crypto] lazy val secp256k1G: ECPoint = secp256k1Params.getG
+  private[crypto] lazy val secp256k1Order: BigInteger = secp256k1Params.getN
+
+  /** True if native libsecp256k1 library was loaded successfully by secp256k1-jni. */
+  private lazy val nativeSecp256k1Loaded: Boolean = {
+    try {
+      Secp256k1Context.isEnabled()
+    } catch {
+      case _: Throwable => false
+    }
+  }
+
+  /** Thread-local override used to test BouncyCastle fallback when native library is loaded. */
+  private val secp256k1Override = new DynamicVariable[Option[Boolean]](None)
+
+  /** Returns true if secp256k1-jni native implementation is active, or false if
+    * BouncyCastle fallback is used (either because native library could not be loaded
+    * or because `DISABLE_SECP256K1` environment variable / system property or override is set).
+    */
+  def isSecp256k1Enabled: Boolean = {
+    secp256k1Override.value match {
+      case Some(enabled) => enabled && nativeSecp256k1Loaded
+      case None =>
+        val envDisabled = System.getenv("DISABLE_SECP256K1")
+        val propDisabled = System.getProperty("DISABLE_SECP256K1")
+        val disabled =
+          (envDisabled != null && (envDisabled.equalsIgnoreCase("true") || envDisabled == "1")) ||
+          (propDisabled != null && (propDisabled.equalsIgnoreCase("true") || propDisabled == "1"))
+        !disabled && nativeSecp256k1Loaded
+    }
+  }
+
+  /** Runs `block` with `secp256k1-jni` explicitly enabled or disabled (falling back to BouncyCastle). */
+  private[sigma] def withSecp256k1Enabled[T](enabled: Boolean)(block: => T): T = {
+    secp256k1Override.withValue(Some(enabled))(block)
+  }
+
+  /** Decodes a 65-byte uncompressed secp256k1 point (`0x04 || X || Y`) into a normalized [[Ecp]]. */
+  private[crypto] def decodeUncompressedSecp256k1Point(uncompressed: Array[Byte]): Ecp = {
+    val x = BcBigIntegers.fromUnsignedByteArray(uncompressed, 1, 32)
+    val y = BcBigIntegers.fromUnsignedByteArray(uncompressed, 33, 32)
+    Ecp(secp256k1Curve.createPoint(x, y))
+  }
   /** Description of elliptic curve of point `p` which belongs to the curve.
     * @param p the elliptic curve point
     */
@@ -107,6 +156,30 @@ object Platform {
      * BC treats EC as additive group while we treat that as multiplicative group.
      * Therefore, exponentiate point is multiply.
      */
+    if (p.value.isInfinity) return p
+    if (n.signum() == 0) return Ecp(p.value.getCurve.getInfinity)
+    if (isSecp256k1Enabled && (p.value.getCurve eq secp256k1Curve)) {
+      val k = if (n.signum() < 0 || n.compareTo(secp256k1Order) >= 0) n.mod(secp256k1Order) else n
+      if (k.signum() == 0) {
+        return Ecp(secp256k1Curve.getInfinity)
+      }
+      if (k.compareTo(BigInteger.ONE) == 0) {
+        return Ecp(p.value.normalize())
+      }
+      try {
+        val scalarBytes = BcBigIntegers.asUnsignedByteArray(32, k)
+        val resBytes = if ((p.value eq secp256k1G) || p.value.equals(secp256k1G)) {
+          NativeSecp256k1.computePubkey(scalarBytes, false)
+        } else {
+          NativeSecp256k1.pubKeyTweakMul(p.value.getEncoded(false), scalarBytes, false)
+        }
+        if (resBytes != null && resBytes.length == 65 && resBytes(0) == 0x04) {
+          return decodeUncompressedSecp256k1Point(resBytes)
+        }
+      } catch {
+        case _: Throwable => // fall back to BouncyCastle below
+      }
+    }
     Ecp(p.value.multiply(n))
   }
 
@@ -131,7 +204,7 @@ object Platform {
   type SecureRandom = java.security.SecureRandom
   
   /** Create a new context for cryptographic operations. */
-  def createContext(): CryptoContext = new CryptoContextJvm(CustomNamedCurves.getByName("secp256k1"))
+  def createContext(): CryptoContext = new CryptoContextJvm(secp256k1Params)
 
   /** Create JVM specific source of secure randomness. */
   def createSecureRandom(): SecureRandom = new SecureRandom()

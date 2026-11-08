@@ -82,6 +82,7 @@ ThisBuild / dynverSonatypeSnapshots := true
 ThisBuild / dynverSeparator := "-"
 
 val bouncycastleBcprov = "org.bouncycastle" % "bcprov-jdk15to18" % "1.85.1"
+val bitcoinsSecp256k1 = "org.bitcoin-s" % "bitcoin-s-secp256k1jni" % "1.9.12" exclude("org.scala-lang", "scala-library")
 
 val scryptoDependency =
   libraryDependencies += "org.scorexfoundation" %%% "scrypto" % "3.1.1"
@@ -178,7 +179,8 @@ lazy val core   = crossProject(JVMPlatform, JSPlatform)
     crossScalaSettings,
     moduleNameSetting("org.scorexfoundation.sigma"),
     libraryDependencies ++= Seq(
-      bouncycastleBcprov
+      bouncycastleBcprov,
+      bitcoinsSecp256k1
     )
   )
   .jsSettings(
