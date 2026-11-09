@@ -13,6 +13,8 @@ import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
   * @param boxId - id of a box to add into context (should be in UTXO)
   */
 case class DataInput(boxId: BoxId) {
+  require(boxId.length == BoxId.size, s"incorrect boxId size, expected: ${BoxId.size}, got: ${boxId.length}")
+
   override def toString: String = s"DataInput(${Base16.encode(boxId)})"
 
   override def equals(obj: Any): Boolean = obj match {
@@ -21,12 +23,7 @@ case class DataInput(boxId: BoxId) {
   }
 
   // boxId is a 256-bit hash, so the first 4 bytes already give a well distributed Int.
-  // Unlike UnsignedInput, DataInput does not require the id size, and
-  // JavaHelpers.createDataInput accepts arbitrary bytes, so keep a fallback for
-  // short arrays: Ints.fromByteArray requires at least 4 bytes.
-  override def hashCode(): Int =
-    if (boxId.length >= 4) Ints.fromByteArray(boxId)
-    else java.util.Arrays.hashCode(boxId)
+  override def hashCode(): Int = Ints.fromByteArray(boxId)
 }
 
 /**
