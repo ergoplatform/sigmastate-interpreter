@@ -21,8 +21,11 @@ case class DataInput(boxId: BoxId) {
   }
 
   // boxId is a 256-bit hash, so the first 4 bytes already give a well distributed Int.
+  // Unlike UnsignedInput, DataInput does not require the id size, and
+  // JavaHelpers.createDataInput accepts arbitrary bytes, so keep a fallback for
+  // short arrays: Ints.fromByteArray requires at least 4 bytes.
   override def hashCode(): Int =
-    if (boxId != null && boxId.length >= 4) Ints.fromByteArray(boxId)
+    if (boxId.length >= 4) Ints.fromByteArray(boxId)
     else java.util.Arrays.hashCode(boxId)
 }
 
@@ -44,10 +47,9 @@ class UnsignedInput(val boxId: BoxId, val extension: ContextExtension) {
     case _ => false
   }
 
-  // See DataInput.hashCode for why the hash bytes are used directly.
-  override def hashCode(): Int =
-    if (boxId != null && boxId.length >= 4) Ints.fromByteArray(boxId)
-    else java.util.Arrays.hashCode(boxId)
+  // The constructor requires boxId.size == BoxId.size (32 bytes), so no short-array
+  // fallback is needed here.
+  override def hashCode(): Int = Ints.fromByteArray(boxId)
 
   /**
     * Input, that should be signed by prover and verified by verifier.
