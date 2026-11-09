@@ -3,6 +3,7 @@ package org.ergoplatform
 import scorex.crypto.authds.ADDigest
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.ModifierId
+import scorex.utils.Ints
 import sigma.Colls
 import sigma.crypto.{BigIntegers, CryptoConstants, EcPointType}
 import sigma.serialization.{GroupElementSerializer, SigmaByteReader, SigmaByteWriter, SigmaSerializer}
@@ -139,7 +140,8 @@ case class ErgoHeader(override val version: ErgoHeader.Version,
 
     lazy val id = Colls.fromArray(serializedId)
 
-    override def hashCode(): Int = id.hashCode()
+    // serializedId is the 256-bit block id, so its first 4 bytes are a good hashCode.
+    override def hashCode(): Int = Ints.fromByteArray(serializedId)
 
     override def equals(other: Any): Boolean = other match {
         case h: ErgoHeader => h.id == this.id
