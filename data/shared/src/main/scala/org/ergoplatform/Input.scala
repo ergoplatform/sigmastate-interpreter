@@ -3,9 +3,9 @@ package org.ergoplatform
 import org.ergoplatform.ErgoBox.BoxId
 import scorex.crypto.authds.ADKey
 import scorex.util.encode.Base16
+import scorex.utils.Ints
 import sigma.interpreter.{ContextExtension, ProverResult}
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
-import sigma.util.CollectionUtil
 
 /**
   * Inputs, that are used to enrich script context, but won't be spent by the transaction
@@ -13,6 +13,8 @@ import sigma.util.CollectionUtil
   * @param boxId - id of a box to add into context (should be in UTXO)
   */
 case class DataInput(boxId: BoxId) {
+  require(boxId.length == BoxId.size, s"incorrect boxId size, expected: ${BoxId.size}, got: ${boxId.length}")
+
   override def toString: String = s"DataInput(${Base16.encode(boxId)})"
 
   override def equals(obj: Any): Boolean = obj match {
@@ -20,7 +22,8 @@ case class DataInput(boxId: BoxId) {
     case _ => false
   }
 
-  override def hashCode(): Int = CollectionUtil.deepHashCode(boxId)
+  // boxId is a 256-bit hash, so the first 4 bytes already give a well distributed Int.
+  override def hashCode(): Int = Ints.fromByteArray(boxId)
 }
 
 /**
@@ -41,7 +44,9 @@ class UnsignedInput(val boxId: BoxId, val extension: ContextExtension) {
     case _ => false
   }
 
-  override def hashCode(): Int = CollectionUtil.deepHashCode(boxId)
+  // The constructor requires boxId.size == BoxId.size (32 bytes), so no short-array
+  // fallback is needed here.
+  override def hashCode(): Int = Ints.fromByteArray(boxId)
 
   /**
     * Input, that should be signed by prover and verified by verifier.

@@ -1,5 +1,6 @@
 package org.ergoplatform.sdk.wallet.secrets
 
+import scorex.utils.Ints
 import org.ergoplatform.sdk.JavaHelpers
 import org.ergoplatform.sdk.wallet.Constants
 import org.ergoplatform.sdk.wallet.utils.Generators
@@ -126,6 +127,28 @@ class DerivationPathSpec
     DerivationPath.fromEncoded("m/44'/429'/0'/1/1").get.isEip3 shouldBe true
     Constants.preEip3DerivationPath.isEip3 shouldBe false
     DerivationPath.fromEncoded("m/44'/429'/1'/0/1").get.isEip3 shouldBe false
+  }
+
+  property("extended key hashCode is derived from key bytes and chain code") {
+    val mnemonic = "liar exercise solve delay betray sheriff method empower disease river recall vacuum"
+    val seed = JavaHelpers.mnemonicToSeed(mnemonic, None)
+    val sk = ExtendedSecretKey.deriveMasterKey(seed, usePre1627KeyDerivation = false)
+    val sk2 = ExtendedSecretKey.deriveMasterKey(seed, usePre1627KeyDerivation = false)
+
+    var expectedSkHash = Ints.fromByteArray(sk.keyBytes)
+    expectedSkHash = 31 * expectedSkHash + Ints.fromByteArray(sk.chainCode)
+    expectedSkHash = 31 * expectedSkHash + sk.path.hashCode()
+    sk.hashCode() shouldBe expectedSkHash
+    sk2.hashCode() shouldBe expectedSkHash
+
+    val pk = sk.publicKey
+    var expectedPkHash = Ints.fromByteArray(pk.keyBytes)
+    expectedPkHash = 31 * expectedPkHash + Ints.fromByteArray(pk.chainCode)
+    expectedPkHash = 31 * expectedPkHash + pk.path.hashCode()
+    pk.hashCode() shouldBe expectedPkHash
+
+    // a child key is a different key, so its hash code must differ
+    sk.hashCode() should not be sk.child(1).hashCode()
   }
 
 }

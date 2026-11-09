@@ -4,6 +4,7 @@ import org.ergoplatform.{AutolykosSolution, ErgoHeader, HeaderWithoutPowSerializ
 import scorex.crypto.authds.ADDigest
 import scorex.crypto.hash.Digest32
 import scorex.util.{bytesToId, idToBytes}
+import scorex.utils.Ints
 import sigma.pow.Autolykos2PowValidation
 import sigma.{AvlTree, BigInt, Coll, Colls, GroupElement, Header}
 
@@ -96,7 +97,9 @@ class CHeader(val ergoHeader: ErgoHeader) extends Header with WrapperOf[ErgoHead
        |  unparsed bytes: $unparsedBytes
        |)""".stripMargin
 
-  override def hashCode(): Int = id.hashCode()
+  // Both CHeader and ErgoHeader wrap the same 256-bit block id, so they must
+  // produce the same hashCode for the same block.
+  override def hashCode(): Int = Ints.fromByteArray(ergoHeader.serializedId)
 
   override def equals(other: Any): Boolean = other match {
     case ch: CHeader => ch.id == this.id
