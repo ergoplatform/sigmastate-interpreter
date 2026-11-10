@@ -178,10 +178,9 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "{val X: Int = 5 + 5; X}") shouldBe SInt
     typefail(env, "{val X: Long = 5 + 5; X}", 1, 6)  // Int expression assigned to Long
 
-    // Test with functions - should extract return type
+    // Test with functions - extract return type
     typecheck(env, "{val f: Int => Int = { (x: Int) => x + 1 }; f}") shouldBe SFunc(IndexedSeq(SInt), SInt)
-    // NOTE: Function type annotation validation not enforced strictly
-    // typefail(env, "{val f: Int => Long = { (x: Int) => x }; f}", 1, 6)  // Function returns Int, annotated as Long
+    typefail(env, "{val f: Int => Long = { (x: Int) => x }; f}", 1, 6)  // Function returns Int, annotated as Long
 
     // Test with nested vals
     typecheck(env, "{val X: Int = {val Y = 10; Y}; X}") shouldBe SInt
@@ -190,34 +189,59 @@ class SigmaTyperTest extends AnyPropSpec
     // Test NoType (no explicit annotation) - should work as before
     typecheck(env, "{val X = 10; X}") shouldBe SInt
     typecheck(env, "{val X = true; X}") shouldBe SBoolean
-    
-    // Test Coll[] type annotations
-    // Valid Coll type annotations
+
+    // Coll[] type annotations - valid
     typecheck(env, "{val X: Coll[Int] = Coll(1,2,3); X}") shouldBe SCollection(SInt)
     typecheck(env, "{val X: Coll[Byte] = Coll(1.toByte, 2.toByte); X}") shouldBe SCollection(SByte)
     typecheck(env, "{val X: Coll[Long] = Coll(1L, 2L); X}") shouldBe SCollection(SLong)
     typecheck(env, "{val X: Coll[Boolean] = Coll(true, false); X}") shouldBe SCollection(SBoolean)
     typecheck(env, "{val X: Coll[SigmaProp] = Coll(p1, p2); X}") shouldBe SCollection(SSigmaProp)
-    
-    // NOTE: Coll[] type annotations are NOT strictly validated by the new feature
-    // because isAssignableTo only checks primitive types (Boolean, Byte, Short, Int, Long, BigInt, String)
-    // The following typefail tests would pass if Coll[] validation was added in the future:
-    // typefail(env, "{val X: Coll[Int] = Coll(1L, 2L); X}", 1, 6)  // Coll[Long] assigned to Coll[Int]
-    // typefail(env, "{val X: Coll[Long] = Coll(1, 2); X}", 1, 6)  // Coll[Int] assigned to Coll[Long]
-    
-    // Nested Coll types - valid annotations
+
+    // Coll[] type annotations - invalid (inner-type mismatch)
+    typefail(env, "{val X: Coll[Int] = Coll(1L, 2L); X}", 1, 6)
+    typefail(env, "{val X: Coll[Long] = Coll(1, 2); X}", 1, 6)
+
+    // Nested Coll types - valid
     typecheck(env, "{val X: Coll[Coll[Int]] = Coll(Coll(1), Coll(2)); X}") shouldBe SCollection(SCollection(SInt))
     typecheck(env, "{val X: Coll[Coll[Byte]] = Coll(Coll(1.toByte), Coll(2.toByte)); X}") shouldBe SCollection(SCollection(SByte))
-    
-    // Test Option[] type annotations
+
+    // Nested Coll types - invalid
+    typefail(env, "{val X: Coll[Coll[Int]] = Coll(Coll(1L)); X}", 1, 6)
+
+    // Option[] type annotations - valid
     typecheck(env, "{val X: Option[Int] = getVar[Int](1); X}") shouldBe SOption(SInt)
     typecheck(env, "{val X: Option[Long] = getVar[Long](1); X}") shouldBe SOption(SLong)
     typecheck(env, "{val X: Option[Boolean] = getVar[Boolean](1); X}") shouldBe SOption(SBoolean)
     typecheck(env, "{val X: Option[Byte] = getVar[Byte](1); X}") shouldBe SOption(SByte)
     typecheck(env, "{val X: Option[Coll[Int]] = getVar[Coll[Int]](1); X}") shouldBe SOption(SCollection(SInt))
-    
-    // NOTE: Option[] type annotations are NOT strictly validated for mismatches
-    // because isAssignableTo only checks primitive types (Boolean, Byte, Short, Int, Long, BigInt)
+
+    // Option[] type annotations - invalid (inner-type mismatch)
+    typefail(env, "{val X: Option[Int] = getVar[Long](1); X}", 1, 6)
+    typefail(env, "{val X: Option[Coll[Int]] = getVar[Coll[Long]](1); X}", 1, 6)
+
+    // Tuple type annotations - invalid (element-type mismatch)
+    typefail(env, "{val X: (Int, Boolean) = (1, 2); X}", 1, 6)
+    typefail(env, "{val X: (Coll[Int], Int) = (Coll(1L), 1); X}", 1, 6)
+
+    // SigmaProp vs Boolean
+    typefail(env, "{val X: SigmaProp = true; X}", 1, 6)
+
+    // Composite type mismatches
+    typefail(env, "{val X: Box = INPUTS; X}", 1, 6)
+    typefail(env, "{val X: GroupElement = 1; X}", 1, 6)
+
+    // Undeclared type name — parsed as STypeVar (issue #404 example 1)
+    typefail(env, "{val f: XYZ = INPUTS.map({(box: Box) => box.value == 1L}); f}", 1, 6)
+
+    // FunDef syntax (`def f(args): R = body`) — explicit return type compared
+    // against the lambda's range (isFunDef discriminator)
+    typecheck(env, "{ def f(x: Int): Int = x + 1; f }") shouldBe SFunc(IndexedSeq(SInt), SInt)
+    typefail(env, "{ def f(x: Int): Boolean = x + 1; f }", 1, 7)
+    typecheck(env, "{ def f(x: Int) = x + 1; f }") shouldBe SFunc(IndexedSeq(SInt), SInt)
+
+    // ValVarDef with lambda body but non-function annotation — isFunDef=false,
+    // so the equality check compares against the full SFunc and errors.
+    typefail(env, "{ val f: Int = { (x: Int) => x + 1 }; f }", 1, 7)
   }
 
   property("generic methods of arrays") {

@@ -386,7 +386,9 @@ object AtLeast extends ValueCompanion {
     val ch = sigmas.result()
     if (curBound == 1) return COR.normalized(ch)
     if (curBound == childrenLeft) return CAND.normalized(ch)
-    CTHRESHOLD(curBound, ch)
+    val th = CTHRESHOLD(curBound, ch)
+    SigmaBoolean.checkDepth(th)
+    th
   }
 }
 
