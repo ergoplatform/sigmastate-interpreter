@@ -10,9 +10,12 @@ import sigma.ast.SCollection.SByteArray
 import sigma.ast._
 import sigmastate._
 import sigma.ast.syntax._
+import sigma.crypto.{BigIntegers, CryptoConstants}
 import sigma.data.{AvlTreeData, CBox, ProveDHTuple, ProveDlog, TrivialProp}
+import sigma.exceptions.InterpreterException
 import sigma.util.Extensions.EcpOps
 import sigma.validation.{ReplacedRule, ValidationException, ValidationRules}
+import sigmastate.crypto.DiffieHellmanTupleProverInput
 import sigmastate.eval._
 import sigmastate.interpreter.Interpreter._
 import sigmastate.helpers._
@@ -107,6 +110,57 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
     fakeProver.prove(propTree, ctx, fakeMessage).isSuccess shouldBe false
     prover.prove(mkTestErgoTree(wrongProp), ctx, fakeMessage).isSuccess shouldBe false
+  }
+
+  property("DH tuple - signing w. proper and improper secrets") {
+    val verifier = new ErgoLikeTestInterpreter
+    val ctx = ErgoLikeContextTesting(
+      currentHeight = 1,
+      lastBlockUtxoRoot = AvlTreeData.dummy,
+      minerPubkey = ErgoLikeContextTesting.dummyPubkey,
+      boxesToSpend = IndexedSeq(fakeSelf),
+      spendingTransaction = ErgoLikeTransactionTesting.dummy,
+      self = fakeSelf, activatedVersionInTests)
+
+    // proveDHTuple(g, g^x, g^y, g^xy) should work for y and only for y, not for x:
+    // the statement is "I know w such that g^w == g^y and (g^x)^w == g^xy", which holds for w == y only.
+    val group = CryptoConstants.dlogGroup
+    val g = group.generator
+    val qMinusOne = group.order.subtract(BigInteger.ONE)
+
+    val x = BigIntegers.createRandomInRange(BigInteger.ZERO, qMinusOne, group.secureRandom)
+    val gToX = group.exponentiate(g, x)
+
+    val y = BigIntegers.createRandomInRange(BigInteger.ZERO, qMinusOne, group.secureRandom)
+    val gToY = group.exponentiate(g, y)
+    val gToXY = group.exponentiate(gToX, y)
+    group.exponentiate(gToY, x) shouldBe gToXY
+
+    val dht = ProveDHTuple(g, gToX, gToY, gToXY)
+    val dhPropTree = mkTestErgoTree(SigmaPropConstant(dht))
+
+    // The validating factory rejects the improper secret x at construction time ...
+    assertThrows[IllegalArgumentException] {
+      DiffieHellmanTupleProverInput.create(x, dht)
+    }
+
+    // ... so bypass it via the primary constructor to reach the signing-time check.
+    val xSecret = new DiffieHellmanTupleProverInput(x, dht)
+    xSecret.isValidSecret shouldBe false
+    val proverX = new ContextEnrichingTestProvingInterpreter().withDHSecrets(Seq(xSecret)) // prover holding x
+
+    val ySecret = DiffieHellmanTupleProverInput.create(y, dht)
+    val proverY = new ContextEnrichingTestProvingInterpreter().withDHSecrets(Seq(ySecret)) // prover holding y
+
+    // should not work for x: signing fails loudly instead of producing a proof the verifier would reject
+    // (PR #636 expressed this as an always-failing `prove(...).get shouldBe false` repro for #638)
+    val failure = proverX.prove(dhPropTree, ctx, fakeMessage).failure.exception
+    failure shouldBe an[InterpreterException]
+    failure.getMessage should include("does not satisfy proposition")
+
+    // should work for y
+    val proofY = proverY.prove(dhPropTree, ctx, fakeMessage).get
+    verifier.verify(dhPropTree, ctx, proofY, fakeMessage).get._1 shouldBe true
   }
 
   property("DH tuple - simulation") {

@@ -42,7 +42,7 @@ object ProverSecret extends js.Object {
   def dht(w: js.BigInt, dhtProp: SigmaProp): ProverSecret = {
     dhtProp.sigmaBoolean match {
       case dht: ProveDHTuple =>
-        val input = DiffieHellmanTupleProverInput(Isos.isoBigInt.to(w).toBigInteger, dht)
+        val input = DiffieHellmanTupleProverInput.create(Isos.isoBigInt.to(w).toBigInteger, dht)
         new ProverSecret(input)
       case _ => throw new Exception("Expected ProveDHTuple sigma proposition")
     }
