@@ -22,8 +22,10 @@ class SigmaTemplateCompiler(networkPrefix: Byte) {
     ContractParser.parse(source) match {
       case Parsed.Success(parsedTemplate, _) =>
         implicit val ir = new CompiletimeIRContext
-        val parEnv = parsedTemplate.signature.params.map { p => p.name -> p.tpe }.toMap
-        val result = sigmaCompiler.compileParsed(parEnv, parsedTemplate.body)
+        val paramTypes = parsedTemplate.signature.params.map { p => p.name -> p.tpe }
+        val parEnv = paramTypes.toMap
+        val typed = sigmaCompiler.typecheck(parEnv, parsedTemplate.body)
+        val result = sigmaCompiler.compileTyped(parEnv, typed, paramTypes)
         assemble(parsedTemplate, result.buildTree)
 
       case f: Parsed.Failure =>
