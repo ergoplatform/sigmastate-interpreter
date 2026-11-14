@@ -117,7 +117,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
   ///              Boolean type operations
   ///-----------------------------------------------------
 
-  property("BinXor(logical XOR) equivalence") {
+  compilerProperty("BinXor(logical XOR) equivalence") {
     val binXor = existingFeature((x: (Boolean, Boolean)) => x._1 ^ x._2,
       "{ (x: (Boolean, Boolean)) => x._1 ^ x._2 }",
       FuncValue(
@@ -148,7 +148,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, binXor)
   }
 
-  property("verify should respect Context.initCost") {
+  compilerProperty("verify should respect Context.initCost") {
     val feature = existingFeature((x: (Boolean, Boolean)) => x._1 ^ x._2,
       "{ (x: (Boolean, Boolean)) => x._1 ^ x._2 }",
       FuncValue(
@@ -180,7 +180,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("BinXor(logical XOR) test") {
+  compilerProperty("BinXor(logical XOR) test") {
     val xor = existingFeature((x: (Int, Boolean)) => (x._1 == 0) ^ x._2,
       "{ (x: (Int, Boolean)) => (x._1 == 0) ^ x._2 }",
       FuncValue(
@@ -217,7 +217,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, xor)
   }
 
-  property("&& boolean equivalence") {
+  compilerProperty("&& boolean equivalence") {
     lazy val eq = existingFeature((x:(Boolean, Boolean)) => x._1 && x._2,
       "{ (x:(Boolean, Boolean)) => x._1 && x._2 }",
       FuncValue(
@@ -250,7 +250,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyCases(cases, eq)
   }
 
-  property("|| boolean equivalence") {
+  compilerProperty("|| boolean equivalence") {
     lazy val eq = existingFeature((x:(Boolean, Boolean)) => x._1 || x._2,
       "{ (x:(Boolean, Boolean)) => x._1 || x._2 }",
       FuncValue(
@@ -597,11 +597,11 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("lazy || and && boolean equivalence") {
+  compilerProperty("lazy || and && boolean equivalence") {
     runLazy_And_Or_BooleanEquivalence(evalSettings)
   }
 
-  property("Byte methods equivalence") {
+  compilerProperty("Byte methods equivalence") {
     SByte.upcast(0.toByte) shouldBe 0.toByte  // boundary test case
     SByte.downcast(0.toByte) shouldBe 0.toByte  // boundary test case
 
@@ -857,7 +857,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
 
   val constNeqCost: Seq[CostItem] = Array[CostItem](FixedCostItem(NamedDesc("EQ_Prim"), FixedCost(JitCost(3))))
 
-  property("Byte LT, GT, NEQ") {
+  compilerProperty("Byte LT, GT, NEQ") {
     val o = ExactOrdering.ByteIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LT, SByte), 1768, Seq.fill(4)(2012))
@@ -909,7 +909,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyOp(neqCases, "!=", NEQ.apply)(_ != _)
   }
 
-  property("Byte LE, GE") {
+  compilerProperty("Byte LE, GE") {
     val o = ExactOrdering.ByteIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LE, SByte), 1768, Seq.fill(4)(2012))
@@ -959,7 +959,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ">=", GE.apply)(_ >= _)
   }
 
-  property("Short methods equivalence") {
+  compilerProperty("Short methods equivalence") {
     SShort.upcast(0.toShort) shouldBe 0.toShort  // boundary test case
     SShort.downcast(0.toShort) shouldBe 0.toShort  // boundary test case
 
@@ -979,7 +979,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           (Short.MaxValue, Expected(new ArithmeticException("Byte overflow")))
         )
       },
-      existingFeature((x: Short) => x.toByteExact,
+      existingFeature((x: Short) => x.toInt.toByteExact,
         "{ (x: Short) => x.toByte }",
         FuncValue(Vector((1, SShort)), Downcast(ValUse(1, SShort), SByte))))
 
@@ -1149,7 +1149,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))
   }
 
-  property("Short LT, GT, NEQ") {
+  compilerProperty("Short LT, GT, NEQ") {
     val o = ExactOrdering.ShortIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LT, SShort), 1768, Seq.fill(4)(2012))
@@ -1199,7 +1199,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyOp(neqCases, "!=", NEQ.apply)(_ != _)
   }
 
-  property("Short LE, GE") {
+  compilerProperty("Short LE, GE") {
     val o = ExactOrdering.ShortIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LE, SShort), 1768, Seq.fill(4)(2012))
@@ -1249,7 +1249,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ">=", GE.apply)(_ >= _)
   }
 
-  property("Int methods equivalence") {
+  compilerProperty("Int methods equivalence") {
     SInt.upcast(0) shouldBe 0  // boundary test case
     SInt.downcast(0) shouldBe 0  // boundary test case
 
@@ -1438,7 +1438,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Int LT, GT, NEQ") {
+  compilerProperty("Int LT, GT, NEQ") {
     val o = ExactOrdering.IntIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LT, SInt), 1768, Seq.fill(4)(2012))
@@ -1490,7 +1490,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyOp(neqCases, "!=", NEQ.apply)(_ != _)
   }
 
-  property("Int LE, GE") {
+  compilerProperty("Int LE, GE") {
     val o = ExactOrdering.IntIsExactOrdering
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LE, SInt), 1768, Seq.fill(4)(2012))
     val LE_cases: Seq[((Int, Int), Expected[Boolean])] = Seq(
@@ -1538,14 +1538,14 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ">=", GE.apply)(_ >= _)
   }
 
-  property("Long downcast and upcast identity") {
+  compilerProperty("Long downcast and upcast identity") {
     forAll { x: Long =>
       SLong.upcast(x) shouldBe x  // boundary test case
       SLong.downcast(x) shouldBe x  // boundary test case
     }
   }
 
-  property("Long.toByte method") {
+  compilerProperty("Long.toByte method") {
     verifyCases(
       {
         def success[T](v: T) = Expected(Success(v), 1764, downcastCostDetails(SByte), 1764, Seq.fill(4)(1998))
@@ -1566,7 +1566,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), Downcast(ValUse(1, SLong), SByte))))
   }
 
-  property("Long.toShort method") {
+  compilerProperty("Long.toShort method") {
     verifyCases(
       {
         def success[T](v: T) = Expected(Success(v), 1764, downcastCostDetails(SShort), 1764, Seq.fill(4)(1998))
@@ -1587,7 +1587,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), Downcast(ValUse(1, SLong), SShort))))
   }
 
-  property("Long.toInt method") {
+  compilerProperty("Long.toInt method") {
     verifyCases(
       {
         def success[T](v: T) = Expected(Success(v), 1764, downcastCostDetails(SInt), 1764, Seq.fill(4)(1998))
@@ -1609,7 +1609,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), Downcast(ValUse(1, SLong), SInt))))
   }
 
-  property("Long.toLong method") {
+  compilerProperty("Long.toLong method") {
     verifyCases(
       {
         def success[T](v: T) = Expected(Success(v), 1763, TracedCost(traceBase), 1763, Seq.fill(4)(1993))
@@ -1626,7 +1626,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), ValUse(1, SLong))))
   }
 
-  property("Long.toBigInt method") {
+  compilerProperty("Long.toBigInt method") {
     verifyCases(
       {
         def success(v: BigInt) = Expected(Success(v), 1767, upcastCostDetails(SBigInt), 1767, Seq.fill(4)(2001))
@@ -1645,7 +1645,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), Upcast(ValUse(1, SLong), SBigInt))))
   }
 
-  property("Long methods equivalence") {
+  compilerProperty("Long methods equivalence") {
 
     val n = ExactNumeric.LongIsExactNumeric
     verifyCases(
@@ -1739,7 +1739,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Long LT, GT, NEQ") {
+  compilerProperty("Long LT, GT, NEQ") {
     val o = ExactOrdering.LongIsExactOrdering
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LT, SLong), 1768, Seq.fill(4)(2012))
     val LT_cases: Seq[((Long, Long), Expected[Boolean])] = Seq(
@@ -1789,7 +1789,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyOp(neqCases, "!=", NEQ.apply)(_ != _)
   }
 
-  property("Long LE, GE") {
+  compilerProperty("Long LE, GE") {
     val o = ExactOrdering.LongIsExactOrdering
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LE, SLong), 1768, Seq.fill(4)(2012))
     val LE_cases: Seq[((Long, Long), Expected[Boolean])] = Seq(
@@ -1837,7 +1837,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ">=", GE.apply)(_ >= _)
   }
 
-  property("BigInt methods equivalence") {
+  compilerProperty("BigInt methods equivalence") {
     verifyCases(
       {
         def success(v: BigInt) = Expected(Success(v), 1764, TracedCost(traceBase), 1764, Seq.fill(4)(1994))
@@ -1984,7 +1984,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     ))
   }
 
-  property("BigInt LT, GT, NEQ") {
+  compilerProperty("BigInt LT, GT, NEQ") {
     val o = NumericOps.BigIntIsExactOrdering
 
     def expect(v: Boolean) = Expected(Success(v), 1768, binaryRelationCostDetails(LT, SBigInt), 1768, Seq.fill(4)(2012))
@@ -2038,7 +2038,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyOp(neqCases, "!=", NEQ.apply)(_ != _)
   }
 
-  property("BigInt LE, GE") {
+  compilerProperty("BigInt LE, GE") {
     val o = NumericOps.BigIntIsExactOrdering
     val BigIntMinValue = CBigInt(new BigInteger("-7F" + "ff" * 31, 16))
     val BigIntMaxValue = CBigInt(new BigInteger("7F" + "ff" * 31, 16))
@@ -2116,7 +2116,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       "!=", NEQ.apply)(_ != _, generateCases)
   }
 
-  property("NEQ of pre-defined types") {
+  compilerProperty("NEQ of pre-defined types") {
     verifyNeq(ge1, ge2, 1783, Array[CostItem](FixedCostItem(NamedDesc("EQ_GroupElement"), FixedCost(JitCost(172)))), 1783, Seq.fill(4)(2027))(_.asInstanceOf[CGroupElement].copy())
     verifyNeq(t1, t2, 1767, Array[CostItem](FixedCostItem(NamedDesc("EQ_AvlTree"), FixedCost(JitCost(6)))), 1767, Seq.fill(4)(2019))(_.asInstanceOf[CAvlTree].copy())
     verifyNeq(b1, b2, 1767, Array[CostItem](), 1767, Seq.fill(4)(2019))(_.asInstanceOf[CBox].copy())
@@ -2124,7 +2124,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyNeq(h1, h2, 1767, Array[CostItem](FixedCostItem(NamedDesc("EQ_Header"), FixedCost(JitCost(6)))), 1767, Seq.fill(4)(2019))(_.asInstanceOf[CHeader].copy())
   }
 
-  property("NEQ of tuples of numerics") {
+  compilerProperty("NEQ of tuples of numerics") {
     val tuplesNeqCost = Array(
       FixedCostItem(NamedDesc("EQ_Tuple"), FixedCost(JitCost(4))),
       FixedCostItem(NamedDesc("EQ_Prim"), FixedCost(JitCost(3)))
@@ -2139,7 +2139,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     ), 1767, Seq.fill(4)(2029))(_.copy())
   }
 
-  property("NEQ of tuples of pre-defined types") {
+  compilerProperty("NEQ of tuples of pre-defined types") {
     val groupNeqCost = Array(
       FixedCostItem(NamedDesc("EQ_Tuple"), FixedCost(JitCost(4))),
       FixedCostItem(NamedDesc("EQ_GroupElement"), FixedCost(JitCost(172))),
@@ -2170,7 +2170,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyNeq((h1, h1), (h1, h2), 1768, headerNeqCost, 1768, Seq.fill(4)(2038))(_.copy())
   }
 
-  property("NEQ of nested tuples") {
+  compilerProperty("NEQ of nested tuples") {
     val nestedTuplesNeqCost1 = Array(
       FixedCostItem(NamedDesc("EQ_Tuple"), FixedCost(JitCost(4))),
       FixedCostItem(NamedDesc("EQ_GroupElement"), FixedCost(JitCost(172))),
@@ -2262,7 +2262,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     verifyNeq((((ge1, t1), b1), (preH1, (h1, h1))), (((ge1, t1), b1), (preH1, (h1, h2))), 1788, nestedTuplesNeqCost8, 1788, Seq.fill(4)(2114))(_.copy())
   }
 
-  property("NEQ of collections of pre-defined types") {
+  compilerProperty("NEQ of collections of pre-defined types") {
     val collNeqCost1 = Array(
       FixedCostItem(NamedDesc("MatchType"), FixedCost(JitCost(1)))
     )
@@ -2381,7 +2381,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     )(cloneColl(_))
   }
 
-  property("NEQ of nested collections and tuples") {
+  compilerProperty("NEQ of nested collections and tuples") {
     implicit val evalSettings = suite.evalSettings.copy(isMeasureOperationTime = false)
     prepareSamples[Coll[Int]]
     prepareSamples[Coll[Coll[Int]]]
@@ -2467,7 +2467,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     )(x => (cloneColl(x._1), x._2))
   }
 
-  property("GroupElement.getEncoded equivalence") {
+  compilerProperty("GroupElement.getEncoded equivalence") {
     verifyCases(
     {
       def success[T](v: T) = Expected(Success(v), 1790, methodCostDetails(SGroupElementMethods.GetEncodedMethod, 250), 1790, Seq.fill(4)(2026))
@@ -2489,7 +2489,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       )))
   }
 
-  property("decodePoint(GroupElement.getEncoded) equivalence") {
+  compilerProperty("decodePoint(GroupElement.getEncoded) equivalence") {
     verifyCases(
     {
       val costDetails = TracedCost(
@@ -2528,7 +2528,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     )))
   }
 
-  property("GroupElement.negate equivalence") {
+  compilerProperty("GroupElement.negate equivalence") {
     verifyCases(
     {
       def success[T](v: T) = Expected(Success(v), 1785, methodCostDetails(SGroupElementMethods.NegateMethod, 45), 1785, Seq.fill(4)(2021))
@@ -2548,7 +2548,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     )))
   }
 
-  property("GroupElement.exp equivalence") {
+  compilerProperty("GroupElement.exp equivalence") {
     def cases(cost: Int, details: CostDetails, expectedV3Costs: Seq[Int]) = {
       def success[T](v: T) = Expected(Success(v), cost, details, cost, expectedV3Costs)
 
@@ -2625,7 +2625,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("GroupElement.multiply equivalence") {
+  compilerProperty("GroupElement.multiply equivalence") {
     val scalaFunc = { (x: (GroupElement, GroupElement)) => x._1.multiply(x._2) }
     verifyCases(
       {
@@ -2697,7 +2697,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))
   }
 
-  property("AvlTree properties equivalence") {
+  compilerProperty("AvlTree properties equivalence") {
     def expectedExprFor(propName: String) = {
       FuncValue(
         Vector((1, SAvlTree)),
@@ -2801,7 +2801,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         expectedExprFor("isRemoveAllowed")))
   }
 
-  property("AvlTree.{contains, get, getMany, updateDigest, updateOperations} equivalence") {
+  compilerProperty("AvlTree.{contains, get, getMany, updateDigest, updateOperations} equivalence") {
     val contains = existingFeature(
       (t: (AvlTree, (Coll[Byte], Coll[Byte]))) => t._1.contains(t._2._1, t._2._2),
       "{ (t: (AvlTree, (Coll[Byte], Coll[Byte]))) => t._1.contains(t._2._1, t._2._2) }",
@@ -3199,7 +3199,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
 
   type KV = (Coll[Byte], Coll[Byte])
 
-  property("AvlTree.update equivalence") {
+  compilerProperty("AvlTree.update equivalence") {
     val update = existingFeature((t: (AvlTree, (Coll[KV], Coll[Byte]))) => t._1.update(t._2._1, t._2._2),
       "{ (t: (AvlTree, (Coll[(Coll[Byte], Coll[Byte])], Coll[Byte]))) => t._1.update(t._2._1, t._2._2) }",
       FuncValue(
@@ -3360,7 +3360,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("AvlTree.remove equivalence") {
+  compilerProperty("AvlTree.remove equivalence") {
     val remove = existingFeature((t: (AvlTree, (Coll[Coll[Byte]], Coll[Byte]))) => t._1.remove(t._2._1, t._2._2),
       "{ (t: (AvlTree, (Coll[Coll[Byte]], Coll[Byte]))) => t._1.remove(t._2._1, t._2._2) }",
       FuncValue(
@@ -3510,7 +3510,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("longToByteArray equivalence") {
+  compilerProperty("longToByteArray equivalence") {
     val costDetails = CostDetails(traceBase :+ FixedCostItem(CompanionDesc(LongToByteArray), FixedCost(JitCost(17))))
     verifyCases(
       {
@@ -3530,7 +3530,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SLong)), LongToByteArray(ValUse(1, SLong)))))
   }
 
-  property("byteArrayToBigInt equivalence") {
+  compilerProperty("byteArrayToBigInt equivalence") {
     val costDetails = CostDetails(traceBase :+ FixedCostItem(CompanionDesc(ByteArrayToBigInt), FixedCost(JitCost(30))))
     verifyCases(
       {
@@ -3558,7 +3558,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SByteArray)), ByteArrayToBigInt(ValUse(1, SByteArray)))))
   }
 
-  property("byteArrayToLong equivalence") {
+  compilerProperty("byteArrayToLong equivalence") {
     val costDetails = CostDetails(traceBase :+ FixedCostItem(CompanionDesc(ByteArrayToLong), FixedCost(JitCost(16))))
     verifyCases(
       {
@@ -3580,7 +3580,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SByteArray)), ByteArrayToLong(ValUse(1, SByteArray)))))
   }
 
-  property("Box properties equivalence") {
+  compilerProperty("Box properties equivalence") {
     verifyCases(
       {
         val costDetails = CostDetails(traceBase :+ FixedCostItem(CompanionDesc(ExtractId), FixedCost(JitCost(12))))
@@ -3696,7 +3696,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Conditional access to registers") {
+  compilerProperty("Conditional access to registers") {
     def boxWithRegisters(regs: AdditionalRegisters): Box = {
       SigmaDsl.Box(testBox(20, TrueTree, 0, Seq(), regs))
     }
@@ -3945,7 +3945,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         ))
   }
 
-  property("Advanced Box test") {
+  compilerProperty("Advanced Box test") {
     val (tree, _) = createAvlTreeAndProver()
 
     val box1 = SigmaDsl.Box(testBox(20, TrueTree, 0, Seq(), Map(
@@ -4112,7 +4112,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))
   }
 
-  property("PreHeader properties equivalence") {
+  compilerProperty("PreHeader properties equivalence") {
 
 
     verifyCases(
@@ -4148,7 +4148,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       existingPropTest("votes", { (x: PreHeader) => x.votes }))
   }
 
-  property("Header properties equivalence") {
+  compilerProperty("Header properties equivalence") {
     verifyCases(
       Seq((h1, Expected(Success(
         Helpers.decodeBytes("4e18a26849e98a35a3b7dd25fa9a00c9f33fc8655568c265ffe42165b6d8f3c5")),
@@ -4230,7 +4230,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       existingPropTest("votes", { (x: Header) => x.votes }))
   }
 
-  def contextData() = {
+  def contextData(): (CBox, CBox, CHeader, CContext, CContext, CContext) = {
     val input = CBox(
       new ErgoBox(
         80946L,
@@ -4255,7 +4255,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           ErgoBox.R4 -> ByteArrayConstant(Helpers.decodeBytes("34")),
           ErgoBox.R5 -> TrueLeaf
         ),
-        ModifierId @@ ("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
+        ModifierId("0000bfe96a7c0001e7a5ee00aafb80ff057fbe7f8c6680e33a3dc18001820100"),
         1.toShort,
         5
       )
@@ -4282,7 +4282,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             )
           )
         ),
-        ModifierId @@ ("ff3f4e00d400ff00ffae3680927f782affc0004b9f0092ca98010080f60100c1"),
+        ModifierId("ff3f4e00d400ff00ffae3680927f782affc0004b9f0092ca98010080f60100c1"),
         9495.toShort,
         1000000
       )
@@ -4352,7 +4352,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             ),
             Coll((Digest32Coll @@ (ErgoAlgos.decodeUnsafe("6f070152007f00005a00893ea1e98045ffa28f72da01ff7f01ff2d48eb793fd6").toColl), 20000L)),
             Map(ErgoBox.R5 -> LongConstant(1L), ErgoBox.R4 -> LongConstant(5008366408131208436L)),
-            ModifierId @@ ("26485d14a94ef18ec36227a838b98e11e910087be4c7e634f51391e4ea4d16ff"),
+            ModifierId("26485d14a94ef18ec36227a838b98e11e910087be4c7e634f51391e4ea4d16ff"),
             0.toShort,
             11
           )
@@ -4367,7 +4367,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
             ),
             Coll((Digest32Coll @@ (ErgoAlgos.decodeUnsafe("6f070152007f00005a00893ea1e98045ffa28f72da01ff7f01ff2d48eb793fd6").toColl), 500L)),
             Map(),
-            ModifierId @@ ("26485d14a94ef18ec36227a838b98e11e910087be4c7e634f51391e4ea4d16ff"),
+            ModifierId("26485d14a94ef18ec36227a838b98e11e910087be4c7e634f51391e4ea4d16ff"),
             1.toShort,
             0
           )
@@ -4418,7 +4418,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     )
   }
 
-  property("Context properties equivalence") {
+  compilerProperty("Context properties equivalence") {
     val samples = genSamples[Context](MinSuccessful(5))
     val (input, dataBox, header, ctx, ctx2, ctx3) = contextData()
 
@@ -4821,7 +4821,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Conditional access to data box register using isDefined") {
+  compilerProperty("Conditional access to data box register using isDefined") {
     val (_, _, _, ctx, _, _) = contextData()
 
     val registerIsDefinedCostDetails = TracedCost(
@@ -4901,7 +4901,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(ArraySeq.empty))
   }
 
-  property("Conditional access (data box register)") {
+  compilerProperty("Conditional access (data box register)") {
     val (_, _, _, ctx, _, _) = contextData()
 
     val expectedError = new IllegalArgumentException("assertion failed: Unexpected register type found at register #4")
@@ -4991,7 +4991,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(ArraySeq.empty))
   }
 
-  property("Conditional access OUTPUTS(0).R4 using tag in R5") {
+  compilerProperty("Conditional access OUTPUTS(0).R4 using tag in R5") {
     val (_, _, _, ctx, _, _) = contextData()
 
     val registerTagCostDetails1 = TracedCost(
@@ -5161,7 +5161,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(ArraySeq.empty))
   }
 
-  property("Conditional access OUTPUTS(0).R4 using tag in R5 (plus action)") {
+  compilerProperty("Conditional access OUTPUTS(0).R4 using tag in R5 (plus action)") {
     val (_, _, _, ctx, _, _) = contextData()
     val tagRegisterCostDetails1 = TracedCost(
       Array(
@@ -5390,7 +5390,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(ArraySeq.empty))
   }
 
-  property("Conditional access dataInputs(0).R4 using tag in R5") {
+  compilerProperty("Conditional access dataInputs(0).R4 using tag in R5") {
     val (_, _, _, ctx, _, _) = contextData()
     val tagRegisterCostDetails1 = TracedCost(
       Array(
@@ -5618,7 +5618,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(ArraySeq.empty))
   }
 
-  property("Conditional access dataInputs(0).R4 using tag in R5 (plus action)") {
+  compilerProperty("Conditional access dataInputs(0).R4 using tag in R5 (plus action)") {
     val (_, _, _, ctx, _, _) = contextData()
     val costDetails1 = TracedCost(
       Array(
@@ -5863,7 +5863,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
 
   }
 
-  property("xorOf equivalence") {
+  compilerProperty("xorOf equivalence") {
     def costDetails(i: Int) = TracedCost(traceBase :+ ast.SeqCostItem(CompanionDesc(XorOf), PerItemCost(JitCost(20), JitCost(5), 32), i))
     verifyCases(
       {
@@ -5914,7 +5914,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))
   }
 
-  property("LogicalNot equivalence") {
+  compilerProperty("LogicalNot equivalence") {
     val costDetails = TracedCost(traceBase :+ FixedCostItem(LogicalNot))
     verifyCases(
       Seq(
@@ -5925,7 +5925,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SBoolean)), LogicalNot(ValUse(1, SBoolean)))))
   }
 
-  property("Numeric Negation equivalence") {
+  compilerProperty("Numeric Negation equivalence") {
     val costDetails = TracedCost(traceBase :+ FixedCostItem(Negation))
     verifyCases(
       {
@@ -6027,7 +6027,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SBigInt)), Negation(ValUse(1, SBigInt)))))
   }
 
-  property("groupGenerator equivalence") {
+  compilerProperty("groupGenerator equivalence") {
     val costDetails = TracedCost(
       Array(
         FixedCostItem(Apply),
@@ -6121,7 +6121,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Global.xor equivalence") {
+  compilerProperty("Global.xor equivalence") {
     def costDetails(i: Int) = {
       if (lowerMethodCallsInTests)
         TracedCost(
@@ -6255,7 +6255,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         ErgoBox.R6 -> FalseLeaf,
         ErgoBox.R5 -> ByteArrayConstant(Helpers.decodeBytes("7f"))
       ),
-      ModifierId @@ ("7dffff48ab0000c101a2eac9ff17017f6180aa7fc6f2178000800179499380a5"),
+      ModifierId("7dffff48ab0000c101a2eac9ff17017f6180aa7fc6f2178000800179499380a5"),
       21591.toShort,
       638768
     )
@@ -6271,13 +6271,13 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ),
       Coll(),
       Map(),
-      ModifierId @@ ("008677ffff7ff36dff00f68031140400007689ff014c9201ce8000a9ffe6ceff"),
+      ModifierId("008677ffff7ff36dff00f68031140400007689ff014c9201ce8000a9ffe6ceff"),
       32767.toShort,
       32827
     )
   )
 
-  property("Coll.filter equivalence") {
+  compilerProperty("Coll.filter equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6336,7 +6336,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll.flatMap equivalence") {
+  compilerProperty("Coll.flatMap equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6399,7 +6399,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll.zip equivalence") {
+  compilerProperty("Coll.zip equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6437,7 +6437,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll.size equivalence") {
+  compilerProperty("Coll.size equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6457,7 +6457,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll.indices equivalence") {
+  compilerProperty("Coll.indices equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6491,7 +6491,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
 
   }
 
-  property("Coll.forall equivalence") {
+  compilerProperty("Coll.forall equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6562,7 +6562,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll.exists equivalence") {
+  compilerProperty("Coll.exists equivalence") {
     val samples = sampleCollBoxes
     val b1 = create_b1
     val b2 = create_b2
@@ -6638,7 +6638,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll exists with nested If") {
+  compilerProperty("Coll exists with nested If") {
     val o = NumericOps.BigIntIsExactOrdering
     val costDetails1 = TracedCost(
       traceBase ++ Array(
@@ -6752,7 +6752,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll forall with nested If") {
+  compilerProperty("Coll forall with nested If") {
     val o = NumericOps.BigIntIsExactOrdering
     val costDetails1 = TracedCost(
       traceBase ++ Array(
@@ -6873,7 +6873,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     l <- Gen.choose(0, arr.length - 1)
     r <- Gen.choose(l, arr.length - 1) } yield (arr, (l, r))
 
-  property("Coll flatMap method equivalence") {
+  compilerProperty("Coll flatMap method equivalence") {
     val costDetails0 = TracedCost(
       traceBase ++ Array(
         FixedCostItem(MethodCall),
@@ -7049,7 +7049,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll patch method equivalence") {
+  compilerProperty("Coll patch method equivalence") {
     val samples = genSamples(collWithRangeGen, MinSuccessful(50))
     def costDetails(i: Int) = TracedCost(
       Array(
@@ -7142,7 +7142,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
 
   }
 
-  property("Coll updated method equivalence") {
+  compilerProperty("Coll updated method equivalence") {
      def costDetails(i: Int) = TracedCost(
       Array(
         FixedCostItem(Apply),
@@ -7211,7 +7211,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Coll updateMany method equivalence") {
+  compilerProperty("Coll updateMany method equivalence") {
     val samples = genSamples(
       for {
         coll <- collGen[Int]
@@ -7306,7 +7306,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll fold method equivalence") {
+  compilerProperty("Coll fold method equivalence") {
     val n = ExactNumeric.IntIsExactNumeric
     val costDetails1 = TracedCost(
       traceBase ++ Array(
@@ -7453,7 +7453,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll fold with nested If") {
+  compilerProperty("Coll fold with nested If") {
     val n = ExactNumeric.IntIsExactNumeric
     val costDetails1 = TracedCost(
       traceBase ++ Array(
@@ -7745,7 +7745,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll indexOf method equivalence") {
+  compilerProperty("Coll indexOf method equivalence") {
     def costDetails(i: Int) = TracedCost(
       Array(
         FixedCostItem(Apply),
@@ -7831,7 +7831,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )), preGeneratedSamples = Some(Seq()))
   }
 
-  property("Coll apply method equivalence") {
+  compilerProperty("Coll apply method equivalence") {
     val costDetails = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),
@@ -7870,7 +7870,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Coll getOrElse method equivalence") {
+  compilerProperty("Coll getOrElse method equivalence") {
     val default = 10
     val costDetails = TracedCost(
       Array(
@@ -7978,7 +7978,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))}
   }
 
-  property("Tuple size method equivalence") {
+  compilerProperty("Tuple size method equivalence") {
     val costDetails = TracedCost(
       Array(
         FixedCostItem(Apply),
@@ -8002,7 +8002,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SPair(SInt, SInt))), IntConstant(2))))
   }
 
-  property("Tuple apply method equivalence") {
+  compilerProperty("Tuple apply method equivalence") {
     val samples = genSamples[(Int, Int)](DefaultMinSuccessful)
     val costDetails = TracedCost(traceBase :+ FixedCostItem(SelectField))
     verifyCases(
@@ -8025,7 +8025,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(samples))
   }
 
-  property("Coll map method equivalence") {
+  compilerProperty("Coll map method equivalence") {
     def repeatPlusChunk(i: Int): Array[CostItem] = Array.fill(i){
       Array(
         FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
@@ -8090,7 +8090,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       ))
   }
 
-  property("Coll map with nested if") {
+  compilerProperty("Coll map with nested if") {
     val costDetails1 = TracedCost(
       traceBase ++ Array(
         FixedCostItem(FuncValue),
@@ -8181,7 +8181,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll filter") {
+  compilerProperty("Coll filter") {
     def costDetails(i: Int) = {
       val gtChunk = Array.fill(i)(
         Array(
@@ -8224,7 +8224,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Coll filter with nested If") {
+  compilerProperty("Coll filter with nested If") {
     val leftBranch = Array(
       FixedCostItem(FuncValue.AddToEnvironmentDesc, FixedCost(JitCost(5))),
       FixedCostItem(ValUse),
@@ -8305,7 +8305,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Coll slice method equivalence") {
+  compilerProperty("Coll slice method equivalence") {
     def costDetails(i: Int) = TracedCost(
       Array(
         FixedCostItem(Apply),
@@ -8410,7 +8410,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Coll.append equivalence") {
+  compilerProperty("Coll.append equivalence") {
     def costDetails(i: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),
@@ -8480,7 +8480,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     }
   }
 
-  property("Option methods equivalence") {
+  compilerProperty("Option methods equivalence") {
     val costDetails1 = TracedCost(traceBase :+ FixedCostItem(OptionGet))
     val costDetails2 = TracedCost(traceBase :+ FixedCostItem(OptionIsDefined))
     val costDetails3 = TracedCost(
@@ -8595,7 +8595,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("Option filter,map with nested If") {
+  compilerProperty("Option filter,map with nested If") {
     val costDetails1 = TracedCost(
       traceBase ++ Array(
         FixedCostItem(MethodCall),
@@ -8729,7 +8729,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         ) ))
   }
 
-  property("Option fold workaround method") {
+  compilerProperty("Option fold workaround method") {
     val costDetails1 = TracedCost(
       traceBase ++ Array(
         FixedCostItem(OptionIsDefined),
@@ -8821,7 +8821,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
     s"case ${info.iteration}: ${timeUs} usec; numChunks: $numChunks; timePerBlock: $timePerBlock"
   }
 
-  property("blake2b256 benchmark: to estimate timeout") {
+  compilerProperty("blake2b256 benchmark: to estimate timeout") {
     val cases = (1 to 10).map { i =>
       val block = Colls.fromArray(Array.fill(CErgoTreeEvaluator.DataBlockSize * i)(0.toByte))
       block
@@ -8834,7 +8834,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       formatter(CalcBlake2b256.costKind))
   }
 
-  property("blake2b256, sha256 equivalence") {
+  compilerProperty("blake2b256, sha256 equivalence") {
     def costDetailsBlake(i: Int) = TracedCost(traceBase :+ ast.SeqCostItem(CompanionDesc(CalcBlake2b256), PerItemCost(JitCost(20), JitCost(7), 128), i))
     def costDetailsSha(i: Int) = TracedCost(traceBase :+ ast.SeqCostItem(CompanionDesc(CalcSha256), PerItemCost(JitCost(80), JitCost(8), 64), i))
 
@@ -8895,7 +8895,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SByteArray)), CalcSha256(ValUse(1, SByteArray)))))
   }
 
-  property("sigmaProp equivalence") {
+  compilerProperty("sigmaProp equivalence") {
     val costDetails = TracedCost(traceBase :+ FixedCostItem(BoolToSigmaProp))
     val v3Costs = Seq.fill(4)(1997)
     verifyCases(
@@ -8907,7 +8907,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SBoolean)), BoolToSigmaProp(ValUse(1, SBoolean)))))
   }
 
-  property("atLeast equivalence") {
+  compilerProperty("atLeast equivalence") {
     def costDetails(i: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SizeOf),
@@ -8971,7 +8971,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("&& sigma equivalence") {
+  compilerProperty("&& sigma equivalence") {
     val testTraceBase = traceBase ++ Array(
       FixedCostItem(SelectField),
       FixedCostItem(ValUse),
@@ -9054,7 +9054,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("|| sigma equivalence") {
+  compilerProperty("|| sigma equivalence") {
     val testTraceBase = traceBase ++ Array(
       FixedCostItem(SelectField),
       FixedCostItem(ValUse),
@@ -9139,7 +9139,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("SigmaProp.propBytes equivalence") {
+  compilerProperty("SigmaProp.propBytes equivalence") {
     verifyCases(
       {
         def newDetails(nItems: Int) = TracedCost(traceBase :+ SeqCostItem(SigmaPropBytes, nItems))
@@ -9185,7 +9185,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       preGeneratedSamples = Some(Seq()))
   }
 
-  property("allOf equivalence") {
+  compilerProperty("allOf equivalence") {
     def costDetails(i: Int) = TracedCost(traceBase :+ ast.SeqCostItem(CompanionDesc(AND), PerItemCost(JitCost(10), JitCost(5), 32), i))
     val v3Costs = Seq.fill(4)(1997)
     verifyCases(
@@ -9207,7 +9207,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SBooleanArray)), AND(ValUse(1, SBooleanArray)))))
   }
 
-  property("anyOf equivalence") {
+  compilerProperty("anyOf equivalence") {
     def costDetails(i: Int) = TracedCost(traceBase :+ ast.SeqCostItem(CompanionDesc(OR), PerItemCost(JitCost(5), JitCost(5), 64), i))
     val v3Costs = Seq.fill(4)(1996)
     verifyCases(
@@ -9229,7 +9229,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SBooleanArray)), OR(ValUse(1, SBooleanArray)))))
   }
 
-  property("proveDlog equivalence") {
+  compilerProperty("proveDlog equivalence") {
     val costDetails = TracedCost(traceBase :+ FixedCostItem(CreateProveDlog))
     verifyCases(
       Seq(
@@ -9246,7 +9246,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FuncValue(Vector((1, SGroupElement)), CreateProveDlog(ValUse(1, SGroupElement)))))
   }
 
-  property("proveDHTuple equivalence") {
+  compilerProperty("proveDHTuple equivalence") {
     val costDetails = TracedCost(
       traceBase ++ Array(
         FixedCostItem(ValUse),
@@ -9286,7 +9286,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )))
   }
 
-  property("substConstants equivalence") {
+  compilerProperty("substConstants equivalence") {
     // tree without constant segregation
     val t1 = ErgoTree(ErgoTree.ZeroHeader, Vector(), TrueSigmaProp)
     // tree with constant segregation, but without constants
@@ -9404,7 +9404,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
   }
 
   // Original issue: https://github.com/ScorexFoundation/sigmastate-interpreter/issues/604
-  property("Random headers access and comparison (originaly from spam tests)") {
+  compilerProperty("Random headers access and comparison (originaly from spam tests)") {
     val (_, _, _, ctx, _, _) = contextData()
     val costDetails = TracedCost(
       Array(
@@ -9559,7 +9559,7 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
   }
 
   // related issue https://github.com/ScorexFoundation/sigmastate-interpreter/issues/464
-  property("nested loops: map inside fold") {
+  compilerProperty("nested loops: map inside fold") {
     val keys = Colls.fromArray(Array(Coll[Byte](1, 2, 3, 4, 5)))
     val initial = Coll[Byte](0, 0, 0, 0, 0)
     val cases = Seq(

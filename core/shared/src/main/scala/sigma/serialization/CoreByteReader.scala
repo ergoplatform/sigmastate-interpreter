@@ -70,7 +70,7 @@ class CoreByteReader(val r: Reader, val maxTreeDepth: Int = CoreSerializer.MaxTr
     r.getUInt()
   }
 
-  @inline def getUIntExact: Int = getUInt().toIntExact
+  @inline override def getUIntExact(): Int = getUInt().toIntExact
 
   @inline override def getLong(): Long = {
     checkPositionLimit()

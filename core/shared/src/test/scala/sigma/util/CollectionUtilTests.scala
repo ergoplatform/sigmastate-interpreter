@@ -25,8 +25,12 @@ class CollectionUtilTests extends BaseTests {
     assertResult(Array[Byte](1, 2, 3, 4, 5, 6))(zs)
 
     val pairs = xs.zip(ys)
-    // this reproduces the problem which takes place in v3.x, v4.x (ErgoTree v0, v1)
-    an[Throwable] should be thrownBy(concatArrays_v4(pairs, pairs))
+    // this reproduces the problem which takes place in v3.x, v4.x (ErgoTree v0, v1):
+    // concatArrays_v4 returns an `Array[AnyRef]` (`Object[]`) mislabelled as `Array[(Byte,Byte)]`,
+    // and the cast to the concrete element type throws ClassCastException. The result type is
+    // ascribed explicitly because Scala 3 (unlike 2.x) does not insert that checkcast when the
+    // call is used in an `Any` context such as `thrownBy`'s by-name argument.
+    an[Throwable] should be thrownBy(concatArrays_v4(pairs, pairs): Array[(Byte, Byte)])
 
     // and this is the fix in v5.0
     concatArrays(pairs, pairs) shouldBe Array((1, 4), (2, 5), (3, 6), (1, 4), (2, 5), (3, 6))

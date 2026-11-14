@@ -33,7 +33,7 @@ import sigma.serialization.{DataSerializer, SigmaSerializer}
   *    Coll[Byte] 4096   0.0037 ms          Coll[Byte] 4096   0.0035 ms
   *    Coll[Byte] 16384  0.0043 ms          Coll[Byte] 16384  0.0055 ms
   */
-object DataSerializationBenchmarks extends Bench.LocalTime { suite: Bench[Double] =>
+object DataSerializationBenchmarks extends Bench.LocalTime {
 
   // ---- fixed-shape Constants per SType ----
   private val intConst: Constant[SType]    = IntConstant(42).asInstanceOf[Constant[SType]]

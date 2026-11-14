@@ -108,7 +108,7 @@ abstract class TypeDescs extends Base { self: IRContext =>
     * @tparam A the type represented by this descriptor
     */
   @implicitNotFound(msg = "No Elem available for ${A}.")
-  abstract class Elem[A] extends TypeDesc { _: scala.Equals =>
+  abstract class Elem[A] extends TypeDesc { elem: scala.Equals =>
     import Liftables._
     def buildTypeArgs: ListMap[String, (TypeDesc, Variance)] = EmptyTypeArgs
     lazy val typeArgs: ListMap[String, (TypeDesc, Variance)] = buildTypeArgs

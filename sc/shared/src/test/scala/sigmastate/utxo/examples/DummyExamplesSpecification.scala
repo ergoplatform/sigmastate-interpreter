@@ -8,7 +8,7 @@ import sigmastate.helpers.CompilerTestingCommons
 import sigma.{Box, Coll, Context}
 
 class DummyExamplesSpecification extends CompilerTestingCommons { suite =>
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   private val reg1 = ErgoBox.nonMandatoryRegisters(0)
 

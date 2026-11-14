@@ -1,5 +1,6 @@
 package sigma.js
 
+import sigma.ByteType
 import sigma.Extensions.ArrayOps
 import sigma.data.Iso.{isoStringToArray, isoStringToColl}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CAvlTree, Iso}

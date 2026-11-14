@@ -16,7 +16,7 @@ import sigma.ast.syntax._
 
 class DHTupleExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  private implicit lazy val IR = new TestingIRContext
+  private implicit lazy val IR: TestingIRContext = new TestingIRContext
   /**
     * let Alice's secret be x and Bob's be y
     *

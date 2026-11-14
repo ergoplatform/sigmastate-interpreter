@@ -3,7 +3,7 @@ package sigma.data
 import sigma.crypto.{CryptoFacade, Ecp}
 import sigma.serialization.GroupElementSerializer
 import sigma.util.Extensions.EcpOps
-import sigma.{BigInt, Coll, Colls, GroupElement, UnsignedBigInt}
+import sigma.{BigInt, ByteType, Coll, Colls, GroupElement, UnsignedBigInt}
 
 /** A default implementation of [[GroupElement]] interface.
   *

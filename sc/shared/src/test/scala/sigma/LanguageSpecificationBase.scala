@@ -2,6 +2,7 @@ package sigma
 
 import org.scalatest.BeforeAndAfterAll
 import sigma.ast.{Apply, FixedCostItem, FuncValue, GetVar, JitCost, OptionGet, ValUse}
+import sigma.compiler.ir.IRContext
 import sigma.eval.{CostDetails, EvalSettings, Profiler}
 import sigmastate.CompilerCrossVersionProps
 import sigmastate.interpreter.CErgoTreeEvaluator
@@ -87,7 +88,7 @@ abstract class LanguageSpecificationBase extends SigmaDslTesting
 
   override val okRunTestsWithoutMCLowering: Boolean = true
 
-  implicit def IR = createIR()
+  implicit def IR: IRContext = createIR()
 
   def testCases[A, B](cases: Seq[(A, Expected[B])], f: Feature[A, B]) = {
     val table = Table(("x", "y"), cases: _*)

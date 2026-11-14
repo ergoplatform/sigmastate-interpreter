@@ -6,7 +6,7 @@ import scorex.util.ModifierId
 import sigma.VersionContext.MaxSupportedScriptVersion
 import sigma.ast.ErgoTree.{HeaderType, ZeroHeader, setConstantSegregation, setVersionBits}
 import sigma.ast._
-import sigma.{Box, SigmaDslTesting}
+import sigma.{Box, LongType, SigmaDslTesting}
 import sigmastate.eval._
 import sigmastate.helpers.TestingHelpers.createBox
 import sigmastate.helpers.{ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -15,7 +15,7 @@ import sigma.eval.EvalSettings.EvaluationMode
 import sigmastate.interpreter._
 import sigma.ast.syntax.ValueOps
 import sigma.compiler.ir.IRContext
-import sigma.data.CBox
+import sigma.data.{CBox, Digest32CollRType}
 import sigma.eval.EvalSettings
 import sigma.exceptions.InterpreterException
 import sigma.interpreter.{CostedProverResult, ProverResult}
@@ -45,7 +45,7 @@ class ScriptVersionSwitchSpecification extends SigmaDslTesting {
       ),
       Coll(),
       Map(),
-      ModifierId @@ ("008677ffff7ff36dff00f68031140400007689ff014c9201ce8000a9ffe6ceff"),
+      ModifierId("008677ffff7ff36dff00f68031140400007689ff014c9201ce8000a9ffe6ceff"),
       32767.toShort,
       32827
     )

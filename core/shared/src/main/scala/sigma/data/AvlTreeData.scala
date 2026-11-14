@@ -1,7 +1,7 @@
 package sigma.data
 
 import sigma.serialization.{CoreByteReader, CoreByteWriter, CoreSerializer}
-import sigma.{Coll, Colls, crypto}
+import sigma.{ByteType, Coll, Colls, crypto}
 
 
 case class AvlTreeFlags(insertAllowed: Boolean, updateAllowed: Boolean, removeAllowed: Boolean) {

@@ -11,7 +11,7 @@ import sigmastate.helpers._
 
 class ThresholdSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  implicit lazy val IR = new TestingIRContext {
+  implicit lazy val IR: TestingIRContext = new TestingIRContext {
   }
 
   property("basic threshold compilation/execution") {

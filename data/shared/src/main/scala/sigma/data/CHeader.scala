@@ -5,7 +5,7 @@ import scorex.crypto.authds.ADDigest
 import scorex.crypto.hash.Digest32
 import scorex.util.{bytesToId, idToBytes}
 import sigma.pow.Autolykos2PowValidation
-import sigma.{AvlTree, BigInt, Coll, Colls, GroupElement, Header}
+import sigma.{AvlTree, BigInt, ByteType, Coll, Colls, GroupElement, Header}
 
 /** A default implementation of [[Header]] interface.
   *

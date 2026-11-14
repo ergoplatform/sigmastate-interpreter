@@ -1,7 +1,7 @@
 package org.ergoplatform.sdk.js
 
 import org.ergoplatform.sdk.ExtendedInputBox
-import org.ergoplatform.sdk.wallet.protocol.context.{BlockchainStateContext, CBlockchainStateContext}
+import org.ergoplatform.sdk.wallet.protocol.context.{BlockchainStateContext => WalletBlockchainStateContext, CBlockchainStateContext}
 import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
@@ -16,7 +16,7 @@ class IsosSpecBase extends AnyPropSpec with Matchers with ObjectGenerators with 
     extension <- contextExtensionGen
   } yield ExtendedInputBox(box, extension)
 
-  lazy val blockchainStateContextGen: Gen[BlockchainStateContext] = for {
+  lazy val blockchainStateContextGen: Gen[WalletBlockchainStateContext] = for {
     stateRoot <- avlTreeGen
     headers <- headersGen(stateRoot)
     preHeader <- preHeaderGen(headers.headOption.map(_.id).getOrElse(modifierIdBytesGen.sample.get))

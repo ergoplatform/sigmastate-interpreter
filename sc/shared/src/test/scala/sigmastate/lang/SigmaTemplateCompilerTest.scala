@@ -6,6 +6,7 @@ import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import sigma.VersionContext
 import sigma.ast.ErgoTree.HeaderType
+import sigma.ast.ErgoTreeTestAccess
 import sigma.ast.{BinAnd, BoolToSigmaProp, ConstantPlaceholder, ErgoTree, FalseLeaf, GT, Height, IntConstant, LT, SBoolean, SInt, SLong, SString, TrueLeaf}
 import sigma.compiler.SigmaTemplateCompiler
 import sigma.exceptions.TyperException
@@ -122,7 +123,7 @@ class SigmaTemplateCompilerTest extends AnyPropSpec with ScalaCheckPropertyCheck
         version = Some(VersionContext.JitActivationVersion),
         paramValues = Map("p" -> FalseLeaf)
       ),
-      expectedTree.copy(constants = Vector(FalseLeaf))
+      ErgoTreeTestAccess.withConstants(expectedTree, Vector(FalseLeaf))
     )
   }
 
@@ -188,7 +189,7 @@ class SigmaTemplateCompilerTest extends AnyPropSpec with ScalaCheckPropertyCheck
         version = Some(VersionContext.JitActivationVersion),
         paramValues = Map("low" -> IntConstant(10), "high" -> IntConstant(100))
       ),
-      expectedTree.copy(constants = Vector(IntConstant(10), IntConstant(100)))
+      ErgoTreeTestAccess.withConstants(expectedTree, Vector(IntConstant(10), IntConstant(100)))
     )
   }
 
@@ -205,5 +206,4 @@ class SigmaTemplateCompilerTest extends AnyPropSpec with ScalaCheckPropertyCheck
   }
 
 }
-
 

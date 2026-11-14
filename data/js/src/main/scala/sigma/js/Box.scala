@@ -34,7 +34,7 @@ object Box extends js.Object {
         creationHeight = x.creationHeight.toInt,
         additionalTokens = isoTokenArray.to(x.assets),
         additionalRegisters = isoNonMandatoryRegisters.to(x.additionalRegisters),
-        transactionId = ModifierId @@ x.transactionId,
+        transactionId = ModifierId(x.transactionId),
         index = x.index.toShort
       )
       ergoBox

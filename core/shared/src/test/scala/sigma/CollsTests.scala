@@ -10,7 +10,10 @@ import sigma.data._
 import scala.language.existentials
 
 class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers with CollGens with VersionTestingProperty { testSuite =>
-  import Gen._
+  // Exclude only `Gen.const` from the wildcard import. It is an `implicit def const[T](x: T): Gen[T]`
+  // conversion that, on Scala 3, outranks Predef's `ArrayOps`, silently turning `arr.map`/`arr.flatMap`
+  // in the assertions below into `Gen.map`/`Gen.flatMap`. `const` is used explicitly as `Gen.const`.
+  import Gen.{const => _, _}
   import sigma.Extensions._
 
   def squared[A](f: A => A): ((A, A)) => (A, A) = (p: (A, A)) => (f(p._1), f(p._2))
@@ -48,7 +51,7 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
     // make sure forall: T, col: Coll[T] => col.length shouldBe col.toArray.length
     // The above equality should hold for all possible collection instances
 
-    forAll(MinSuccessful(300)) { xs: Coll[Int] =>
+    forAll(MinSuccessful(300)) { (xs: Coll[Int]) =>
       equalLength(xs)
       equalLengthMapped(xs, inc)
 
@@ -500,7 +503,8 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
   property("Coll.unionSet") {
     forAll(collGen, collGen) { (col1, col2) =>
       val res = col1.unionSet(col2)
-      res.toArray shouldBe (col1.toArray.union(col2.toArray).distinct)
+      // compare as Seq: `Array.union` returns a `mutable.ArraySeq` on Scala 3 (an `Array` on 2.13)
+      res.toArray.toSeq shouldBe col1.toArray.toSeq.union(col2.toArray.toSeq).distinct
     }
     builder.replicate(2, 10).unionSet(builder.replicate(3, 10)).toArray shouldBe Array(10)
     forAll(superGen) {

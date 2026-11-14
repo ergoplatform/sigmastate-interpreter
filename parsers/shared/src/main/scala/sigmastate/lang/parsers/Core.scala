@@ -5,7 +5,7 @@ import sigma.ast._
 import sigmastate.lang.parsers
 
 /** Keywords and identifiers used in expressions. */
-trait Core extends parsers.Literals {
+trait Core extends parsers.Literals with CoreUnderscore {
   import fastparse._
   import ScalaWhitespace._
 
@@ -20,46 +20,45 @@ trait Core extends parsers.Literals {
   import Key._
 
   // Keywords that match themselves and nothing else
-  def `=>`[_:P] = O("=>") | O("⇒")
-  def `:`[_:P] = O(":")
-  def `=`[_:P] = O("=")
-  def `@`[_:P] = O("@")
-  def `_`[_:P] = W("_")
-  def `type`[_:P] = W("type")
-  def `val`[_:P] = W("val")
-  def `def`[_:P] = W("def")
-  def `case`[_:P] = W("case")
-  def `else`[_:P] = W("else")
-  def `if`[_:P] = W("if")
-  def `match`[_:P] = W("match")
-  def `this`[_:P] = W("this")
-  def `super`[_:P] = W("super")
-  def `with`[_:P] = W("with")
-  def `extends`[_:P] = W("extends")
-  def `implicit`[_:P] = W("implicit")
-  def `new`[_:P] = W("new")
-  def `lazy`[_:P] = W("lazy")
-  def `>:`[_:P] = O(">:")
-  def `<:`[_:P] = O("<:")
+  def `=>`[Ctx:P] = O("=>") | O("⇒")
+  def `:`[Ctx:P] = O(":")
+  def `=`[Ctx:P] = O("=")
+  def `@`[Ctx:P] = O("@")
+  def `type`[Ctx:P] = W("type")
+  def `val`[Ctx:P] = W("val")
+  def `def`[Ctx:P] = W("def")
+  def `case`[Ctx:P] = W("case")
+  def `else`[Ctx:P] = W("else")
+  def `if`[Ctx:P] = W("if")
+  def `match`[Ctx:P] = W("match")
+  def `this`[Ctx:P] = W("this")
+  def `super`[Ctx:P] = W("super")
+  def `with`[Ctx:P] = W("with")
+  def `extends`[Ctx:P] = W("extends")
+  def `implicit`[Ctx:P] = W("implicit")
+  def `new`[Ctx:P] = W("new")
+  def `lazy`[Ctx:P] = W("lazy")
+  def `>:`[Ctx:P] = O(">:")
+  def `<:`[Ctx:P] = O("<:")
 
   // kinda-sorta keywords that are common patterns even if not
   // really-truly keywords
-  def `*`[_:P] = O("*")
-  def `_*`[_:P] = P( `_` ~ `*` )
-  def `}`[_:P] = P( Semis.? ~ "}" )
-  def `{`[_:P] = P( "{" ~ Semis.? )
+  def `*`[Ctx:P] = O("*")
+  def `_*`[Ctx:P] = P( Underscore ~ `*` )
+  def `}`[Ctx:P] = P( Semis.? ~ "}" )
+  def `{`[Ctx:P] = P( "{" ~ Semis.? )
 
-  def Id[_:P] = P( WL ~ Identifiers.Id )
-  def VarId[_:P] = P( WL ~ Identifiers.VarId )
-  def BacktickId[_:P] = P( WL ~ Identifiers.BacktickId )
-  def ExprLiteral[_:P] = P( WL ~ Literals.Expr.Literal )
+  def Id[Ctx:P] = P( WL ~ Identifiers.Id )
+  def VarId[Ctx:P] = P( WL ~ Identifiers.VarId )
+  def BacktickId[Ctx:P] = P( WL ~ Identifiers.BacktickId )
+  def ExprLiteral[Ctx:P] = P( WL ~ Literals.Expr.Literal )
 
   /**
    * Sketchy way to whitelist a few suffixes that come after a . select;
    * apart from these and IDs, everything else is illegal
    */
-  def PostDotCheck[_:P]: P0 = P( WL ~ !(`super` | `this` | "{" |  `_` | `type`) )
-  def StableId[_:P] = {
+  def PostDotCheck[Ctx:P]: P0 = P( WL ~ !(`super` | `this` | "{" |  Underscore | `type`) )
+  def StableId[Ctx:P] = {
     def IdPath = P( Index ~ Id.! ~ ("." ~ PostDotCheck ~/ Index ~ (`this`.! | Id.!)).rep ).map {
       case (hi, hs, t) => t.foldLeft[SValue](atSrcPos(hi){builder.mkIdent(hs, NoType)}){
         case (obj, (i, s)) => atSrcPos(i) { builder.mkSelect(obj, s) }

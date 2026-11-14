@@ -85,7 +85,7 @@ object ReflectionData {
     registerClassEntry(clazz,
       methods = Map(
         mkMethod(clazz, "$bar$bar", Array[Class[_]](classOf[SigmaProp])) { (obj, args) =>
-          obj.asInstanceOf[SigmaProp].$bar$bar(args(0).asInstanceOf[SigmaProp])
+          obj.asInstanceOf[SigmaProp].||(args(0).asInstanceOf[SigmaProp])
         },
         mkMethod(clazz, "isValid", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[SigmaProp].isValid
@@ -94,7 +94,7 @@ object ReflectionData {
           obj.asInstanceOf[SigmaProp].propBytes
         },
         mkMethod(clazz, "$amp$amp", Array[Class[_]](classOf[SigmaProp])) { (obj, args) =>
-          obj.asInstanceOf[SigmaProp].$amp$amp(args(0).asInstanceOf[SigmaProp])
+          obj.asInstanceOf[SigmaProp].&&(args(0).asInstanceOf[SigmaProp])
         }
       )
     )

@@ -2,7 +2,7 @@ package sigma.data
 
 import scorex.util.encode.Base16
 import sigma.Extensions.CollBytesOps
-import sigma.{Coll, Colls}
+import sigma.{ByteType, Coll, Colls}
 
 /** Type-class of isomorphisms between types.
   * Isomorphism between two types `A` and `B` essentially say that both types

@@ -10,10 +10,11 @@ import org.scalacheck.{Arbitrary, Gen}
 import scorex.crypto.authds.ADKey
 import scorex.util._
 import sigma.Extensions.ArrayOps
+import sigma.LongType
 import sigma.ast._
 import sigma.ast.syntax.CollectionConstant
 import sigma.crypto.CryptoFacade
-import sigma.data.{Digest32Coll, ProveDlog}
+import sigma.data.{Digest32Coll, Digest32CollRType, ProveDlog}
 import sigma.eval.Extensions.EvalIterableOps
 import sigmastate.helpers.TestingHelpers._
 
@@ -41,7 +42,7 @@ trait Generators {
   val heightGen: Gen[Int] = Gen.choose(0, Int.MaxValue / 2)
 
   val boxIndexGen: Gen[Short] = for {
-    v <- Gen.chooseNum(0, Short.MaxValue)
+    v <- Gen.chooseNum(0, Short.MaxValue.toInt)
   } yield v.toShort
 
 
@@ -52,7 +53,7 @@ trait Generators {
   def genExactSizeBytes(size: Int): Gen[Array[Byte]] = genLimitedSizedBytes(size, size)
 
   val boxIdGen: Gen[BoxId] = {
-    val x = ADKey @@ genExactSizeBytes(Constants.ModifierIdLength)
+    val x = genExactSizeBytes(Constants.ModifierIdLength).map(bytes => ADKey @@ bytes)
     x
   }
 
@@ -60,7 +61,7 @@ trait Generators {
 
   val assetGen: Gen[Token] = for {
     id <- boxIdGen
-    amt <- Gen.oneOf(1, 500, 20000, 10000000, Long.MaxValue)
+    amt <- Gen.oneOf(1L, 500L, 20000L, 10000000L, Long.MaxValue)
   } yield Digest32Coll @@@ id.toColl -> amt
 
   def additionalTokensGen(cnt: Int): Gen[Seq[Token]] = Gen.listOfN(cnt, assetGen)

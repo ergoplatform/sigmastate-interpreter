@@ -105,7 +105,7 @@ trait DlogGroup {
     *
     * @param base
     */
-  def endExponentiateWithPreComputedValues(base: ElemType)
+  def endExponentiateWithPreComputedValues(base: ElemType): Unit
 
   /** This function returns the value <I>k</I> which is the maximum length of a string to be encoded to a Group Element of this group.<p>
     * Any string of length <I>k</I> has a numeric value that is less than (p-1)/2 - 1.

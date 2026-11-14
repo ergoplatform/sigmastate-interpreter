@@ -17,7 +17,7 @@ trait Exprs extends Core with Types {
 
   import builder._
   /** Parses a definition in a block `val name = expr` */
-  def BlockDef[_:P]: P[Value[SType]]
+  def BlockDef[Ctx:P]: P[Value[SType]]
 
   // Depending on where an expression is located, subtle behavior around
   // semicolon inference and arrow-type-ascriptions like i: a => b
@@ -30,7 +30,7 @@ trait Exprs extends Core with Types {
   // Expressions directly within a `val x = ...` or `def x = ...`
   object FreeCtx extends WsCtx(semiInference=true)
 
-  override def TypeExpr[_:P]: P[Value[SType]] = ExprCtx.Expr
+  override def TypeExpr[Ctx:P]: P[Value[SType]] = ExprCtx.Expr
 
   private val predefFuncRegistry = new PredefinedFuncRegistry(builder)
   import predefFuncRegistry._
@@ -39,11 +39,11 @@ trait Exprs extends Core with Types {
   /** Parsing context of expressions (see derived classes). */
   class WsCtx(semiInference: Boolean) {
 
-    private def OneSemiMax[_:P]: P[Unit] = if (semiInference) OneNLMax else Pass
-    private def NoSemis[_:P]: P[Unit] = if (semiInference) NotNewline else Pass
+    private def OneSemiMax[Ctx:P]: P[Unit] = if (semiInference) OneNLMax else Pass
+    private def NoSemis[Ctx:P]: P[Unit] = if (semiInference) NotNewline else Pass
 
     /** Parses ErgoScript expressions. See nested methods for subexpressions. */
-    def Expr[_:P]: P[Value[SType]] = {
+    def Expr[Ctx:P]: P[Value[SType]] = {
       def If: P[Value[SType]] = {
         def Else: P[Value[SType]] = P( Semi.? ~ `else` ~/ Expr )
         P( Index ~ `if` ~/ "(" ~ ExprCtx.Expr ~ ")" ~ Expr ~ Else ).map {
@@ -74,36 +74,36 @@ trait Exprs extends Core with Types {
       P( If | Fun | SmallerExprOrLambda )
     }
 
-    private def SuperPostfixSuffix[_:P] = P( (`=` ~/ Expr).? )
-    private def ExprPrefix[_:P] = P( WL ~ CharPred("-+!~".contains(_)).! ~~ !parsers.Basic.OpChar ~ WS)
-    private def ExprSuffix[_:P] = P(
+    private def SuperPostfixSuffix[Ctx:P] = P( (`=` ~/ Expr).? )
+    private def ExprPrefix[Ctx:P] = P( WL ~ CharPred("-+!~".contains(_)).! ~~ !parsers.Basic.OpChar ~ WS)
+    private def ExprSuffix[Ctx:P] = P(
       (WL ~ "." ~/ (Index ~ Id.!).map{ case (i, s) => atSrcPos(i) { mkIdent(s, NoType)} }
       | WL ~ TypeArgs.map(items => STypeApply("", items.toIndexedSeq))
       | NoSemis ~ ArgList ).repX
     )
 
-    private def PrefixExpr[_:P] = P( ExprPrefix.? ~ SimpleExpr ).map {
+    private def PrefixExpr[Ctx:P] = P( ExprPrefix.? ~ SimpleExpr ).map {
       case (Some(op), e) => mkUnaryOp(op, e)
       case (None, e) => e
     }
 
     // Intermediate `WL` needs to always be non-cutting, because you need to
     // backtrack out of `InfixSuffix` into `PostFixSuffix` if it doesn't work out
-    private def InfixSuffix[_:P]: P[(String, Value[SType])] =
+    private def InfixSuffix[Ctx:P]: P[(String, Value[SType])] =
       P( NoSemis ~~ WL ~~ Id.! ~~ OneSemiMax ~ PrefixExpr ~~ ExprSuffix).map {
         case (op, f, args) =>
           val rhs = applySuffix(f, args)
           (op, rhs)
       }
 
-    private def PostFix[_:P]: P[Value[SType]] =
+    private def PostFix[Ctx:P]: P[Value[SType]] =
       P( NoSemis ~~ WL ~~ (Index ~ Id.!) ~ Newline.? ).map { case (i, s) =>
         atSrcPos(i) { mkIdent(s, NoType)}
       }
 
-    private def PostfixSuffix[_:P] = P( InfixSuffix.repX ~~ PostFix.?)
+    private def PostfixSuffix[Ctx:P] = P( InfixSuffix.repX ~~ PostFix.?)
 
-    private def PostfixExpr[_:P]: P[SValue] =
+    private def PostfixExpr[Ctx:P]: P[SValue] =
       P( PrefixExpr ~~ ExprSuffix ~~ PostfixSuffix ).map {
         case (prefix, suffix, (infixOps, postfix)) =>
           val lhs = applySuffix(prefix, suffix)
@@ -116,13 +116,13 @@ trait Exprs extends Core with Types {
           }
       }
 
-    private def Parened[_:P] = P ( "(" ~/ TypeExpr.rep(0, ",") ~ TrailingComma ~ ")" )
-    private def SimpleExpr[_:P] = {
+    private def Parened[Ctx:P] = P ( "(" ~/ TypeExpr.rep(0, ",") ~ TrailingComma ~ ")" )
+    private def SimpleExpr[Ctx:P] = {
 
       P(  BlockExpr
         | ExprLiteral
         | StableId
-        | (Index ~ `_`.!).map { case (i, lit) => atSrcPos(i) { mkIdent(lit, NoType) } }
+        | (Index ~ Underscore.!).map { case (i, lit) => atSrcPos(i) { mkIdent(lit, NoType) } }
         | (Index ~ Parened).map {
         case (index, Seq()) => atSrcPos(index) { mkUnitConstant }
         case (_, Seq(item)) => item
@@ -215,7 +215,7 @@ trait Exprs extends Core with Types {
   }
 
   /** Parses `name[T1, ..., Tn](a1, ..., aM): R = expr` */
-  def FunDef[_:P]: P[Val] = {
+  def FunDef[Ctx:P]: P[Val] = {
     def Body = P( WL ~ `=` ~/ FreeCtx.Expr )
 
     P(Index ~ DottyExtMethodSubj.? ~ Id.! ~ FunSig ~ (`:` ~/ Type).? ~~ Body ).map {
@@ -235,7 +235,7 @@ trait Exprs extends Core with Types {
     }
   }
 
-  private def SimplePattern[_:P] = {
+  private def SimplePattern[Ctx:P] = {
     def TupleEx = P( "(" ~/ Pattern.rep(0, ",") ~ TrailingComma ~ ")" )
     def Extractor = P( StableId ~ TupleEx.? )
     P(  TupleEx
@@ -243,9 +243,9 @@ trait Exprs extends Core with Types {
       | (Index ~ VarId.!).map { case (i, lit) => atSrcPos(i) { mkIdent(lit, NoType) } })
   }
 
-  private def BlockExpr[_:P] = P( "{" ~/ ( Block ~ "}" ) )
+  private def BlockExpr[Ctx:P] = P( "{" ~/ ( Block ~ "}" ) )
 
-  private def BlockLambdaHead[_:P] = {
+  private def BlockLambdaHead[Ctx:P] = {
     def Arg = P( Annot.rep ~ Id.! ~ (`:` ~/ Type).? ).map {
       case (n, Some(t)) => (n, t)
       case (n, None) => (n, NoType)
@@ -255,9 +255,9 @@ trait Exprs extends Core with Types {
   }
 
 
-  def BlockLambda[_:P] = P( BlockLambdaHead ~ `=>` )
+  def BlockLambda[Ctx:P] = P( BlockLambdaHead ~ `=>` )
 
-  private def BlockChunk[_:P] = {
+  private def BlockChunk[Ctx:P] = {
     def Prelude = P( Annot.rep ~ `lazy`.? )
     def BlockStat = P( Prelude ~ BlockDef | StatCtx.Expr )
     P( BlockLambda.rep ~ BlockStat.rep(sep = Semis) )
@@ -281,7 +281,7 @@ trait Exprs extends Core with Types {
     mkBlock(lets, body)
   }
 
-  private def BaseBlock[_:P](end: P0)(implicit name: sourcecode.Name): P[Value[SType]] = {
+  private def BaseBlock[Ctx:P](end: P0)(implicit name: sourcecode.Name): P[Value[SType]] = {
     def BlockEnd = P( Semis.? ~ &(end) )
     def Body = P( BlockChunk.repX(sep = Semis) )
     P( Index ~ Semis.? ~ BlockLambda.? ~ Body ~/ BlockEnd ).map {
@@ -303,23 +303,23 @@ trait Exprs extends Core with Types {
     }
   }
 
-  override def Block[_:P] = BaseBlock("}")
+  override def Block[Ctx:P] = BaseBlock("}")
 
-  override def Pattern[_:P]: P0 = P( (WL ~ TypeOrBindPattern).rep(1, sep = "|"./) )
+  override def Pattern[Ctx:P]: P0 = P( (WL ~ TypeOrBindPattern).rep(1, sep = "|"./) )
 
-  private def TypePattern[_:P] = P( (`_` | BacktickId | VarId) ~ `:` ~ TypePat )
-  private def TypeOrBindPattern[_:P]: P0 = P( TypePattern | BindPattern ).ignore
+  private def TypePattern[Ctx:P] = P( (Underscore | BacktickId | VarId) ~ `:` ~ TypePat )
+  private def TypeOrBindPattern[Ctx:P]: P0 = P( TypePattern | BindPattern ).ignore
 
-  def BindPattern[_:P]: P[Any] = {
+  def BindPattern[Ctx:P]: P[Any] = {
     def InfixPattern = P( SimplePattern )
     P( InfixPattern )
   }
 
-  private def TypePat[_:P]: P[SType] = P( CompoundType )
-  def ParenArgList[_:P]: P[Value[SType]] =
+  private def TypePat[Ctx:P]: P[SType] = P( CompoundType )
+  def ParenArgList[Ctx:P]: P[Value[SType]] =
     P( "(" ~/ Index ~ Exprs.? ~ TrailingComma ~ ")" ).map {
       case (index, Some(exprs)) => atSrcPos(index) { mkTuple(exprs) }
       case (index, None) => atSrcPos(index) { mkUnitConstant }
     }
-  private def ArgList[_:P] = P( ParenArgList | OneNLMax ~ BlockExpr )
+  private def ArgList[Ctx:P] = P( ParenArgList | OneNLMax ~ BlockExpr )
 }

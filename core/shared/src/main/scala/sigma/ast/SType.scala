@@ -689,7 +689,7 @@ case class SFunc(tDom: IndexedSeq[SType],  tRange: SType, tpeParams: Seq[STypePa
 object SFunc {
   final val FuncTypeCode: TypeCode = TypeCodes.FuncType
   def apply(tDom: SType, tRange: SType): SFunc = SFunc(Array(tDom), tRange) // HOTSPOT:
-  val identity = { x: Any => x }
+  val identity = { (x: Any) => x }
 }
 
 /** Used by ErgoScript compiler IR and eliminated during compilation.
@@ -706,7 +706,7 @@ object STypeApply {
 /** Type description of optional values. Instances of `Option`
   *  are either constructed by `Some` or by `None` constructors. */
 case class SOption[ElemType <: SType](elemType: ElemType) extends SProduct with SGenericType {
-  type ElemWrappedType = ElemType#WrappedType
+  type ElemWrappedType = Wrapped.Of[ElemType]
   override type WrappedType = Option[ElemWrappedType]
   override val typeCode: TypeCode = SOption.OptionTypeCode
   override def toString = s"Option[$elemType]"
@@ -757,9 +757,12 @@ object SOption extends STypeCompanion {
 }
 
 /** Base class for descriptors of `Coll[T]` ErgoTree type for some elemType T. */
-trait SCollection[T <: SType] extends SProduct with SGenericType {
+trait SCollection[T <: SType] extends SProduct with SGenericType with SCollectionWrappedType[T] {
   def elemType: T
-  override type WrappedType = Coll[T#WrappedType]
+  // `WrappedType` is provided by the version-specific `SCollectionWrappedType` mixin:
+  // `Coll[T#WrappedType]` on Scala 2.x (a direct projection that stays a conforming subtype even
+  // for concrete element types) and `Coll[SType#WrappedType]` on Scala 3 (where `T#WrappedType`
+  // is illegal). This avoids the `Wrapped.Of` alias over-normalizing to `Coll[Any]` on 2.x.
 }
 
 /** Descriptor of `Coll[T]` ErgoTree type for some elemType T. */

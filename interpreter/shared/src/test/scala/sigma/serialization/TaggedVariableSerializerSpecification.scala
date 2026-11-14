@@ -31,8 +31,8 @@ class TaggedVariableSerializerSpecification extends SerializationSpecification {
     * version forces this test to be reviewed. */
   private val versionMatrix: Seq[(Byte, Byte)] =
     for {
-      av <- (0: Byte) to VersionContext.MaxSupportedScriptVersion
-      tv <- (0: Byte) to av
+      av <- 0 to VersionContext.MaxSupportedScriptVersion.toInt
+      tv <- 0 to av
     } yield (av.toByte, tv.toByte)
 
   property("opcode constant value is stable (0x71)") {
@@ -82,7 +82,7 @@ class TaggedVariableSerializerSpecification extends SerializationSpecification {
     // the next protocol version that rejects 0x71 is activated, every
     // currently-supported `ergoTreeVersion` MUST accept the opcode.
     val acceptingVersions: Seq[Byte] =
-      (0: Byte).to(VersionContext.MaxSupportedScriptVersion).toSeq.map(_.toByte)
+      (0 to VersionContext.MaxSupportedScriptVersion.toInt).map(_.toByte)
     for (v <- acceptingVersions; tpe <- Seq[SType](SInt, SBox, SAvlTree)) {
       VersionContext.withVersions(v, v) {
         val node   = TaggedVariableNode(7.toByte, tpe)

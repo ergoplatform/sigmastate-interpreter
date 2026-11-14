@@ -36,7 +36,7 @@ import sigma.serialization.{ConstantPlaceholderSerializer, ConstantSerializer, C
   *   ConstantPlaceholderSerializer.serialize: ~0.00083 ms (constant across ids)
   *   ConstantPlaceholderSerializer.parse:     ~0.0025 ms  (constant across ids)
   */
-object ConstantSerializationBenchmarks extends Bench.LocalTime { suite: Bench[Double] =>
+object ConstantSerializationBenchmarks extends Bench.LocalTime {
 
   private val constSer = ConstantSerializer(StdSigmaBuilder)
   private val placeholderSer = ConstantPlaceholderSerializer(DeserializationSigmaBuilder.mkConstantPlaceholder)

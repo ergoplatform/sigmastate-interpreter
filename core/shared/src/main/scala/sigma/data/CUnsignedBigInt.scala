@@ -1,6 +1,6 @@
 package sigma.data
 
-import sigma.{BigInt, Coll, Colls, UnsignedBigInt}
+import sigma.{BigInt, ByteType, Coll, Colls, UnsignedBigInt}
 import sigma.crypto.BigIntegers
 import sigma.util.Extensions.BigIntegerOps
 

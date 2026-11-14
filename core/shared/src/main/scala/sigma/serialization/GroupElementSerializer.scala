@@ -37,7 +37,7 @@ object GroupElementSerializer extends CoreSerializer[EcPointType, EcPointType] {
     if (encoded(0) != 0) {
       CryptoContext.default.decodePoint(encoded)
     } else {
-      CryptoContext.default.infinity // identity point of multiplicative group
+      CryptoContext.default.infinity() // identity point of multiplicative group
     }
   }
 

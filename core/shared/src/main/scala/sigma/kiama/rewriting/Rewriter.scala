@@ -246,7 +246,7 @@ trait Rewriter {
           // Otherwise, this is a normal class, so we try to make a
           // duper that uses the first constructor.
           case _ : NoSuchFieldException =>
-            val ctors = clazz.getConstructors
+            val ctors = clazz.getConstructors()
             if (ctors.length == 0)
               sys.error(s"dup no constructors for ${clazz.getName}")
             else

@@ -8,9 +8,9 @@ import scorex.util.{ModifierId, bytesToId}
 import sigma.Extensions.{ArrayOps, CollOps}
 import sigma.ast.{ErgoTree, SType}
 import sigma.ast.SType.AnyOps
-import sigma.data.Digest32Coll
+import sigma.data.{Digest32Coll, Digest32CollRType}
 import sigma.util.safeNewArray
-import sigma.{Coll, Colls}
+import sigma.{ByteType, Coll, Colls, LongType, StringType}
 import sigma.ast._
 import sigma.ast.syntax._
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
@@ -192,7 +192,7 @@ object ErgoBoxCandidate {
       r.positionLimit = r.position + ErgoBox.MaxBoxSize
       val value = r.getULong()                  // READ
       val tree = DefaultSerializer.deserializeErgoTree(r, SigmaSerializer.MaxPropositionSize)  // READ
-      val creationHeight = r.getUIntExact       // READ
+      val creationHeight = r.getUIntExact()     // READ
       // NO-FORK: ^ in v5.x getUIntExact may throw Int overflow exception
       // in v4.x r.getUInt().toInt is used and may return negative Int instead of the overflow
       // and ErgoBoxCandidate with negative creation height is created, which is then invalidated
@@ -203,7 +203,7 @@ object ErgoBoxCandidate {
       if (digestsInTx != null) {
         val nDigests = digestsInTx.length
         cfor(0)(_ < nTokens, _ + 1) { i =>
-          val digestIndex = r.getUIntExact    // READ
+          val digestIndex = r.getUIntExact()  // READ
           // NO-FORK: in v5.x getUIntExact throws Int overflow exception
           // in v4.x r.getUInt().toInt is used and may return negative Int in which case
           // the error below is thrown

@@ -4,7 +4,7 @@ import sigma.crypto.CryptoConstants.dlogGroup
 import sigmastate.crypto.VerifierMessage.Challenge
 import sigma.Coll
 import sigma.data.SigmaLeaf
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 import java.math.BigInteger
 

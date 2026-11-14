@@ -11,7 +11,7 @@ import sigma.ast.syntax.ValueOps
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigma.serialization.{ConstantStore, ErgoTreeSerializer, SigmaSerializer, ValueSerializer}
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 import java.util.Objects
 import scala.collection.mutable

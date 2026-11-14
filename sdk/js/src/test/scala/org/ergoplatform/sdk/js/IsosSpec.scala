@@ -3,7 +3,7 @@ package org.ergoplatform.sdk.js
 import org.ergoplatform.ErgoBox.{AdditionalRegisters, BoxId, TokenId}
 import org.ergoplatform._
 import org.ergoplatform.sdk.ExtendedInputBox
-import org.ergoplatform.sdk.wallet.protocol.context.BlockchainStateContext
+import org.ergoplatform.sdk.wallet.protocol.context.{BlockchainStateContext => WalletBlockchainStateContext}
 import org.scalacheck.Arbitrary
 import sigma.ast.{Constant, SType}
 import sigma.data.Iso
@@ -67,7 +67,7 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
   }
 
   property("Iso.isoBlockchainStateContext") {
-    forAll(blockchainStateContextGen) { (c: BlockchainStateContext) =>
+    forAll(blockchainStateContextGen) { (c: WalletBlockchainStateContext) =>
       roundtrip(Isos.isoBlockchainStateContext)(c)
     }
   }
@@ -75,6 +75,22 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
   property("Iso.isoContextExtension") {
     forAll { (c: ContextExtension) =>
       roundtrip(Isos.isoContextExtension)(c)
+    }
+  }
+
+  property("Iso.isoContextExtension accepts absent keys") {
+    val contextExtension = Isos.isoContextExtension.from(ContextExtension.empty)
+    contextExtension(1).isEmpty shouldBe true
+    Isos.isoContextExtension.to(contextExtension) shouldBe ContextExtension.empty
+  }
+
+  property("Iso.isoContextExtension rejects a present undefined value") {
+    val contextExtension = Isos.isoContextExtension.from(ContextExtension.empty)
+    contextExtension.update(1, js.undefined)
+    js.Object.keys(contextExtension)(0) shouldBe "1"
+
+    intercept[NoSuchElementException] {
+      Isos.isoContextExtension.to(contextExtension)
     }
   }
 

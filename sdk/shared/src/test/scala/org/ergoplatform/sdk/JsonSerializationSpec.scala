@@ -55,7 +55,19 @@ class JsonSerializationSpec extends SerializationSpecification with JsonCodecs {
   }
 
   property("ModifierId should be encoded into JSON and decoded back correctly") {
-    forAll(modifierIdGen) { v: ModifierId => jsonRoundTrip(v) }
+    forAll(modifierIdGen) { (v: ModifierId) =>
+      v.asJson.asString shouldBe Some(v.toString)
+      jsonRoundTrip(v)
+    }
+  }
+
+  property("ModifierId decoding preserves string-decoder failures and cursor history") {
+    val cursor = Json.obj("transactionId" -> Json.fromInt(123)).hcursor.downField("transactionId")
+    val result = modifierIdDecoder.tryDecode(cursor)
+
+    result.isLeft shouldBe true
+    result.left.toOption shouldBe cursor.as[String].left.toOption
+    result.left.toOption.map(_.history) shouldBe Some(cursor.history)
   }
 
   property("Header should be encoded into JSON and decoded back correctly") {
