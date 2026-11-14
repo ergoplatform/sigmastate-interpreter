@@ -383,4 +383,16 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     compiler.typecheck(Map.empty[String, Any], compiler.parse("1 + 2")) shouldBe
       Plus(IntConstant(1), IntConstant(2))
   }
+
+  property("Unit expressions") {
+    comp("()") shouldBe UnitConstant()
+    comp("() == ()") shouldBe TrueLeaf
+    comp(env + ("u" -> ()), "u") shouldBe UnitConstant()
+    comp(env + ("u" -> ()), "u == ()") shouldBe TrueLeaf
+    comp("{ val u: Unit = (); u }") shouldBe UnitConstant()
+    comp("{ def f(u: Unit) = u == (); f(()) }") shouldBe Apply(
+      FuncValue(Vector((1, SUnit)), EQ(ValUse(1, SUnit), UnitConstant())),
+      Vector(UnitConstant())
+    )
+  }
 }
