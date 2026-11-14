@@ -34,7 +34,7 @@ import sigma.eval.{EvalSettings, SigmaDsl}
 import sigma.exceptions.InvalidType
 import sigma.serialization.ErgoTreeSerializer
 import sigma.serialization.{DataSerializer, SigmaByteWriter, ValueSerializer}
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.validation.ValidationException
 import sigma.util.Extensions
 import sigmastate.utils.Helpers
@@ -145,7 +145,7 @@ class BasicOpsSpecification extends CompilerTestingCommons
     val newBox1 = testBox(10, tree, creationHeight = 0, boxIndex = 0, additionalRegisters = Map(
       reg1 -> IntConstant(1),
       reg2 -> IntConstant(10)))
-    val ce = ContextExtension(prover.contextExtenders)
+    val ce = ContextExtension(SigmaMap(prover.contextExtenders))
     val tx = new ErgoLikeTransaction(IndexedSeq(Input(boxToSpend.id, ProverResult(Array.empty, ce))), ArraySeq.empty, IndexedSeq(newBox1))
 
     val ctx = ErgoLikeContextTesting(currentHeight = 0,

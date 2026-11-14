@@ -8,7 +8,7 @@ import sigma.data.Iso
 import sigma.data.Iso.{isoStringToArray, isoStringToColl}
 import sigma.data.js.{Isos => DataIsos}
 import sigma.data.CHeader
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.js.AvlTree
 import sigmastate.eval.CPreHeader
 import sigmastate.fleetSdkCommon.distEsmTypesBoxesMod.Box
@@ -19,7 +19,7 @@ import sigmastate.fleetSdkCommon.{distEsmTypesCommonMod => commonMod, distEsmTyp
 
 import scala.collection.immutable.ListMap
 import scala.scalajs.js
-import scala.scalajs.js.Object
+import sigmastate.std.global.{Map => JSMap}
 
 /** Definitions of isomorphisms for sigma-sdk module.
   * @see sigma.data.Iso
@@ -147,23 +147,32 @@ object Isos {
 
   implicit val isoContextExtension: Iso[contextExtensionMod.ContextExtension, ContextExtension] = new Iso[contextExtensionMod.ContextExtension, ContextExtension] {
     override def to(x: contextExtensionMod.ContextExtension): ContextExtension = {
-      var map = new ListMap[Byte, Constant[SType]]()
-      val keys = js.Object.keys(x).sorted
-      for ( k <- keys ) {
-        val id = k.toInt.toByte
-        val c = DataIsos.isoHexStringToConstant.to(x.apply(id).get.get)
-        map = map + (id -> c)
+      var map = ListMap.empty[Byte, Constant[SType]]
+      if (x.asInstanceOf[js.Any].isInstanceOf[js.Map[_, _]]) {
+        val jsMap = x.asInstanceOf[sigmastate.std.Map[Double, commonMod.HexString]]
+        jsMap.forEach { (value: commonMod.HexString, key: Double, _: sigmastate.std.Map[Double, commonMod.HexString]) =>
+          val id = key.toByte
+          val c = DataIsos.isoHexStringToConstant.to(value)
+          map = map + (id -> c)
+        }
+      } else {
+        val keys = js.Object.keys(x).sorted
+        for ( k <- keys ) {
+          val id = k.toInt.toByte
+          val c = DataIsos.isoHexStringToConstant.to(x.apply(id).get.get)
+          map = map + (id -> c)
+        }
       }
-      ContextExtension(map)
+      ContextExtension(SigmaMap(map))
     }
 
     override def from(x: ContextExtension): contextExtensionMod.ContextExtension = {
-      val res = new Object().asInstanceOf[contextExtensionMod.ContextExtension]
-      x.values.foreach { case (k, v: Constant[_]) =>
+      val res = new JSMap[Double, commonMod.HexString]()
+      x.values.iterator.foreach { case (k, v: Constant[_]) =>
         val hex = DataIsos.isoHexStringToConstant.from(v)
-        res.update(k, hex)
+        res.set(k.toDouble, hex) // traversal order preserves insertion order (see SigmaMap scaladoc)
       }
-      res
+      res.asInstanceOf[contextExtensionMod.ContextExtension]
     }
   }
 

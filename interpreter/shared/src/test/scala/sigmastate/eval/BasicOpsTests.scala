@@ -7,6 +7,7 @@ import scorex.util.encode.Base16
 import sigma.Extensions.ArrayOps
 import sigma.ast.{ByteArrayConstant, IntConstant}
 import sigma.crypto.SecP256K1Group
+import sigma.interpreter.SigmaMap
 import sigma.data.{CBigInt, CUnsignedBigInt, TrivialProp}
 import sigma.eval.SigmaDsl
 import sigma.util.Extensions.SigmaBooleanOps
@@ -81,7 +82,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
     val context = new CContext(
       noInputs.toColl, noHeaders, dummyPreHeader,
       Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
-      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+      dummyPubkey.toColl, SigmaMap.empty, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
 
     val evaluator = new CErgoTreeEvaluator(
       context = context,
@@ -118,7 +119,7 @@ class BasicOpsTests extends AnyFunSuite with ContractsTestkit with Matchers {
     val context = new CContext(
       noInputs.toColl, noHeaders, dummyPreHeader,
       Array[Box]().toColl, Array[Box]().toColl, 0, null, 0, null,
-      dummyPubkey.toColl, Colls.emptyColl, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
+      dummyPubkey.toColl, SigmaMap.empty, null, VersionContext.V6SoftForkVersion, VersionContext.V6SoftForkVersion)
 
     val evaluator = new CErgoTreeEvaluator(
       context = context,

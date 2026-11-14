@@ -2,9 +2,9 @@ package sigma
 
 import org.scalatest.BeforeAndAfterAll
 import scalan.{BaseCtxTests, BaseLiftableTests}
+import sigma.ast.IntConstant
 import sigma.compiler.ir.IRContext
-import sigma.data.TrivialProp
-import sigma.eval.Extensions.toAnyValue
+import sigma.interpreter.SigmaMap
 import sigmastate.eval._
 
 import scala.language.reflectiveCalls
@@ -22,7 +22,6 @@ class SigmaDslStaginTests extends BaseCtxTests with ErgoScriptTestkit with BaseL
     import EnvRep._
     import Liftables._
     import SigmaDslBuilder._
-    import SigmaProp._
 
     val dsl: SSigmaDslBuilder = sigma.eval.SigmaDsl
     type RSigmaDslBuilder = cake.SigmaDslBuilder
@@ -31,9 +30,8 @@ class SigmaDslStaginTests extends BaseCtxTests with ErgoScriptTestkit with BaseL
     type RSigmaProp = cake.SigmaProp
     val boxA1 = newAliceBox(100)
     val boxA2 = newAliceBox(200)
-    val ctx: SContext = newContext(10, boxA1, VersionContext.MaxSupportedScriptVersion, VersionContext.MaxSupportedScriptVersion)
+    val ctx: SContext = newContext(10, boxA1, VersionContext.MaxSupportedScriptVersion, VersionContext.MaxSupportedScriptVersion, SigmaMap(Map(1.toByte -> IntConstant(30), 2.toByte -> IntConstant(40))))
       .withInputs(boxA2)
-      .withVariables(Map(1 -> toAnyValue(30), 2 -> toAnyValue(40)))
 
     cake.check(dsl,  { env: EnvRep[RSigmaDslBuilder] =>
       for { dsl <- env; arg <- lifted(true) } yield dsl.sigmaProp(arg) }, dsl.sigmaProp(true))

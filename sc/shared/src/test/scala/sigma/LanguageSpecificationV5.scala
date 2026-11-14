@@ -30,6 +30,7 @@ import sigmastate.eval.Extensions.AvlTreeOps
 import sigmastate.eval._
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.interpreter._
+import sigma.interpreter.SigmaMap
 import sigmastate.utils.Extensions._
 import sigmastate.utils.Helpers
 import sigmastate.utils.Helpers._
@@ -4385,17 +4386,13 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         )
       ),
       _minerPubKey = Helpers.decodeBytes("0227a58e9b2537103338c237c52c1213bf44bdb344fa07d9df8ab826cca26ca08f"),
-      vars = Colls
-          .replicate[AnyValue](10, null) // reserve 10 vars
-          .append(Coll[AnyValue](
-            CAnyValue(Helpers.decodeBytes("00")),
-            CAnyValue(true))),
+      vars = SigmaMap(Map(10.toByte -> ByteArrayConstant(Helpers.decodeBytes("00")), 11.toByte -> BooleanConstant(true))),
       spendingTransaction = null,
       activatedScriptVersion = activatedVersionInTests,
       currentErgoTreeVersion = ergoTreeVersionInTests
     )
-    val ctx2 = ctx.copy(vars = Coll[AnyValue](null, null, null))
-    val ctx3 = ctx.copy(vars = Coll[AnyValue]())
+    val ctx2 = ctx.copy(vars = SigmaMap(Map.empty))
+    val ctx3 = ctx.copy(vars = SigmaMap(Map.empty))
 
     (input, dataBox, header, ctx, ctx2, ctx3)
   }

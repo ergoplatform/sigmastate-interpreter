@@ -13,13 +13,13 @@ class ContextEnrichingTestProvingInterpreter
     i.toByte -> ByteArrayConstant(ba)
   }.toMap
 
-  def withContextExtender(tag: Byte, value: EvaluatedValue[_ <: SType]): ContextEnrichingTestProvingInterpreter = {
+  def withContextExtender(varId: Byte, value: EvaluatedValue[_ <: SType]): ContextEnrichingTestProvingInterpreter = {
     val s = secrets
     val ce = contextExtenders
 
     new ContextEnrichingTestProvingInterpreter {
       override lazy val secrets = s
-      override lazy val contextExtenders: Map[Byte, EvaluatedValue[_ <: SType]] = ce + (tag -> value)
+      override lazy val contextExtenders: Map[Byte, EvaluatedValue[_ <: SType]] = ce + (varId -> value)
     }
   }
 
