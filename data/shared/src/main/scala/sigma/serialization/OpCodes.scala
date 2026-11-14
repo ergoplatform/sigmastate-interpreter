@@ -1,7 +1,7 @@
 package sigma.serialization
 
 import sigma.ast.TypeCodes.LastConstantCode
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 /** Encoding of values for serialization. */
 object ValueCodes {

@@ -4,14 +4,16 @@ import sigma.BaseTests
 import sigma.reflection.ReflectionData.registerClassEntry
 import sigma.reflection.{RClass, mkMethod}
 
-class ScalaNameUtilSuite extends BaseTests {
+private[core] final class ScalaNameUtilFixture {
   def +\() = ???
+}
 
+class ScalaNameUtilSuite extends BaseTests {
   import ScalaNameUtil._
-  registerClassEntry(classOf[ScalaNameUtilSuite],
+  registerClassEntry(classOf[ScalaNameUtilFixture],
     methods = Map(
-      mkMethod(classOf[ScalaNameUtilSuite], """+\""", Array[Class[_]]()) { (obj, args) =>
-        obj.asInstanceOf[ScalaNameUtilSuite].+\()
+      mkMethod(classOf[ScalaNameUtilFixture], """+\""", Array[Class[_]]()) { (obj, args) =>
+        obj.asInstanceOf[ScalaNameUtilFixture].+\()
       }))
 
   test("Operator names should be decoded correctly") {
@@ -19,9 +21,9 @@ class ScalaNameUtilSuite extends BaseTests {
   }
 
   test("Method names obtained by reflection should be decoded") {
-    val methodNames = RClass(classOf[ScalaNameUtilSuite]).getDeclaredMethods.map {
+    val methodNames = RClass(classOf[ScalaNameUtilFixture]).getDeclaredMethods().map {
       m => cleanScalaName(m.getName)
-    }.toList.filterNot(n => n.startsWith("$"))
+    }.toList
 
     methodNames should equal(List("""+\"""))
   }

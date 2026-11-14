@@ -31,7 +31,8 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
       case f: Failure =>
         val traced = f.extra.trace()
         println(s"\nTRACE: ${traced.msg}")
-        f.get // force show error diagnostics
+        val failed: Parsed[Nothing] = f
+        failed.get.value // force show error diagnostics
     }
   }
 

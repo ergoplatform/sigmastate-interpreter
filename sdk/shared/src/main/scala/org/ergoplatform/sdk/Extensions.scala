@@ -108,8 +108,8 @@ object Extensions {
   }
 
   implicit class PairCollOps[A,B](val source: Coll[(A,B)]) extends AnyVal {
-    implicit def tA = source.tItem.tFst
-    implicit def tB = source.tItem.tSnd
+    implicit def tA: RType[A] = source.tItem.tFst
+    implicit def tB: RType[B] = source.tItem.tSnd
 
     /** Maps the first component of each pair in the collection. */
     @inline def mapFirst[A1: RType](f: A => A1): Coll[(A1, B)] = source.asInstanceOf[PairColl[A, B]].mapFirst(f)

@@ -3,7 +3,7 @@ package sigma.data
 import sigma.ast.SSigmaProp
 import sigma.serialization.CoreSerializer
 import sigma.util.Extensions.SigmaBooleanOps
-import sigma.{Coll, Colls, GroupElement, SigmaProp}
+import sigma.{ByteType, Coll, Colls, GroupElement, SigmaProp}
 
 /** A default implementation of [[SigmaProp]] interface.
   *

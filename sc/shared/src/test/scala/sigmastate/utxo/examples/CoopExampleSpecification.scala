@@ -15,7 +15,7 @@ import sigmastate.CompilerCrossVersionProps
 
 class CoopExampleSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
   
   def mkTxFromOutputs(ergoBox: ErgoBox*): ErgoLikeTransaction = {
     createTransaction(ergoBox.toIndexedSeq)

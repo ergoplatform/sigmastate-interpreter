@@ -2,7 +2,8 @@ package sigmastate.utxo.examples
 
 import org.ergoplatform._
 import org.ergoplatform.settings.ErgoAlgos
-import sigma.Colls
+import sigma.{Colls, LongType}
+import sigma.data.Digest32CollRType
 import sigma.ast.syntax.OptionValueOps
 import sigma.ast._
 import sigmastate._

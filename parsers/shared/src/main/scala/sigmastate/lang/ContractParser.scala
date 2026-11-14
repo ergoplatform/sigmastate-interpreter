@@ -135,7 +135,7 @@ object ContractParser {
   /**
    * Parse a contract up until the open brace (i.e the beginning of the contract logic).
    */
-  def parse[_: P]: P[ParsedContractTemplate] = P(Docs.parse ~ Basic.Newline ~ Signature.parse ~ WL.? ~ "=" ~ WL.? ~ AnyChar.rep(1).!).map(s => ParsedContractTemplate(s._1, s._2, SigmaParser(s._3).get.value))
+  def parse[Ctx: P]: P[ParsedContractTemplate] = P(Docs.parse ~ Basic.Newline ~ Signature.parse ~ WL.? ~ "=" ~ WL.? ~ AnyChar.rep(1).!).map(s => ParsedContractTemplate(s._1, s._2, SigmaParser(s._3).get.value))
 
   /**
    * Parsers for contract docstrings.
@@ -150,27 +150,27 @@ object ContractParser {
       fastparse.parse(source, parse(_))
     }
 
-    def parse[_: P]: P[ContractDoc] = P(" ".rep.? ~ "/*" ~ docLine.rep ~ " ".rep.? ~ "*/").map(ContractDoc.apply)
+    def parse[Ctx: P]: P[ContractDoc] = P(" ".rep.? ~ "/*" ~ docLine.rep ~ " ".rep.? ~ "*/").map(ContractDoc.apply)
 
-    def linePrefix[_: P] = P(WL.? ~ "*" ~ " ".rep.? ~ !"/")
+    def linePrefix[Ctx: P] = P(WL.? ~ "*" ~ " ".rep.? ~ !"/")
 
-    def word[_: P] = CharsWhile(c => c != ' ')
+    def word[Ctx: P] = CharsWhile(c => c != ' ')
 
-    def charUntilNewLine[_: P] = CharsWhile(c => c != '\n')
+    def charUntilNewLine[Ctx: P] = CharsWhile(c => c != '\n')
 
-    def unsupportedTag[_: P] = P("@" ~ charUntilNewLine.?).map(_ => DocumentationToken(UnsupportedTag))
+    def unsupportedTag[Ctx: P] = P("@" ~ charUntilNewLine.?).map(_ => DocumentationToken(UnsupportedTag))
 
-    def returnTag[_: P] = P("@returns").map(_ => DocumentationToken(Return))
+    def returnTag[Ctx: P] = P("@returns").map(_ => DocumentationToken(Return))
 
-    def paramTag[_: P] = P("@param" ~ WL ~ word.! ~ WL ~ charUntilNewLine.!).map(s => DocumentationToken(Param, s._1, s._2))
+    def paramTag[Ctx: P] = P("@param" ~ WL ~ word.! ~ WL ~ charUntilNewLine.!).map(s => DocumentationToken(Param, s._1, s._2))
 
-    def tag[_: P] = P(returnTag | paramTag | unsupportedTag)
+    def tag[Ctx: P] = P(returnTag | paramTag | unsupportedTag)
 
-    def emptyLine[_: P] = P(("" | " ".rep.?) ~ &(Basic.Newline)).map(_ => DocumentationToken(EmptyLine))
+    def emptyLine[Ctx: P] = P(("" | " ".rep.?) ~ &(Basic.Newline)).map(_ => DocumentationToken(EmptyLine))
 
-    def description[_: P] = P(!"@" ~ charUntilNewLine.!).map(s => DocumentationToken(Description, s))
+    def description[Ctx: P] = P(!"@" ~ charUntilNewLine.!).map(s => DocumentationToken(Description, s))
 
-    def docLine[_: P] = P(linePrefix ~ (emptyLine | description | tag) ~ Basic.Newline)
+    def docLine[Ctx: P] = P(linePrefix ~ (emptyLine | description | tag) ~ Basic.Newline)
   }
 
   /**
@@ -183,14 +183,14 @@ object ContractParser {
       fastparse.parse(source, parse(_))
     }
 
-    def parse[_: P]: P[ContractSignature] = P(annotation ~ WL.? ~ `def` ~ WL.? ~ Id.! ~ params).map(s => ContractSignature(s._1, s._2.getOrElse(Seq())))
+    def parse[Ctx: P]: P[ContractSignature] = P(annotation ~ WL.? ~ `def` ~ WL.? ~ Id.! ~ params).map(s => ContractSignature(s._1, s._2.getOrElse(Seq())))
 
-    def annotation[_: P] = P("@contract")
+    def annotation[Ctx: P] = P("@contract")
 
-    def paramDefault[_: P] = P(WL.? ~ `=` ~ WL.? ~ ExprLiteral)
+    def paramDefault[Ctx: P] = P(WL.? ~ `=` ~ WL.? ~ ExprLiteral)
 
-    def param[_: P] = P(WL.? ~ Id.! ~ ":" ~ Type ~ paramDefault.?).map(s => ContractParam(s._1, s._2, s._3.map(_.value)))
+    def param[Ctx: P] = P(WL.? ~ Id.! ~ ":" ~ Type ~ paramDefault.?).map(s => ContractParam(s._1, s._2, s._3.map(_.value)))
 
-    def params[_: P] = P("(" ~ param.rep(1, ",").? ~ ")")
+    def params[Ctx: P] = P("(" ~ param.rep(1, ",").? ~ ")")
   }
 }

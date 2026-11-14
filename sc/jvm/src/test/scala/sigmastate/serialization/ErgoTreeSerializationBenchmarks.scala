@@ -46,7 +46,7 @@ import sigma.serialization.ErgoTreeSerializer
   *   roundTrip                   10   100   500
   *     Coll[Int] constant      0.007 0.023 0.099 ms
   */
-object ErgoTreeSerializationBenchmarks extends Bench.LocalTime with SerializationBenchmarkGens { suite: Bench[Double] =>
+object ErgoTreeSerializationBenchmarks extends Bench.LocalTime with SerializationBenchmarkGens {
 
   private val ser = ErgoTreeSerializer.DefaultSerializer
 

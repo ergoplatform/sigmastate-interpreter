@@ -1,7 +1,7 @@
 package sigma.data
 
 import sigma.ast.TypeCodes.LastConstantCode
-import supertagged.TaggedType
+import sigma.compat.TaggedType
 
 /** Opcodes of sigma proposition nodes.
   *

@@ -23,7 +23,7 @@ object SigmaParser extends Exprs with Types with Core { parser =>
   override def srcCtx(parserIndex: Int): SourceContext =
     SourceContext.fromParserIndex(parserIndex, currentInput.value)
 
-  override def ValVarDef[_:P] = P( Index ~ BindPattern ~ (`:` ~/ Type).? ~ (`=` ~/ FreeCtx.Expr) ).map {
+  override def ValVarDef[Ctx:P] = P( Index ~ BindPattern ~ (`:` ~/ Type).? ~ (`=` ~/ FreeCtx.Expr) ).map {
     case (index, Ident(n,_), t, body) =>
       atSrcPos(index) {
         mkVal(n, t.getOrElse(NoType), body)
@@ -32,7 +32,7 @@ object SigmaParser extends Exprs with Types with Core { parser =>
       Basic.error(s"Only single name patterns supported but was $pat", Some(srcCtx(index)))
   }
 
-  override def BlockDef[_:P] = P( Dcl )
+  override def BlockDef[Ctx:P] = P( Dcl )
 
   private val logged = mutable.Buffer.empty[String]
   implicit val logger: Logger = Logger(m => this.synchronized { logged.append(m) })
@@ -100,7 +100,11 @@ object SigmaParser extends Exprs with Types with Core { parser =>
       }
     }
 
-  private def parsedType(str: String): Parsed[SType] = parse(str, implicit p => Type ~ End)
+  private def typeEntry[Ctx: P]: P[SType] = Type ~ End
+
+  private def scriptEntry[Ctx: P]: P[Value[SType]] = StatCtx.Expr ~ End
+
+  private def parsedType(str: String): Parsed[SType] = parse(str, typeEntry(_))
 
   /** Parse `str` into SType.
     * @param str string representation of type in ErgoScript syntax
@@ -113,6 +117,6 @@ object SigmaParser extends Exprs with Types with Core { parser =>
   /** Parse `script` into ErgoTree expression. */
   def apply(script: String): Parsed[Value[_ <: SType]] =
     currentInput.withValue(script) {
-      parse(script, implicit p => (StatCtx.Expr ~ End))
+      parse(script, scriptEntry(_))
     }
 }

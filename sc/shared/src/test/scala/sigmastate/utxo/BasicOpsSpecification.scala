@@ -50,7 +50,7 @@ import scala.util.Try
 class BasicOpsSpecification extends CompilerTestingCommons
   with CompilerCrossVersionProps {
   override val printVersions: Boolean = false
-  implicit lazy val IR = new TestingIRContext {
+  implicit lazy val IR: TestingIRContext = new TestingIRContext {
   }
 
   private val reg1 = ErgoBox.nonMandatoryRegisters.head

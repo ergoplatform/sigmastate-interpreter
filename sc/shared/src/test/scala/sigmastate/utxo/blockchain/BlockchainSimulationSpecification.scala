@@ -11,7 +11,7 @@ import sigmastate.utxo.blockchain.BlockchainSimulationTestingCommons._
 class BlockchainSimulationSpecification extends BlockchainSimulationTestingCommons
   with CompilerCrossVersionProps {
 
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
 
   import ValidationState._
 

@@ -9,11 +9,11 @@ import scorex.crypto.authds.{ADKey, ADValue}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.serialization.{Reader, VLQByteBufferReader}
 import sigma.ast.{SBoolean, SInt, SizeOf, _}
-import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, SigmaBoolean}
+import sigma.data.{AvlTreeData, AvlTreeFlags, CAND, Digest32CollRType, SigmaBoolean}
 import sigma.util.{BenchmarkUtil, safeNewArray}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.{CheckPositionLimit, CheckZeroWidthCollection}
-import sigma.{Colls, Environment, VersionContext}
+import sigma.{Colls, Environment, LongType, VersionContext}
 import sigma.ast.syntax._
 import sigmastate._
 import sigma.Extensions.ArrayOps
@@ -734,8 +734,8 @@ class DeserializationResilience extends DeserializationResilienceTesting {
       }
     }
 
-    roundTrip(SUnit)(identity)                        // bare Unit (no data bytes)
-    roundTrip(STuple(SUnit, SUnit))(identity)         // all-Unit tuple (bounded by type bytes)
+    roundTrip(SUnit)(_ => ())                        // bare Unit (no data bytes)
+    roundTrip(STuple(SUnit, SUnit))(_ => ())         // all-Unit tuple (bounded by type bytes)
     // Coll[Option[Unit]]: each element consumes a tag byte, so it is byte-bounded
     roundTrip(SCollection(SOption(SUnit))) { w =>
       w.putUShort(2); w.put(1.toByte); w.put(0.toByte)

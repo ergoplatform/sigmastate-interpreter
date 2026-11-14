@@ -49,7 +49,7 @@ object MapCollection extends ValueCompanion {
   override def opCode: OpCode = OpCodes.MapCollectionCode
   /** Cost of: 1) obtain result RType 2) invoke map method 3) allocation of resulting
     * collection */
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(20), perChunkCost = JitCost(1), chunkSize = 10)
 }
 
@@ -71,7 +71,7 @@ case class Append[IV <: SType](input: Value[SCollection[IV]], col2: Value[SColle
 }
 object Append extends ValueCompanion {
   override def opCode: OpCode = OpCodes.AppendCode
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(20), perChunkCost = JitCost(2), chunkSize = 100)
 }
 
@@ -103,7 +103,7 @@ case class Slice[IV <: SType](input: Value[SCollection[IV]], from: Value[SInt.ty
 }
 object Slice extends ValueCompanion {
   override def opCode: OpCode = OpCodes.SliceCode
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(10), perChunkCost = JitCost(2), chunkSize = 100)
 }
 
@@ -131,7 +131,7 @@ object Filter extends ValueCompanion {
   override def opCode: OpCode = OpCodes.FilterCode
   /** Cost of: 1) invoke Coll.filter method 2) allocation of resulting
     * collection */
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(20), perChunkCost = JitCost(1), chunkSize = 10)
 }
 
@@ -167,7 +167,7 @@ case class Exists[IV <: SType](override val input: Value[SCollection[IV]],
 object Exists extends BooleanTransformerCompanion {
   override def opCode: OpCode = OpCodes.ExistsCode
   /** Cost of:  invoke exists method */
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(3), perChunkCost = JitCost(1), chunkSize = 10)
   override def argInfos: Seq[ArgInfo] = ExistsInfo.argInfos
 }
@@ -194,7 +194,7 @@ case class ForAll[IV <: SType](override val input: Value[SCollection[IV]],
 object ForAll extends BooleanTransformerCompanion {
   override def opCode: OpCode = OpCodes.ForAllCode
   /** Cost of:  invoke forall method */
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(3), perChunkCost = JitCost(1), chunkSize = 10)
   override def argInfos: Seq[ArgInfo] = ForAllInfo.argInfos
 }
@@ -233,7 +233,7 @@ case class Fold[IV <: SType, OV <: SType](input: Value[SCollection[IV]],
 
 object Fold extends ValueCompanion {
   override def opCode: OpCode = OpCodes.FoldCode
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(3), perChunkCost = JitCost(1), chunkSize = 10)
 }
 
@@ -282,7 +282,7 @@ case class ByIndex[V <: SType](input: Value[SCollection[V]],
 }
 object ByIndex extends FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.ByIndexCode
-  override val costKind = FixedCost(JitCost(30))
+  override val costKind: FixedCost = FixedCost(JitCost(30))
 }
 
 /** Select tuple field by its 1-based index. E.g. input._1 is transformed to
@@ -311,7 +311,7 @@ object SelectField extends FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.SelectFieldCode
   /** Cost of: 1) Calling Tuple2.{_1, _2} Scala methods.
     * Old cost: ("SelectField", "() => Unit", selectField) */
-  override val costKind = FixedCost(JitCost(10))
+  override val costKind: FixedCost = FixedCost(JitCost(10))
   def typed[T <: SValue](input: Value[STuple], fieldIndex: Byte): T = {
     SelectField(input, fieldIndex).asInstanceOf[T]
   }
@@ -346,7 +346,7 @@ object SigmaPropBytes extends PerItemCostValueCompanion {
   override def opCode: OpCode = OpCodes.SigmaPropBytesCode
   /** BaseCost: serializing one node of SigmaBoolean proposition
     * PerChunkCost: serializing one node of SigmaBoolean proposition */
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(35), perChunkCost = JitCost(6), chunkSize = 1)
 }
 trait SimpleTransformerCompanion extends ValueCompanion {
@@ -370,7 +370,7 @@ object SizeOf extends SimpleTransformerCompanion with FixedCostValueCompanion {
   /** Cost of: 1) calling Coll.length method (guaranteed to be O(1))
     * Twice the cost of SelectField.
     * Old cost: ("SizeOf", "(Coll[IV]) => Int", collLength) */
-  override val costKind = FixedCost(JitCost(14))
+  override val costKind: FixedCost = FixedCost(JitCost(14))
   override def argInfos: Seq[ArgInfo] = SizeOfInfo.argInfos
 }
 
@@ -391,7 +391,7 @@ object ExtractAmount extends SimpleTransformerCompanion with FixedCostValueCompa
   val OpType = SFunc(SBox, SLong)
   override def opCode: OpCode = OpCodes.ExtractAmountCode
   /** Cost of: 1) access `value` property of a [[sigma.Box]] */
-  override val costKind = FixedCost(JitCost(8))
+  override val costKind: FixedCost = FixedCost(JitCost(8))
   override def argInfos: Seq[ArgInfo] = ExtractAmountInfo.argInfos
 }
 
@@ -417,7 +417,7 @@ object ExtractScriptBytes extends SimpleTransformerCompanion with FixedCostValue
     * This is (and must be) guaranteed by ErgoTree deserializer.
     * CostOf: accessing ErgoBox.propositionBytes
     */
-  override val costKind = FixedCost(JitCost(10))
+  override val costKind: FixedCost = FixedCost(JitCost(10))
   override def argInfos: Seq[ArgInfo] = ExtractScriptBytesInfo.argInfos
 }
 
@@ -437,7 +437,7 @@ object ExtractBytes extends SimpleTransformerCompanion {
   /** The cost is fixed and doesn't include serialization of ErgoBox because
     * the ErgoBox is expected to be constructed with non-null `bytes`.
     */
-  override val costKind = FixedCost(JitCost(12))
+  override val costKind: FixedCost = FixedCost(JitCost(12))
   override def argInfos: Seq[ArgInfo] = ExtractBytesInfo.argInfos
 }
 
@@ -457,7 +457,7 @@ object ExtractBytesWithNoRef extends SimpleTransformerCompanion {
 
   /** The cost if fixed and doesn't include serialization of ErgoBox because
     * the ErgoBox is expected to be constructed with non-null `bytes`. */
-  override val costKind = FixedCost(JitCost(12))
+  override val costKind: FixedCost = FixedCost(JitCost(12))
 
   override def argInfos: Seq[ArgInfo] = ExtractBytesWithNoRefInfo.argInfos
 }
@@ -476,7 +476,7 @@ object ExtractId extends SimpleTransformerCompanion {
   val OpType = SFunc(SBox, SByteArray)
   override def opCode: OpCode = OpCodes.ExtractIdCode
   /** CostOf: cost of computing hash from `ErgoBox.bytes` */
-  override val costKind = FixedCost(JitCost(12))
+  override val costKind: FixedCost = FixedCost(JitCost(12))
   override def argInfos: Seq[ArgInfo] = ExtractIdInfo.argInfos
 }
 
@@ -497,7 +497,7 @@ case class ExtractRegisterAs[V <: SType]( input: Value[SBox.type],
 object ExtractRegisterAs extends FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.ExtractRegisterAs
   /** CostOf: 1) accessing `registers` collection 2) comparing types 3) allocating Some()*/
-  override val costKind = FixedCost(JitCost(50))
+  override val costKind: FixedCost = FixedCost(JitCost(50))
 
   //HOTSPOT:: avoids thousands of allocations per second
   private val BoxAndByte: IndexedSeq[SType] = Array(SBox, SByte)
@@ -524,7 +524,7 @@ case class ExtractCreationInfo(input: Value[SBox.type]) extends Extract[STuple] 
 }
 object ExtractCreationInfo extends SimpleTransformerCompanion {
   override def opCode: OpCode = OpCodes.ExtractCreationInfoCode
-  override val costKind = FixedCost(JitCost(16))
+  override val costKind: FixedCost = FixedCost(JitCost(16))
   override def argInfos: Seq[ArgInfo] = ExtractCreationInfoInfo.argInfos
   val ResultType = STuple(SInt, SByteArray)
   val OpType = SFunc(SBox, ResultType)
@@ -555,7 +555,7 @@ case class DeserializeContext[V <: SType](id: Byte, tpe: V) extends Deserialize[
 }
 object DeserializeContext extends ValueCompanion {
   override def opCode: OpCode = OpCodes.DeserializeContextCode
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(1), perChunkCost = JitCost(10), chunkSize = 128)
 }
 
@@ -568,7 +568,7 @@ case class DeserializeRegister[V <: SType](reg: RegisterId, tpe: V, default: Opt
 }
 object DeserializeRegister extends ValueCompanion {
   override def opCode: OpCode = OpCodes.DeserializeRegisterCode
-  override val costKind = PerItemCost(
+  override val costKind: PerItemCost = PerItemCost(
     baseCost = JitCost(1), perChunkCost = JitCost(10), chunkSize = 128)
 }
 
@@ -586,7 +586,7 @@ object GetVar extends FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.GetVarCode
   /** Cost of: 1) accessing to array of context vars by index
     * Old cost: ("GetVar", "(Context, Byte) => Option[T]", getVarCost) */
-  override val costKind = FixedCost(JitCost(10))
+  override val costKind: FixedCost = FixedCost(JitCost(10))
   def apply[V <: SType](varId: Byte, innerTpe: V): GetVar[V] = GetVar[V](varId, SOption(innerTpe))
 }
 
@@ -608,7 +608,7 @@ case class OptionGet[V <: SType](input: Value[SOption[V]]) extends Transformer[S
 object OptionGet extends SimpleTransformerCompanion with FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.OptionGetCode
   /** Cost of: 1) Calling Option.get Scala method. */
-  override val costKind = FixedCost(JitCost(15))
+  override val costKind: FixedCost = FixedCost(JitCost(15))
   override def argInfos: Seq[ArgInfo] = OptionGetInfo.argInfos
 }
 
@@ -646,7 +646,7 @@ case class OptionGetOrElse[V <: SType](input: Value[SOption[V]], default: Value[
 object OptionGetOrElse extends ValueCompanion with FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.OptionGetOrElseCode
   /** Cost of: 1) Calling Option.getOrElse Scala method. */
-  override val costKind = FixedCost(JitCost(20))
+  override val costKind: FixedCost = FixedCost(JitCost(20))
 }
 
 /** Returns false if the option is None, true otherwise. */
@@ -664,6 +664,6 @@ case class OptionIsDefined[V <: SType](input: Value[SOption[V]])
 object OptionIsDefined extends SimpleTransformerCompanion with FixedCostValueCompanion {
   override def opCode: OpCode = OpCodes.OptionIsDefinedCode
   /** Cost of: 1) Calling Option.isDefined Scala method. */
-  override val costKind = FixedCost(JitCost(10))
+  override val costKind: FixedCost = FixedCost(JitCost(10))
   override def argInfos: Seq[ArgInfo] = OptionIsDefinedInfo.argInfos
 }

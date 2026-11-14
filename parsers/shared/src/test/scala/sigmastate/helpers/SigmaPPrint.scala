@@ -3,11 +3,12 @@ package sigmastate.helpers
 import org.ergoplatform.ErgoBox
 import org.ergoplatform.ErgoBox.RegisterId
 import org.ergoplatform.settings.ErgoAlgos
-import pprint.{PPrinter, Tree}
+import pprint.Tree
 import sigma.ast.SCollection.{SBooleanArray, SByteArray, SByteArray2}
 import sigma.ast.{ConstantNode, FuncValue, MethodCall, ValueCompanion, _}
 import sigma.crypto.EcPointType
 import sigma.data.{AvlTreeData, AvlTreeFlags, CollType, PrimitiveType, TrivialProp}
+import sigma.eval.GivenCost
 import sigma.serialization.GroupElementSerializer
 import sigma.{Coll, GroupElement}
 import sigmastate.crypto.GF2_192_Poly
@@ -20,8 +21,7 @@ import scala.reflect.ClassTag
 
 /** Pretty-printer customized to print [[sigma.ast.Value]] instances
   * into a valid Scala code (can be cut-and-pasted).*/
-object SigmaPPrint extends PPrinter {
-  override def showFieldNames = false
+object SigmaPPrint extends SigmaPPrinterCompat {
   
   /** Apply [[treeify]] for each element of the given sequence producing the iterator of resulting trees. */
   protected def treeifySeq(xs: Seq[Any]): Iterator[Tree] = {
@@ -35,6 +35,9 @@ object SigmaPPrint extends PPrinter {
   protected def treeifyMany(head: Any, tail: Any*): Iterator[Tree] = {
     treeifySeq(head +: tail)
   }
+
+  private def jitCostLiteral(cost: JitCost): Tree =
+    Tree.Apply("JitCost", Iterator(Tree.Literal(cost.value.toString)))
 
   private def tpeName(tpe: SType): String = {
     val name = tpe.toTermString
@@ -200,6 +203,15 @@ object SigmaPPrint extends PPrinter {
      .orElse(exceptionHandlers)
      .orElse(dataHandlers)
      .orElse {
+    case FixedCost(cost) =>
+      Tree.Apply("FixedCost", treeifyMany(jitCostLiteral(cost)))
+    case PerItemCost(baseCost, perChunkCost, chunkSize) =>
+      Tree.Apply("PerItemCost", treeifyMany(
+        jitCostLiteral(baseCost), jitCostLiteral(perChunkCost), Tree.Literal(chunkSize.toString)))
+    case GivenCost(cost, actualTimeNano) =>
+      Tree.Apply("GivenCost", treeifyMany(jitCostLiteral(cost), actualTimeNano))
+    case SeqCostItem(opDesc, costKind, nItems) =>
+      Tree.Apply("SeqCostItem", treeifyMany(opDesc, costKind, Tree.Literal(nItems.toString)))
     case FixedCostItem(CompanionDesc(c), _) =>
       Tree.Apply("FixedCostItem", treeifySeq(Seq(c)))
     case FixedCostItem(MethodDesc(m), cost) =>
@@ -261,4 +273,3 @@ object SigmaPPrint extends PPrinter {
       Tree.Apply(s"MethodCall.typed[$resTpeName]", Seq(objT, methodT, argsT, substT).iterator)
   }
 }
-

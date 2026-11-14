@@ -9,7 +9,7 @@ import scorex.utils.{Ints, Shorts}
 import sigma.Extensions.ArrayOps
 import sigma.ast.SCollection.SByteArray
 import sigma.ast.SType.AnyOps
-import sigma.data.{Digest32Coll, SigmaConstants}
+import sigma.data.{Digest32Coll, Digest32CollRType, SigmaConstants}
 import sigma.ast._
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, SigmaSerializer}
 import sigma._

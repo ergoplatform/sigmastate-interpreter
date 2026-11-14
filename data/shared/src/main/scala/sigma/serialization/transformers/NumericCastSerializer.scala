@@ -1,7 +1,7 @@
 package sigma.serialization.transformers
 
 import sigma.ast.syntax.SValue
-import sigma.ast.{NumericCastCompanion, SNumericType, SType, Transformer, Value}
+import sigma.ast.{NumericCastCompanion, SNumericType, SType, STypeOps, Transformer, Value}
 import sigma.serialization.CoreByteWriter.{ArgInfo, DataInfo}
 import sigma.ast.syntax._
 import sigma.serialization.{SigmaByteReader, SigmaByteWriter, ValueSerializer}

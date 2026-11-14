@@ -3,7 +3,7 @@ package sigma
 import sigmastate.helpers.CompilerTestingCommons
 
 class LoopTests extends CompilerTestingCommons { suite =>
-  implicit lazy val IR = new TestingIRContext
+  implicit lazy val IR: TestingIRContext = new TestingIRContext
   import IR._
 
   property("Test nested loop") {

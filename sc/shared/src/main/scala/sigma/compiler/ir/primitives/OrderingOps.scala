@@ -7,8 +7,8 @@ import scala.language.implicitConversions
 
 /** Slice in IRContext cake with definitions of comparison operations. */
 trait OrderingOps extends Base { self: IRContext =>
-  implicit def repOrderingToOrderingOps[T](x: Ref[T])(implicit n: ExactOrdering[T]) = new OrderingOpsCls(x)
-  implicit def OrderingToOrderingOps[T](x: T)(implicit n: ExactOrdering[T], et: Elem[T]) = new OrderingOpsCls(toRep(x))
+  implicit def repOrderingToOrderingOps[T](x: Ref[T])(implicit n: ExactOrdering[T]): OrderingOpsCls[T] = new OrderingOpsCls(x)
+  implicit def OrderingToOrderingOps[T](x: T)(implicit n: ExactOrdering[T], et: Elem[T]): OrderingOpsCls[T] = new OrderingOpsCls(toRep(x))
 
   /** Extension method over `Ref[T]` given an instance of ExactOrdering for T. */
   class OrderingOpsCls[T](lhs: Ref[T])(implicit val n: ExactOrdering[T]) {

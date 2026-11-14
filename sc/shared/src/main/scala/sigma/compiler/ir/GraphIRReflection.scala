@@ -78,7 +78,7 @@ object GraphIRReflection {
     registerClassEntry(clazz,
       methods = Map(
         mkMethod(clazz, "$bar$bar", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaProp].$bar$bar(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
+          obj.asInstanceOf[ctx.SigmaProp].||(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
         },
         mkMethod(clazz, "isValid", Array[Class[_]]()) { (obj, _) =>
           obj.asInstanceOf[ctx.SigmaProp].isValid
@@ -87,7 +87,7 @@ object GraphIRReflection {
           obj.asInstanceOf[ctx.SigmaProp].propBytes
         },
         mkMethod(clazz, "$amp$amp", Array[Class[_]](classOf[Base#Ref[_]])) { (obj, args) =>
-          obj.asInstanceOf[ctx.SigmaProp].$amp$amp(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
+          obj.asInstanceOf[ctx.SigmaProp].&&(args(0).asInstanceOf[ctx.Ref[ctx.SigmaProp]])
         }
       )
     )

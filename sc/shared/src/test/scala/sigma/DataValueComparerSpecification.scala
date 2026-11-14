@@ -28,7 +28,7 @@ class DataValueComparerSpecification extends SigmaDslTesting
 
   val nWarmUpIterations = 100
 
-  implicit val suiteProfiler = new CProfiler
+  implicit val suiteProfiler: CProfiler = new CProfiler
 
   import TestData._
 

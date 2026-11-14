@@ -68,17 +68,7 @@ trait DefRewriting { scalan: IRContext =>
 
       case _ if op == Not => x.node match {
         // Rule: !(x op y) ==>
-        case ApplyBinOp(op, x, y) => op.asInstanceOf[BinOp[_,_]] match {
-          case OrderingLT(ord) =>
-            OrderingGTEQ(ord)(x, y)
-          case OrderingLTEQ(ord) =>
-            OrderingGT(ord)(x, y)
-          case OrderingGT(ord) =>
-            OrderingLTEQ(ord)(x, y)
-          case OrderingGTEQ(ord) =>
-            OrderingLT(ord)(x, y)
-          case _ => null
-        }
+        case ApplyBinOp(op, x, y) => negateComparison(op, x, y)
         // Rule: !(!(x)) ==> x
         case ApplyUnOp(op, x) if op == Not => x
         // Rule: !Const(x) => Const(!x)
@@ -87,6 +77,15 @@ trait DefRewriting { scalan: IRContext =>
       }
       case _ => propagateUnOp(op, x)
     }
+  }
+
+  /** Keep the operand type shared by the comparison and both arguments. */
+  private def negateComparison[A, R](op: BinOp[A, R], x: Ref[A], y: Ref[A]): Ref[_] = op match {
+    case cmp: OrderingLT[A] @unchecked => OrderingGTEQ(cmp.ord)(x, y)
+    case cmp: OrderingLTEQ[A] @unchecked => OrderingGT(cmp.ord)(x, y)
+    case cmp: OrderingGT[A] @unchecked => OrderingLTEQ(cmp.ord)(x, y)
+    case cmp: OrderingGTEQ[A] @unchecked => OrderingLT(cmp.ord)(x, y)
+    case _ => null
   }
 
   /** Rewrites application of given binary operation to the given arguments.

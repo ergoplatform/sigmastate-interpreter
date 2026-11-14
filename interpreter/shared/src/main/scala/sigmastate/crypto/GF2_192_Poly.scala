@@ -131,7 +131,7 @@ class GF2_192_Poly {
       ret += " + "
     }
     if (deg >= 1) {
-      ret += c(1) + "*X" + " + "
+      ret += s"${c(1)}*X + "
     }
     ret += c(0)
     ret
@@ -251,4 +251,3 @@ object GF2_192_Poly {
   }
 
 }
-
