@@ -220,6 +220,7 @@ object SType {
     case SLong => true
     case SBigInt => true
     case SString => true
+    case SUnit => true
     case NoType => false
     case _ => false
   }

@@ -135,6 +135,8 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
   }
 
   property("types") {
+    bind(env + ("u" -> ()), "u") shouldBe UnitConstant()
+    bind(env, "{val X: Unit = (); X == ()}") shouldBe Block(Val("X", SUnit, UnitConstant()), EQ(Ident("X"), UnitConstant()))
     bind(env, "{val X: Int = 10; 3 > 2}") shouldBe Block(Val("X", SInt, IntConstant(10)), GT(3, 2))
     bind(env, "{val X: (Int, Boolean) = (10, true); 3 > 2}") shouldBe
       Block(Val("X", STuple(SInt, SBoolean), Tuple(IntConstant(10), TrueLeaf)), GT(3, 2))

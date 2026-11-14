@@ -4785,6 +4785,14 @@ $lrFoldScript
         reg1 -> UnitConstant.instance
       ))
     )
+
+    test("R3", env + ("u" -> ()), ext,
+      script = "{ val x: Unit = u; SELF.R4[Unit].getOrElse(()) == x }",
+      EQ(ExtractRegisterAs[SUnit.type](Self, reg1)(SUnit).getOrElse(UnitConstant.instance), UnitConstant.instance).toSigmaProp,
+      additionalRegistersOpt = Some(Map(
+        reg1 -> UnitConstant.instance
+      ))
+    )
   }
 
   property("Global.some") {

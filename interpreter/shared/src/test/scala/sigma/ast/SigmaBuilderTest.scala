@@ -309,4 +309,12 @@ class SigmaBuilderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Ma
     testFailure(Array.fill(10)(v))
     testColl[SSigmaProp.type](v, c)
   }
+
+  property("liftToConstant Unit") {
+    val v = ()
+    val c = UnitConstant()
+    test[SUnit.type](v, c)
+    testFailure(Array.fill(10)(v))
+    testColl[SUnit.type](v, c)
+  }
 }

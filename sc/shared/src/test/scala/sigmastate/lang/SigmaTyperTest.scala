@@ -163,6 +163,7 @@ class SigmaTyperTest extends AnyPropSpec
     typecheck(env, "{val X: Short = 10.toShort; X}") shouldBe SShort
     typecheck(env, "{val X: BigInt = 10.toBigInt; X}") shouldBe SBigInt
     typecheck(env, """{val X: String = "hello"; X}""") shouldBe SString
+    typecheck(env, "{val X: Unit = (); X}") shouldBe SUnit
 
     // Invalid type annotations - should fail
     typefail(env, "{val X: Int = 10L; X}", 1, 6)  // Long assigned to Int
@@ -173,6 +174,8 @@ class SigmaTyperTest extends AnyPropSpec
     typefail(env, "{val X: Short = 10L; X}", 1, 6)  // Long assigned to Short
     typefail(env, "{val X: Int = 10.toBigInt; X}", 1, 6)  // BigInt assigned to Int
     typefail(env, """{val X: Int = "hello"; X}""", 1, 6)  // String assigned to Int
+    typefail(env, "{val X: Unit = 10; X}", 1, 6)  // Int assigned to Unit
+    typefail(env, "{val X: Int = (); X}", 1, 6)  // Unit assigned to Int
 
     // Test with complex expressions
     typecheck(env, "{val X: Int = 5 + 5; X}") shouldBe SInt
