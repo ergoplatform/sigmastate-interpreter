@@ -1,9 +1,11 @@
 package sigmastate.interpreter
 
 import org.ergoplatform.ErgoLikeContext
-import sigma.ast.{IntConstant, SType}
-import sigma.interpreter.{ContextExtension, SigmaMap}
-import sigmastate.helpers.{ErgoLikeContextTesting, TestingCommons}
+import scorex.util.encode.Base16
+import sigma.ast.{BoolToSigmaProp, ErgoTree, GT, Height, IntConstant, SType}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
+import sigmastate.helpers.TestingHelpers.testBox
+import sigmastate.helpers.{ErgoLikeContextTesting, ErgoLikeTestInterpreter, TestingCommons}
 
 class InterpreterContextSpecification extends TestingCommons {
 
@@ -67,5 +69,45 @@ class InterpreterContextSpecification extends TestingCommons {
     )
     ctx.extension.values.size shouldBe 5
     ctx.extension.values.iterator.toList.map(_._1) shouldBe Seq[Byte](10, 20, 50, 40, 30)
+  }
+
+  property("toSigmaContext and verify reject unread malformed extension variable (0100830104a3)") {
+    val malformedBytes = Base16.decode("0100830104a3").get
+    val malformedExt = ContextExtension.serializer.fromBytes(malformedBytes)
+    val verifier = new ErgoLikeTestInterpreter
+    val prop = BoolToSigmaProp(GT(Height, IntConstant(-1)))
+
+    for (actVer <- Seq[Byte](2, 3); treeVer <- Seq[Byte](0, 1, 2, 3) if treeVer <= actVer) {
+      val tree = ErgoTree.fromProposition(ErgoTree.defaultHeaderWithVersion(treeVer), prop)
+      val box = testBox(10, tree, creationHeight = 0)
+      val ctx = ErgoLikeContextTesting.dummy(box, actVer).withErgoTreeVersion(treeVer)
+
+      val directErr = the[AssertionError] thrownBy ctx.withExtension(malformedExt).toSigmaContext()
+      directErr.getMessage should include("Value Height$(163) doesn't conform to type")
+      directErr.getMessage should include("EvaluatedValue")
+
+      val pr = ProverResult(Array.emptyByteArray, malformedExt)
+      val res = verifier.verify(tree, ctx, pr, fakeMessage)
+      res.isFailure shouldBe true
+      res.failed.get shouldBe a[AssertionError]
+      res.failed.get.getMessage should include("Value Height$(163) doesn't conform to type")
+      res.failed.get.getMessage should include("EvaluatedValue")
+    }
+  }
+
+  property("toSigmaContext rejects unread malformed variable in multi-entry small and large SigmaMap") {
+    val malformedVal = ContextExtension.serializer.fromBytes(Base16.decode("0100830104a3").get).get(0).get
+
+    val smallExt = ContextExtension(SigmaMap(
+      Array[Byte](1, 2, 3),
+      Array[sigma.ast.EvaluatedValue[_ <: SType]](v(1), v(2), malformedVal)
+    ))
+    an[AssertionError] should be thrownBy baseCtx.withExtension(smallExt).toSigmaContext()
+
+    val largeExt = ContextExtension(SigmaMap(
+      Array[Byte](10, 20, 30, 40, 50),
+      Array[sigma.ast.EvaluatedValue[_ <: SType]](v(10), v(20), v(30), v(40), malformedVal)
+    ))
+    an[AssertionError] should be thrownBy baseCtx.withExtension(largeExt).toSigmaContext()
   }
 }

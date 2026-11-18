@@ -79,23 +79,30 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
     }
   }
 
-  property("Iso.isoContextExtension JS representation is a native Map preserving insertion order") {
+  property("Iso.isoContextExtension from returns a plain Fleet object that JSON.stringify serializes") {
     val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
-      3.toByte -> IntConstant(3),
-      1.toByte -> IntConstant(1),
-      2.toByte -> IntConstant(2)
+      0.toByte -> IntConstant(0),
+      1.toByte -> IntConstant(0)
     )))
     val jsObj = Isos.isoContextExtension.from(ext)
-    jsObj.asInstanceOf[js.Any].isInstanceOf[js.Map[_, _]] shouldBe true
+    jsObj.asInstanceOf[js.Any].isInstanceOf[js.Map[_, _]] shouldBe false
+    js.JSON.stringify(jsObj) shouldBe """{"0":"0400","1":"0400"}"""
 
-    var jsOrder = List.empty[Double]
-    jsObj.asInstanceOf[sigmastate.std.Map[Double, commonMod.HexString]].forEach {
-      (_: commonMod.HexString, key: Double, _: sigmastate.std.Map[Double, commonMod.HexString]) =>
-        jsOrder = jsOrder :+ key
-    }
-    jsOrder shouldBe List(3.0, 1.0, 2.0)
+    val signedInput = Input(
+      boxIdGen.sample.get,
+      ProverResult(Array.emptyByteArray, ext)
+    )
+    val signedInputJson = js.JSON.stringify(Isos.isoSignedInput.from(signedInput))
+    signedInputJson should include(""""extension":{"0":"0400","1":"0400"}""")
+  }
 
-    val restored = Isos.isoContextExtension.to(jsObj)
+  property("Iso.isoContextExtension to accepts native JS Map and preserves insertion order") {
+    val jsMap = new sigmastate.std.global.Map[Double, commonMod.HexString]()
+    jsMap.set(3.0, DataIsos.isoHexStringToConstant.from(IntConstant(3)))
+    jsMap.set(1.0, DataIsos.isoHexStringToConstant.from(IntConstant(1)))
+    jsMap.set(2.0, DataIsos.isoHexStringToConstant.from(IntConstant(2)))
+
+    val restored = Isos.isoContextExtension.to(jsMap.asInstanceOf[sigmastate.fleetSdkCommon.distEsmTypesContextExtensionMod.ContextExtension])
     restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](3, 1, 2)
   }
 
@@ -122,7 +129,6 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
     )))
     val restored = Isos.isoContextExtension.to(Isos.isoContextExtension.from(ext))
     restored shouldBe ext
-    restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](73, 35, 31, 0)
   }
 
   property("Iso.isoProverResult") {

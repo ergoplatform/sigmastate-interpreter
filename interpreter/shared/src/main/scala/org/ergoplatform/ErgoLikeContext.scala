@@ -4,9 +4,7 @@ import debox.cfor
 import sigma.Extensions.ArrayOps
 import sigma.ast.SType.TypeCode
 import sigma.ast._
-import sigma.exceptions.InterpreterException
-import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
-import sigma.eval.Extensions.toAnyValue
+import sigma.data.{AvlTreeData, CAvlTree, SigmaConstants}
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
 import sigma.{Coll, Header, PreHeader}
@@ -113,7 +111,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     * interpreter via [[sigma.Context]].
     * The value cannot be assigned on [[ErgoLikeContext]] construction and must be
     * attached using [[withErgoTreeVersion()]] method.
-    * When the value is None, the [[InterpreterException]] is thrown by the interpreter.
+    * When the value is None, the [[sigma.exceptions.InterpreterException]] is thrown by the interpreter.
     */
   val currentErgoTreeVersion: Option[Byte] = None
 
@@ -146,6 +144,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     */
     val outputs = spendingTransaction.outputs.toArray.map(_.toTestBox).toColl
     val contextExtVars = extension.values
+    contextExtVars.validateValues()
     val avlTree = CAvlTree(lastBlockUtxoRoot)
     // so selfBox is never one of the `inputs` instances
     // as result selfBoxIndex is always (erroneously) returns -1 in ErgoTree v0, v1

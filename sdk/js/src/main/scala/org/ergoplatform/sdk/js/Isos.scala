@@ -19,7 +19,7 @@ import sigmastate.fleetSdkCommon.{distEsmTypesCommonMod => commonMod, distEsmTyp
 
 import scala.collection.immutable.ListMap
 import scala.scalajs.js
-import sigmastate.std.global.{Map => JSMap}
+import scala.scalajs.js.Object
 
 /** Definitions of isomorphisms for sigma-sdk module.
   * @see sigma.data.Iso
@@ -167,12 +167,12 @@ object Isos {
     }
 
     override def from(x: ContextExtension): contextExtensionMod.ContextExtension = {
-      val res = new JSMap[Double, commonMod.HexString]()
+      val res = new Object().asInstanceOf[contextExtensionMod.ContextExtension]
       x.values.iterator.foreach { case (k, v: Constant[_]) =>
         val hex = DataIsos.isoHexStringToConstant.from(v)
-        res.set(k.toDouble, hex) // traversal order preserves insertion order (see SigmaMap scaladoc)
+        res.update(k, hex)
       }
-      res.asInstanceOf[contextExtensionMod.ContextExtension]
+      res
     }
   }
 

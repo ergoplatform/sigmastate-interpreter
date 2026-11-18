@@ -45,6 +45,11 @@ abstract class SigmaMap extends ContextVarsMap {
     iterator.map { case (k, v) => k -> SigmaMap.evalToAny(v) }
   }
 
+  /** Converts every entry via [[SigmaMap.evalToAny]] in traversal order, validating
+    * that all bound values conform to runtime evaluation types.
+    */
+  def validateValues(): Unit
+
   override def equals(obj: Any): Boolean = {
     obj match {
       case that: SigmaMap =>
@@ -85,6 +90,8 @@ object EmptySigmaMap extends SigmaMap {
   override def getNullable(key: Byte): AnyValue = null
 
   override def get(key: Byte): Option[EvaluatedValue[_ <: SType]] = None
+
+  override def validateValues(): Unit = ()
 }
 
 class SigmaMap1(key1: Byte, value1: EvaluatedValue[_ <: SType]) extends SigmaMap {
@@ -108,6 +115,10 @@ class SigmaMap1(key1: Byte, value1: EvaluatedValue[_ <: SType]) extends SigmaMap
   override def get(key: Byte): Option[EvaluatedValue[_ <: SType]] = {
     if (key == key1) Some(value1)
     else None
+  }
+
+  override def validateValues(): Unit = {
+    SigmaMap.evalToAny(value1)
   }
 }
 
@@ -151,6 +162,11 @@ class SigmaMap2(key1: Byte, value1: EvaluatedValue[_ <: SType],
     else if (key == key2) Some(value2)
     else None
   }
+
+  override def validateValues(): Unit = {
+    SigmaMap.evalToAny(value1)
+    SigmaMap.evalToAny(value2)
+  }
 }
 
 class SigmaMap3(key1: Byte, value1: EvaluatedValue[_ <: SType],
@@ -175,6 +191,12 @@ class SigmaMap3(key1: Byte, value1: EvaluatedValue[_ <: SType],
     else if (key == key2) Some(value2)
     else if (key == key3) Some(value3)
     else None
+  }
+
+  override def validateValues(): Unit = {
+    SigmaMap.evalToAny(value1)
+    SigmaMap.evalToAny(value2)
+    SigmaMap.evalToAny(value3)
   }
 
   override def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])] = {
@@ -222,6 +244,13 @@ class SigmaMap4(key1: Byte, value1: EvaluatedValue[_ <: SType],
     else if (key == key3) Some(value3)
     else if (key == key4) Some(value4)
     else None
+  }
+
+  override def validateValues(): Unit = {
+    SigmaMap.evalToAny(value1)
+    SigmaMap.evalToAny(value2)
+    SigmaMap.evalToAny(value3)
+    SigmaMap.evalToAny(value4)
   }
 
   override def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])] = {
@@ -273,6 +302,22 @@ class SigmaMapMulti(private val sparseValues: Array[EvaluatedValue[_ <: SType]],
   override def get(key: Byte): Option[EvaluatedValue[_ <: SType]] = {
     if (inRange(key)) Option(sparseValues(key))
     else None
+  }
+
+  override def validateValues(): Unit = {
+    var iteratedOver = 0
+    var indexPos = 0
+    while (iteratedOver < size) {
+      val key = SigmaMap.indices(indexPos)
+      if (key <= maxKey) {
+        val v = sparseValues(key)
+        if (v != null) {
+          SigmaMap.evalToAny(v)
+          iteratedOver += 1
+        }
+      }
+      indexPos += 1
+    }
   }
 
   override def iterator: Iterator[(Byte, EvaluatedValue[_ <: SType])] = {
