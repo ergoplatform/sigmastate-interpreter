@@ -4,7 +4,7 @@ import sigma.ast.TrueLeaf
 import sigma.ast.syntax.{GetVarBoolean, OptionValueOps}
 import sigmastate.CompilerCrossVersionProps
 import sigmastate.helpers.ErgoLikeTestProvingInterpreter
-import sigma.interpreter.ContextExtension
+import sigma.interpreter.{ContextExtension, SigmaMap}
 import sigmastate.utxo.blockchain.BlockchainSimulationTestingCommons._
 
 
@@ -48,7 +48,7 @@ class BlockchainSimulationSpecification extends BlockchainSimulationTestingCommo
     }
 
     // spend boxes with context extension
-    val contextExtension = ContextExtension(Map(varId -> TrueLeaf))
+    val contextExtension = ContextExtension(SigmaMap(Map(varId -> TrueLeaf)))
     checkState(state, miner, 0, randomDeepness, Some(mkTestErgoTree(prop)), contextExtension)
   }
 

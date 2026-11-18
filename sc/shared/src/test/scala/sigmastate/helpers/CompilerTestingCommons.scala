@@ -6,8 +6,8 @@ import org.scalacheck.Arbitrary.arbByte
 import org.scalacheck.Gen
 import sigma.util.BenchmarkUtil
 import scalan.TestContexts
-import sigma.ast.{Constant, CostItem, ErgoTree, JitCost, SOption, SType}
-import sigma.{Colls, Evaluation, TestUtils}
+import sigma.ast.{Constant, CostItem, ErgoTree, JitCost, SContext, SOption, SType}
+import sigma.{Evaluation, TestUtils}
 import sigma.data.{RType, SigmaBoolean}
 import sigma.validation.ValidationException
 import sigma.validation.ValidationRules.CheckSerializableTypeCode
@@ -19,6 +19,7 @@ import sigmastate.helpers.TestingHelpers._
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.kiama.rewriting.Rewriter
 import sigma.kiama.rewriting.Rewriter.{everywherebu, strategy}
+import sigma.interpreter.SigmaMap
 import sigmastate.interpreter.CErgoTreeEvaluator.DefaultProfiler
 import sigmastate.interpreter.Interpreter.ScriptEnv
 import sigmastate.interpreter._
@@ -59,16 +60,8 @@ trait CompilerTestingCommons extends TestingCommons
         // (ctx.HEIGHT method call compiled to Height IR node)
         // -------
         // We add ctx as it's own variable with id = 1
-        val ctxVar = Extensions.toAnyValue[sigma.Context](ctx)(sigma.ContextRType)
-        val newVars = if (ctx.vars.length < 2) {
-          val vars = ctx.vars.toArray
-          val buf = new Array[sigma.AnyValue](2)
-          Array.copy(vars, 0, buf, 0, vars.length)
-          buf(1) = ctxVar
-          Colls.fromArray(buf)
-        } else {
-          ctx.vars.updated(1, ctxVar)
-        }
+        val ctxVar = Constant[SContext.type](ctx, SContext)
+        val newVars = SigmaMap(ctx.vars.asInstanceOf[SigmaMap].iterator.toMap.updated(1.toByte, ctxVar))
         val calcCtx = ctx.copy(vars = newVars)
         calcCtx
       case _ =>

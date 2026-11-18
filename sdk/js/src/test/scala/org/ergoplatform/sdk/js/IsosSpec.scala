@@ -5,12 +5,13 @@ import org.ergoplatform._
 import org.ergoplatform.sdk.ExtendedInputBox
 import org.ergoplatform.sdk.wallet.protocol.context.BlockchainStateContext
 import org.scalacheck.Arbitrary
-import sigma.ast.{Constant, SType}
+import sigma.ast.{Constant, EvaluatedValue, IntConstant, SType}
 import sigma.data.Iso
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.js.AvlTree
 import sigma.{Coll, GroupElement}
 import sigma.data.js.{Isos => DataIsos}
+import sigmastate.fleetSdkCommon.{distEsmTypesCommonMod => commonMod}
 
 import scala.scalajs.js
 
@@ -76,6 +77,58 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
     forAll { (c: ContextExtension) =>
       roundtrip(Isos.isoContextExtension)(c)
     }
+  }
+
+  property("Iso.isoContextExtension from returns a plain Fleet object that JSON.stringify serializes") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      0.toByte -> IntConstant(0),
+      1.toByte -> IntConstant(0)
+    )))
+    val jsObj = Isos.isoContextExtension.from(ext)
+    jsObj.asInstanceOf[js.Any].isInstanceOf[js.Map[_, _]] shouldBe false
+    js.JSON.stringify(jsObj) shouldBe """{"0":"0400","1":"0400"}"""
+
+    val signedInput = Input(
+      boxIdGen.sample.get,
+      ProverResult(Array.emptyByteArray, ext)
+    )
+    val signedInputJson = js.JSON.stringify(Isos.isoSignedInput.from(signedInput))
+    signedInputJson should include(""""extension":{"0":"0400","1":"0400"}""")
+  }
+
+  property("Iso.isoContextExtension to accepts native JS Map and preserves insertion order") {
+    val jsMap = new sigmastate.std.global.Map[Double, commonMod.HexString]()
+    jsMap.set(3.0, DataIsos.isoHexStringToConstant.from(IntConstant(3)))
+    jsMap.set(1.0, DataIsos.isoHexStringToConstant.from(IntConstant(1)))
+    jsMap.set(2.0, DataIsos.isoHexStringToConstant.from(IntConstant(2)))
+
+    val restored = Isos.isoContextExtension.to(jsMap.asInstanceOf[sigmastate.fleetSdkCommon.distEsmTypesContextExtensionMod.ContextExtension])
+    restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](3, 1, 2)
+  }
+
+  property("Iso.isoContextExtension round-trip preserves large-map traversal order") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      10.toByte -> IntConstant(10),
+      20.toByte -> IntConstant(20),
+      30.toByte -> IntConstant(30),
+      40.toByte -> IntConstant(40),
+      50.toByte -> IntConstant(50)
+    )))
+    val jsObj = Isos.isoContextExtension.from(ext)
+    val restored = Isos.isoContextExtension.to(jsObj)
+    restored shouldBe ext
+    restored.values.iterator.toList.map(_._1) shouldBe Seq[Byte](10, 20, 50, 40, 30)
+  }
+
+  property("Iso.isoContextExtension round-trip for small maps preserves content") {
+    val ext = ContextExtension(SigmaMap(Map[Byte, EvaluatedValue[SType]](
+      73.toByte -> IntConstant(73),
+      35.toByte -> IntConstant(35),
+      31.toByte -> IntConstant(31),
+      0.toByte -> IntConstant(0)
+    )))
+    val restored = Isos.isoContextExtension.to(Isos.isoContextExtension.from(ext))
+    restored shouldBe ext
   }
 
   property("Iso.isoProverResult") {

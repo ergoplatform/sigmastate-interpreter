@@ -19,7 +19,7 @@ import sigmastate._
 import sigma.Extensions.ArrayOps
 import sigma.eval.Extensions.SigmaBooleanOps
 import sigma.eval.SigmaDsl
-import sigma.interpreter.{ContextExtension, CostedProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, SigmaMap}
 import sigma.eval.Extensions.EvalIterableOps
 import sigmastate.eval._
 import sigmastate.helpers.{CompilerTestingCommons, ErgoLikeContextTesting, ErgoLikeTestInterpreter}
@@ -345,8 +345,10 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   property("recursion caught during verify") {
     assertExceptionThrown({
       val verifier = new ErgoLikeTestInterpreter
-      val pr = CostedProverResult(Array[Byte](),
-        ContextExtension(Map(4.toByte -> IntConstant(1), 5.toByte -> IntConstant(2))), 0L)
+      val pr = CostedProverResult(
+        Array[Byte](),
+        ContextExtension(SigmaMap(Map(4.toByte -> IntConstant(1), 5.toByte -> IntConstant(2)))),
+        0L)
       val ctx = ErgoLikeContextTesting.dummy(fakeSelf, activatedVersionInTests)
       val (res, _) = BenchmarkUtil.measureTime {
         verifier.verify(mkTestErgoTree(recursiveScript), ctx, pr, fakeMessage)
@@ -524,12 +526,15 @@ class DeserializationResilience extends DeserializationResilienceTesting {
   }
 
   property("ContextExtension: negative variable id rejected during deserialization") {
-    val ce = ContextExtension(Map((-1).toByte -> IntConstant(1)))
+    // a binding with negative id cannot be created via the validating SigmaMap factory,
+    // so the wire form is crafted directly
     val w = SigmaSerializer.startWriter()
-    ContextExtension.serializer.serialize(ce, w)
+    w.putUByte(1)
+    w.put((-1).toByte)
+    w.putValue(IntConstant(1))
     assertExceptionThrown(
       ContextExtension.serializer.parse(SigmaSerializer.startReader(w.toBytes)),
-      { case SerializerException(msg, _) => msg.contains("Negative id") }
+      { case SerializerException(msg, _) => msg.contains("Negative") }
     )
   }
 

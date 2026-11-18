@@ -2,13 +2,12 @@ package org.ergoplatform
 
 import debox.cfor
 import sigma.Extensions.ArrayOps
-import sigma.ast.SType.{AnyOps, TypeCode}
+import sigma.ast.SType.TypeCode
 import sigma.ast._
-import sigma.data.{AvlTreeData, CAvlTree, CSigmaDslBuilder, SigmaConstants}
-import sigma.eval.Extensions.toAnyValue
+import sigma.data.{AvlTreeData, CAvlTree, SigmaConstants}
 import sigma.interpreter.ContextExtension
 import sigma.validation.SigmaValidationSettings
-import sigma.{AnyValue, Coll, Header, PreHeader}
+import sigma.{Coll, Header, PreHeader}
 import sigmastate.eval.Extensions._
 import sigmastate.eval._
 import sigmastate.interpreter.InterpreterContext
@@ -112,7 +111,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     * interpreter via [[sigma.Context]].
     * The value cannot be assigned on [[ErgoLikeContext]] construction and must be
     * attached using [[withErgoTreeVersion()]] method.
-    * When the value is None, the [[InterpreterException]] is thrown by the interpreter.
+    * When the value is None, the [[sigma.exceptions.InterpreterException]] is thrown by the interpreter.
     */
   val currentErgoTreeVersion: Option[Byte] = None
 
@@ -135,17 +134,6 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     ErgoLikeContext.copy(this)(spendingTransaction = newSpendingTransaction)
 
   override def toSigmaContext(): sigma.Context = {
-    import sigma.Evaluation._
-
-    def contextVars(m: Map[Byte, AnyValue]): Coll[AnyValue] = {
-      val maxKey = if (m.keys.isEmpty) 0 else m.keys.max  // TODO optimize: max takes 90% of this method
-      val res = new Array[AnyValue](maxKey + 1)
-      for ((id, v) <- m) {
-        res(id) = v
-      }
-      CSigmaDslBuilder.Colls.fromArray(res)
-    }
-
     val dataInputs = this.dataBoxes.toArray.map(_.toTestBox).toColl
     val inputs = boxesToSpend.toArray.map(_.toTestBox).toColl
     /* NOHF PROOF:
@@ -155,11 +143,8 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     Examined ergo code: all that leads to ErgoLikeContext creation.
     */
     val outputs = spendingTransaction.outputs.toArray.map(_.toTestBox).toColl
-    val varMap = extension.values.map { case (k, v: EvaluatedValue[_]) =>
-      val tVal = stypeToRType[SType](v.tpe)
-      k -> toAnyValue(v.value.asWrappedType)(tVal)
-    }.toMap
-    val vars = contextVars(varMap)
+    val contextExtVars = extension.values
+    contextExtVars.validateValues()
     val avlTree = CAvlTree(lastBlockUtxoRoot)
     // so selfBox is never one of the `inputs` instances
     // as result selfBoxIndex is always (erroneously) returns -1 in ErgoTree v0, v1
@@ -168,7 +153,7 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
         syntax.error(s"Undefined context property: currentErgoTreeVersion"))
     CContext(
       dataInputs, headers, preHeader, inputs, outputs, preHeader.height, selfBox, selfIndex, avlTree,
-      preHeader.minerPk.getEncoded, vars, spendingTransaction, activatedScriptVersion, ergoTreeVersion)
+      preHeader.minerPk.getEncoded, contextExtVars, spendingTransaction, activatedScriptVersion, ergoTreeVersion)
   }
 
 

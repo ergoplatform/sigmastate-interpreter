@@ -15,7 +15,7 @@ import sigma.ast.{ErgoTree, EvaluatedValue, SType}
 import sigma.data.{AvlTreeData, AvlTreeFlags, CBigInt, CHeader, Digest32Coll, WrapperOf}
 import sigma.eval.Extensions.EvalIterableOps
 import sigma.eval.SigmaDsl
-import sigma.interpreter.{ContextExtension, ProverResult}
+import sigma.interpreter.{ContextExtension, ProverResult, SigmaMap}
 import sigma.serialization.{ErgoTreeSerializer, ValueSerializer}
 import sigma.validation.SigmaValidationSettings
 import sigma.{AnyValue, Coll, Colls, Header, PreHeader, SigmaException}
@@ -236,7 +236,7 @@ trait JsonCodecs {
   })
 
   implicit val contextExtensionEncoder: Encoder[ContextExtension] = Encoder.instance({ extension =>
-    Json.obj(extension.values.toSeq.map { case (key, value) =>
+    Json.obj(extension.values.iterator.toSeq.map { case (key, value) =>
       key.toString -> evaluatedValueEncoder(value)
     }: _*)
   })
@@ -244,7 +244,7 @@ trait JsonCodecs {
   implicit val contextExtensionDecoder: Decoder[ContextExtension] = Decoder.instance({ cursor =>
     for {
       values <- cursor.as[Map[Byte, EvaluatedValue[SType]]]
-    } yield ContextExtension(values)
+    } yield ContextExtension(SigmaMap(values))
   })
 
   implicit val proverResultEncoder: Encoder[ProverResult] = Encoder.instance({ v =>

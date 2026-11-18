@@ -19,7 +19,7 @@ import sigmastate.helpers._
 import sigmastate.helpers.TestingHelpers._
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.eval.Extensions.SigmaBooleanOps
-import sigma.interpreter.{ContextExtension, CostedProverResult, ProverResult}
+import sigma.interpreter.{ContextExtension, CostedProverResult, ProverResult, SigmaMap}
 import sigma.serialization.{SerializationSpecification, ValueSerializer}
 import sigmastate.utils.Helpers._
 
@@ -750,7 +750,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
       val boxToSpend = testBox(10, ergoTree, creationHeight = 5)
       val ctx = ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
           .withExtension(
-            ContextExtension(Seq(script).toMap)) // provide script bytes in context variable
+            ContextExtension(SigmaMap(Seq(script).toMap))) // provide script bytes in context variable
 
       val prover = new ErgoLikeTestProvingInterpreter()
       prover.prove(ergoTree, ctx, fakeMessage).getOrThrow
@@ -773,7 +773,7 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
       }
       val ctx = ErgoLikeContextTesting.dummy(boxToSpend, 3)
         .withExtension(
-          ContextExtension(Seq(script).toMap)) // provide script bytes in context variable
+          ContextExtension(SigmaMap(Seq(script).toMap))) // provide script bytes in context variable
         .withValidationSettings(updVs)
 
       val prover = new ErgoLikeTestProvingInterpreter()
@@ -797,5 +797,21 @@ class ErgoLikeInterpreterSpecification extends CompilerTestingCommons
 
   property("non-const ProveDlog") {
     compile(Map(), "proveDlog(OUTPUTS(0).R4[GroupElement].get)" ) shouldBe a [CreateProveDlog]
+  }
+
+  property("verify rejects unread malformed context extension variable (0100830104a3)") {
+    val verifier = new ErgoLikeTestInterpreter
+    val prop = compile(Map.empty, "sigmaProp(HEIGHT > -1)").asSigmaProp
+    val tree = mkTestErgoTree(prop)
+    val boxToSpend = testBox(10, tree, creationHeight = 5)
+    val ctx = ErgoLikeContextTesting.dummy(boxToSpend, activatedVersionInTests)
+    val malformedExt = ContextExtension.serializer.fromBytes(scorex.util.encode.Base16.decode("0100830104a3").get)
+    val pr = ProverResult(Array.emptyByteArray, malformedExt)
+
+    val res = verifier.verify(tree, ctx, pr, fakeMessage)
+    res.isFailure shouldBe true
+    res.failed.get shouldBe a [AssertionError]
+    res.failed.get.getMessage should include("Value Height$(163) doesn't conform to type")
+    res.failed.get.getMessage should include("EvaluatedValue")
   }
 }
