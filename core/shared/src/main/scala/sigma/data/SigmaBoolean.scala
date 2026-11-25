@@ -5,7 +5,7 @@ import sigma.SigmaTreeDepthExceeded
 import sigma.crypto.EcPointType
 import sigma.data.SigmaPropCodes.{AndCode, AtLeastCode, OrCode, ProveDiffieHellmanTupleCode, ProveDlogCode, SPCode}
 import sigma.data.TrivialProp.{FalseProp, TrueProp}
-import sigma.serialization.{CoreByteReader, CoreByteWriter, CoreSerializer, GroupElementSerializer, ProveDHTupleSerializer, ProveDlogSerializer}
+import sigma.serialization.{CoreByteReader, CoreByteWriter, CoreSerializer, GroupElementSerializer, ProveDHTupleSerializer, ProveDlogSerializer, SerializerException}
 import sigma.util.safeNewArray
 
 import scala.collection.mutable.ArrayBuffer
@@ -46,7 +46,11 @@ object SigmaBoolean {
     var res = 0
     val len = children.length
     cfor(0)(_ < len, _ + 1) { i =>
-      res += children(i).size
+      res = java7.compat.Math.addExact(res, children(i).size)
+      if (res >= SigmaConstants.MaxSigmaPropSizeInBytes.value) {
+        throw SerializerException(
+          s"Sigma proposition size $res exceeds limit ${SigmaConstants.MaxSigmaPropSizeInBytes.value}")
+      }
     }
     res
   }

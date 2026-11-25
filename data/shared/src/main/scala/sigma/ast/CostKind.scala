@@ -24,7 +24,10 @@ case class FixedCost(cost: JitCost) extends CostKind {
   */
 case class PerItemCost(baseCost: JitCost, perChunkCost: JitCost, chunkSize: Int) extends CostKind {
   /** Compute number of chunks necessary to cover the given number of items. */
-  def chunks(nItems: Int) = (nItems - 1) / chunkSize + 1
+  def chunks(nItems: Int) = {
+    require(nItems >= 0, s"Negative nItems: $nItems")
+    (nItems - 1) / chunkSize + 1
+  }
 
   /** Computes the cost for the given number of items. */
   def cost (nItems: Int): JitCost = {
