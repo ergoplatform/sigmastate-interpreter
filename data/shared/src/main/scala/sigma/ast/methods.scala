@@ -802,8 +802,34 @@ object SOptionMethods extends MethodsContainer {
   def apply[T <: SType](implicit elemType: T, @unused ov: Overloaded1): SOption[T] = SOption(elemType)
 }
 
+object SCollectionHelpers {
+
+  /** Compares `ys` with a same-length segment of `xs` starting at `offset`.
+    *
+    * Empty `ys` always matches. If `ys.length > xs.length`, returns false without
+    * inspecting `offset`. Otherwise `offset` must be non-negative and satisfy
+    * `offset + ys.length <= xs.length`; invalid offsets fail with the underlying
+    * collection's index exception. Comparison stops at the first mismatch, and
+    * [[DataValueComparer]] charges for every comparison, including nested values.
+    */
+  def equalElementsFrom[A](xs: Coll[A], ys: Coll[A], offset: Int)
+                          (implicit E: ErgoTreeEvaluator): Boolean = {
+    if (ys.length > xs.length) false
+    else {
+      var i = 0
+      var equal = true
+      while (i < ys.length && equal) {
+        equal = DataValueComparer.equalDataValues(xs(offset + i), ys(i))
+        i += 1
+      }
+      equal
+    }
+  }
+}
+
 object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   import SType.{paramIV, paramIVSeq, paramOV}
+  import SCollectionHelpers.equalElementsFrom
 
   /** Type for which this container defines methods. */
   override def ownerType: STypeCompanion = SCollection
@@ -1062,7 +1088,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
   def updateMany_eval[A](mc: MethodCall, coll: Coll[A], indexes: Coll[Int], values: Coll[A])
                         (implicit E: ErgoTreeEvaluator): Coll[A] = {
     val costKind = mc.method.costKind.asInstanceOf[PerItemCost]
-    E.addSeqCost(costKind, coll.length, mc.method.opDesc) { () =>
+    E.addSeqCost(costKind, coll.length + indexes.length, mc.method.opDesc) { () =>
       coll.updateMany(indexes, values)
     }
   }
@@ -1156,7 +1182,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
                     (implicit E: ErgoTreeEvaluator): Boolean = {
     val m = mc.method
     E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
-      xs.startsWith(ys)
+      equalElementsFrom(xs, ys, 0)
     }
   }
 
@@ -1176,7 +1202,7 @@ object SCollectionMethods extends MethodsContainer with MethodByNameUnapply {
                         (implicit E: ErgoTreeEvaluator): Boolean = {
     val m = mc.method
     E.addSeqCost(m.costKind.asInstanceOf[PerItemCost], xs.length, m.opDesc) { () =>
-      xs.endsWith(ys)
+      equalElementsFrom(xs, ys, xs.length - ys.length)
     }
   }
 
@@ -1811,9 +1837,8 @@ case object SHeaderMethods extends MonoTypeMethods {
   lazy val votesMethod            = propertyCall("votes", SByteArray, 15, FixedCost(JitCost(10)))
 
   // methods added in 6.0 below
-  // cost of checkPoW is 700 as about 2*32 hashes required, and 1 hash (id) over short data costs 10
   lazy val checkPowMethod = SMethod(
-    this, "checkPow", SFunc(Array(SHeader), SBoolean), 16, FixedCost(JitCost(700)))
+    this, "checkPow", SFunc(Array(SHeader), SBoolean), 16, FixedCost(PowHitCostKind.Autolykos2CheckPowCost))
     .withIRInfo(MethodCallIrBuilder)
     .withInfo(MethodCall, "Validate header's proof-of-work")
 
@@ -1901,10 +1926,14 @@ case object SGlobalMethods extends MonoTypeMethods {
     CUnsignedBigInt(Autolykos2PowValidation.hitForVersion2ForMessageWithChecks(k, msg.toArray, nonce.toArray, h.toArray, N).bigInteger)
   }
 
-  private val deserializeCostKind = PerItemCost(baseCost = JitCost(100), perChunkCost = JitCost(32), chunkSize = 32)
+  /** Worst-case cost, including one GroupElement decode per 33 input bytes. */
+  val DeserializeCostKind = PerItemCost(
+    baseCost = JitCost(100),
+    perChunkCost = DecodePoint.costKind.cost,
+    chunkSize = 32)
 
   lazy val deserializeToMethod = SMethod(
-    this, "deserializeTo", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 4, deserializeCostKind, Seq(tT))
+    this, "deserializeTo", SFunc(Array(SGlobal, SByteArray), tT, Array(paramT)), 4, DeserializeCostKind, Seq(tT))
     .withIRInfo(MethodCallIrBuilder,
       javaMethodOf[SigmaDslBuilder, Coll[Byte], RType[_]]("deserializeTo"))
     .withInfo(MethodCall, "Deserialize provided bytes into an object of requested type",
@@ -1949,7 +1978,7 @@ case object SGlobalMethods extends MonoTypeMethods {
                         (implicit E: ErgoTreeEvaluator): Any = {
     val tpe = mc.tpe
     val cT = stypeToRType(tpe)
-    E.addSeqCost(deserializeCostKind, bytes.length, deserializeToMethod.opDesc) { () =>
+    E.addSeqCost(DeserializeCostKind, bytes.length, deserializeToMethod.opDesc) { () =>
       G.deserializeTo(bytes)(cT)
     }
   }

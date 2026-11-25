@@ -24,6 +24,7 @@ import sigma.eval.Extensions.{ByteExt, IntExt, LongExt, ShortExt}
 import sigma.eval.{CostDetails, EvalSettings, SigmaDsl, TracedCost}
 import sigma.exceptions.InvalidType
 import sigma.serialization.ValueCodes.OpCode
+import sigma.serialization.SigmaByteWriter
 import sigma.util.Extensions.{BooleanOps, IntOps, LongOps}
 import sigma.{VersionContext, ast, data, _}
 import sigmastate.eval.Extensions.AvlTreeOps
@@ -7249,19 +7250,20 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           ((Coll[Int](), (Coll(0), Coll(0))), Expected(new IndexOutOfBoundsException("0"))),
           ((Coll[Int](), (Coll(0, 1), Coll(0, 0))), Expected(new IndexOutOfBoundsException("0"))),
           ((Coll[Int](), (Coll(0, 1), Coll(0))), Expected(new IllegalArgumentException("requirement failed: Collections should have same length but was 2 and 1:\n xs=Coll(0,1);\n ys=Coll(0)"))),
-          ((Coll[Int](1), (Coll(0), Coll(0))), success(Coll[Int](0), 1)),
+          ((Coll[Int](1), (Coll(0), Coll(0))), success(Coll[Int](0), 2)),
+          ((Coll[Int](1), (Coll(0, 0, 0), Coll(2, 3, 4))), success(Coll[Int](4), 4)),
           ((Coll[Int](1), (Coll(0, 1), Coll(0, 0))), Expected(new IndexOutOfBoundsException("1"))),
-          ((Coll[Int](1, 2), (Coll(0), Coll(0))), success(Coll[Int](0, 2), 2)),
-          ((Coll[Int](1, 2), (Coll(0, 1), Coll(0, 0))), success(Coll[Int](0, 0), 2)),
+          ((Coll[Int](1, 2), (Coll(0), Coll(0))), success(Coll[Int](0, 2), 3)),
+          ((Coll[Int](1, 2), (Coll(0, 1), Coll(0, 0))), success(Coll[Int](0, 0), 4)),
           ((Coll[Int](1, 2), (Coll(0, 1, 2), Coll(0, 0, 0))), Expected(new IndexOutOfBoundsException("2"))),
-          ((Coll[Int](1, 2), (Coll(1), Coll(0))), success(Coll[Int](1, 0), 2)),
-          ((Coll[Int](1, 2, 3), (Coll(2), Coll(0))), success(Coll[Int](1, 2, 0), 3)),
+          ((Coll[Int](1, 2), (Coll(1), Coll(0))), success(Coll[Int](1, 0), 3)),
+          ((Coll[Int](1, 2, 3), (Coll(2), Coll(0))), success(Coll[Int](1, 2, 0), 4)),
           ((Coll[Int](1, 2), (Coll(2), Coll(0))), Expected(new IndexOutOfBoundsException("2"))),
           ((Coll[Int](1, 2), (Coll(3), Coll(0))), Expected(new IndexOutOfBoundsException("3"))),
           ((Coll[Int](1, 2), (Coll(-1), Coll(0))), Expected(new IndexOutOfBoundsException("-1"))),
           ((Coll[Int](10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140),
               (Coll[Int](12, 12, 4, 11, 1, 8, 0, 1), Coll[Int](-10, -20, -30, -40, -50, -60, -70, -80))),
-              success(Coll[Int](-70, -80, 30, 40, -30, 60, 70, 80, -60, 100, 110, -40, -20, 140), 14))
+              success(Coll[Int](-70, -80, 30, 40, -30, 60, 70, 80, -60, 100, 110, -40, -20, 140), 22))
         )
       },
       existingFeature(
@@ -9315,7 +9317,10 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
       } yield (treeBytes, idx)
     }
     
-    def costDetails(i: Int) = TracedCost(
+    // the cost covers parsing of the input script bytes, including potential
+    // GroupElement decoding, and serialization of the resulting tree bytes
+    // (reported via writer callbacks from ErgoTreeSerializer.substituteConstants)
+    def costDetails(scriptBytesLen: Int, nConsts: Int, nPuts: Int, constBytesLen: Int, treeBytesLen: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),
         FixedCostItem(ConcreteCollection),
@@ -9324,12 +9329,32 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
         FixedCostItem(ConcreteCollection),
         FixedCostItem(Constant),
         FixedCostItem(BoolToSigmaProp),
-        ast.SeqCostItem(CompanionDesc(SubstConstants), PerItemCost(JitCost(100), JitCost(100), 1), i)
+        ast.SeqCostItem(CompanionDesc(SubstConstants), SGlobalMethods.DeserializeCostKind, scriptBytesLen),
+        FixedCostItem(SigmaByteWriter.StartWriterCost.opDesc, SigmaByteWriter.StartWriterCost.costKind)
+      ) ++ Array.fill(nPuts)(
+        FixedCostItem(SigmaByteWriter.PutByteCost.opDesc, SigmaByteWriter.PutByteCost.costKind)
+      ) ++ Array(
+        ast.SeqCostItem(SigmaByteWriter.PutChunkCost.opDesc, SigmaByteWriter.PutChunkCost.costKind, constBytesLen),
+        ast.SeqCostItem(SigmaByteWriter.PutChunkCost.opDesc, SigmaByteWriter.PutChunkCost.costKind, treeBytesLen),
+        ast.SeqCostItem(CompanionDesc(SubstConstants), PerItemCost(JitCost(100), JitCost(100), 1), nConsts)
       )
     )
     verifyCases(
       {
-        def success[T](v: T, cd: CostDetails, cost: Int, expectedV3Costs: Seq[Int]) = Expected(Success(v), cost, cd, cost, expectedV3Costs)
+        // NOTE: the cost still depends on activated version because the
+        // deserialization substitution cost is added since v6.0 activation
+        // (see Interpreter.reduceToCrypto), independently of the substConstants
+        // charging itself which is version-independent. Total-cost rounding is
+        // also version-dependent.
+        val v6activated = activatedVersionInTests >= V6SoftForkVersion
+        def jitCost(cost: Int, v2Cost: Int, v6Cost: Int) =
+          if (v6activated) v6Cost
+          else if (activatedVersionInTests == 2.toByte) v2Cost
+          else cost
+        def success[T](v: T, cd: CostDetails, cost: Int, v2Cost: Int, v6Cost: Int) = {
+          val c = jitCost(cost, v2Cost, v6Cost)
+          Expected(Success(v), c, cd, c, Seq.fill(4)(c))
+        }
         Seq(
           (Helpers.decodeBytes(""), 0) -> Expected(new java.nio.BufferUnderflowException()),
 
@@ -9337,47 +9362,37 @@ class LanguageSpecificationV5 extends LanguageSpecificationBase { suite =>
           // in v5.0 (i.e. ET v2) the bug is fixed https://github.com/ScorexFoundation/sigmastate-interpreter/issues/769
           (Coll(t1.bytes:_*), 0) -> Expected(
             Success(Helpers.decodeBytes("000008d3")),
-            cost = 1783,
+            cost = 1824,
             expectedDetails = CostDetails.ZeroCost,
-            newCost = 1783,
+            newCost = 1824,
             newVersionedResults = {
-              val costs = if (activatedVersionInTests >= V6SoftForkVersion) {
-                Seq.fill(4)(2055)
-              }
-              else {
-                Seq.fill(4)(1783)
-              }
+              val c = jitCost(1824, 1825, 2097)
               Seq(0, 1, 2, 3).map({ version =>
-                val res = (ExpectedResult(Success(Helpers.decodeBytes("0008d3")), Some(costs(version))) -> Some(costDetails(0)))
+                val res = (ExpectedResult(Success(Helpers.decodeBytes("0008d3")), Some(c)) -> Some(costDetails(3, 0, 1, 0, 2)))
                 version -> res
               })
             }),
 
           (Helpers.decodeBytes("000008d3"), 0) -> Expected(
             Success(Helpers.decodeBytes("00000008d3")),
-            cost = 1783,
+            cost = 1824,
             expectedDetails = CostDetails.ZeroCost,
-            newCost = 1783,
+            newCost = 1824,
             newVersionedResults = {
-              val costs = if (activatedVersionInTests >= V6SoftForkVersion) {
-                Seq.fill(4)(2055)
-              }
-              else {
-                Seq.fill(4)(1783)
-              }
+              val c = jitCost(1824, 1825, 2097)
               Seq(0, 1, 2, 3).map({ version =>
                 // since the tree without constant segregation, substitution has no effect
-                val res = (ExpectedResult(Success(Helpers.decodeBytes("000008d3")), Some(costs(version))) -> Some(costDetails(0)))
+                val res = (ExpectedResult(Success(Helpers.decodeBytes("000008d3")), Some(c)) -> Some(costDetails(4, 0, 1, 0, 3)))
                 version -> res
               })
             }),
           // tree with segregation flag, empty constants array
-          (Coll(t2.bytes: _*), 0) -> success(Helpers.decodeBytes("100008d3"), costDetails(0), 1783, Seq.fill(4)(2055)),
-          (Helpers.decodeBytes("100008d3"), 0) -> success(Helpers.decodeBytes("100008d3"), costDetails(0), 1783, Seq.fill(4)(2055)),
+          (Coll(t2.bytes: _*), 0) -> success(Helpers.decodeBytes("100008d3"), costDetails(4, 0, 1, 1, 2), 1824, 1825, 2097),
+          (Helpers.decodeBytes("100008d3"), 0) -> success(Helpers.decodeBytes("100008d3"), costDetails(4, 0, 1, 1, 2), 1824, 1825, 2097),
           // tree with one segregated constant
-          (Coll(t3.bytes: _*), 0) -> success(Helpers.decodeBytes("100108d27300"), costDetails(1), 1793, Seq.fill(4)(2065)),
-          (Helpers.decodeBytes("100108d37300"), 0) -> success(Helpers.decodeBytes("100108d27300"), costDetails(1), 1793, Seq.fill(4)(2065)),
-          (Coll(t3.bytes: _*), 1) -> success(Helpers.decodeBytes("100108d37300"), costDetails(1), 1793, Seq.fill(4)(2065)),
+          (Coll(t3.bytes: _*), 0) -> success(Helpers.decodeBytes("100108d27300"), costDetails(6, 1, 3, 3, 2), 1834, 1836, 2108),
+          (Helpers.decodeBytes("100108d37300"), 0) -> success(Helpers.decodeBytes("100108d27300"), costDetails(6, 1, 3, 3, 2), 1834, 1836, 2108),
+          (Coll(t3.bytes: _*), 1) -> success(Helpers.decodeBytes("100108d37300"), costDetails(6, 1, 3, 3, 2), 1834, 1836, 2108),
           (Coll(t4.bytes: _*), 0) -> Expected(new IllegalArgumentException("requirement failed: expected new constant to have the same SInt$ tpe, got SSigmaProp"))
         )
       },

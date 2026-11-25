@@ -21,6 +21,7 @@ import sigma.data.{CGroupElement, CUnsignedBigInt}
 import sigma.crypto.SecP256K1Group
 import sigma.eval.{CostDetails, SigmaDsl, TracedCost}
 import sigma.serialization.ValueCodes.OpCode
+import sigma.serialization.SigmaByteWriter
 import sigma.util.Extensions.{BooleanOps, IntOps}
 import sigmastate.eval.{CContext, CPreHeader}
 import sigma.pow.Autolykos2PowValidation
@@ -1449,7 +1450,10 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       Vector(TrueSigmaProp),
       ConstantPlaceholder(0, SSigmaProp))
 
-    def costDetails(nItems: Int) = TracedCost(
+    // the cost covers parsing of the input script bytes and serialization of
+    // the resulting tree bytes (reported via writer callbacks from
+    // ErgoTreeSerializer.substituteConstants)
+    def costDetailsV6(scriptBytesLen: Int, nItems: Int) = TracedCost(
       traceBase ++ Array(
         FixedCostItem(SelectField),
         FixedCostItem(ConcreteCollection),
@@ -1458,6 +1462,13 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
         FixedCostItem(ConcreteCollection),
         FixedCostItem(Constant),
         FixedCostItem(BoolToSigmaProp),
+        ast.SeqCostItem(CompanionDesc(SubstConstants), SGlobalMethods.DeserializeCostKind, scriptBytesLen),
+        FixedCostItem(SigmaByteWriter.StartWriterCost.opDesc, SigmaByteWriter.StartWriterCost.costKind),
+        FixedCostItem(SigmaByteWriter.PutByteCost.opDesc, SigmaByteWriter.PutByteCost.costKind),
+        FixedCostItem(SigmaByteWriter.PutByteCost.opDesc, SigmaByteWriter.PutByteCost.costKind),
+        FixedCostItem(SigmaByteWriter.PutByteCost.opDesc, SigmaByteWriter.PutByteCost.costKind),
+        ast.SeqCostItem(SigmaByteWriter.PutChunkCost.opDesc, SigmaByteWriter.PutChunkCost.costKind, 3),
+        ast.SeqCostItem(SigmaByteWriter.PutChunkCost.opDesc, SigmaByteWriter.PutChunkCost.costKind, 2),
         ast.SeqCostItem(CompanionDesc(SubstConstants), PerItemCost(JitCost(100), JitCost(100), 1), nItems)
       )
     )
@@ -1472,7 +1483,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           costOpt = None,
           expectedDetails = CostDetails.ZeroCost,
           newCostOpt = None,
-          newVersionedResults = expectedSuccessForAllTreeVersions(Helpers.decodeBytes("100108d27300"), 2065, costDetails(1))
+          newVersionedResults = expectedSuccessForAllTreeVersions(Helpers.decodeBytes("100108d27300"), 2108, costDetailsV6(6, 1))
         ),
         // for tree version > 0, the result depend on activated version
         (Coll(t2.bytes: _*), 0) -> Expected(
@@ -1481,10 +1492,10 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           expectedDetails = CostDetails.ZeroCost,
           newCostOpt = None,
           newVersionedResults = Seq(
-            0 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            1 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            2 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2015)) -> Some(costDetails(1))),
-            3 -> (ExpectedResult(Success(expectedTreeBytes_V6), Some(2065)) -> Some(costDetails(1)))
+            0 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2108)) -> Some(costDetailsV6(7, 1))),
+            1 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2108)) -> Some(costDetailsV6(7, 1))),
+            2 -> (ExpectedResult(Success(expectedTreeBytes_beforeV6), Some(2108)) -> Some(costDetailsV6(7, 1))),
+            3 -> (ExpectedResult(Success(expectedTreeBytes_V6), Some(2108)) -> Some(costDetailsV6(7, 1)))
           )
         )
       ),

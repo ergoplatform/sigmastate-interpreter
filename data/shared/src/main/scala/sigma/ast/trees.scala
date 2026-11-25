@@ -640,10 +640,21 @@ case class SubstConstants[T <: SType](scriptBytes: Value[SByteArray], positions:
             throw new RuntimeException(s"Cannot evaluate substConstants($scriptBytesV, $positionsV, $newValuesV)", e)
         }
 
-      val (newBytes, nConstants) = SubstConstants.eval(
-        scriptBytes = scriptBytesV.toArray,
-        positions = positionsV.toArray,
-        newVals = typedNewVals)
+      val scriptBytesArr = scriptBytesV.toArray
+      // charge the actual work of substituteConstants:
+      // 1) parsing of the input script bytes, including potential GroupElement decoding
+      E.addSeqCostNoOp(SGlobalMethods.DeserializeCostKind, scriptBytesArr.length, SubstConstants.opDesc)
+      // 2) serialization of the resulting tree bytes (via writer callbacks)
+      E.addCost(SigmaByteWriter.StartWriterCost)
+      val addFixedCostCallback = { (costInfo: OperationCostInfo[FixedCost]) =>
+        E.addCost(costInfo)
+      }
+      val addPerItemCostCallback = { (info: OperationCostInfo[PerItemCost], nItems: Int) =>
+        E.addSeqCostNoOp(info.costKind, nItems, info.opDesc)
+      }
+      val (newBytes, nConstants) = ErgoTreeSerializer.DefaultSerializer.substituteConstants(
+        scriptBytesArr, positionsV.toArray, typedNewVals,
+        Some(addFixedCostCallback), Some(addPerItemCostCallback))
 
       res = Colls.fromArray(newBytes)
       nConstants
