@@ -199,7 +199,13 @@ object Platform {
       new Ecp(ctx.getInfinity())
 
     override def decodePoint(encoded: Array[Byte]): Ecp = {
+      if (encoded == null || encoded.isEmpty) {
+        throw new IllegalArgumentException("Invalid point encoding: empty array")
+      }
       if (encoded(0) == 0) {
+        if (encoded.length != 1) {
+          throw new IllegalArgumentException(s"Incorrect length for infinity encoding: ${encoded.length}")
+        }
         return infinity()
       }
       new Ecp(ctx.decodePoint(Base16.encode(encoded)))
