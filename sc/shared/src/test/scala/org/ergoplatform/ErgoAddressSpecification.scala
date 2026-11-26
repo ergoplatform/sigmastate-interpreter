@@ -5,14 +5,14 @@ import org.scalatest.propspec.AnyPropSpecLike
 import org.scalatest.{Assertion, TryValues}
 import scorex.crypto.hash.Blake2b256
 import scorex.util.encode.Base58
-import sigma.ast.{ByteArrayConstant, Constant, ErgoTree, IntConstant, SigmaAnd, UnparsedErgoTree}
+import sigma.ast.{BoolToSigmaProp, ByteArrayConstant, CalcBlake2b256, CalcSha256, Constant, EQ, ErgoTree, IntConstant, SigmaAnd, Slice, UnparsedErgoTree}
 import sigmastate.crypto.DLogProtocol.DLogProverInput
 import sigmastate.helpers.TestingHelpers._
 import sigmastate.helpers._
 import sigma.interpreter.ContextExtension.VarBinding
 import sigma.crypto.CryptoConstants.dlogGroup
 import sigmastate.interpreter.Interpreter.{ScriptEnv, ScriptNameProp}
-import sigma.ast.syntax.ValueOps
+import sigma.ast.syntax.{GetVarByteArray, OptionValueOps, TrueSigmaProp, ValueOps}
 import sigma.serialization.ErgoTreeSerializer.DefaultSerializer
 import sigma.serialization.ValueSerializer
 import sigmastate.utils.Helpers._
@@ -349,6 +349,86 @@ class ErgoAddressSpecification extends SigmaDslTesting
       testPay2SHAddress(addr, script = invalidId -> IntConstant(10)),
       rootCauseLike[NoSuchElementException]("None.get")
     )
+  }
+
+  property("hashCode works for short byte arrays across P2S, P2PK, and P2SH addresses") {
+    val shortP2S = Pay2SAddress(ErgoTree.fromProposition(TrueSigmaProp))
+    shortP2S.scriptBytes.length should be < 4
+    shortP2S.hashCode() shouldBe java.util.Arrays.hashCode(shortP2S.scriptBytes)
+
+    val shortP2PK = new P2PKAddress(ProveDlog(dlogGroup.identity), Array[Byte](1, 2))
+    shortP2PK.hashCode() shouldBe java.util.Arrays.hashCode(shortP2PK.pubkeyBytes)
+
+    val shortP2SH = new Pay2SHAddress(Array[Byte](1, 2, 3))
+    shortP2SH.hashCode() shouldBe java.util.Arrays.hashCode(shortP2SH.scriptHash)
+  }
+
+  property("fromString rejects trailing bytes in P2PK and P2S addresses") {
+    def encodeRaw(prefixByte: Byte, content: Array[Byte]): String = {
+      val withPrefix = prefixByte +: content
+      val checksum = hash256(withPrefix).take(ErgoAddressEncoder.ChecksumLength)
+      Base58.encode(withPrefix ++ checksum)
+    }
+
+    val pk: ProveDlog = DLogProverInput(BigInteger.ONE).publicImage
+    val p2pk = P2PKAddress(pk)
+    val p2pkWithTrailing = encodeRaw(
+      (ergoAddressEncoder.networkPrefix + P2PKAddress.addressTypePrefix).toByte,
+      p2pk.contentBytes :+ 0x42.toByte
+    )
+    assertExceptionThrown(
+      ergoAddressEncoder.fromString(p2pkWithTrailing).getOrThrow,
+      t => t.getMessage.contains("Trailing bytes in P2PK address")
+    )
+
+    val p2s = Pay2SAddress(ErgoTree.fromProposition(TrueSigmaProp))
+    val p2sWithTrailing = encodeRaw(
+      (ergoAddressEncoder.networkPrefix + Pay2SAddress.addressTypePrefix).toByte,
+      p2s.contentBytes :+ 0x42.toByte
+    )
+    assertExceptionThrown(
+      ergoAddressEncoder.fromString(p2sWithTrailing).getOrThrow,
+      t => t.getMessage.contains("Trailing bytes in P2S address")
+    )
+  }
+
+  property("fromProposition does not misclassify non-P2SH hash contracts as Pay2SHAddress") {
+    val scriptHash = Array.fill[Byte](24)(1.toByte)
+    val sha256Contract = ErgoTree.withoutSegregation(
+      ZeroHeader,
+      SigmaAnd(
+        BoolToSigmaProp(EQ(
+          Slice(CalcSha256(GetVarByteArray(Pay2SHAddress.scriptId).get), IntConstant(0), IntConstant(24)),
+          ByteArrayConstant(scriptHash)
+        )),
+        sigma.ast.DeserializeContext(Pay2SHAddress.scriptId, sigma.ast.SSigmaProp)
+      )
+    )
+    ergoAddressEncoder.fromProposition(sha256Contract).success.value shouldBe a[Pay2SAddress]
+
+    val wrongPreimageContract = ErgoTree.withoutSegregation(
+      ZeroHeader,
+      SigmaAnd(
+        BoolToSigmaProp(EQ(
+          Slice(CalcBlake2b256(ByteArrayConstant(Array[Byte](1, 2, 3))), IntConstant(0), IntConstant(24)),
+          ByteArrayConstant(scriptHash)
+        )),
+        sigma.ast.DeserializeContext(Pay2SHAddress.scriptId, sigma.ast.SSigmaProp)
+      )
+    )
+    ergoAddressEncoder.fromProposition(wrongPreimageContract).success.value shouldBe a[Pay2SAddress]
+
+    val shortHashContract = ErgoTree.withoutSegregation(
+      ZeroHeader,
+      SigmaAnd(
+        BoolToSigmaProp(EQ(
+          Slice(CalcBlake2b256(GetVarByteArray(Pay2SHAddress.scriptId).get), IntConstant(0), IntConstant(24)),
+          ByteArrayConstant(Array[Byte](1, 2, 3))
+        )),
+        sigma.ast.DeserializeContext(Pay2SHAddress.scriptId, sigma.ast.SSigmaProp)
+      )
+    )
+    ergoAddressEncoder.fromProposition(shortHashContract).success.value shouldBe a[Pay2SAddress]
   }
 
 }

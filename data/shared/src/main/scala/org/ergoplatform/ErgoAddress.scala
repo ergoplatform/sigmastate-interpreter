@@ -3,7 +3,6 @@ package org.ergoplatform
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.encode.Base58
-import scorex.utils.Ints
 import sigma.ast.{DeserializeContext, SInt, SSigmaProp, Slice}
 import sigma.data.{CSigmaProp, ProveDlog}
 import sigma.serialization.GroupElementSerializer
@@ -112,7 +111,7 @@ class P2PKAddress(val pubkey: ProveDlog,
     case _ => false
   }
 
-  override def hashCode(): Int = Ints.fromByteArray(pubkeyBytes)
+  override def hashCode(): Int = java.util.Arrays.hashCode(pubkeyBytes)
 
   override def toString: String = encoder.toString(this)
 }
@@ -173,7 +172,7 @@ class Pay2SHAddress(val scriptHash: Array[Byte])(implicit val encoder: ErgoAddre
     case _ => false
   }
 
-  override def hashCode(): Int = Ints.fromByteArray(scriptHash)
+  override def hashCode(): Int = java.util.Arrays.hashCode(scriptHash)
 
   override def toString: String = encoder.toString(this)
 }
@@ -233,7 +232,7 @@ class Pay2SAddress(override val script: ErgoTree,
     case _ => false
   }
 
-  override def hashCode(): Int = Ints.fromByteArray(scriptBytes)
+  override def hashCode(): Int = java.util.Arrays.hashCode(scriptBytes)
 
   override def toString: String = encoder.toString(this)
 }
@@ -312,6 +311,9 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
         case P2PKAddress.addressTypePrefix =>
           val r = SigmaSerializer.startReader(contentBytes)
           val p = GroupElementSerializer.parse(r)
+          if (r.position != contentBytes.length) {
+            throw new Exception(s"Trailing bytes in P2PK address: $addrBase58Str")
+          }
           new P2PKAddress(ProveDlog(p), contentBytes)
         case Pay2SHAddress.addressTypePrefix =>
           if (contentBytes.length != 24) { //192-bits hash used
@@ -319,7 +321,11 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
           }
           new Pay2SHAddress(contentBytes)
         case Pay2SAddress.addressTypePrefix =>
-          val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(contentBytes)
+          val r = SigmaSerializer.startReader(contentBytes)
+          val tree = ErgoTreeSerializer.DefaultSerializer.deserializeErgoTree(r, SigmaSerializer.MaxPropositionSize)
+          if (r.position != contentBytes.length) {
+            throw new Exception(s"Trailing bytes in P2S address: $addrBase58Str")
+          }
           new Pay2SAddress(tree, contentBytes)
         case _ =>
           throw new Exception(s"Unsupported address type: $addressType")
@@ -331,13 +337,16 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
     * If matched extracts the corresponding hash bytes as `Coll[Byte]` value.
     */
   object IsPay2SHAddress {
+    private val expectedHash = CalcBlake2b256(GetVarByteArray(Pay2SHAddress.scriptId).get)
+
     def unapply(exp: SigmaPropValue): Option[Coll[Byte]] = exp match {
       case SigmaAnd(Seq(
             BoolToSigmaProp(
               EQ(
-                Slice(_: CalcHash, ConstantNode(0, SInt), ConstantNode(24, SInt)),
+                Slice(hash, ConstantNode(0, SInt), ConstantNode(24, SInt)),
                 ByteArrayConstant(scriptHash))),
-            DeserializeContext(Pay2SHAddress.scriptId, SSigmaProp))) => Some(scriptHash)
+            DeserializeContext(Pay2SHAddress.scriptId, SSigmaProp)))
+          if hash == expectedHash && scriptHash.length == 24 => Some(scriptHash)
       case _ => None
     }
   }
