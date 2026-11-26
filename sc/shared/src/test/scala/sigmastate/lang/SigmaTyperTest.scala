@@ -993,8 +993,8 @@ class SigmaTyperTest extends AnyPropSpec
     runWithVersion(VersionContext.V6SoftForkVersion) {
       typecheck(env, "Global.some(1)") shouldBe SOption(SInt)
       typecheck(env, "some(1)") shouldBe SOption(SInt)
-      typecheck(env, "Global.some(arr1)") shouldBe SOption(SByteArray)
-      typecheck(env, "some(arr1)") shouldBe SOption(SByteArray)
+      typecheck(env, "Global.some(col1)") shouldBe SOption(SCollection(SLong))
+      typecheck(env, "some(col1)") shouldBe SOption(SCollection(SLong))
     }
   }
 
