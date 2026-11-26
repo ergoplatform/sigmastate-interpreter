@@ -146,8 +146,15 @@ object UnsignedTransactionBuilder {
       maps = outputCandidates.map(b => collTokensToMap(b.additionalTokens)): _*)
   }
 
-  def collTokensToMap(tokens: Coll[(TokenId, Long)]): TokensMap =
-    tokens.toArray.map(t => t._1.toModifierId -> t._2).toMap
+  def collTokensToMap(tokens: Coll[(TokenId, Long)]): TokensMap = {
+    val res = scala.collection.mutable.Map.empty[ModifierId, Long]
+    tokens.toArray.foreach { case (id, amt) =>
+      val modId = id.toModifierId
+      val updated = res.get(modId).map(java7.compat.Math.addExact(_, amt)).getOrElse(amt)
+      res.update(modId, updated)
+    }
+    res.toMap
+  }
 
   def tokensMapToColl(tokens: TokensMap): Coll[(TokenId, Long)] =
     tokens.toArray.map { t => t._1.toTokenId -> t._2 }.toColl
@@ -182,9 +189,9 @@ object UnsignedTransactionBuilder {
     // TODO: implement all appropriate checks from ErgoTransaction.validateStatefull
     val feeAmount = createFeeOutput.getOrElse(0L)
     require(createFeeOutput.fold(true)(_ > 0), s"expected fee amount > 0, got $feeAmount")
-    val inputTotal = inputs.map(_.value).sum
-    val outputSum = outputCandidates.map(_.value).sum
-    val outputTotal = outputSum + feeAmount
+    val inputTotal = inputs.foldLeft(0L)((acc, b) => java7.compat.Math.addExact(acc, b.value))
+    val outputSum = outputCandidates.foldLeft(0L)((acc, b) => java7.compat.Math.addExact(acc, b.value))
+    val outputTotal = java7.compat.Math.addExact(outputSum, feeAmount)
     val changeAmt = inputTotal - outputTotal
     require(changeAmt >= 0, s"total inputs $inputTotal is less then total outputs $outputTotal")
     val firstInputBoxId = bytesToId(inputs(0).id)
