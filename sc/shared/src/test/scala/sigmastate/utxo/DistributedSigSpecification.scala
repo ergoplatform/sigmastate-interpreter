@@ -1,7 +1,7 @@
 package sigmastate.utxo
 
 import sigma.ast.ErgoTree
-import sigma.data.CAND
+import sigma.data.{CAND, COR, TrivialProp}
 import sigmastate._
 import sigmastate.helpers.{CompilerTestingCommons, ContextEnrichingTestProvingInterpreter, ErgoLikeTestProvingInterpreter}
 import sigmastate.interpreter._
@@ -533,5 +533,45 @@ class DistributedSigSpecification extends CompilerTestingCommons
 
     // Compound proof from Bob is correct
     verifier.verifySignature(sigmaTree, msg, sigBob)(null) shouldBe true
+  }
+
+  property("distributed signing with duplicate simulated pubkey at distinct positions") {
+    val ctx = fakeContext
+    val proverA = new ErgoLikeTestProvingInterpreter
+    val proverB = new ErgoLikeTestProvingInterpreter
+    val proverC = new ErgoLikeTestProvingInterpreter
+    val verifier = new ContextEnrichingTestProvingInterpreter
+
+    val pubkeyAlice = proverA.dlogSecrets.head.publicImage
+    val pubkeyBob = proverB.dlogSecrets.head.publicImage
+    val pubkeyCarol = proverC.dlogSecrets.head.publicImage
+
+    val sigmaTree = CAND(Seq(
+      COR(Seq(pubkeyAlice, pubkeyCarol)),
+      COR(Seq(pubkeyBob, pubkeyCarol))
+    ))
+    val prop = ErgoTree.fromSigmaBoolean(ergoTreeHeaderInTests, sigmaTree)
+
+    val bobHints = proverB.generateCommitments(prop, ctx)
+    val bagA = HintsBag(bobHints.realCommitments)
+    val proofAlice = proverA.prove(prop, ctx, fakeMessage, bagA).get
+
+    val bagB = proverB.bagForMultisig(ctx, prop, proofAlice.proof, Seq(pubkeyAlice), Seq(pubkeyCarol))
+      .addHint(bobHints.ownCommitments.head)
+    bagB.simulatedProofs.length shouldBe 2
+
+    val proofBob = proverB.prove(prop, ctx, fakeMessage, bagB).get
+    verifier.verify(prop, ctx, proofAlice, fakeMessage).get._1 shouldBe false
+    verifier.verify(prop, ctx, proofBob, fakeMessage).get._1 shouldBe true
+  }
+
+  property("generateCommitmentsFor and bagForMultisig handle TrivialProp and NoProof") {
+    val proverA = new ErgoLikeTestProvingInterpreter
+    val pubkeyAlice = proverA.dlogSecrets.head.publicImage
+
+    proverA.generateCommitmentsFor(TrivialProp.TrueProp, Seq(pubkeyAlice)) shouldBe HintsBag.empty
+    proverA.generateCommitmentsFor(TrivialProp.FalseProp, Seq(pubkeyAlice)) shouldBe HintsBag.empty
+    proverA.bagForMultisig(TrivialProp.TrueProp, Array.emptyByteArray, Seq(pubkeyAlice), Seq.empty) shouldBe HintsBag.empty
+    proverA.bagForMultisig(TrivialProp.FalseProp, Array.emptyByteArray, Seq(pubkeyAlice), Seq.empty) shouldBe HintsBag.empty
   }
 }
