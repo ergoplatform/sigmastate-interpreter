@@ -239,6 +239,77 @@ class ErgoTreeSpecification extends SigmaDslTesting with ContractsTestkit with C
     }
   }
 
+  property("ErgoTree.isUsingBlockchainContext survives serialization roundtrip for PropertyCall") {
+    val contextDependentProps: Seq[(String, SigmaPropValue)] = Seq(
+      "CONTEXT.headers" -> BoolToSigmaProp(
+        GT(
+          SizeOf(IR.builder.mkMethodCall(Context, SContextMethods.headersMethod, Vector()).asCollection[SHeader.type]),
+          IntConstant(0)
+        )
+      ),
+      "CONTEXT.preHeader" -> BoolToSigmaProp(
+        GT(
+          IR.builder.mkMethodCall(
+            IR.builder.mkMethodCall(Context, SContextMethods.preHeaderMethod, Vector()),
+            SPreHeaderMethods.heightMethod,
+            Vector()
+          ).asIntValue,
+          IntConstant(0)
+        )
+      ),
+      "CONTEXT.height" -> BoolToSigmaProp(
+        GT(IR.builder.mkMethodCall(Context, SContextMethods.heightMethod, Vector()).asIntValue, IntConstant(0))
+      ),
+      "CONTEXT.lastBlockUtxoRootHash" -> BoolToSigmaProp(
+        GT(
+          SizeOf(
+            IR.builder.mkMethodCall(
+              IR.builder.mkMethodCall(Context, SContextMethods.lastBlockUtxoRootHashMethod, Vector()),
+              SAvlTreeMethods.digestMethod,
+              Vector()
+            ).asByteArray
+          ),
+          IntConstant(0)
+        )
+      ),
+      "CONTEXT.minerPubKey" -> BoolToSigmaProp(
+        GT(
+          SizeOf(IR.builder.mkMethodCall(Context, SContextMethods.minerPubKeyMethod, Vector()).asByteArray),
+          IntConstant(0)
+        )
+      )
+    )
+
+    contextDependentProps.foreach { case (label, prop) =>
+      withClue(s"$label: ") {
+        val tree = new ErgoTree(HeaderType @@ 16.toByte, Vector(), Right(prop))
+        tree._isUsingBlockchainContext shouldBe None
+        tree.isUsingBlockchainContext shouldBe true
+
+        val bytes = DefaultSerializer.serializeErgoTree(tree)
+        val deserialized = DefaultSerializer.deserializeErgoTree(bytes)
+        deserialized._isUsingBlockchainContext shouldBe Some(true)
+        deserialized.isUsingBlockchainContext shouldBe true
+      }
+    }
+
+    // Non-blockchain-context PropertyCall on Context must remain false after deserialization.
+    val selfBoxIdxTree = new ErgoTree(
+      HeaderType @@ 16.toByte,
+      Vector(),
+      Right(BoolToSigmaProp(
+        GT(IR.builder.mkMethodCall(Context, SContextMethods.selfBoxIndexMethod, Vector()).asIntValue, IntConstant(0))
+      ))
+    )
+    selfBoxIdxTree._isUsingBlockchainContext shouldBe None
+    selfBoxIdxTree.isUsingBlockchainContext shouldBe false
+
+    val deserializedSelfBoxIdx =
+      DefaultSerializer.deserializeErgoTree(DefaultSerializer.serializeErgoTree(selfBoxIdxTree))
+    deserializedSelfBoxIdx._isUsingBlockchainContext shouldBe Some(false)
+    deserializedSelfBoxIdx.isUsingBlockchainContext shouldBe false
+  }
+
   property("ErgoTree equality") {
     val t1 = new ErgoTree(
       HeaderType @@ 16.toByte,
