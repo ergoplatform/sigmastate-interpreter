@@ -173,6 +173,24 @@ class SigmaBinderTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     bind(env, "{ (a: Int) => { val Y = a - 1; Y - x } }") shouldBe
       Lambda(IndexedSeq("a" -> SInt), NoType,
         Block(Val("Y", NoType, mkMinus(IntIdent("a"), 1)), mkMinus(IntIdent("Y"), 10)))
+    // Lambda parameters must shadow outer ScriptEnv bindings and builtins
+    bind(env, "{ (x: Int) => x + 1 }") shouldBe
+      Lambda(IndexedSeq("x" -> SInt), NoType, plus(IntIdent("x"), 1))
+    bind(env, "{ (x: Int) => x + y }") shouldBe
+      Lambda(IndexedSeq("x" -> SInt), NoType, plus(IntIdent("x"), 11))
+    bind(env, "{ (x: Int) => { val Y = x - 1; Y + x } }") shouldBe
+      Lambda(IndexedSeq("x" -> SInt), NoType,
+        Block(Val("Y", NoType, mkMinus(IntIdent("x"), 1)), plus(IntIdent("Y"), IntIdent("x"))))
+    bind(env, "{ (x: Int) => { (y: Int) => x + y } }") shouldBe
+      Lambda(IndexedSeq("x" -> SInt), NoType,
+        Lambda(IndexedSeq("y" -> SInt), NoType, plus(IntIdent("x"), IntIdent("y"))))
+    bind(env, "{ (HEIGHT: Int) => HEIGHT + 1 }") shouldBe
+      Lambda(IndexedSeq("HEIGHT" -> SInt), NoType, plus(IntIdent("HEIGHT"), 1))
+    bind(env, "{ (SELF: Box) => SELF.value }") shouldBe
+      Lambda(IndexedSeq("SELF" -> SBox), NoType, Select(Ident("SELF"), "value"))
+    // Chained SValue entries in ScriptEnv continue to bind recursively
+    bind(env ++ Map("aliasX" -> Ident("x", NoType)), "aliasX + 1") shouldBe
+      plus(IntConstant(10), 1)
   }
 
   property("function definitions") {
