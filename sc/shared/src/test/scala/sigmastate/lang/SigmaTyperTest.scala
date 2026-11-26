@@ -984,4 +984,37 @@ class SigmaTyperTest extends AnyPropSpec
     }
   }
 
+  property("chained method calls typecheck in linear time") {
+    val chain = "col1" + ".slice(0, 1)" * 35
+    typecheck(env, chain) shouldBe SCollection(SLong)
+  }
+
+  property("Global.some and bare some infer explicit type parameter in v6") {
+    runWithVersion(VersionContext.V6SoftForkVersion) {
+      typecheck(env, "Global.some(1)") shouldBe SOption(SInt)
+      typecheck(env, "some(1)") shouldBe SOption(SInt)
+      typecheck(env, "Global.some(arr1)") shouldBe SOption(SByteArray)
+      typecheck(env, "some(arr1)") shouldBe SOption(SByteArray)
+    }
+  }
+
+  property("invalid global method args, zero-arg exp, and non-generic type application throw TyperException") {
+    assertExceptionThrown(
+      typecheck(env, "xor(1, 2)"),
+      exceptionLike[TyperException]("Invalid argument type")
+    )
+    assertExceptionThrown(
+      typecheck(env, "g1.exp()"),
+      exceptionLike[TyperException]("For method exp expected args")
+    )
+    assertExceptionThrown(
+      typecheck(env, "g1.exp[Int](n1)"),
+      exceptionLike[TyperException]("does not take type parameters")
+    )
+    assertExceptionThrown(
+      typecheck(env, "col1.slice[Int](0, 1)"),
+      exceptionLike[TyperException]("does not take type parameters")
+    )
+  }
+
 }
