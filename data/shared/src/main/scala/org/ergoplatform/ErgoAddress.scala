@@ -3,7 +3,6 @@ package org.ergoplatform
 import org.ergoplatform.ErgoAddressEncoder.NetworkPrefix
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import scorex.util.encode.Base58
-import sigma.ast.SCollection.SByteArray
 import sigma.ast.{DeserializeContext, SInt, SSigmaProp, Slice}
 import sigma.data.{CSigmaProp, ProveDlog}
 import sigma.serialization.GroupElementSerializer
@@ -338,22 +337,16 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
     * If matched extracts the corresponding hash bytes as `Coll[Byte]` value.
     */
   object IsPay2SHAddress {
+    private val expectedHash = CalcBlake2b256(GetVarByteArray(Pay2SHAddress.scriptId).get)
+
     def unapply(exp: SigmaPropValue): Option[Coll[Byte]] = exp match {
       case SigmaAnd(Seq(
             BoolToSigmaProp(
               EQ(
-                Slice(
-                  hash: CalcHash,
-                  ConstantNode(0, SInt),
-                  ConstantNode(24, SInt)),
+                Slice(hash, ConstantNode(0, SInt), ConstantNode(24, SInt)),
                 ByteArrayConstant(scriptHash))),
             DeserializeContext(Pay2SHAddress.scriptId, SSigmaProp)))
-          if scriptHash.length == 24 =>
-        hash match {
-          case CalcBlake2b256(OptionGet(GetVar(Pay2SHAddress.scriptId, SOption(SByteArray)))) =>
-            Some(scriptHash)
-          case _ => None
-        }
+          if hash == expectedHash && scriptHash.length == 24 => Some(scriptHash)
       case _ => None
     }
   }
