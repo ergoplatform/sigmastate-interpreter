@@ -79,6 +79,13 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
     parse("0x10") shouldBe IntConstant(0x10)
     parse("0x10L") shouldBe LongConstant(0x10)
     parse("0x10l") shouldBe LongConstant(0x10)
+    parse("-2147483648") shouldBe IntConstant(Int.MinValue)
+    parse("-9223372036854775808L") shouldBe LongConstant(Long.MinValue)
+    parse("-0x80000000") shouldBe IntConstant(Int.MinValue)
+    parse("-0x8000000000000000L") shouldBe LongConstant(Long.MinValue)
+    parse("-0") shouldBe IntConstant(0)
+    parse("-0L") shouldBe LongConstant(0L)
+    parse("10 - -2147483648") shouldBe Minus(10, IntConstant(Int.MinValue))
     parse("10L-11L") shouldBe Minus(10L, 11L)
     parse("(10-11)") shouldBe Minus(10, 11)
     parse("(-10-11)") shouldBe Minus(-10, 11)
@@ -139,6 +146,12 @@ class SigmaParserTest extends AnyPropSpec with ScalaCheckPropertyChecks with Mat
       or(BoolIdent("x1"),
         GT(IntIdent("x2"),
           plus(IntIdent("x3"), IntIdent("x4"))))
+    parse("1 << 3 >> 1") shouldBe
+      MethodCallLike(MethodCallLike(IntConstant(1), "<<", IndexedSeq(IntConstant(3))), ">>", IndexedSeq(IntConstant(1)))
+    parse("1 << 3 >>> 1") shouldBe
+      MethodCallLike(MethodCallLike(IntConstant(1), "<<", IndexedSeq(IntConstant(3))), ">>>", IndexedSeq(IntConstant(1)))
+    parse("8 >> 1 << 2") shouldBe
+      MethodCallLike(MethodCallLike(IntConstant(8), ">>", IndexedSeq(IntConstant(1))), "<<", IndexedSeq(IntConstant(2)))
   }
 
   property("tuple operations") {

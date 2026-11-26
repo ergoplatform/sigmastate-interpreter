@@ -105,14 +105,14 @@ trait Literals { l =>
       def Literal[_:P] = P(
         ("-".!.? ~ Index ~ ( /*Float |*/ Int.!)).map {
             case (signOpt, index, lit) =>
-              val sign = if (signOpt.isDefined) -1 else 1
+              val prefix = if (signOpt.isDefined) "-" else ""
               val suffix = lit.charAt(lit.length - 1)
               val (digits, radix) = if (lit.startsWith("0x")) (lit.substring(2), 16) else (lit, 10)
               atSrcPos(index) {
                 if (suffix == 'L' || suffix == 'l')
-                  mkConstant[SLong.type](sign * parseLong(digits.substring(0, digits.length - 1), radix), SLong)
+                  mkConstant[SLong.type](parseLong(prefix + digits.substring(0, digits.length - 1), radix), SLong)
                 else
-                  mkConstant[SInt.type](sign * parseInt(digits, radix), SInt)
+                  mkConstant[SInt.type](parseInt(prefix + digits, radix), SInt)
               }
           }
         | Bool

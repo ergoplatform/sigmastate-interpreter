@@ -75,7 +75,7 @@ trait Exprs extends Core with Types {
     }
 
     private def SuperPostfixSuffix[_:P] = P( (`=` ~/ Expr).? )
-    private def ExprPrefix[_:P] = P( WL ~ CharPred("-+!~".contains(_)).! ~~ !parsers.Basic.OpChar ~ WS)
+    private def ExprPrefix[_:P] = P( WL ~ (("-" ~~ !parsers.Basic.Digit).! | CharPred("+!~".contains(_)).!) ~~ !parsers.Basic.OpChar ~ WS)
     private def ExprSuffix[_:P] = P(
       (WL ~ "." ~/ (Index ~ Id.!).map{ case (i, s) => atSrcPos(i) { mkIdent(s, NoType)} }
       | WL ~ TypeArgs.map(items => STypeApply("", items.toIndexedSeq))
@@ -148,7 +148,7 @@ trait Exprs extends Core with Types {
     Seq('&'),
     Seq('=', '!'),
     Seq('<', '>'),
-    Seq(':', '>'),
+    Seq(':'),
     Seq('+', '-'),
     Seq('*', '/', '%')
   )
