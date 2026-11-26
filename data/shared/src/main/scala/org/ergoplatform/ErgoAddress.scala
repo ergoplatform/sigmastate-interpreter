@@ -343,12 +343,17 @@ case class ErgoAddressEncoder(networkPrefix: NetworkPrefix) {
             BoolToSigmaProp(
               EQ(
                 Slice(
-                  CalcBlake2b256(OptionGet(GetVar(Pay2SHAddress.scriptId, SOption(SByteArray)))),
+                  hash: CalcHash,
                   ConstantNode(0, SInt),
                   ConstantNode(24, SInt)),
                 ByteArrayConstant(scriptHash))),
             DeserializeContext(Pay2SHAddress.scriptId, SSigmaProp)))
-          if scriptHash.length == 24 => Some(scriptHash)
+          if scriptHash.length == 24 =>
+        hash match {
+          case CalcBlake2b256(OptionGet(GetVar(Pay2SHAddress.scriptId, SOption(SByteArray)))) =>
+            Some(scriptHash)
+          case _ => None
+        }
       case _ => None
     }
   }
