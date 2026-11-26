@@ -75,7 +75,9 @@ object SdkIsos extends LowPriorityIsos {
         val lhm = new mutable.LinkedHashMap[ModifierId, Long]()
         a.foreach { et =>
           val t = isoErgoTokenToPair.to(et)
-          lhm += bytesToId(t._1.toArray) -> t._2
+          val id = bytesToId(t._1.toArray)
+          val updated = lhm.get(id).map(java7.compat.Math.addExact(_, t._2)).getOrElse(t._2)
+          lhm.put(id, updated)
         }
         lhm
       }

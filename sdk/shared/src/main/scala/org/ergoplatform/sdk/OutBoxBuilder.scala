@@ -31,7 +31,8 @@ class OutBoxBuilder(val _txB: UnsignedTransactionBuilder) {
   def tokens(tokens: ErgoToken*): this.type = {
     require(tokens.nonEmpty, "At least one token should be specified")
     val maxTokens = SigmaConstants.MaxTokens.value
-    require(tokens.size <= maxTokens, SigmaConstants.MaxTokens.description + s": $maxTokens")
+    require(_tokens.size + tokens.size <= maxTokens, SigmaConstants.MaxTokens.description + s": $maxTokens")
+    require(tokens.forall(_.getValue > 0), "Token amount must be positive")
     _tokens ++= tokens
     this
   }

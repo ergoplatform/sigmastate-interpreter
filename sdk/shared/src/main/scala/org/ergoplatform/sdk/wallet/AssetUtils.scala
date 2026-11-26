@@ -43,7 +43,10 @@ object AssetUtils {
   @inline
   def subtractAssetsMut(from: mutable.Map[ModifierId, Long], subtractor: TokensMap): Unit = {
     subtractor.foreach { case (id, subtractAmt) =>
-      val fromAmt = from(id)
+      val fromAmt = from.getOrElse(id,
+        throw new IllegalArgumentException(s"Cannot subtract $subtractAmt of token $id: token not found in $from"))
+      require(subtractAmt >= 0, s"Cannot subtract negative amount from token $id: $subtractAmt")
+      require(fromAmt >= subtractAmt, s"Not enough amount of token $id -> $fromAmt to subtract $subtractAmt")
       if (fromAmt == subtractAmt) {
         from.remove(id)
       } else {
