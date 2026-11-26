@@ -204,7 +204,13 @@ class SigmaTyper(val builder: SigmaBuilder,
         case p: SProduct =>
           MethodsContainer.getMethod(p, n) match {
             case Some(method: SMethod) =>
-              val genFunTpe = method.stype
+              val tMeth = method.stype
+              val genFunTpe = unifyTypes(tMeth.tDom(0), p) match {
+                case Some(recSubst) if recSubst.nonEmpty => applySubst(tMeth, recSubst).asFunc
+                case _ => tMeth
+              }
+              if (genFunTpe.tpeParams.isEmpty)
+                error(s"Method $n does not take type parameters", sel.sourceContext)
               val subst = Map(genFunTpe.tpeParams.head.ident -> rangeTpe)
               val concrFunTpe = applySubst(genFunTpe, subst)
               val expectedArgs = concrFunTpe.asFunc.tDom.tail
@@ -237,7 +243,7 @@ class SigmaTyper(val builder: SigmaBuilder,
       // could be useful for other use cases where the same front-end code could be
       // translated to different methods under the hood, based on argument types
       // todo: consider better place for it
-      val (n, sel) = if (nOriginal == "exp" && newArgs(0).tpe.isInstanceOf[SUnsignedBigInt.type]) {
+      val (n, sel) = if (nOriginal == "exp" && newArgs.nonEmpty && newArgs(0).tpe.isInstanceOf[SUnsignedBigInt.type]) {
         val newName = "expUnsigned"
         (newName, Select(obj, newName, resType))
       } else {
@@ -247,7 +253,10 @@ class SigmaTyper(val builder: SigmaBuilder,
       newSel.tpe match {
         case genFunTpe @ SFunc(argTypes, _, _) =>
           // If it's a function then the application has type of that function's return type.
-          val newObj = assignType(env, obj)
+          val newObj = newSel match {
+            case Select(o, _, _) => o
+            case _ => assignType(env, obj)
+          }
           val newArgTypes = newArgs.map(_.tpe)
           unifyTypeLists(argTypes, newArgTypes) match {
             case Some(subst) =>
@@ -259,10 +268,11 @@ class SigmaTyper(val builder: SigmaBuilder,
                     || !expectedArgs.zip(newArgTypes).forall { case (ea, na) => ea == SAny || ea == na })
                     error(s"For method $n expected args: $expectedArgs; actual: $newArgTypes", sel.sourceContext)
                   val methodConcrType = method.withSType(concrFunTpe.asFunc.withReceiverType(newObj.tpe))
+                  val explicitSubst = subst.filter { case (k, _) => methodConcrType.explicitTypeArgs.contains(k) }
                   methodConcrType.irInfo.irBuilder
                     .filter(_ => lowerMethodCalls)
-                    .flatMap(_.lift(builder, newObj, methodConcrType, newArgs, Map()))
-                    .getOrElse(mkMethodCall(newObj, methodConcrType, newArgs, Map()))
+                    .flatMap(_.lift(builder, newObj, methodConcrType, newArgs, explicitSubst))
+                    .getOrElse(mkMethodCall(newObj, methodConcrType, newArgs, explicitSubst))
                 case _ =>
                   val newSelect = mkSelect(newObj, n, Some(concrFunTpe)).withSrcCtx(sel.sourceContext)
                   mkApply(newSelect, newArgs.toArray[SValue])
@@ -278,7 +288,21 @@ class SigmaTyper(val builder: SigmaBuilder,
       val method = SGlobalMethods.method(ident.name).get
       val srcCtx = a.sourceContext
       val newArgs = args.map(assignType(env, _))
-      processGlobalMethod(srcCtx, method, newArgs)
+      val argTypes = method.stype.tDom.tail
+      val newArgTypes = newArgs.map(_.tpe)
+      unifyTypeLists(argTypes, newArgTypes) match {
+        case Some(subst) =>
+          val concrFunTpe = applySubst(method.stype, subst).asFunc
+          val expectedArgs = concrFunTpe.tDom.tail
+          if (expectedArgs.length != newArgTypes.length
+            || !expectedArgs.zip(newArgTypes).forall { case (ea, na) => ea == SAny || ea == na })
+            error(s"For method ${method.name} expected args: $expectedArgs; actual: $newArgTypes", srcCtx)
+          val methodConcrType = method.withSType(concrFunTpe)
+          val explicitSubst = subst.filter { case (k, _) => methodConcrType.explicitTypeArgs.contains(k) }
+          processGlobalMethod(srcCtx, methodConcrType, newArgs, explicitSubst)
+        case None =>
+          error(s"Invalid argument type of application $a: expected $argTypes; actual: $newArgTypes", srcCtx)
+      }
 
     case app @ Apply(f, args) =>
       val new_f = assignType(env, f)
