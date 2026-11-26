@@ -1,6 +1,7 @@
 package sigma.serialization
 
 import sigma.ast.{EmptySubst, SType, STypeSubst}
+import sigma.ast.SContextMethods.BlockchainContextMethodNames
 import sigma.serialization.CoreByteWriter.{ArgInfo, DataInfo}
 import sigma.ast._
 import sigma.ast.syntax.SValue
@@ -47,6 +48,10 @@ case class PropertyCallSerializer(cons: (Value[SType], SMethod, IndexedSeq[Value
       val specMethod = method.specializeFor(obj.tpe, SType.EmptySeq)
       (EmptySubst, specMethod)
     }
+
+    val isUsingBlockchainContext = specMethod.objType == SContextMethods &&
+      BlockchainContextMethodNames.contains(method.name)
+    r.wasUsingBlockchainContext ||= isUsingBlockchainContext
 
     cons(obj, specMethod, Value.EmptySeq, explicitTypeSubst)
   }
