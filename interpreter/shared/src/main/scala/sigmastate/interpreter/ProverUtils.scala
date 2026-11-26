@@ -1,7 +1,7 @@
 package sigmastate.interpreter
 
 import sigma.ast.ErgoTree
-import sigma.data.{ProveDHTuple, ProveDlog, SigmaBoolean, SigmaConjecture, SigmaLeaf}
+import sigma.data.{ProveDHTuple, ProveDlog, SigmaBoolean, SigmaConjecture, SigmaLeaf, TrivialProp}
 import sigma.serialization.SigSerializer
 import sigmastate._
 import sigmastate.crypto.DLogProtocol.DLogProver
@@ -56,6 +56,8 @@ trait ProverUtils extends Interpreter {
           } else {
             bag
           }
+        case _: TrivialProp =>
+          bag
       }
     }
 
@@ -102,39 +104,44 @@ trait ProverUtils extends Interpreter {
                      simulatedSecretsToExtract: Seq[SigmaBoolean]): HintsBag = {
 
     val ut = SigSerializer.parseAndComputeChallenges(sigmaTree, proof)(null)
-    val proofTree = computeCommitments(ut).get.asInstanceOf[UncheckedSigmaTree]
+    ut match {
+      case NoProof =>
+        HintsBag.empty
+      case _: UncheckedSigmaTree =>
+        val proofTree = computeCommitments(ut).get.asInstanceOf[UncheckedSigmaTree]
 
-    def traverseNode(tree: ProofTree,
-                     realPropositions: Seq[SigmaBoolean],
-                     simulatedPropositions: Seq[SigmaBoolean],
-                     hintsBag: HintsBag,
-                     position: NodePosition): HintsBag = {
-      tree match {
-        case inner: UncheckedConjecture =>
-          inner.children.zipWithIndex.foldLeft(hintsBag) { case (hb, (c, idx)) =>
-            traverseNode(c, realPropositions, simulatedPropositions, hb, position.child(idx))
+        def traverseNode(tree: ProofTree,
+                         realPropositions: Seq[SigmaBoolean],
+                         simulatedPropositions: Seq[SigmaBoolean],
+                         hintsBag: HintsBag,
+                         position: NodePosition): HintsBag = {
+          tree match {
+            case inner: UncheckedConjecture =>
+              inner.children.zipWithIndex.foldLeft(hintsBag) { case (hb, (c, idx)) =>
+                traverseNode(c, realPropositions, simulatedPropositions, hb, position.child(idx))
+              }
+            case leaf: UncheckedLeaf =>
+              val realFound = realPropositions.contains(leaf.proposition)
+              val simulatedFound = simulatedPropositions.contains(leaf.proposition)
+              if (realFound || simulatedFound) {
+                val hints = if (realFound) {
+                  Seq(
+                    RealCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
+                    RealSecretProof(leaf.proposition, leaf.challenge, leaf, position)
+                  )
+                } else {
+                  Seq(
+                    SimulatedCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
+                    SimulatedSecretProof(leaf.proposition, leaf.challenge, leaf, position)
+                  )
+                }
+                hintsBag.addHints(hints: _*)
+              } else hintsBag
           }
-        case leaf: UncheckedLeaf =>
-          val realFound = realPropositions.contains(leaf.proposition)
-          val simulatedFound = simulatedPropositions.contains(leaf.proposition)
-          if (realFound || simulatedFound) {
-            val hints = if (realFound) {
-              Seq(
-                RealCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
-                RealSecretProof(leaf.proposition, leaf.challenge, leaf, position)
-              )
-            } else {
-              Seq(
-                SimulatedCommitment(leaf.proposition, leaf.commitmentOpt.get, position),
-                SimulatedSecretProof(leaf.proposition, leaf.challenge, leaf, position)
-              )
-            }
-            hintsBag.addHints(hints: _*)
-          } else hintsBag
-      }
-    }
+        }
 
-    traverseNode(proofTree, realSecretsToExtract, simulatedSecretsToExtract, HintsBag.empty, NodePosition.CryptoTreePrefix)
+        traverseNode(proofTree, realSecretsToExtract, simulatedSecretsToExtract, HintsBag.empty, NodePosition.CryptoTreePrefix)
+    }
   }
 
 }

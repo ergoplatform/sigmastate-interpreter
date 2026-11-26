@@ -555,7 +555,7 @@ trait ProverInterpreter extends Interpreter with ProverUtils {
 
     // if the simulated node is proven by someone else, take it from hints bag
     case su: UnprovenLeaf if su.simulated =>
-      hintsBag.simulatedProofs.find(_.image == su.proposition).map { proof =>
+      hintsBag.simulatedProofs.find(_.position == su.position).map { proof =>
         proof.uncheckedTree
       }.getOrElse(su)
 
