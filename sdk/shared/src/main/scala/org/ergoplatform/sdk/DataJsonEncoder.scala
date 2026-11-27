@@ -255,7 +255,11 @@ object DataJsonEncoder {
         val tArr = tup.items.toArray
         val leftColl = decodeColl(json.hcursor.downField(s"_1").focus.get, tArr(0))
         val rightColl = decodeColl(json.hcursor.downField(s"_2").focus.get, tArr(1))
-        assert(leftColl.length == rightColl.length)
+        if (leftColl.length != rightColl.length) {
+          throw new SerializerException(
+            s"Mismatched pair collection lengths: ${leftColl.length} != ${rightColl.length}"
+          )
+        }
         SigmaDsl.Colls.pairColl(leftColl, rightColl).asInstanceOf[Coll[T#WrappedType]]
       case _ =>
         val jsonList = json.as[List[Json]]

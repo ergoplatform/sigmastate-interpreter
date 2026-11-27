@@ -114,14 +114,14 @@ class CoreDataSerializer {
         val bytes = r.getBytes(size)
         new String(bytes, StandardCharsets.UTF_8)
       case SBigInt =>
-        val size: Short = r.getUShort().toShort
+        val size: Int = r.getUShort()
         if (size > SBigInt.MaxSizeInBytes) {
           throw new SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
         }
         val valueBytes = r.getBytes(size)
         CBigInt(new BigInteger(valueBytes))
       case SUnsignedBigInt if VersionContext.current.isV3OrLaterErgoTreeVersion =>
-        val size: Short = r.getUShort().toShort
+        val size: Int = r.getUShort()
         if (size > SBigInt.MaxSizeInBytes) {
           throw SerializerException(s"BigInt value doesn't not fit into ${SBigInt.MaxSizeInBytes} bytes: $size")
         }

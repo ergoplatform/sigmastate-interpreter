@@ -697,4 +697,16 @@ class GF2_192_Specification extends AnyPropSpec
       assumeFalse("Fail: interpolate should output null on both points and values = null", res != null)
     }
   }
+
+  property("GF2_192 rejects short byte arrays with IllegalArgumentException") {
+    an[IllegalArgumentException] should be thrownBy {
+      new GF2_192(new Array[Byte](23), 0)
+    }
+    an[IllegalArgumentException] should be thrownBy {
+      new GF2_192(new Array[Byte](24), 1)
+    }
+    an[IllegalArgumentException] should be thrownBy {
+      new GF2_192(1).toByteArray(new Array[Byte](23), 0)
+    }
+  }
 }
