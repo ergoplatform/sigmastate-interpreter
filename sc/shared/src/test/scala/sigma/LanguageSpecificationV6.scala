@@ -1441,10 +1441,12 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
       constants = Vector(TrueSigmaProp),
       ConstantPlaceholder(0, SSigmaProp))
 
-    // tree with one segregated constant and max supported version
+    // Tree with one segregated constant at the version whose substConstants
+    // semantics this fixture isolates. A later unrelated language version must
+    // not silently retarget this historical v6 vector.
     val t2 = ErgoTree(
       header = ErgoTree.setConstantSegregation(
-        ErgoTree.headerWithVersion(ZeroHeader, VersionContext.MaxSupportedScriptVersion)
+        ErgoTree.headerWithVersion(ZeroHeader, VersionContext.V6SoftForkVersion)
       ),
       Vector(TrueSigmaProp),
       ConstantPlaceholder(0, SSigmaProp))
@@ -1472,7 +1474,7 @@ class LanguageSpecificationV6 extends LanguageSpecificationBase { suite =>
           costOpt = None,
           expectedDetails = CostDetails.ZeroCost,
           newCostOpt = None,
-          newVersionedResults = expectedSuccessForAllTreeVersions(Helpers.decodeBytes("100108d27300"), 2065, costDetails(1))
+          newVersionedResults = expectedSuccessForLegacyTreeVersions(Helpers.decodeBytes("100108d27300"), 2065, costDetails(1))
         ),
         // for tree version > 0, the result depend on activated version
         (Coll(t2.bytes: _*), 0) -> Expected(

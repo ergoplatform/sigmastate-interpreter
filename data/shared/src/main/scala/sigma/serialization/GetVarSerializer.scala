@@ -10,6 +10,13 @@ case class GetVarSerializer(cons: (Byte, SType) => Value[SOption[SType]])
   val typeInfo: DataInfo[SType] = ArgInfo("type", "expected type of context variable")
   val varIdInfo: DataInfo[Byte] = varIdArg
 
+  override protected def getValueChildren(
+      obj: GetVar[_ <: SType]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: GetVar[_ <: SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def serialize(obj: GetVar[_ <: SType], w: SigmaByteWriter): Unit =
     w.put(obj.varId, varIdInfo)
       .putType(obj.tpe.elemType, typeInfo)

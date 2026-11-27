@@ -17,6 +17,42 @@ case class ConcreteCollectionSerializer(cons: (IndexedSeq[Value[SType]], SType) 
   val elementTypeInfo: DataInfo[SType] = ArgInfo("elementType", "type of each expression in the collection")
   val itemInfo: DataInfo[SValue] = ArgInfo("item_i", "expression in i-th position")
 
+  override protected def getValueChildren(
+      obj: ConcreteCollection[_ <: SType]): IndexedSeq[Value[SType]] =
+    obj.items.toIndexedSeq.asInstanceOf[IndexedSeq[Value[SType]]]
+
+  override protected def rebuildValueNode(
+      obj: ConcreteCollection[_ <: SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = cons(children, obj.tpe.elemType)
+
+  override protected def validateRebuiltValue(
+      obj: ConcreteCollection[_ <: SType],
+      children: IndexedSeq[Value[SType]],
+      rebuilt: Value[SType]): Unit = rebuilt match {
+    case collection: ConcreteCollection[_] =>
+      // A Boolean collection can legitimately cross from the ordinary Value
+      // encoding to the compact bit encoding when all materialized children
+      // become BooleanConstant nodes. Validate retention against the AST items,
+      // since the compact serializer intentionally exposes no Value children.
+      if (collection.items.length != children.length)
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer changed the collection arity")
+      var i = 0
+      while (i < children.length) {
+        if (!(collection.items(i).asInstanceOf[AnyRef] eq children(i).asInstanceOf[AnyRef]))
+          error(s"Cannot rebuild ${opDesc.typeName}: serializer did not retain replacement child $i")
+        i += 1
+      }
+      val expectedCompanion =
+        if (obj.tpe.elemType == SBoolean && children.forall(_.isInstanceOf[Constant[_]]))
+          ConcreteCollectionBooleanConstant
+        else
+          ConcreteCollection
+      if (collection.companion != expectedCompanion)
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer selected an invalid collection encoding")
+    case _ =>
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer changed the node class")
+  }
+
   override def serialize(cc: ConcreteCollection[_ <: SType], w: SigmaByteWriter): Unit = {
     w.putUShort(cc.items.size, numItemsInfo)
     w.putType(cc.tpe.elemType, elementTypeInfo)

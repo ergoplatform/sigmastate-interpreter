@@ -15,6 +15,14 @@ case class CreateProveDlogSerializer(cons: Value[SGroupElement.type] => SigmaPro
 
   val valueInfo: DataInfo[SValue] = valueArg
 
+  override protected def getValueChildren(obj: CreateProveDlog): IndexedSeq[Value[sigma.ast.SType]] =
+    IndexedSeq(obj.value)
+
+  override protected def rebuildValueNode(
+      obj: CreateProveDlog,
+      children: IndexedSeq[Value[sigma.ast.SType]]): Value[sigma.ast.SType] =
+    cons(children(0).asValue[SGroupElement.type])
+
   override def serialize(obj: CreateProveDlog, w: SigmaByteWriter): Unit = {
     w.putValue(obj.value, valueInfo)
   }

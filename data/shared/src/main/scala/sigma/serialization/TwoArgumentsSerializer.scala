@@ -12,6 +12,16 @@ case class TwoArgumentsSerializer[LIV <: SType, RIV <: SType, OV <: Value[SType]
   val leftInfo: DataInfo[SValue] = opDesc.argInfos(0)
   val rightInfo: DataInfo[SValue] = opDesc.argInfos(1)
 
+  override protected def getValueChildren(obj: OV): IndexedSeq[Value[SType]] = {
+    val typedOp = obj.asInstanceOf[TwoArgumentsOperation[LIV, RIV, LIV]]
+    IndexedSeq(typedOp.left, typedOp.right)
+  }
+
+  override protected def rebuildValueNode(
+      obj: OV,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    constructor(children(0).asValue[LIV], children(1).asValue[RIV])
+
   override def serialize(obj: OV, w: SigmaByteWriter): Unit = {
     val typedOp = obj.asInstanceOf[TwoArgumentsOperation[LIV, RIV, LIV]]
     w.putValue(typedOp.left, leftInfo)

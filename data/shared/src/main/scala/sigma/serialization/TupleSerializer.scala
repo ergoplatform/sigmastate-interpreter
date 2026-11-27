@@ -15,6 +15,12 @@ case class TupleSerializer(cons: Seq[Value[SType]] => Value[SType])
   val numItemsInfo: DataInfo[U[Byte]] = ArgInfo("numItems", "number of items in the tuple")
   val itemInfo: DataInfo[SValue] = ArgInfo("item_i", "tuple's item in i-th position")
 
+  override protected def getValueChildren(obj: Tuple): IndexedSeq[Value[SType]] = obj.items
+
+  override protected def rebuildValueNode(
+      obj: Tuple,
+      children: IndexedSeq[Value[SType]]): Value[SType] = cons(children)
+
   override def serialize(obj: Tuple, w: SigmaByteWriter): Unit = {
     // TODO refactor: avoid usage of extension method `length`
     val length = obj.length

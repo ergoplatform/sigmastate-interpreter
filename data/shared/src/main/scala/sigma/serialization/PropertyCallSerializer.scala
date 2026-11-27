@@ -17,6 +17,14 @@ case class PropertyCallSerializer(cons: (Value[SType], SMethod, IndexedSeq[Value
   val methodCodeInfo: DataInfo[Byte] = ArgInfo("methodCode", "a code of the property")
   val objInfo: DataInfo[SValue] = ArgInfo("obj", "receiver object of this property call")
 
+  override protected def getValueChildren(mc: MethodCall): IndexedSeq[Value[SType]] =
+    IndexedSeq(mc.obj)
+
+  override protected def rebuildValueNode(
+      mc: MethodCall,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0), mc.method, Value.EmptySeq, mc.typeSubst)
+
   override def serialize(mc: MethodCall, w: SigmaByteWriter): Unit = {
     w.put(mc.method.objType.typeId, typeCodeInfo)
     w.put(mc.method.methodId, methodCodeInfo)

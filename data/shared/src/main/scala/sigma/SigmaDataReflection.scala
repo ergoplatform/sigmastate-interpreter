@@ -118,6 +118,23 @@ object SigmaDataReflection {
     )
   )
 
+  registerClassEntry(classOf[VerifyStark],
+    constructors = Array(
+      mkConstructor(Array(
+        classOf[Value[_]],
+        classOf[Value[_]],
+        classOf[Value[_]],
+        classOf[Value[_]]
+      )) { args =>
+        new VerifyStark(
+          args(0).asInstanceOf[Value[SCollection[SCollection[SByte.type]]]],
+          args(1).asInstanceOf[Value[SByteArray]],
+          args(2).asInstanceOf[Value[SByteArray]],
+          args(3).asInstanceOf[Value[SByteArray]])
+      }
+    )
+  )
+
   registerClassEntry(classOf[CreateProveDHTuple],
     constructors = Array(
       mkConstructor(Array(classOf[Value[_]], classOf[Value[_]], classOf[Value[_]], classOf[Value[_]])) { args =>

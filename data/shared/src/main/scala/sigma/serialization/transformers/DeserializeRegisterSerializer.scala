@@ -18,6 +18,19 @@ case class DeserializeRegisterSerializer(cons: (RegisterId, SType, Option[Value[
   val typeInfo: DataInfo[SType] = ArgInfo("type", "expected type of the deserialized script")
   val defaultInfo: DataInfo[SValue] = defaultArg
 
+  override protected def getValueChildren(
+      obj: DeserializeRegister[SType]): IndexedSeq[Value[SType]] = obj.default match {
+    case Some(default) => IndexedSeq(default)
+    case None => Value.EmptySeq
+  }
+
+  override protected def rebuildValueNode(
+      obj: DeserializeRegister[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = {
+    val default = if (obj.default.isDefined) Some(children(0)) else None
+    cons(obj.reg, obj.tpe, default)
+  }
+
   override def serialize(obj: DeserializeRegister[SType], w: SigmaByteWriter): Unit = {
     w.put(obj.reg.number, idInfo)
     w.putType(obj.tpe, typeInfo)

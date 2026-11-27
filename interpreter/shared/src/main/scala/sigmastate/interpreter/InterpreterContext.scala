@@ -2,6 +2,7 @@ package sigmastate.interpreter
 
 import sigma.interpreter.ContextExtension
 import sigma.interpreter.ContextExtension.VarBinding
+import sigma.eval.StarkVerificationCapability
 import sigma.validation.SigmaValidationSettings
 
 /** Base class of the context passed to verifier and prover.
@@ -23,6 +24,10 @@ trait InterpreterContext {
     * `prove`) is called.
     */
   val initCost: Long
+
+  /** Trusted EIP-0045 state selected for this exact validation context. */
+  def starkVerificationCapability: StarkVerificationCapability =
+    StarkVerificationCapability.Unavailable
 
   /** Maximum version of ErgoTree currently activated on the network. The activation is
     * performed via miners voting.

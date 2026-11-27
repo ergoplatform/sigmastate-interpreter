@@ -18,6 +18,46 @@ case class Relation2Serializer[S1 <: SType, S2 <: SType, R <: Value[SBoolean.typ
   val leftArgInfo: DataInfo[SValue] = opDesc.argInfos(0)
   val rightArgInfo: DataInfo[SValue] = opDesc.argInfos(1)
 
+  override protected def getValueChildren(obj: R): IndexedSeq[Value[SType]] = {
+    val typedRel = obj.asInstanceOf[Relation[S1, S2]]
+    (typedRel.left, typedRel.right) match {
+      case (Constant(_, lTpe), Constant(_, rTpe)) if lTpe == SBoolean && rTpe == SBoolean =>
+        // This branch serializes the two booleans as raw bits, not as Value nodes.
+        Value.EmptySeq
+      case _ =>
+        IndexedSeq(typedRel.left, typedRel.right)
+    }
+  }
+
+  override protected def rebuildValueNode(
+      obj: R,
+      children: IndexedSeq[Value[SType]]): Value[SType] = {
+    if (children.isEmpty) obj
+    else constructor(children(0).asInstanceOf[Value[S1]], children(1).asInstanceOf[Value[S2]])
+  }
+
+  override protected def validateRebuiltValue(
+      obj: R,
+      children: IndexedSeq[Value[SType]],
+      rebuilt: Value[SType]): Unit = {
+    if (rebuilt.companion != opDesc || rebuilt.opCode != opCode)
+      error(s"Cannot rebuild ${opDesc.typeName}: serializer changed the node companion or opcode")
+    val relation = rebuilt.asInstanceOf[Relation[S1, S2]]
+    if (children.isEmpty) {
+      if (!(rebuilt.asInstanceOf[AnyRef] eq obj.asInstanceOf[AnyRef]))
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer changed a compact relation")
+    }
+    else {
+      // Two materialized BooleanConstant operands switch this serializer from
+      // its ordinary two-Value branch to its compact two-bit branch. The AST
+      // still has to retain both replacements exactly and in order.
+      if (!(relation.left.asInstanceOf[AnyRef] eq children(0).asInstanceOf[AnyRef]))
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer did not retain replacement child 0")
+      if (!(relation.right.asInstanceOf[AnyRef] eq children(1).asInstanceOf[AnyRef]))
+        error(s"Cannot rebuild ${opDesc.typeName}: serializer did not retain replacement child 1")
+    }
+  }
+
   override def serialize(obj: R, w: SigmaByteWriter): Unit = {
     val typedRel = obj.asInstanceOf[Relation[S1, S2]]
     cases("(left, right)") {

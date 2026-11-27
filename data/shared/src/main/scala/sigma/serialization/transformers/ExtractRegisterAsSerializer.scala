@@ -17,6 +17,14 @@ case class ExtractRegisterAsSerializer(cons: (Value[SBox.type], RegisterId, SOpt
   val regIdInfo: DataInfo[Byte]  = regIdArg
   val typeInfo: DataInfo[SType] = ArgInfo("type", "expected type of the value in register")
 
+  override protected def getValueChildren(
+      obj: ExtractRegisterAs[SType]): IndexedSeq[Value[SType]] = IndexedSeq(obj.input)
+
+  override protected def rebuildValueNode(
+      obj: ExtractRegisterAs[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asInstanceOf[Value[SBox.type]], obj.registerId, obj.tpe)
+
   override def serialize(obj: ExtractRegisterAs[SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, thisInfo)
       .put(obj.registerId.number, regIdInfo)

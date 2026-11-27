@@ -11,8 +11,8 @@ import sigma.data.{CAND, COR, CTHRESHOLD, ProveDHTuple, ProveDlog, SigmaBoolean,
 import sigma.kiama.rewriting.Rewriter.{everywherebu, rule, strategy}
 import sigma.kiama.rewriting.Strategy
 import sigma.serialization.SigSerializer._
-import sigma.serialization.{SigSerializer, SigmaSerializer, ValueSerializer}
-import sigma.validation.SigmaValidationSettings
+import sigma.serialization.{OpCodes, SigSerializer, SigmaSerializer, ValueSerializer}
+import sigma.validation.{SigmaValidationSettings, ValidationException}
 import sigma.validation.ValidationRules.trySoftForkable
 import sigmastate.FiatShamirTree._
 import sigmastate._
@@ -22,12 +22,26 @@ import sigmastate.eval.{CProfiler, addCostChecked}
 import sigmastate.interpreter.CErgoTreeEvaluator.fixedCostOp
 import sigmastate.interpreter.Interpreter._
 import sigma.ast.syntax.ValueOps
+import sigma.eval.StarkVerificationCapability.{
+  AdmissionValidation,
+  CandidateConstruction,
+  HistoricalBlockValidation,
+  ProverReduction,
+  Snapshot,
+  Unavailable
+}
 import sigma.eval.{EvalSettings, SigmaDsl}
-import sigma.exceptions.InterpreterException
+import sigma.exceptions.{
+  InterpreterException,
+  OpcodeUnavailableException,
+  StarkOpcodeErgoTreeVersionException,
+  StarkUnsupportedFutureGenerationException
+}
 import sigma.interpreter.ProverResult
 import sigma.util.CollectionUtil
 import sigmastate.utils.Helpers._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.util.{Success, Try}
 
 /** Base (verifying) interpreter of ErgoTrees.
@@ -126,6 +140,29 @@ trait Interpreter {
     case _ => None
   }
 
+  private def isVerifyStarkOpCodeError(ve: ValidationException): Boolean =
+    ve.rule == CheckValidOpCode && ve.args.headOption.contains(OpCodes.VerifyStarkCode)
+
+  private def unparsedTreeVersion(ergoTree: ErgoTree, bytes: scala.collection.IndexedSeq[Byte]): Byte =
+    if (bytes.nonEmpty) ErgoTree.getVersion(ErgoTree.HeaderType @@ bytes(0))
+    else ergoTree.version
+
+  private def effectiveTreeVersion(ergoTree: ErgoTree): Byte = ergoTree.root match {
+    case Left(UnparsedErgoTree(bytes, _)) => unparsedTreeVersion(ergoTree, bytes)
+    case Right(_)                         => ergoTree.version
+  }
+
+  private def rejectLegacyVerifyStark(treeVersion: Int): Nothing =
+    throw new StarkOpcodeErgoTreeVersionException(
+      treeVersion,
+      VerifyStarkMinErgoTreeVersion,
+      s"VerifyStark requires ErgoTree version $VerifyStarkMinErgoTreeVersion or higher; got $treeVersion")
+
+  private def rejectUnavailableVerifyStark(): Nothing =
+    throw new OpcodeUnavailableException(
+      VerifyStark.opCode.toByte & 0xff,
+      "Opcode 0xB9 is unavailable before network activation")
+
   /** Extracts proposition for ErgoTree handling soft-fork condition.
     * @note soft-fork handler */
   protected def propositionFromErgoTree(ergoTree: ErgoTree, context: CTX): SigmaPropValue = {
@@ -133,6 +170,11 @@ trait Interpreter {
     val prop = ergoTree.root match {
       case Right(_) =>
         ergoTree.toProposition(ergoTree.isConstantSegregation)
+      case Left(UnparsedErgoTree(bytes, error))
+          if unparsedTreeVersion(ergoTree, bytes) < VerifyStarkMinErgoTreeVersion && isVerifyStarkOpCodeError(error) =>
+        // Even after rule 1002 adds 0xB9 for v4+, a v0-v3 output containing 0xB9
+        // must never be accepted via soft-fork fallback at spend time.
+        rejectLegacyVerifyStark(unparsedTreeVersion(ergoTree, bytes))
       case Left(UnparsedErgoTree(_, error)) if validationSettings.isSoftFork(error) =>
         TrueSigmaProp
       case Left(UnparsedErgoTree(_, error)) =>
@@ -142,18 +184,145 @@ trait Interpreter {
     prop
   }
 
+  private def isTopLevelSoftFork(ergoTree: ErgoTree, context: CTX): Boolean =
+    ergoTree.root match {
+      case Left(UnparsedErgoTree(bytes, error)) =>
+        !(unparsedTreeVersion(ergoTree, bytes) < VerifyStarkMinErgoTreeVersion && isVerifyStarkOpCodeError(error)) &&
+          context.validationSettings.isSoftFork(error)
+      case Right(_) =>
+        false
+    }
+
   /** Same as applyDeserializeContext, but returns SigmaPropValue instead of BoolValue.
     * This is necessary because new interpreter, while ultimately produces the same
     * results as the old interpreter, it is implemented differently internally.
     */
-  private def applyDeserializeContextJITC(context: CTX, exp: Value[SType]): (SigmaPropValue, CTX) = {
+  private def applyDeserializeContextJITC(
+      context: CTX,
+      exp: Value[SType],
+      onInserted: SValue => Unit = _ => (),
+      onShadowedDefault: SValue => Unit = _ => ()): (SigmaPropValue, CTX) = {
     val currContext = new MutableCell(context)
     val substRule = strategy[Any] { case x: SValue =>
-      substDeserialize(currContext.value, { ctx: CTX => currContext.value = ctx }, x)
+      val replacement = substDeserialize(currContext.value, { ctx: CTX => currContext.value = ctx }, x)
+      replacement.foreach { inserted =>
+        x match {
+          case d: DeserializeRegister[_] =>
+            d.default.foreach { defaultExpr =>
+              // Only record defaults that were actually shadowed by a register script;
+              // when the register is absent, substDeserialize returns `defaultExpr` itself
+              // and it will already be present in the substituted proposition tree.
+              if (!(inserted.asInstanceOf[AnyRef] eq defaultExpr.asInstanceOf[AnyRef]))
+                onShadowedDefault(defaultExpr)
+            }
+          case _ => ()
+        }
+        onInserted(inserted)
+      }
+      replacement
     }
     val Some(substTree: SValue) = everywherebu(substRule)(exp)
     val res = toValidScriptTypeJITC(substTree)
     (res, currContext.value)
+  }
+
+  /** Iterative structural scan across all serializer-owned Value children
+    * (including dead branches, lambda bodies, and register defaults).
+    */
+  private def containsVerifyStark(root: SValue): Boolean = {
+    val pending = ArrayBuffer.empty[SValue]
+    pending += root
+    while (pending.nonEmpty) {
+      val current = pending.remove(pending.length - 1)
+      if (current.isInstanceOf[VerifyStark]) return true
+      val children = ValueSerializer.structuralValueChildren(current)
+      var i = children.length - 1
+      while (i >= 0) {
+        pending += children(i)
+        i -= 1
+      }
+    }
+    false
+  }
+
+  private def classifyProfileId(
+      profileId: SValue,
+      constants: IndexedSeq[Constant[SType]]): StarkProfileIdClassification = {
+    def classifyConstant(value: SValue): StarkProfileIdClassification = value match {
+      case ByteArrayConstant(bytes) if bytes.length == VerifyStark.DigestBytes =>
+        StaticStarkProfileId(bytes.toArray)
+      case _: Constant[_] =>
+        MalformedStarkProfileId
+      case _ =>
+        MalformedStarkProfileId
+    }
+    profileId match {
+      case constant: Constant[_] =>
+        classifyConstant(constant)
+      case placeholder: ConstantPlaceholder[_] =>
+        if (placeholder.tpe != SByteArray ||
+            placeholder.id < 0 || placeholder.id >= constants.length)
+          MalformedStarkProfileId
+        else
+          classifyConstant(constants(placeholder.id))
+      case _ =>
+        DynamicStarkProfileId
+    }
+  }
+
+  /** Canonical left-to-right DFS scan of every structurally present `VerifyStark`
+    * occurrence without evaluating any user expression.
+    */
+  private def scanVerifyStarkOccurrences(
+      roots: Seq[SValue],
+      constants: IndexedSeq[Constant[SType]]): StarkPreflightPlan = {
+    val occurrences = ArrayBuffer.empty[StarkPreflightOccurrence]
+    val pending = ArrayBuffer.empty[SValue]
+    var r = roots.length - 1
+    while (r >= 0) {
+      pending += roots(r)
+      r -= 1
+    }
+    while (pending.nonEmpty) {
+      val current = pending.remove(pending.length - 1)
+      current match {
+        case call: VerifyStark =>
+          occurrences += StarkPreflightOccurrence(classifyProfileId(call.profileId, constants))
+        case _ => ()
+      }
+      val children = ValueSerializer.structuralValueChildren(current)
+      var i = children.length - 1
+      while (i >= 0) {
+        pending += children(i)
+        i -= 1
+      }
+    }
+    StarkPreflightPlan(occurrences.toIndexedSeq)
+  }
+
+  private final class StarkContinuation(
+      val ergoTree: ErgoTree,
+      val context: CTX,
+      val proposition: SigmaPropValue,
+      val useDirectErgoTree: Boolean)
+
+  /** Opaque v4+ preflight continuation. Exposes only the immutable structural
+    * plan and accumulated preflight cost; the continuation can be consumed at
+    * most once.
+    */
+  final class StarkPreflightResult private[Interpreter] (
+      val plan: StarkPreflightPlan,
+      private[Interpreter] val continuation: StarkContinuation) {
+    val preflightBlockCost: Long = continuation.context.initCost
+
+    private[this] var isPending = true
+
+    private[Interpreter] def takeContinuation(): StarkContinuation = synchronized {
+      if (!isPending)
+        throw new IllegalStateException("STARK preflight result has already been consumed")
+      isPending = false
+      continuation
+    }
   }
 
   /** This method uses the new JIT costing with direct ErgoTree execution. It is used in
@@ -205,26 +374,175 @@ trait Interpreter {
                     env: ScriptEnv): ReductionResult = {
     val context = ctx.withErgoTreeVersion(ergoTree.version).asInstanceOf[CTX]
     VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+      val topLevelSoftFork = isTopLevelSoftFork(ergoTree, context)
       val prop = propositionFromErgoTree(ergoTree, context)
-
-      val res = prop match {
-        case SigmaPropConstant(p) =>
-          val sb = SigmaDsl.toSigmaBoolean(p)
-
-          // NOTE, evaluator cost unit needs to be scaled to the cost unit of context
-          val evalCost = Eval_SigmaPropConstant.costKind.cost.toBlockCost
-          val resCost = addCostChecked(context.initCost, evalCost, context.costLimit)
-          ReductionResult(sb, resCost)
-        case _ if !ergoTree.hasDeserialize =>
-          val ctx = context.asInstanceOf[ErgoLikeContext]
-          val res = VersionContext.withVersions(ctx.activatedScriptVersion, ergoTree.version) {
-            CErgoTreeEvaluator.evalToCrypto(ctx, ergoTree, evalSettings)
-          }
-          res
-        case _ =>
-          reductionWithDeserialize(ergoTree, prop, context, env)
+      if (ergoTree.version < VerifyStarkMinErgoTreeVersion) {
+        val seenVerifyStark = containsVerifyStark(prop)
+        if (seenVerifyStark) rejectLegacyVerifyStark(ergoTree.version)
+        prop match {
+          case SigmaPropConstant(p) =>
+            reduceSigmaPropConstant(context, p)
+          case _ if !ergoTree.hasDeserialize =>
+            val ergoContext = context.asInstanceOf[ErgoLikeContext]
+            VersionContext.withVersions(ergoContext.activatedScriptVersion, ergoTree.version) {
+              CErgoTreeEvaluator.evalToCrypto(ergoContext, ergoTree, evalSettings)
+            }
+          case _ =>
+            reductionWithDeserialize(ergoTree, prop, context, env)
+        }
+      } else if (topLevelSoftFork) {
+        reduceSigmaPropConstant(context, TrueSigmaProp.value)
+      } else {
+        preflightV4(ergoTree, prop, context) match {
+          case Left(terminal)   => terminal
+          case Right(preflight) => continueClaimedV4(preflight.takeContinuation(), preflight.plan)
+        }
       }
-      res
+    }
+  }
+
+  private def reduceSigmaPropConstant(context: CTX, proposition: sigma.SigmaProp): ReductionResult = {
+    val sb = SigmaDsl.toSigmaBoolean(proposition)
+    val evalCost = Eval_SigmaPropConstant.costKind.cost.toBlockCost
+    val resCost = addCostChecked(context.initCost, evalCost, context.costLimit)
+    ReductionResult(sb, resCost)
+  }
+
+  /** Performs the v4+ single-pass deserialization and structural scan without
+    * evaluating user logic or invoking a STARK runtime. A soft-fork terminal is
+    * returned as `Left`; only a complete preflight produces a single-use
+    * continuation.
+    */
+  def preflightFullReduction(
+      ergoTree: ErgoTree,
+      ctx: CTX): Either[ReductionResult, StarkPreflightResult] = {
+    val treeVersion = effectiveTreeVersion(ergoTree)
+    if (treeVersion < VerifyStarkMinErgoTreeVersion)
+      throw new IllegalArgumentException(
+        s"STARK preflight requires ErgoTree version $VerifyStarkMinErgoTreeVersion or higher; got $treeVersion")
+
+    checkSoftForkCondition(ergoTree, ctx) match {
+      case Some((accepted, cost)) =>
+        Left(ReductionResult(if (accepted) TrivialProp.TrueProp else TrivialProp.FalseProp, cost))
+      case None =>
+        val context = ctx.withErgoTreeVersion(ergoTree.version).asInstanceOf[CTX]
+        VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+          if (isTopLevelSoftFork(ergoTree, context)) {
+            Left(reduceSigmaPropConstant(context, TrueSigmaProp.value))
+          } else {
+            val prop = propositionFromErgoTree(ergoTree, context)
+            preflightV4(ergoTree, prop, context)
+          }
+        }
+    }
+  }
+
+  /** Consumes a successful v4+ preflight exactly once and evaluates the script
+    * after enforcing capability availability and future-generation stale-node
+    * policy.
+    */
+  def continueFullReduction(preflight: StarkPreflightResult): ReductionResult = {
+    val continuation = preflight.takeContinuation()
+    VersionContext.withVersions(
+      continuation.context.activatedScriptVersion,
+      continuation.ergoTree.version) {
+      continueClaimedV4(continuation, preflight.plan)
+    }
+  }
+
+  private def preflightV4(
+      ergoTree: ErgoTree,
+      prop: SigmaPropValue,
+      context: CTX): Either[ReductionResult, StarkPreflightResult] = {
+    if (!ergoTree.hasDeserialize) {
+      val plan = scanVerifyStarkOccurrences(Seq(prop), ergoTree.constants)
+      Right(new StarkPreflightResult(
+        plan,
+        new StarkContinuation(ergoTree, context, prop, useDirectErgoTree = true)))
+    } else {
+      implicit val vs: SigmaValidationSettings = context.validationSettings
+      val deserializeSubstitutionCost = java7.compat.Math.multiplyExact(ergoTree.bytes.length, CostPerTreeByte)
+      val currCost = addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
+      val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
+      val shadowedDefaults = ArrayBuffer.empty[SValue]
+
+      val result = trySoftForkable[Either[ReductionResult, (SigmaPropValue, CTX)]](
+        whenSoftFork = Left(WhenSoftForkReductionResult(context1.initCost))) {
+        val (propTree, context2) = applyDeserializeContextJITC(
+          context1,
+          prop,
+          onShadowedDefault = d => shadowedDefaults += d)
+        Right((propTree, context2))
+      }
+
+      result match {
+        case Left(terminal) => Left(terminal)
+        case Right((propTree, context2)) =>
+          val roots = propTree +: shadowedDefaults.toSeq
+          val plan = scanVerifyStarkOccurrences(roots, ergoTree.constants)
+          Right(new StarkPreflightResult(
+            plan,
+            new StarkContinuation(ergoTree, context2, propTree, useDirectErgoTree = false)))
+      }
+    }
+  }
+
+  /** Enforces EIP-0045 capability availability and future-generation stale-node
+    * rules before any user expression or `dispatchJit` executes.
+    *
+    * @return `Some(terminal)` when a stale node must soft-fork-accept the whole
+    *         input, or `None` when normal evaluation may proceed.
+    */
+  private def evaluateStarkPolicy(
+      context: CTX,
+      plan: StarkPreflightPlan): Option[ReductionResult] = {
+    if (plan.occurrences.isEmpty) return None
+
+    context.starkVerificationCapability match {
+      case Unavailable =>
+        rejectUnavailableVerifyStark()
+
+      case snapshot: Snapshot if snapshot.isFutureGeneration =>
+        snapshot.validationPurpose match {
+          case HistoricalBlockValidation =>
+            val allKnownStatic = plan.occurrences.forall {
+              case StarkPreflightOccurrence(id: StaticStarkProfileId) =>
+                snapshot.isKnownProfile(id.bytes)
+              case _ => false
+            }
+            if (allKnownStatic) None
+            else Some(WhenSoftForkReductionResult(context.initCost))
+
+          case AdmissionValidation | CandidateConstruction | ProverReduction =>
+            throw new StarkUnsupportedFutureGenerationException(
+              snapshot.starkGeneration,
+              snapshot.maxSupportedStarkGeneration,
+              s"STARK generation ${snapshot.starkGeneration} exceeds supported maximum " +
+                s"${snapshot.maxSupportedStarkGeneration} for ${snapshot.validationPurpose}")
+        }
+
+      case _: Snapshot =>
+        None
+    }
+  }
+
+  private def continueClaimedV4(
+      continuation: StarkContinuation,
+      plan: StarkPreflightPlan): ReductionResult = {
+    evaluateStarkPolicy(continuation.context, plan) match {
+      case Some(terminal) => terminal
+      case None =>
+        if (continuation.useDirectErgoTree) {
+          continuation.proposition match {
+            case SigmaPropConstant(p) =>
+              reduceSigmaPropConstant(continuation.context, p)
+            case _ =>
+              val ergoContext = continuation.context.asInstanceOf[ErgoLikeContext]
+              CErgoTreeEvaluator.evalToCrypto(ergoContext, continuation.ergoTree, evalSettings)
+          }
+        } else {
+          reduceToCryptoJITC(continuation.context, continuation.proposition).getOrThrow
+        }
     }
   }
 
@@ -236,13 +554,14 @@ trait Interpreter {
     fullReduction(ergoTree, ctx, Interpreter.emptyEnv)
   }
 
-  /** Performs reduction of proposition which contains deserialization operations. */
+  /** Performs reduction of v0-v3 proposition which contains deserialization operations. */
   private def reductionWithDeserialize(ergoTree: ErgoTree,
                                        prop: SigmaPropValue,
                                        context: CTX,
                                        env: ScriptEnv): ReductionResult = {
     implicit val vs: SigmaValidationSettings = context.validationSettings
     val res = VersionContext.withVersions(context.activatedScriptVersion, ergoTree.version) {
+      val seenVerifyStark = new MutableCell(false)
       val deserializeSubstitutionCost = java7.compat.Math.multiplyExact(ergoTree.bytes.length, CostPerTreeByte)
       val currCost = addCostChecked(context.initCost, deserializeSubstitutionCost, context.costLimit)
       val context1 = context.withInitCost(currCost).asInstanceOf[CTX]
@@ -252,12 +571,23 @@ trait Interpreter {
         // This change is okay for older clients (< V6), as they are getting cost which is less than for new clients
         // So when new clients are accepting V6 block with deserialization costs added, V5 clients will accept them also
         // And blocks are generated by V6 clients (90+% at least) after V6 activation
-        applyDeserializeContextJITC(if (VersionContext.current.isV6Activated) {
-          context1
-        } else {
-          context
-        }, prop)
+        try {
+          applyDeserializeContextJITC(
+            if (VersionContext.current.isV6Activated) context1 else context,
+            prop,
+            onInserted = inserted => {
+              if (containsVerifyStark(inserted)) seenVerifyStark.value = true
+            })
+        } catch {
+          case ve: ValidationException if isVerifyStarkOpCodeError(ve) =>
+            // 0xB9 inside a v0-v3 DeserializeContext/Register must fail with the
+            // deterministic version exception even when rule 1002 enables 0xB9 for v4+.
+            rejectLegacyVerifyStark(ergoTree.version)
+        }
       }
+
+      if (seenVerifyStark.value)
+        rejectLegacyVerifyStark(ergoTree.version)
 
       // here we assume that when `propTree` is TrueProp then `reduceToCrypto` always succeeds
       // and the rest of the verification is also trivial
@@ -484,6 +814,56 @@ trait Interpreter {
 }
 
 object Interpreter {
+  final val VerifyStarkMinErgoTreeVersion: Int =
+    VersionContext.StarkVerificationVersion.toInt
+
+  /** Structural classification of a materialized VerifyStark profileId.
+    * Classification never evaluates the expression.
+    */
+  sealed trait StarkProfileIdClassification
+
+  /** Exact, structurally static 32-byte profile identifier. */
+  final class StaticStarkProfileId private[interpreter] (sourceBytes: Array[Byte])
+      extends StarkProfileIdClassification {
+    private val storedBytes = sourceBytes.clone()
+
+    def bytes: Array[Byte] = storedBytes.clone()
+
+    override def equals(other: Any): Boolean = other match {
+      case that: StaticStarkProfileId =>
+        java.util.Arrays.equals(storedBytes, that.storedBytes)
+      case _ => false
+    }
+
+    override def hashCode(): Int = java.util.Arrays.hashCode(storedBytes)
+
+    override def toString: String =
+      s"StaticStarkProfileId(${storedBytes.length} bytes)"
+  }
+
+  private[interpreter] object StaticStarkProfileId {
+    def apply(bytes: Array[Byte]): StaticStarkProfileId =
+      new StaticStarkProfileId(bytes)
+  }
+
+  /** The profileId expression requires evaluator execution. */
+  case object DynamicStarkProfileId extends StarkProfileIdClassification
+
+  /** A constant/placeholder shape exists, but does not resolve to an exact 32-byte ID. */
+  case object MalformedStarkProfileId extends StarkProfileIdClassification
+
+  /** One structurally present VerifyStark occurrence in canonical DFS order. */
+  final case class StarkPreflightOccurrence(profileId: StarkProfileIdClassification)
+
+  /** Immutable preflight plan produced after v4+ single-pass deserialization. */
+  final class StarkPreflightPlan private[interpreter] (
+      val occurrences: IndexedSeq[StarkPreflightOccurrence])
+
+  private[interpreter] object StarkPreflightPlan {
+    def apply(occurrences: IndexedSeq[StarkPreflightOccurrence]): StarkPreflightPlan =
+      new StarkPreflightPlan(occurrences.toVector)
+  }
+
   /** Result of Box.ergoTree verification procedure (see `verify` method).
     * The first component is the value of Boolean type which represents a result of
     * SigmaProp condition verification via sigma protocol.

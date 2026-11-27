@@ -9,6 +9,13 @@ import sigma.serialization.ValueSerializer._
 
 case class ValDefSerializer(override val opDesc: ValueCompanion) extends ValueSerializer[ValDef] {
 
+  override protected def getValueChildren(obj: ValDef): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.rhs)
+
+  override protected def rebuildValueNode(
+      obj: ValDef,
+      children: IndexedSeq[Value[SType]]): Value[SType] = ValDef(obj.id, obj.tpeArgs, children(0))
+
   override def serialize(obj: ValDef, w: SigmaByteWriter): Unit = {
     w.putUInt(obj.id)
     optional("type arguments") {

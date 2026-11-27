@@ -13,6 +13,14 @@ case class SelectFieldSerializer(cons: (Value[STuple], Byte) => Value[SType]) ex
   val inputInfo: DataInfo[SValue] = inputArg
   val fieldIndexInfo: DataInfo[Byte] = fieldIndexArg
 
+  override protected def getValueChildren(obj: SelectField): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.input)
+
+  override protected def rebuildValueNode(
+      obj: SelectField,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asValue[STuple], obj.fieldIndex)
+
   override def serialize(obj: SelectField, w: SigmaByteWriter): Unit =
     w.putValue(obj.input, inputInfo)
       .put(obj.fieldIndex, fieldIndexInfo)

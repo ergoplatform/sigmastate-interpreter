@@ -12,6 +12,13 @@ case class DeserializeContextSerializer(cons: (Byte, SType) => Value[SType])
   val typeInfo: DataInfo[SType] = ArgInfo("type", "expected type of the deserialized script")
   val idInfo: DataInfo[Byte] = DeserializeContextInfo.idArg
 
+  override protected def getValueChildren(
+      obj: DeserializeContext[SType]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: DeserializeContext[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def serialize(obj: DeserializeContext[SType], w: SigmaByteWriter): Unit =
     w.putType(obj.tpe, typeInfo)
       .put(obj.id, idInfo)
