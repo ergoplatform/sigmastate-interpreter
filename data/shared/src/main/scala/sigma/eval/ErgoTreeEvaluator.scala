@@ -1,6 +1,6 @@
 package sigma.eval
 
-import sigma.{AvlTree, Coll, Context, Header}
+import sigma.{AvlTree, Coll, Context}
 import sigma.ast.{Constant, FixedCost, MethodCall, OperationCostInfo, OperationDesc, PerItemCost, SType, TypeBasedCost}
 import sigma.data.KeyValueColl
 
@@ -86,6 +86,13 @@ abstract class ErgoTreeEvaluator {
 
   /** Settings to be used during evaluation. */
   def settings: EvalSettings
+
+  /** Trusted EIP-0045 capability selected for this exact invocation.
+    * Existing evaluator implementations remain fail-closed until they
+    * explicitly override this member and receive a node-owned snapshot.
+    */
+  def starkVerificationCapability: StarkVerificationCapability =
+    StarkVerificationCapability.Unavailable
 
   /** Performs operations profiling and time measurements (if enabled in settings). */
   def profiler: Profiler

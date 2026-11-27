@@ -12,6 +12,15 @@ case class OptionGetOrElseSerializer(cons: (Value[SOption[SType]], Value[SType])
   val thisInfo: DataInfo[SValue] = thisArg
   val defaultInfo: DataInfo[SValue] = defaultArg
 
+  override protected def getValueChildren(
+      obj: OptionGetOrElse[_ <: SType]): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.input, obj.default)
+
+  override protected def rebuildValueNode(
+      obj: OptionGetOrElse[_ <: SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asValue[SOption[SType]], children(1))
+
   override def serialize(obj: OptionGetOrElse[_ <: SType], w: SigmaByteWriter): Unit =
     w.putValue(obj.input, thisInfo)
       .putValue(obj.default, defaultInfo)

@@ -14,6 +14,15 @@ case class QuadrupleSerializer[S1 <: SType, S2 <: SType, S3 <: SType, S4 <: STyp
   val secondInfo: DataInfo[SValue] = opDesc.argInfos(1)
   val thirdInfo: DataInfo[SValue] = opDesc.argInfos(2)
 
+  override protected def getValueChildren(
+      obj: Quadruple[S1, S2, S3, S4]): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.first, obj.second, obj.third)
+
+  override protected def rebuildValueNode(
+      obj: Quadruple[S1, S2, S3, S4],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asValue[S1], children(1).asValue[S2], children(2).asValue[S3])
+
   override def serialize(obj: Quadruple[S1, S2, S3, S4], w: SigmaByteWriter): Unit = {
     w.putValue(obj.first, firstInfo)
     w.putValue(obj.second, secondInfo)

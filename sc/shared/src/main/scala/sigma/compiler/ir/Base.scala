@@ -218,6 +218,25 @@ abstract class Base { thisIR: IRContext =>
     override def resultType: Elem[V#WrappedType] = e
   }
 
+  /**
+   * Graph node which preserves the four consensus-ordered VerifyStark children while
+   * allowing the compiler to transform each child independently.
+   */
+  case class VerifyStarkDef(
+      proofChunks: Ref[Coll[Coll[Byte]]],
+      applicationPayload: Ref[Coll[Byte]],
+      programId: Ref[Coll[Byte]],
+      profileId: Ref[Coll[Byte]]) extends Def[Boolean] {
+    override def resultType: Elem[Boolean] = BooleanElement
+
+    override def transform(t: Transformer): Def[Boolean] =
+      VerifyStarkDef(
+        t(proofChunks),
+        t(applicationPayload),
+        t(programId),
+        t(profileId))
+  }
+
   /** Base class for virtualized instances of type companions.
     * Each virtualized entity type (trait or class) may have virtualized companion class. */
   abstract class CompanionDef[T] extends Def[T] {

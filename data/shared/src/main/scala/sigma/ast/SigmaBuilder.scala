@@ -78,6 +78,11 @@ abstract class SigmaBuilder {
   def mkCalcSha256(input: Value[SByteArray]): Value[SByteArray]
   def mkDecodePoint(input: Value[SByteArray]): GroupElementValue
 
+  def mkVerifyStark(proofChunks: SValue,
+                    applicationPayload: SValue,
+                    programId: SValue,
+                    profileId: SValue): BoolValue
+
   def mkAppend[IV <: SType](input: Value[SCollection[IV]],
                             col2: Value[SCollection[IV]]): Value[SCollection[IV]]
 
@@ -408,6 +413,28 @@ class StdSigmaBuilder extends SigmaBuilder {
 
   override def mkDecodePoint(input: Value[SByteArray]): GroupElementValue =
     DecodePoint(input).withSrcCtx(currentSrcCtx.value)
+
+  override def mkVerifyStark(proofChunks: SValue,
+                             applicationPayload: SValue,
+                             programId: SValue,
+                             profileId: SValue): BoolValue = {
+    val expectedTypes = VerifyStark.OpType.tDom
+    val args = IndexedSeq(proofChunks, applicationPayload, programId, profileId)
+    var i = 0
+    while (i < args.length) {
+      if (args(i).tpe != expectedTypes(i)) {
+        throw new ConstraintFailed(
+          s"Invalid VerifyStark argument $i type ${args(i).tpe}; expected ${expectedTypes(i)}")
+      }
+      i += 1
+    }
+    VerifyStark(
+      proofChunks.asValue[SCollection[SCollection[SByte.type]]],
+      applicationPayload.asByteArray,
+      programId.asByteArray,
+      profileId.asByteArray
+    ).withSrcCtx(currentSrcCtx.value)
+  }
 
   override def mkMapCollection[IV <: SType, OV <: SType](input: Value[SCollection[IV]],
                                                          mapper: Value[SFunc]): Value[SCollection[OV]] =

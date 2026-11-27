@@ -14,6 +14,18 @@ object SubstConstantsSerializer extends ValueSerializer[SubstConstants[SType]] {
   val positionsInfo: DataInfo[SValue] = positionsArg
   val newValuesInfo: DataInfo[SValue] = newValuesArg
 
+  override protected def getValueChildren(
+      obj: SubstConstants[SType]): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.scriptBytes, obj.positions, obj.newValues)
+
+  override protected def rebuildValueNode(
+      obj: SubstConstants[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    SubstConstants(
+      children(0).asValue[SByteArray],
+      children(1).asValue[SIntArray],
+      children(2).asValue[SCollection[SType]])
+
   def serialize(obj: SubstConstants[SType], w: SigmaByteWriter): Unit = {
     w.putValue(obj.scriptBytes, scriptBytesInfo)
     w.putValue(obj.positions, positionsInfo)

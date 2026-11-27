@@ -5,6 +5,12 @@ import sigma.ast._
 case class ValUseSerializer(cons: (Int, SType) => Value[SType]) extends ValueSerializer[ValUse[SType]] {
   override def opDesc = ValUse
 
+  override protected def getValueChildren(obj: ValUse[SType]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: ValUse[SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def serialize(obj: ValUse[SType], w: SigmaByteWriter): Unit = {
     w.putUInt(obj.valId)
   }

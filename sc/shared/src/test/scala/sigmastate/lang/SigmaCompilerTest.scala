@@ -3,7 +3,9 @@ package sigmastate.lang
 import org.ergoplatform.ErgoAddressEncoder.TestnetNetworkPrefix
 import org.ergoplatform._
 import scorex.util.encode.Base58
+import sigma.VersionContext
 import sigma.ast.{ByIndex, ExtractAmount, GetVar, _}
+import sigma.ast.SCollection.SByteArray
 import sigma.ast.syntax._
 import sigmastate._
 import sigmastate.helpers.CompilerTestingCommons
@@ -87,6 +89,39 @@ class SigmaCompilerTest extends CompilerTestingCommons with LangTests with Objec
     comp(env, "getVar[Short](10).get") shouldBe GetVarShort(10).get
     comp(env, "getVar[Long](10).get") shouldBe GetVarLong(10).get
     comp(env, "getVar[Coll[Byte]](10).get") shouldBe GetVarByteArray(10).get
+  }
+
+  property("verifyStark compiles under ErgoTree v4 and is rejected by compiler for v0-v3") {
+    val script =
+      "verifyStark(getVar[Coll[Coll[Byte]]](1).get, getVar[Coll[Byte]](2).get, getVar[Coll[Byte]](3).get, getVar[Coll[Byte]](4).get)"
+    val expected = VerifyStark(
+      OptionGet(GetVar(1.toByte, SCollection(SByteArray))),
+      OptionGet(GetVar(2.toByte, SByteArray)),
+      OptionGet(GetVar(3.toByte, SByteArray)),
+      OptionGet(GetVar(4.toByte, SByteArray))
+    )
+
+    (0 to 3).foreach { v =>
+      VersionContext.withVersions(3, v.toByte) {
+        val ex = the[TyperException] thrownBy compile(Map.empty, script)
+        ex.getMessage should include("verifyStark requires ErgoTree version 4")
+      }
+    }
+
+    VersionContext.withVersions(4, 4) {
+      compile(Map.empty, script) shouldBe expected
+    }
+  }
+
+  property("verifyStark rejects wrong types and arity three or five under v4") {
+    VersionContext.withVersions(4, 4) {
+      an[TyperException] should be thrownBy
+        compile(Map.empty, "verifyStark(getVar[Coll[Byte]](1).get, getVar[Coll[Byte]](2).get, getVar[Coll[Byte]](3).get, getVar[Coll[Byte]](4).get)")
+      an[TyperException] should be thrownBy
+        compile(Map.empty, "verifyStark(getVar[Coll[Coll[Byte]]](1).get, getVar[Coll[Byte]](2).get, getVar[Coll[Byte]](3).get)")
+      an[TyperException] should be thrownBy
+        compile(Map.empty, "verifyStark(getVar[Coll[Coll[Byte]]](1).get, getVar[Coll[Byte]](2).get, getVar[Coll[Byte]](3).get, getVar[Coll[Byte]](4).get, getVar[Coll[Byte]](5).get)")
+    }
   }
 
   property("global methods") {

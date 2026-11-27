@@ -21,6 +21,13 @@ case class TaggedVariableSerializer(cons: (Byte, SType) => Value[SType])
   extends ValueSerializer[TaggedVariable[_ <: SType]] {
   override def opDesc = TaggedVariable
 
+  override protected def getValueChildren(
+      obj: TaggedVariable[_ <: SType]): IndexedSeq[Value[SType]] = Value.EmptySeq
+
+  override protected def rebuildValueNode(
+      obj: TaggedVariable[_ <: SType],
+      children: IndexedSeq[Value[SType]]): Value[SType] = obj
+
   override def serialize(obj: TaggedVariable[_ <: SType], w: SigmaByteWriter): Unit =
     w.put(obj.varId)
       .putType(obj.tpe)

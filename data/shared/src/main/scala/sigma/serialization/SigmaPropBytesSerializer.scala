@@ -10,6 +10,14 @@ object SigmaPropBytesSerializer extends ValueSerializer[SigmaPropBytes] {
   override def opDesc = SigmaPropBytes
   val thisInfo: DataInfo[SValue] = thisArg
 
+  override protected def getValueChildren(obj: SigmaPropBytes): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.input)
+
+  override protected def rebuildValueNode(
+      obj: SigmaPropBytes,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    SigmaPropBytes(children(0).asInstanceOf[Value[sigma.ast.SSigmaProp.type]])
+
   def serialize(obj: SigmaPropBytes, w: SigmaByteWriter): Unit = {
     w.putValue(obj.input, thisInfo)
   }

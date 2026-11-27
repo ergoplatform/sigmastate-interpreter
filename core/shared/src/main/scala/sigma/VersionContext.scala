@@ -1,6 +1,6 @@
 package sigma
 
-import VersionContext.{JitActivationVersion, V6SoftForkVersion}
+import VersionContext.{JitActivationVersion, StarkVerificationVersion, V6SoftForkVersion}
 
 import scala.util.DynamicVariable
 
@@ -28,9 +28,16 @@ case class VersionContext(activatedVersion: Byte, ergoTreeVersion: Byte) {
     */
   def isV3OrLaterErgoTreeVersion: Boolean = ergoTreeVersion >= V6SoftForkVersion
 
+  /** @return true if tree version is v4 or later (first version admitting EIP-0045 VerifyStark). */
+  def isV4OrLaterErgoTreeVersion: Boolean = ergoTreeVersion >= StarkVerificationVersion
+
   /** @return true, if the activated script version of Ergo protocol on the network is
     * including v6.0 update. */
   def isV6Activated: Boolean = activatedVersion >= V6SoftForkVersion
+
+  /** @return true, if the activated script version of Ergo protocol on the network is
+    * including v4 script support. */
+  def isV4Activated: Boolean = activatedVersion >= StarkVerificationVersion
 
 }
 
@@ -45,7 +52,10 @@ object VersionContext {
     * - in v6.x must be 3
     * etc.
     */
-  val MaxSupportedScriptVersion: Byte = 3 // supported versions 0, 1, 2, 3
+  /** First ErgoTree version in which EIP-0045 VerifyStark is admissible. */
+  val StarkVerificationVersion: Byte = 4
+
+  val MaxSupportedScriptVersion: Byte = StarkVerificationVersion // supported versions 0 through 4
 
   /** The first version of ErgoTree starting from which the JIT costing interpreter is used. */
   val JitActivationVersion: Byte = 2

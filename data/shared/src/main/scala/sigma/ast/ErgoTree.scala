@@ -382,19 +382,23 @@ object ErgoTree {
     * @param prop        expression to be transformed into ErgoTree
     * */
   def withSegregation(header: HeaderType, prop: SigmaPropValue): ErgoTree = {
-    val constantStore = new ConstantStore()
-    val w             = SigmaSerializer.startWriter(Some(constantStore))
-    // serialize value and segregate constants into constantStore
-    ValueSerializer.serialize(prop, w)
-    val extractedConstants = constantStore.getAll
-    val r                  = SigmaSerializer.startReader(w.toBytes)
-    r.constantStore = new ConstantStore(extractedConstants)
-    // deserialize value with placeholders
-    val valueWithPlaceholders = ValueSerializer.deserialize(r).asSigmaProp
-    new ErgoTree(
-      header = setRequiredBits(setConstantSegregation(header)),
-      constants = extractedConstants,
-      root = Right(valueWithPlaceholders))
+    val treeVersion = getVersion(header)
+    val scriptVersion = Math.max(sigma.VersionContext.current.activatedVersion, treeVersion).toByte
+    sigma.VersionContext.withVersions(scriptVersion, treeVersion) {
+      val constantStore = new ConstantStore()
+      val w             = SigmaSerializer.startWriter(Some(constantStore))
+      // serialize value and segregate constants into constantStore
+      ValueSerializer.serialize(prop, w)
+      val extractedConstants = constantStore.getAll
+      val r                  = SigmaSerializer.startReader(w.toBytes)
+      r.constantStore = new ConstantStore(extractedConstants)
+      // deserialize value with placeholders
+      val valueWithPlaceholders = ValueSerializer.deserialize(r).asSigmaProp
+      new ErgoTree(
+        header = setRequiredBits(setConstantSegregation(header)),
+        constants = extractedConstants,
+        root = Right(valueWithPlaceholders))
+    }
   }
 
   /** Deserializes an ErgoTree instance from a hexadecimal string.

@@ -306,6 +306,11 @@ class SigmaTyper(val builder: SigmaBuilder,
           val actualTypes = adaptedTypedArgs.map(_.tpe)
           unifyTypeLists(argTypes, actualTypes) match {
             case Some(_) =>
+              if (new_f == VerifyStarkFunc.sym && !VersionContext.current.isV4OrLaterErgoTreeVersion) {
+                error(
+                  s"verifyStark requires ErgoTree version ${VersionContext.StarkVerificationVersion} or higher; current target version is ${VersionContext.current.ergoTreeVersion}",
+                  app.sourceContext)
+              }
               mkApply(new_f, adaptedTypedArgs.toArray[SValue])
             case None =>
               error(s"Invalid argument type of application $app: expected $argTypes; actual after typing: $actualTypes", app.sourceContext)

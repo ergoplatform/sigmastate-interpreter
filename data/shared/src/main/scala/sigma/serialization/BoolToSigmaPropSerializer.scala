@@ -10,6 +10,14 @@ case class BoolToSigmaPropSerializer(cons: BoolValue => SigmaPropValue) extends 
   override def opDesc = BoolToSigmaProp
   val conditionInfo: DataInfo[SValue] = conditionArg
 
+  override protected def getValueChildren(obj: BoolToSigmaProp): IndexedSeq[Value[SType]] =
+    IndexedSeq(obj.value)
+
+  override protected def rebuildValueNode(
+      obj: BoolToSigmaProp,
+      children: IndexedSeq[Value[SType]]): Value[SType] =
+    cons(children(0).asInstanceOf[BoolValue])
+
   def serialize(obj: BoolToSigmaProp, w: SigmaByteWriter): Unit = {
     w.putValue(obj.value, conditionInfo)
   }
