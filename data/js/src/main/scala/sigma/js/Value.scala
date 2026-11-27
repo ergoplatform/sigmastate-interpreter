@@ -71,6 +71,12 @@ object Value extends js.Object {
   /** Minimal negative value of ES type Long */
   val MinLong = -js.BigInt("0x8000000000000000")
 
+  /** Minimal value of ES type UnsignedBigInt */
+  val MinUnsignedBigInt = js.BigInt("0")
+
+  /** Maximal value of ES type UnsignedBigInt (2^256 - 1) */
+  val MaxUnsignedBigInt = js.BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+
   /** Helper method to get Sigma runtime value which can be passed to interpreter, saved
     * in register and [[sigma.ast.Constant]] nodes.
     */
@@ -125,8 +131,8 @@ object Value extends js.Object {
       val hex = value.asInstanceOf[sigma.BigInt].toBigInteger.toString(10)
       js.BigInt(hex)
     case sigma.UnsignedBigIntRType =>
-      val hex = value.asInstanceOf[sigma.BigInt].toBigInteger.toString(10)
-      js.BigInt(hex)
+      val dec = value.asInstanceOf[CUnsignedBigInt].wrappedValue.toString(10)
+      js.BigInt(dec)
     case sigma.GroupElementRType =>
       val point = value.asInstanceOf[CGroupElement].wrappedValue.asInstanceOf[Platform.Ecp]
       new GroupElement(point)
@@ -165,7 +171,10 @@ object Value extends js.Object {
     case sigma.BigIntRType =>
       data.asInstanceOf[js.BigInt]
     case sigma.UnsignedBigIntRType =>
-      data.asInstanceOf[js.BigInt]
+      val n = data.asInstanceOf[js.BigInt]
+      if (n < MinUnsignedBigInt || n > MaxUnsignedBigInt)
+        throw new ArithmeticException(s"value $n is out of UnsignedBigInt range")
+      n
     case sigma.GroupElementRType =>
       data.asInstanceOf[GroupElement]
     case sigma.SigmaPropRType =>
