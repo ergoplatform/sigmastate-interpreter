@@ -1,6 +1,7 @@
 package sigma.ast
 
 import sigma.Coll
+import sigma.pow.Autolykos2PowValidation
 
 import scala.runtime.Statics
 
@@ -23,7 +24,10 @@ case class FixedCost(cost: JitCost) extends CostKind {
   */
 case class PerItemCost(baseCost: JitCost, perChunkCost: JitCost, chunkSize: Int) extends CostKind {
   /** Compute number of chunks necessary to cover the given number of items. */
-  def chunks(nItems: Int) = (nItems - 1) / chunkSize + 1
+  def chunks(nItems: Int) = {
+    require(nItems >= 0, s"Negative nItems: $nItems")
+    (nItems - 1) / chunkSize + 1
+  }
 
   /** Computes the cost for the given number of items. */
   def cost (nItems: Int): JitCost = {
@@ -69,6 +73,24 @@ object NumericCastCostKind extends TypeBasedCost {
   * Cost of Global.powHit method, which is dependent on few parameters, see cost() function description
   */
 object PowHitCostKind extends CostKind {
+
+  /** Cost of Autolykos 2 hashing for the given input lengths, including the
+    * constant 8 KiB `M` payload hashed on each of the `k + 1` iterations.
+    */
+  def costForAutolykos2(k: Int, msgLength: Int, nonceLength: Int, hLength: Int): JitCost = {
+    val chunkSize = CalcBlake2b256.costKind.chunkSize
+    val perChunkCost = CalcBlake2b256.costKind.perChunkCost
+    val baseCost = 500
+    val payloadLength = msgLength + nonceLength + hLength + Autolykos2PowValidation.M.length
+    JitCost(baseCost + (k + 1) * (payloadLength / chunkSize + 1) * perChunkCost.value)
+  }
+
+  /** Cost of Autolykos 2 header proof-of-work validation.
+    *
+    * This is 15,515 JIT units: `500 + 33 * ((32 + 8 + 4 + 8192) / 128 + 1) * 7`.
+    */
+  val Autolykos2CheckPowCost: JitCost = costForAutolykos2(32, 32, 8, 4)
+
   /**
     * @param k - k parameter of Autolykos 2 (number of inputs in k-sum problem)"
     * @param msg - message to calculate Autolykos hash 2 for
@@ -76,15 +98,8 @@ object PowHitCostKind extends CostKind {
     * @param h - PoW protocol specific padding for table uniqueness (e.g. block height in Ergo)
     * @return cost of custom Autolykos2 hash function invocation
     */
-  def cost(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte]): JitCost = {
-    val chunkSize = CalcBlake2b256.costKind.chunkSize
-    val perChunkCost = CalcBlake2b256.costKind.perChunkCost
-    val baseCost = 500
-
-    // the heaviest part inside is k + 1 Blake2b256 invocations
-    val c = baseCost + (k + 1) * ((msg.length + nonce.length + h.length) / chunkSize + 1) * perChunkCost.value
-    JitCost(c)
-  }
+  def cost(k: Int, msg: Coll[Byte], nonce: Coll[Byte], h: Coll[Byte]): JitCost =
+    costForAutolykos2(k, msg.length, nonce.length, h.length)
 }
 
 

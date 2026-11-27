@@ -224,6 +224,7 @@ trait Interpreter {
         case _ =>
           reductionWithDeserialize(ergoTree, prop, context, env)
       }
+      SigmaBoolean.checkDepth(res.value)
       res
     }
   }

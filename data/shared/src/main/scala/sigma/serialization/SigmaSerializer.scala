@@ -66,6 +66,21 @@ object SigmaSerializer {
     val w = new SigmaByteWriter(wi, constantExtractionStore = constantExtractionStore, addFixedCostCallback, addPerItemCostCallback)
     w
   }
+
+  /** Helper function to be use in serializers.
+    * Same as [[startWriter()]], but with a custom output limit
+    * (see [[SigmaByteWriter.maxLength]]) and cost callbacks.
+    */
+  def startWriter(
+      maxLength: Int,
+      addFixedCostCallback: Option[FixedCostCallback],
+      addPerItemCostCallback: Option[PerItemCostCallback]
+  ): SigmaByteWriter = {
+    val b = new ByteArrayBuilder()
+    val wi = new VLQByteBufferWriter(b)
+    val w = new SigmaByteWriter(wi, constantExtractionStore = None, addFixedCostCallback, addPerItemCostCallback, maxLength = maxLength)
+    w
+  }
 }
 
 abstract class SigmaSerializer[TFamily, T <: TFamily] extends Serializer[TFamily, T, SigmaByteReader, SigmaByteWriter] {

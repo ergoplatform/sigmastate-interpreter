@@ -15,6 +15,19 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
 
   def squared[A](f: A => A): ((A, A)) => (A, A) = (p: (A, A)) => (f(p._1), f(p._2))
 
+  def oldFlatMap[A, B: RType](xs: Coll[A], f: A => Coll[B]): Coll[B] = {
+    implicit val ctB = RType[B].classTag
+    xs.builder.fromArray(xs.toArray.flatMap(x => f(x).toArray))
+  }
+
+  def checkFlatMapEquivalence[A, B: RType](xs: Coll[A], f: A => Coll[B]): Unit = {
+    val expected = oldFlatMap(xs, f)
+    val actual = xs.flatMap(f)
+    actual.toArray shouldBe expected.toArray
+    actual.tItem shouldBe expected.tItem
+    actual.toArray.getClass shouldBe expected.toArray.getClass
+  }
+
   property("Coll.indices") {
     val minSuccess = MinSuccessful(30)
     forAll(collGen, collGen, minSuccess) { (col1: Coll[Int], _: Coll[Int]) =>
@@ -80,13 +93,41 @@ class CollsTests extends AnyPropSpec with ScalaCheckPropertyChecks with Matchers
     }
   }
 
-  property("Coll.flatMap") {
-    implicit val t: Coll[Int] => Traversable[Int] = traversableColl
-    forAll(containerOfN[Coll, Int](3, valGen), collGen) { (zs, col) =>
-      val matrix = zs.map(_ => col)
-      val res = zs.zip(matrix).flatMap(_._2)
-      res.toArray shouldBe zs.toArray.flatMap(_ => col.toArray)
+  property("Coll.flatMap equivalence with Array.flatMap") {
+    forAll(collGen, collGen, bytesGen) { (xs, intChunks, byteChunks) =>
+      def intChunk(x: Int): Coll[Int] = x % 3 match {
+        case 0 => builder.emptyColl[Int]
+        case 1 => intChunks
+        case _ => intChunks.take(math.abs(x) % 5)
+      }
+      def byteChunk(x: Int): Coll[Byte] = x % 3 match {
+        case 0 => builder.emptyColl[Byte]
+        case 1 => byteChunks
+        case _ => byteChunks.take(math.abs(x) % 5)
+      }
+      def nestedChunk(x: Int): Coll[Coll[Int]] =
+        if (x % 2 == 0) builder.emptyColl[Coll[Int]]
+        else builder.fromItems(intChunk(x))
+
+      checkFlatMapEquivalence(xs, intChunk)
+      checkFlatMapEquivalence(xs.zip(xs), (p: (Int, Int)) => intChunk(p._1))
+      checkFlatMapEquivalence(xs, byteChunk)
+      checkFlatMapEquivalence(xs.zip(xs), (p: (Int, Int)) => byteChunk(p._1))
+      checkFlatMapEquivalence(xs, nestedChunk)
+      checkFlatMapEquivalence(xs.zip(xs), (p: (Int, Int)) => nestedChunk(p._1))
     }
+  }
+
+  property("Coll.flatMap boundary equivalence") {
+    val empty = builder.emptyColl[Int]
+    val value = builder.fromItems(1)
+    checkFlatMapEquivalence(empty, (_: Int) => value)
+    checkFlatMapEquivalence(
+      builder.fromItems(1, 2, 3),
+      (x: Int) => if (x == 2) empty else value)
+
+    val chunk = builder.replicate(sigma.util.MaxArrayLength / 2, 1)
+    checkFlatMapEquivalence(builder.fromItems(1, 2), (_: Int) => chunk)
   }
 
   property("Coll.segmentLength") {

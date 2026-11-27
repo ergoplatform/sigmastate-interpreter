@@ -4,7 +4,7 @@ import org.ergoplatform.validation.ValidationRules.{CheckDeserializedScriptIsSig
 import sigma.ast.{Constant, DeserializationSigmaBuilder, ErgoTree, SType, UnparsedErgoTree}
 import sigma.ast.syntax.ValueOps
 import sigma.ast.ErgoTree.{EmptyConstants, HeaderType, getVersion}
-import sigma.util.safeNewArray
+import sigma.util.{MaxArrayLength, safeNewArray}
 import debox.cfor
 import sigma.VersionContext
 import sigma.validation.ValidationException
@@ -312,6 +312,10 @@ class ErgoTreeSerializer {
     *                    should be replaced with new values
     * @param newVals     new values to be injected into the corresponding
     *                    positions in ErgoTree.constants array
+    * @param addFixedCostCallbackOpt   when defined, the fixed costs of serializing
+    *                    the resulting tree bytes are reported via this callback
+    * @param addPerItemCostCallbackOpt when defined, the per-item costs of serializing
+    *                    the resulting tree bytes are reported via this callback
     * @return a pair (newBytes, len), where:
     *         newBytes - the original array scriptBytes such that only specified constants
     *                    are replaced and all other bytes remain exactly the same
@@ -319,7 +323,9 @@ class ErgoTreeSerializer {
     */
   def substituteConstants(scriptBytes: Array[Byte],
                           positions: Array[Int],
-                          newVals: Array[Constant[SType]]): (Array[Byte], Int) = {
+                          newVals: Array[Constant[SType]],
+                          addFixedCostCallbackOpt: Option[SigmaByteWriter.FixedCostCallback] = None,
+                          addPerItemCostCallbackOpt: Option[SigmaByteWriter.PerItemCostCallback] = None): (Array[Byte], Int) = {
     require(positions.length == newVals.length,
       s"expected positions and newVals to have the same length, got: positions: ${positions.toSeq},\n newVals: ${newVals.toSeq}")
     val r = SigmaSerializer.startReader(scriptBytes)
@@ -330,7 +336,8 @@ class ErgoTreeSerializer {
       if (VersionContext.current.isJitActivated) {
         // need to measure the serialized size of the new constants
         // by serializing them into a separate writer
-        val constW = SigmaSerializer.startWriter()
+        val constW = SigmaSerializer.startWriter(MaxArrayLength,
+          addFixedCostCallbackOpt, addPerItemCostCallbackOpt)
 
         // The following `constants.length` should not be serialized when segregation is off
         // in the `header`, because in this case there is no `constants` section in the
@@ -363,7 +370,7 @@ class ErgoTreeSerializer {
         val constBytes = constW.toBytes // nConstants + serialized new constants
 
         // start composing the resulting tree bytes
-        val w = SigmaSerializer.startWriter()
+        val w = SigmaSerializer.startWriter(None, addFixedCostCallbackOpt, addPerItemCostCallbackOpt)
         w.put(header) // header byte
 
         if (VersionContext.current.isV3OrLaterErgoTreeVersion) {
