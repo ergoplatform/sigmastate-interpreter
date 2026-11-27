@@ -163,7 +163,7 @@ object ValidationRules {
   }
 
   object CheckV6Type extends ValidationRule(1019,
-    "Check the type has the declared method.") {
+    "Check that V6-only types are not used in registers or context extensions.") {
     override protected lazy val settings: SigmaValidationSettings = currentSettings
 
     final def apply[T](v: EvaluatedValue[_]): Unit = {
@@ -197,9 +197,9 @@ object ValidationRules {
                             ruleId: Short,
                             status: RuleStatus,
                             args: Seq[Any]): Boolean = (status, args) match {
-      case (ChangedRule(newValue), Seq(objType: MethodsContainer, methodId: Byte)) =>
-        val key = Array(objType.ownerType.typeId, methodId)
-        newValue.grouped(2).exists(java.util.Arrays.equals(_, key))
+      case (ReplacedRule(_), _) => true
+      case (ChangedRule(newValue), Seq(tpe: SType)) =>
+        newValue.contains(tpe.typeCode)
       case _ => false
     }
   }
@@ -221,12 +221,22 @@ object ValidationRules {
     CheckCostFuncOperation,
     CheckPositionLimit,
     CheckLoopLevelInCostFunction,
-    CheckV6Type
+    CheckV6Type,
+    CheckZeroWidthCollection
   )
 
   // v6 validation rules below
   private val ruleSpecsV6: Seq[ValidationRule] = {
-    ruleSpecsV5.filter(_.id != CheckAndGetMethod.id) ++ Seq(CheckAndGetMethodV6)
+    val replacedInV6 = Set(
+      CheckAndGetMethod.id,
+      CheckPrimitiveTypeCode.id,
+      CheckTypeCode.id
+    )
+    ruleSpecsV5.filterNot(r => replacedInV6.contains(r.id)) ++ Seq(
+      CheckAndGetMethodV6,
+      CheckPrimitiveTypeCodeV6,
+      CheckTypeCodeV6
+    )
   }
 
   def ruleSpecs: Seq[ValidationRule] = {

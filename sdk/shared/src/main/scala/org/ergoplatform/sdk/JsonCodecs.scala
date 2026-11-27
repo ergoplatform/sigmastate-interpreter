@@ -244,6 +244,14 @@ trait JsonCodecs {
   implicit val contextExtensionDecoder: Decoder[ContextExtension] = Decoder.instance({ cursor =>
     for {
       values <- cursor.as[Map[Byte, EvaluatedValue[SType]]]
+      _ <- if (values.keys.exists(_ < 0)) {
+        Left(DecodingFailure(
+          s"Negative id of context extension variable: ${values.keys.filter(_ < 0).mkString(", ")}",
+          cursor.history
+        ))
+      } else {
+        Right(())
+      }
     } yield ContextExtension(values)
   })
 

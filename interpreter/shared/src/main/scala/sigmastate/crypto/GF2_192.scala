@@ -75,7 +75,8 @@ class GF2_192 extends AnyRef {
     */
   def this(that: Array[Byte], pos: Int) {
     this()
-    assert(that.length >= pos + 24)
+    require(pos >= 0 && that.length - pos >= 24,
+      s"Byte array too short for GF2_192 at offset $pos (length=${that.length})")
     cfor(0)(_ < 8, _ + 1) { i =>
       word(0) |= (that(i + pos).toLong & 0xFF) << (i << 3)
     }
@@ -139,7 +140,8 @@ class GF2_192 extends AnyRef {
     * @param ret bytes of the field element will go into ret[pos]...ret[pos+23]
     */
   def toByteArray(ret: Array[Byte], pos: Int): Unit = {
-    assert(ret.length >= pos + 24)
+    require(pos >= 0 && ret.length - pos >= 24,
+      s"Output byte array too short for GF2_192 at offset $pos (length=${ret.length})")
     cfor (0)(_ < 3, _ + 1) { j =>
       cfor(0)(_ < 8, _ + 1) { i =>
         ret(pos + i + 8 * j) = ((word(j) >> (i << 3)) & 0xFF).toByte

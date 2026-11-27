@@ -138,6 +138,11 @@ class ErgoLikeContext(val lastBlockUtxoRoot: AvlTreeData,
     import sigma.Evaluation._
 
     def contextVars(m: Map[Byte, AnyValue]): Coll[AnyValue] = {
+      if (m.keys.exists(_ < 0)) {
+        throw new IllegalArgumentException(
+          s"Negative context extension variable id(s): ${m.keys.filter(_ < 0).mkString(", ")}"
+        )
+      }
       val maxKey = if (m.keys.isEmpty) 0 else m.keys.max  // TODO optimize: max takes 90% of this method
       val res = new Array[AnyValue](maxKey + 1)
       for ((id, v) <- m) {

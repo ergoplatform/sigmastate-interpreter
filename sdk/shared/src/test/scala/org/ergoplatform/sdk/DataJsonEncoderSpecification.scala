@@ -296,5 +296,38 @@ class DataJsonEncoderSpecification extends SerializationSpecification {
             t.getMessage.contains("Tuples with length not equal to 2 are not supported")
       }
     )
+
+    // Mismatched pair collection lengths must throw SerializerException (not AssertionError)
+    val mismatchedPairColl = io.circe.parser.parse(
+      """
+        |{ "type": "Coll[(Int, Int)]",
+        |  "value": {
+        |    "_1": [1, 2, 3],
+        |    "_2": [10, 20]
+        |  }
+        |}""".stripMargin).toOption.get
+
+    assertExceptionThrown(
+      DataJsonEncoder.decode(mismatchedPairColl),
+      { t =>
+        t.isInstanceOf[SerializerException] &&
+          t.getMessage.contains("Mismatched pair collection lengths")
+      }
+    )
+  }
+
+  property("JsonCodecs rejects negative ContextExtension keys and ValidationRules registers V6 rules") {
+    import org.ergoplatform.validation.ValidationRules
+    import sigma.validation.ValidationRules.{CheckPrimitiveTypeCodeV6, CheckTypeCodeV6, CheckZeroWidthCollection}
+
+    val badExtJson = io.circe.parser.parse("""{"-1": "0402"}""").toOption.get
+    JsonCodecs.contextExtensionDecoder.decodeJson(badExtJson).isLeft shouldBe true
+
+    VersionContext.withVersions(VersionContext.V6SoftForkVersion, 3) {
+      val settings = ValidationRules.currentSettings
+      settings.getStatus(CheckPrimitiveTypeCodeV6.id) shouldBe defined
+      settings.getStatus(CheckTypeCodeV6.id) shouldBe defined
+      settings.getStatus(CheckZeroWidthCollection.id) shouldBe defined
+    }
   }
 }
