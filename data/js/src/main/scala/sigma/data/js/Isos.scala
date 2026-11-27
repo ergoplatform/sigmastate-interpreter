@@ -64,7 +64,7 @@ object Isos {
 
   implicit val isoAmount: Iso[commonMod.Amount, Long] = new Iso[commonMod.Amount, Long] {
     override def to(x: commonMod.Amount): Long = x.asInstanceOf[Any] match {
-      case s: String => BigInt(s).toLong
+      case s: String => java.lang.Long.parseLong(s)
       case _ => java.lang.Long.parseLong(x.asInstanceOf[js.BigInt].toString(10))
     }
     override def from(x: Long): commonMod.Amount = x.toString

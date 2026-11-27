@@ -119,6 +119,12 @@ class IsosSpec extends IsosSpecBase with sdk.generators.ObjectGenerators {
       roundtrip(DataIsos.isoAmount)(c)
       DataIsos.isoAmount.to(js.BigInt(c.toString)) shouldBe c
     }
+    an[NumberFormatException] should be thrownBy {
+      DataIsos.isoAmount.to("9223372036854775808")
+    }
+    an[NumberFormatException] should be thrownBy {
+      DataIsos.isoAmount.to("-9223372036854775809")
+    }
   }
 
   property("Iso.isoToken") {
