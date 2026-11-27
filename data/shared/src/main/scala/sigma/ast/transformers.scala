@@ -95,8 +95,12 @@ case class Slice[IV <: SType](input: Value[SCollection[IV]], from: Value[SInt.ty
     val inputV = input.evalTo[Coll[Any]](env)
     val fromV = from.evalTo[Int](env)
     val untilV = until.evalTo[Int](env)
-    val len = Math.max(0, untilV - fromV)
-    addSeqCost(Slice.costKind, len) { () =>
+    val requestedLength = untilV.toLong - fromV.toLong
+    val costLen = // used in cost calculations only
+      if (requestedLength <= 0) 0
+      else if (requestedLength <= Int.MaxValue) requestedLength.toInt
+      else Math.max(0, Math.min(untilV, inputV.length) - Math.max(fromV, 0))
+    addSeqCost(Slice.costKind, costLen) { () =>
       inputV.slice(fromV, untilV)
     }
   }

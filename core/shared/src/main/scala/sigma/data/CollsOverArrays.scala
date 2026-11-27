@@ -1,12 +1,13 @@
 package sigma.data
 
 import debox.{Buffer, cfor}
-import sigma.Evaluation.stypeToRType
 import sigma.data.CollOverArray.equalsPairCollWithCollOverArray
 import sigma.data.RType._
 import sigma.util.{CollectionUtil, MaxArrayLength, safeConcatArrays_v5}
 import sigma.{Coll, CollBuilder, PairColl, VersionContext, requireSameLength}
 import sigma.rtypeToClassTag
+
+import scala.collection.mutable
 
 class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuilder)
                                    (implicit tA: RType[A]) extends Coll[A] {
@@ -67,10 +68,8 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
 
   def indices: Coll[Int] = builder.fromArray(toArray.indices.toArray)
 
-  override def flatMap[B: RType](f: A => Coll[B]): Coll[B] = {
-    implicit val ctB = RType[B].classTag
-    builder.fromArray(toArray.flatMap(x => f(x).toArray))
-  }
+  override def flatMap[B: RType](f: A => Coll[B]): Coll[B] =
+    CollOverArray.flatMap(this, f, builder)
 
   override def segmentLength(p: A => Boolean, from: Int): Int = toArray.segmentLength(p, from)
 
@@ -157,6 +156,24 @@ class CollOverArray[@specialized A](val toArray: Array[A], val builder: CollBuil
 }
 
 object CollOverArray {
+
+  private[data] def flatMap[A, B](xs: Coll[A], f: A => Coll[B], builder: CollBuilder)
+      (implicit tB: RType[B]): Coll[B] = {
+    val output = {
+      implicit val ctB = tB.classTag
+      mutable.ArrayBuilder.make[B]
+    }
+    var currentLength = 0
+    cfor(0)(_ < xs.length, _ + 1) { i =>
+      val next = f(xs(i))
+      val newLength = currentLength.toLong + next.length
+      require(newLength <= MaxArrayLength,
+        s"Cannot create collection with size $newLength greater than $MaxArrayLength")
+      output ++= next.toArray
+      currentLength = newLength.toInt
+    }
+    builder.fromArray(output.result())
+  }
 
   // comparing PairColl and CollOverArray instances
   private[data] def equalsPairCollWithCollOverArray(pc: PairColl[Any, Any], coa: CollOverArray[Any]): Boolean = {
@@ -408,7 +425,7 @@ class PairOfCols[@specialized L, @specialized R](val ls: Coll[L], val rs: Coll[R
   override def indices: Coll[Int] = if (ls.length <= rs.length) ls.indices else rs.indices
 
   override def flatMap[B: RType](f: ((L, R)) => Coll[B]): Coll[B] =
-    builder.fromArray(toArray.flatMap(p => f(p).toArray))
+    CollOverArray.flatMap(this, f, builder)
 
   override def segmentLength(p: ((L, R)) => Boolean, from: Int): Int = {
     toArray.segmentLength(p, from)
