@@ -1,7 +1,9 @@
 package sigma.compiler.ir.wrappers.sigma
 
+import scala.collection.compat.immutable.ArraySeq
 import scalan._
   import sigma.compiler.ir.{Base, IRContext}
+  import sigma.reflection.RClass
 
   /** IR representation of ErgoScript (Sigma) language types and methods. */
   trait SigmaDsl extends Base { self: IRContext =>
@@ -37,11 +39,42 @@ import scalan._
       def negate: Ref[GroupElement];
       def getEncoded: Ref[Coll[Byte]]
     };
+    private lazy val SigmaPropClass = RClass(classOf[SigmaProp])
+
     trait SigmaProp extends Def[SigmaProp] {
-      def isValid: Ref[Boolean];
-      def propBytes: Ref[Coll[Byte]];
-      def &&(other: Ref[SigmaProp]): Ref[SigmaProp];
-      def ||(other: Ref[SigmaProp]): Ref[SigmaProp];
+      import Coll._
+      import SigmaProp._
+
+      protected def sigmaPropReceiver: Ref[SigmaProp] = self
+      protected def sigmaPropIsAdapterCall: Boolean = false
+
+      def isValid: Ref[Boolean] = {
+        asRep[Boolean](mkMethodCall(sigmaPropReceiver,
+          SigmaPropClass.getMethod("isValid"),
+          ArraySeq.empty,
+          true, sigmaPropIsAdapterCall, element[Boolean]))
+      }
+
+      def propBytes: Ref[Coll[Byte]] = {
+        asRep[Coll[Byte]](mkMethodCall(sigmaPropReceiver,
+          SigmaPropClass.getMethod("propBytes"),
+          ArraySeq.empty,
+          true, sigmaPropIsAdapterCall, element[Coll[Byte]]))
+      }
+
+      def &&(other: Ref[SigmaProp]): Ref[SigmaProp] = {
+        asRep[SigmaProp](mkMethodCall(sigmaPropReceiver,
+          SigmaPropClass.getMethod("$amp$amp", classOf[Sym]),
+          Array[AnyRef](other),
+          true, sigmaPropIsAdapterCall, element[SigmaProp]))
+      }
+
+      def ||(other: Ref[SigmaProp]): Ref[SigmaProp] = {
+        asRep[SigmaProp](mkMethodCall(sigmaPropReceiver,
+          SigmaPropClass.getMethod("$bar$bar", classOf[Sym]),
+          Array[AnyRef](other),
+          true, sigmaPropIsAdapterCall, element[SigmaProp]))
+      }
     };
     trait Box extends Def[Box] {
       def id: Ref[Coll[Byte]];
